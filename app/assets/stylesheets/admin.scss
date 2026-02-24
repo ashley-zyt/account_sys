@@ -596,6 +596,57 @@ body.admin {
   border-color: rgba(148, 163, 184, 0.9);
 }
 
+/* 登录页面样式 */
+.admin-login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top left, #1e293b, #020617 58%);
+  padding: 24px;
+}
+
+.admin-login-card {
+  width: 100%;
+  max-width: 420px;
+  background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.96));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.6);
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.admin-login-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.admin-login-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.admin-field {
+  margin-bottom: 20px;
+}
+
+.admin-login-alert {
+  margin-top: 24px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #fecaca;
+  font-size: 13px;
+  text-align: center;
+}
+
 .admin-chip-row {
   display: flex;
   flex-wrap: wrap;

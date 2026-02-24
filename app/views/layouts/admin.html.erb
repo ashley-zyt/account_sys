@@ -53,23 +53,6 @@
           Data
         </div>
         <ul class="admin-nav">
-          <% browsers_active = controller_path == "admin/browsers" %>
-          <li class="admin-nav-item <%= "active" if browsers_active %>">
-            <%= link_to admin_browsers_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  🌐
-                </div>
-                <div class="admin-nav-label">
-                  浏览器池
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Browsers
-              </div>
-            <% end %>
-          </li>
-
           <% accounts_active = controller_path == "admin/accounts" %>
           <li class="admin-nav-item <%= "active" if accounts_active %>">
             <%= link_to admin_accounts_path, class: "admin-nav-link" do %>
@@ -100,6 +83,23 @@
               </div>
               <div class="admin-nav-meta">
                 Tasks
+              </div>
+            <% end %>
+          </li>
+
+          <% browsers_active = controller_path == "admin/browsers" %>
+          <li class="admin-nav-item <%= "active" if browsers_active %>">
+            <%= link_to admin_browsers_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  🌐
+                </div>
+                <div class="admin-nav-label">
+                  浏览器池
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Browsers
               </div>
             <% end %>
           </li>
@@ -147,7 +147,7 @@
               <span class="admin-pill-dot"></span>
               在线
             </div>
-            <%= link_to "退出登录", destroy_admin_session_path, method: :delete, class: "admin-link-quiet" %>
+            <%= link_to "退出登录", destroy_admin_session_path, data: { "turbo-method": :delete }, class: "admin-link-quiet" %>
           </div>
         </header>
 

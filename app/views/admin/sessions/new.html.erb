@@ -1,0 +1,53 @@
+<div class="admin-login-container">
+  <div class="admin-login-card">
+    <div class="admin-logo" style="justify-content: center; margin-bottom: 32px;">
+      <div class="admin-logo-badge">
+        <div class="admin-logo-inner">
+          AS
+        </div>
+      </div>
+      <div class="admin-logo-text" style="text-align: left;">
+        <div class="admin-logo-title">
+          AccountSys
+        </div>
+        <div class="admin-logo-subtitle">
+          Admin Console
+        </div>
+      </div>
+    </div>
+
+    <h2 class="admin-login-title">管理员登录</h2>
+    <p class="admin-login-subtitle">请输入您的凭据以访问控制台</p>
+
+    <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "admin-form" }) do |f| %>
+      <div class="admin-field">
+        <label class="admin-field-label">电子邮箱</label>
+        <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "admin-input", placeholder: "name@example.com" %>
+      </div>
+
+      <div class="admin-field">
+        <label class="admin-field-label">密码</label>
+        <%= f.password_field :password, autocomplete: "current-password", class: "admin-input", placeholder: "••••••••" %>
+      </div>
+
+      <% if devise_mapping.rememberable? %>
+        <div class="admin-field" style="display: flex; align-items: center; gap: 8px; margin-top: -8px;">
+          <%= f.check_box :remember_me, style: "width: 14px; height: 14px; cursor: pointer;" %>
+          <label class="admin-label-muted" style="cursor: pointer; user-select: none;">记住我</label>
+        </div>
+      <% end %>
+
+      <div style="margin-top: 24px;">
+        <button type="submit" class="admin-button-primary" style="width: 100%; padding: 12px;">
+          登录系统
+        </button>
+      </div>
+    <% end %>
+
+    <% if flash[:alert] %>
+      <div class="admin-login-alert">
+        <%= flash[:alert] %>
+      </div>
+    <% end %>
+  </div>
+</div>
