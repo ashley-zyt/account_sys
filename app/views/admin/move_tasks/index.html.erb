@@ -1,0 +1,153 @@
+<% content_for :page_title do %>
+  任务队列
+<% end %>
+<% content_for :page_subtitle do %>
+  最近创建的任务列表
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        任务列表
+      </div>
+      <div class="admin-card-subtitle">
+        监控和筛选任务队列
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">
+        共 <%= @move_tasks.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">标题/URL</label>
+        <%= f.search_field :title_or_video_url_cont, class: "admin-input admin-filter-input", placeholder: "搜索标题或URL..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <%= f.select :platform_eq, MoveTask.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status_eq, MoveTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_move_tasks_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @move_tasks.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>
+              任务
+            </th>
+            <th>
+              主题
+            </th>
+            <th>
+              平台
+            </th>
+            <th>
+              状态
+            </th>
+            <th>
+              账号
+            </th>
+            <th>
+              浏览器
+            </th>
+            <th>
+              创建时间
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @move_tasks.each do |task| %>
+            <tr>
+              <td>
+                <%= link_to truncate(task.title.presence || task.video_url, length: 40), admin_move_task_path(task), class: "admin-link-quiet" %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.theme %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.platform %>
+                </span>
+              </td>
+              <td>
+                <% case task.status %>
+                <% when "pending" %>
+                  <span class="admin-pill-status admin-pill-status-pending">
+                    <span class="admin-pill-status-dot"></span>
+                    待分配
+                  </span>
+                <% when "waiting_publish", "executing" %>
+                  <span class="admin-pill-status admin-pill-status-pending">
+                    <span class="admin-pill-status-dot"></span>
+                    队列中
+                  </span>
+                <% when "success" %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>
+                    成功
+                  </span>
+                <% when "failed" %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>
+                    失败
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <% if task.account %>
+                  <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet" %>
+                <% else %>
+                  <span class="admin-label-muted">
+                    未分配
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <% if task.browser %>
+                  <span class="admin-label-muted">
+                    <%= task.browser.profile_name %>
+                  </span>
+                <% else %>
+                  <span class="admin-label-muted">
+                    未绑定
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.created_at&.strftime("%m-%d %H:%M") %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @move_tasks %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无任务数据。
+    </div>
+  <% end %>
+</div>
+

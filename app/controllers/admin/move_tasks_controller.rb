@@ -1,0 +1,10 @@
+class Admin::MoveTasksController < Admin::BaseController
+	def index
+		@q = MoveTask.ransack(params[:q])
+		@move_tasks = @q.result(distinct: true).includes(:account, :browser).order(created_at: :desc).page(params[:page]).per(20)
+	end
+
+	def show
+		@move_task = MoveTask.find(params[:id])
+	end
+end

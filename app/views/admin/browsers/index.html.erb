@@ -1,0 +1,124 @@
+<% content_for :page_title do %>
+  浏览器池
+<% end %>
+<% content_for :page_subtitle do %>
+  最近创建的浏览器实例
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        浏览器列表
+      </div>
+      <div class="admin-card-subtitle">
+        管理和筛选浏览器实例
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "新增浏览器", new_admin_browser_path, class: "admin-button-secondary" %>
+      <span class="admin-tag">
+        共 <%= @browsers.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">名称</label>
+        <%= f.search_field :profile_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索名称..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status_eq, Browser.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_browsers_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @browsers.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>
+              名称
+            </th>
+            <th>
+              云端 ID
+            </th>
+            <th>
+              状态
+            </th>
+            <th>
+              用途
+            </th>
+            <th>
+              代理
+            </th>
+            <th>
+              备注
+            </th>
+            <th>
+              创建时间
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @browsers.each do |browser| %>
+            <tr>
+              <td>
+                <%= link_to browser.profile_name, admin_browser_path(browser), class: "admin-link-quiet" %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= browser.cloud_id %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= browser.status %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= browser.purpose %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <% if browser.proxy_host.present? %>
+                    <%= browser.proxy_type %>://<%= browser.proxy_host %>:<%= browser.proxy_port %>
+                  <% else %>
+                    无
+                  <% end %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= browser.remark.presence || "无" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= browser.created_at&.strftime("%m-%d %H:%M") %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @browsers %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无浏览器数据。
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,87 @@
+<% content_for :page_title do %>
+  新增账号
+<% end %>
+<% content_for :page_subtitle do %>
+  手动添加一个社交账号
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        账号信息
+      </div>
+      <div class="admin-card-subtitle">
+        填写基础属性与绑定浏览器
+      </div>
+    </div>
+  </div>
+
+  <%= form_with model: [:admin, @account], class: "admin-form" do |f| %>
+    <% if @account.errors.any? %>
+      <div class="admin-empty-state" style="margin-bottom: 12px;">
+        <ul class="admin-list">
+          <% @account.errors.full_messages.each do |msg| %>
+            <li class="admin-list-item">
+              <div class="admin-list-title">
+                <%= msg %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          账号名
+        </div>
+        <%= f.text_field :account_name, class: "admin-input" %>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          主题
+        </div>
+        <%= f.select :theme, @themes.map { |name| [name, name] }, { include_blank: "请选择主题" }, class: "admin-input" %>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          平台
+        </div>
+        <%= f.select :platform, Account.platforms.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          状态
+        </div>
+        <%= f.select :status, Account.statuses.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          工作模式
+        </div>
+        <%= f.select :work_type, Account.work_types.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          绑定浏览器
+        </div>
+        <%= f.collection_select :browser_id, Browser.order(:profile_name), :id, :profile_name, { include_blank: "不绑定" }, class: "admin-input" %>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          备注
+        </div>
+        <%= f.text_field :remark, class: "admin-input" %>
+      </div>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <button type="submit" class="admin-button-primary">
+        保存
+      </button>
+      <%= link_to "取消", admin_accounts_path, class: "admin-button-secondary" %>
+    </div>
+  <% end %>
+</div>

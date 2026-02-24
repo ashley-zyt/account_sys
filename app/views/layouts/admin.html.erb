@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Admin · AccountSys</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "admin", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body class="admin">
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="admin-logo">
+          <div class="admin-logo-badge">
+            <div class="admin-logo-inner">
+              AS
+            </div>
+          </div>
+          <div class="admin-logo-text">
+            <div class="admin-logo-title">
+              AccountSys
+            </div>
+            <div class="admin-logo-subtitle">
+              Admin Console
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-sidebar-section-title">
+          Overview
+        </div>
+        <ul class="admin-nav">
+          <% dashboard_active = controller_path == "admin/dashboard" %>
+          <li class="admin-nav-item <%= "active" if dashboard_active %>">
+            <%= link_to admin_root_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  📊
+                </div>
+                <div class="admin-nav-label">
+                  仪表盘
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                概览
+              </div>
+            <% end %>
+          </li>
+        </ul>
+
+        <div class="admin-sidebar-section-title">
+          Data
+        </div>
+        <ul class="admin-nav">
+          <% browsers_active = controller_path == "admin/browsers" %>
+          <li class="admin-nav-item <%= "active" if browsers_active %>">
+            <%= link_to admin_browsers_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  🌐
+                </div>
+                <div class="admin-nav-label">
+                  浏览器池
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Browsers
+              </div>
+            <% end %>
+          </li>
+
+          <% accounts_active = controller_path == "admin/accounts" %>
+          <li class="admin-nav-item <%= "active" if accounts_active %>">
+            <%= link_to admin_accounts_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  👤
+                </div>
+                <div class="admin-nav-label">
+                  账号管理
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Accounts
+              </div>
+            <% end %>
+          </li>
+
+          <% tasks_active = controller_path == "admin/move_tasks" %>
+          <li class="admin-nav-item <%= "active" if tasks_active %>">
+            <%= link_to admin_move_tasks_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  🎬
+                </div>
+                <div class="admin-nav-label">
+                  任务队列
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Tasks
+              </div>
+            <% end %>
+          </li>
+
+          <% logs_active = controller_path == "admin/task_logs" %>
+          <li class="admin-nav-item <%= "active" if logs_active %>">
+            <%= link_to admin_task_logs_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  📜
+                </div>
+                <div class="admin-nav-label">
+                  任务日志
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Logs
+              </div>
+            <% end %>
+          </li>
+        </ul>
+
+        <div class="admin-sidebar-footer">
+          <div>
+            已登录管理员:
+          </div>
+          <div>
+            <%= current_admin&.email %>
+          </div>
+        </div>
+      </aside>
+
+      <main class="admin-main">
+        <header class="admin-topbar">
+          <div class="admin-topbar-left">
+            <div class="admin-topbar-title">
+              <%= content_for?(:page_title) ? yield(:page_title) : "控制台" %>
+            </div>
+            <div class="admin-topbar-subtitle">
+              <%= content_for?(:page_subtitle) ? yield(:page_subtitle) : "账号与任务调度的可视化后台" %>
+            </div>
+          </div>
+          <div class="admin-topbar-right">
+            <div class="admin-pill">
+              <span class="admin-pill-dot"></span>
+              在线
+            </div>
+            <%= link_to "退出登录", destroy_admin_session_path, method: :delete, class: "admin-link-quiet" %>
+          </div>
+        </header>
+
+        <div class="admin-content">
+          <%= yield %>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

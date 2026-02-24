@@ -1,0 +1,134 @@
+<% content_for :page_title do %>
+  账号管理
+<% end %>
+<% content_for :page_subtitle do %>
+  最近创建的账号列表
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        账号列表
+      </div>
+      <div class="admin-card-subtitle">
+        管理和筛选社交账号
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "新增账号", new_admin_account_path, class: "admin-button-secondary" %>
+      <span class="admin-tag">
+        共 <%= @accounts.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">账号名</label>
+        <%= f.search_field :account_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索账号名..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">主题</label>
+        <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <%= f.select :platform_eq, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status_eq, Account.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_accounts_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @accounts.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>
+              账号名
+            </th>
+            <th>
+              主题
+            </th>
+            <th>
+              平台
+            </th>
+            <th>
+              状态
+            </th>
+            <th>
+              工作模式
+            </th>
+            <th>
+              绑定浏览器
+            </th>
+            <th>
+              最后使用时间
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @accounts.each do |account| %>
+            <tr>
+              <td>
+                <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet" %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= account.theme %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= account.platform %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= account.status %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= account.work_type %>
+                </span>
+              </td>
+              <td>
+                <% if account.browser %>
+                  <span class="admin-label-muted">
+                    <%= account.browser.profile_name %>
+                  </span>
+                <% else %>
+                  <span class="admin-label-muted">
+                    未绑定
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= account.last_used_at&.strftime("%m-%d %H:%M") || "暂无" %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @accounts %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无账号数据。
+    </div>
+  <% end %>
+</div>

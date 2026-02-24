@@ -1,0 +1,171 @@
+<% content_for :page_title do %>
+  任务详情
+<% end %>
+<% content_for :page_subtitle do %>
+  任务 <%= @move_task.id %> 的执行情况
+<% end %>
+
+<div class="admin-grid">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          基本信息
+        </div>
+        <div class="admin-card-subtitle">
+          视频及主题配置
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          任务 UUID
+        </div>
+        <div class="admin-field-value">
+          <%= @move_task.task_uuid %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          平台
+        </div>
+        <div class="admin-field-value">
+          <%= @move_task.platform %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          主题
+        </div>
+        <div class="admin-field-value">
+          <%= @move_task.theme %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          状态
+        </div>
+        <div class="admin-field-value">
+          <%= @move_task.status %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          创建时间
+        </div>
+        <div class="admin-field-value">
+          <%= @move_task.created_at&.strftime("%Y-%m-%d %H:%M") %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          更新时间
+        </div>
+        <div class="admin-field-value">
+          <%= @move_task.updated_at&.strftime("%Y-%m-%d %H:%M") %>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      视频与标题
+    </div>
+    <div class="admin-section-subtitle">
+      源视频地址与生成标题
+    </div>
+
+    <div>
+      <div class="admin-field-label">
+        视频地址
+      </div>
+      <div class="admin-field-value">
+        <%= @move_task.video_url %>
+      </div>
+    </div>
+
+    <div style="margin-top: 10px;">
+      <div class="admin-field-label">
+        标题
+      </div>
+      <div class="admin-field-value">
+        <%= @move_task.title %>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          执行信息
+        </div>
+        <div class="admin-card-subtitle">
+          账号、浏览器及时间线
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          执行账号
+        </div>
+        <div class="admin-field-value">
+          <% if @move_task.account %>
+            <%= link_to @move_task.account.account_name, admin_account_path(@move_task.account), class: "admin-link-quiet" %>
+          <% else %>
+            未分配
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          浏览器
+        </div>
+        <div class="admin-field-value">
+          <% if @move_task.browser %>
+            <%= @move_task.browser.profile_name %>
+          <% else %>
+            未绑定
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          开始时间
+        </div>
+        <div class="admin-field-value">
+          <%= @move_task.start_at&.strftime("%Y-%m-%d %H:%M") || "未开始" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          实际发布时间
+        </div>
+        <div class="admin-field-value">
+          <%= @move_task.actual_publish_time&.strftime("%Y-%m-%d %H:%M") || "暂无" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      错误信息
+    </div>
+    <div class="admin-section-subtitle">
+      失败原因或异常详情
+    </div>
+
+    <% if @move_task.error_msg.present? %>
+      <div class="admin-empty-state" style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.5);">
+        <pre style="margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 11px;"><%= @move_task.error_msg %></pre>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        暂无错误信息。
+      </div>
+    <% end %>
+  </div>
+</div>
+

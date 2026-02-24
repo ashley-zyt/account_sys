@@ -1,0 +1,267 @@
+<% content_for :page_title do %>
+  浏览器详情
+<% end %>
+<% content_for :page_subtitle do %>
+  <%= @browser.profile_name %> 的配置与关联数据
+<% end %>
+
+<div class="admin-grid">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          基本信息
+        </div>
+        <div class="admin-card-subtitle">
+          指纹浏览器配置与代理详情
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          名称
+        </div>
+        <div class="admin-field-value">
+          <%= @browser.profile_name %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          云端 ID
+        </div>
+        <div class="admin-field-value">
+          <%= @browser.cloud_id %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          状态
+        </div>
+        <div class="admin-field-value">
+          <%= @browser.status %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          用途
+        </div>
+        <div class="admin-field-value">
+          <%= @browser.purpose %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          创建时间
+        </div>
+        <div class="admin-field-value">
+          <%= @browser.created_at&.strftime("%Y-%m-%d %H:%M") %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          更新时间
+        </div>
+        <div class="admin-field-value">
+          <%= @browser.updated_at&.strftime("%Y-%m-%d %H:%M") %>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      代理配置
+    </div>
+    <div class="admin-section-subtitle">
+      网络代理与认证信息（不展示密码）
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          类型
+        </div>
+        <div class="admin-field-value">
+          <%= @browser.proxy_type.presence || "未设置" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          地址
+        </div>
+        <div class="admin-field-value">
+          <% if @browser.proxy_host.present? %>
+            <%= @browser.proxy_host %>:<%= @browser.proxy_port %>
+          <% else %>
+            未设置
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          用户名
+        </div>
+        <div class="admin-field-value">
+          <%= @browser.proxy_username.presence || "未设置" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          备注
+        </div>
+        <div class="admin-field-value">
+          <%= @browser.remark.presence || "无" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          关联账号
+        </div>
+        <div class="admin-card-subtitle">
+          使用该浏览器的最近 20 个账号
+        </div>
+      </div>
+    </div>
+
+    <% if @accounts.any? %>
+      <div class="admin-table-wrapper admin-table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>
+                账号名
+              </th>
+              <th>
+                主题
+              </th>
+              <th>
+                平台
+              </th>
+              <th>
+                状态
+              </th>
+              <th>
+                最后使用时间
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @accounts.each do |account| %>
+              <tr>
+                <td>
+                  <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet" %>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= account.theme %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= account.platform %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= account.status %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= account.last_used_at&.strftime("%m-%d %H:%M") || "暂无" %>
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        暂无关联账号。
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="admin-card" style="margin-top: 20px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        近期任务
+      </div>
+      <div class="admin-card-subtitle">
+        在该浏览器上执行的最近 20 条任务
+      </div>
+    </div>
+  </div>
+
+  <% if @move_tasks.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>
+              任务
+            </th>
+            <th>
+              平台
+            </th>
+            <th>
+              状态
+            </th>
+            <th>
+              账号
+            </th>
+            <th>
+              开始时间
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @move_tasks.each do |task| %>
+            <tr>
+              <td>
+                <%= link_to truncate(task.title.presence || task.video_url, length: 40), admin_move_task_path(task), class: "admin-link-quiet" %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.platform %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.status %>
+                </span>
+              </td>
+              <td>
+                <% if task.account %>
+                  <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet" %>
+                <% else %>
+                  <span class="admin-label-muted">
+                    未分配
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.start_at&.strftime("%m-%d %H:%M") || "未开始" %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无相关任务。
+    </div>
+  <% end %>
+</div>
+

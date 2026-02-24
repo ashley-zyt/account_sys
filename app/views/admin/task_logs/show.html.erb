@@ -1,0 +1,112 @@
+<% content_for :page_title do %>
+  日志详情
+<% end %>
+<% content_for :page_subtitle do %>
+  任务 <%= @task_log.task_uuid %> 的执行日志
+<% end %>
+
+<div class="admin-grid">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          基本信息
+        </div>
+        <div class="admin-card-subtitle">
+          日志元数据与执行结果
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          任务 UUID
+        </div>
+        <div class="admin-field-value">
+          <%= @task_log.task_uuid %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          状态
+        </div>
+        <div class="admin-field-value">
+          <% if @task_log.status == "success" %>
+            成功
+          <% else %>
+            失败
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          执行时间
+        </div>
+        <div class="admin-field-value">
+          <%= @task_log.run_at&.strftime("%Y-%m-%d %H:%M:%S") %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          创建时间
+        </div>
+        <div class="admin-field-value">
+          <%= @task_log.created_at&.strftime("%Y-%m-%d %H:%M:%S") %>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      错误信息
+    </div>
+    <div class="admin-section-subtitle">
+      执行失败时的错误内容
+    </div>
+
+    <% if @task_log.error_msg.present? %>
+      <div class="admin-empty-state" style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.5);">
+        <pre style="margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 11px;"><%= @task_log.error_msg %></pre>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        暂无错误信息。
+      </div>
+    <% end %>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          请求数据
+        </div>
+        <div class="admin-card-subtitle">
+          任务执行时发送的参数
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-empty-state" style="text-align: left;">
+      <pre style="margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 11px;"><%= @task_log.request_data %></pre>
+    </div>
+  </div>
+</div>
+
+<div class="admin-card" style="margin-top: 20px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        响应数据
+      </div>
+      <div class="admin-card-subtitle">
+        上游接口返回的完整内容
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-empty-state" style="text-align: left;">
+    <pre style="margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 11px;"><%= @task_log.response_data %></pre>
+  </div>
+</div>
+

@@ -1,0 +1,112 @@
+<% content_for :page_title do %>
+  任务日志
+<% end %>
+<% content_for :page_subtitle do %>
+  最近产生的任务执行日志
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        任务日志
+      </div>
+      <div class="admin-card-subtitle">
+        按时间倒序展示系统运行日志
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">
+        共 <%= @task_logs.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">任务 UUID</label>
+        <%= f.search_field :task_uuid_cont, class: "admin-input admin-filter-input", placeholder: "搜索任务 UUID..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status_eq, TaskLog.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_task_logs_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @task_logs.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>
+              任务 UUID
+            </th>
+            <th>
+              状态
+            </th>
+            <th>
+              执行时间
+            </th>
+            <th>
+              错误信息
+            </th>
+            <th>
+              创建时间
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @task_logs.each do |log| %>
+            <tr>
+              <td>
+                <%= link_to log.task_uuid, admin_task_log_path(log), class: "admin-link-quiet" %>
+              </td>
+              <td>
+                <% if log.status == "success" %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>
+                    成功
+                  </span>
+                <% else %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>
+                    失败
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= log.run_at&.strftime("%Y-%m-%d %H:%M") %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= truncate(log.error_msg.to_s, length: 40) %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= log.created_at&.strftime("%m-%d %H:%M") %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @task_logs %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无日志数据。
+    </div>
+  <% end %>
+</div>
+
