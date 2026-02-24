@@ -1,4 +1,4 @@
-class AddIndexesToAllTables < ActiveRecord::Migration[5.2]
+class AddIndexesToAllTables < ActiveRecord::Migration[6.1]
   def change
     add_index :accounts, [:theme, :status, :last_used_at], name: 'idx_accounts_theme_status_lastused'
     add_index :move_tasks, [:status, :created_at], name: 'idx_tasks_status_created'

@@ -1,4 +1,4 @@
-class AddMultiPlatformSupportToMoveTasks < ActiveRecord::Migration[5.2]
+class AddMultiPlatformSupportToMoveTasks < ActiveRecord::Migration[6.1]
   def change
     # 1. 添加 platform 字段（枚举，与 Account.platform 一致）
     add_column :move_tasks, :platform, :integer, comment: '目标发布平台'
