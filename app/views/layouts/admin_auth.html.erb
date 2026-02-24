@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AccountSys | Admin Auth</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "admin", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="admin">
+    <div class="admin-login-container">
+      <div class="admin-login-card">
+        <div class="admin-logo" style="justify-content: center; margin-bottom: 32px;">
+          <div class="admin-logo-badge">
+            <div class="admin-logo-inner">
+              AS
+            </div>
+          </div>
+          <div class="admin-logo-text" style="text-align: left;">
+            <div class="admin-logo-title">
+              AccountSys
+            </div>
+            <div class="admin-logo-subtitle">
+              Admin Console
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-auth-content">
+          <%= yield %>
+        </div>
+
+        <% if flash[:alert] %>
+          <div class="admin-login-alert">
+            <%= flash[:alert] %>
+          </div>
+        <% end %>
+        <% if flash[:notice] %>
+          <div class="admin-pill-status admin-pill-status-success" style="margin-top: 24px; width: 100%; justify-content: center;">
+            <span class="admin-pill-status-dot"></span>
+            <%= flash[:notice] %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </body>
+</html>
