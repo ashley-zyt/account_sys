@@ -74,6 +74,9 @@
             <th>
               最后使用时间
             </th>
+            <th>
+              操作
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -117,6 +120,9 @@
                 <span class="admin-label-muted">
                   <%= account.last_used_at&.strftime("%m-%d %H:%M") || "暂无" %>
                 </span>
+              </td>
+              <td>
+                <%= link_to "编辑", edit_admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
               </td>
             </tr>
           <% end %>

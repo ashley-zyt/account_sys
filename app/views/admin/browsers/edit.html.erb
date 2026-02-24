@@ -1,8 +1,8 @@
 <% content_for :page_title do %>
-  新增浏览器
+  编辑浏览器
 <% end %>
 <% content_for :page_subtitle do %>
-  手动添加一个指纹浏览器实例
+  修改浏览器实例与代理配置
 <% end %>
 
 <div class="admin-card">
@@ -12,11 +12,10 @@
         浏览器信息
       </div>
       <div class="admin-card-subtitle">
-        填写基础信息与代理配置
+        正在编辑: <%= @browser.profile_name %>
       </div>
     </div>
   </div>
 
   <%= render "form", browser: @browser %>
 </div>
-

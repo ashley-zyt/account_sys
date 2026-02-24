@@ -1,5 +1,6 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :load_themes, only: [:new, :create]
+	before_action :set_account, only: [:show, :edit, :update]
+	before_action :load_themes, only: [:new, :create, :edit, :update]
 
 	def index
 		@q = Account.ransack(params[:q])
@@ -13,18 +14,32 @@ class Admin::AccountsController < Admin::BaseController
 	def create
 		@account = Account.new(account_params)
 		if @account.save
-			redirect_to admin_account_path(@account)
+			redirect_to admin_account_path(@account), notice: "账号已成功创建"
 		else
 			render :new, status: :unprocessable_entity
 		end
 	end
 
 	def show
-		@account = Account.find(params[:id])
 		@recent_tasks = @account.move_tasks.order(created_at: :desc).limit(10)
 	end
 
+	def edit
+	end
+
+	def update
+		if @account.update(account_params)
+			redirect_to admin_account_path(@account), notice: "账号信息已更新"
+		else
+			render :edit, status: :unprocessable_entity
+		end
+	end
+
 	private
+
+	def set_account
+		@account = Account.find(params[:id])
+	end
 
 	def load_themes
 		raw = ThemeConfig.config["themes"]

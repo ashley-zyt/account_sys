@@ -1,22 +1,21 @@
 <% content_for :page_title do %>
-  新增浏览器
+  编辑账号
 <% end %>
 <% content_for :page_subtitle do %>
-  手动添加一个指纹浏览器实例
+  修改账号信息与绑定设置
 <% end %>
 
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
       <div class="admin-card-title">
-        浏览器信息
+        账号信息
       </div>
       <div class="admin-card-subtitle">
-        填写基础信息与代理配置
+        正在编辑: <%= @account.account_name %>
       </div>
     </div>
   </div>
 
-  <%= render "form", browser: @browser %>
+  <%= render "form", account: @account, themes: @themes %>
 </div>
-

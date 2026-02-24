@@ -66,6 +66,9 @@
             <th>
               创建时间
             </th>
+            <th>
+              操作
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -107,6 +110,9 @@
                 <span class="admin-label-muted">
                   <%= browser.created_at&.strftime("%m-%d %H:%M") %>
                 </span>
+              </td>
+              <td>
+                <%= link_to "编辑", edit_admin_browser_path(browser), class: "admin-link-quiet", style: "color: var(--accent);" %>
               </td>
             </tr>
           <% end %>

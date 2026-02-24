@@ -1,0 +1,95 @@
+<%= form_with model: [:admin, browser], class: "admin-form" do |f| %>
+  <% if browser.errors.any? %>
+    <div class="admin-empty-state" style="margin-bottom: 12px;">
+      <ul class="admin-list">
+        <% browser.errors.full_messages.each do |msg| %>
+          <li class="admin-list-item">
+            <div class="admin-list-title">
+              <%= msg %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">
+        名称
+      </div>
+      <%= f.text_field :profile_name, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        云端 ID
+      </div>
+      <%= f.text_field :cloud_id, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        状态
+      </div>
+      <%= f.select :status, Browser.statuses.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        用途
+      </div>
+      <%= f.select :purpose, Browser.purposes.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+    </div>
+  </div>
+
+  <div class="admin-section-title" style="margin-top: 14px;">
+    代理配置
+  </div>
+  <div class="admin-section-subtitle">
+    可选，如果未设置则不使用代理
+  </div>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">
+        类型
+      </div>
+      <%= f.text_field :proxy_type, class: "admin-input", placeholder: "http 或 socks5" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        地址
+      </div>
+      <%= f.text_field :proxy_host, class: "admin-input", placeholder: "IP 或域名" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        端口
+      </div>
+      <%= f.number_field :proxy_port, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        用户名
+      </div>
+      <%= f.text_field :proxy_username, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        密码
+      </div>
+      <%= f.password_field :proxy_password, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        备注
+      </div>
+      <%= f.text_field :remark, class: "admin-input" %>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <button type="submit" class="admin-button-primary">
+      保存
+    </button>
+    <%= link_to "取消", admin_browsers_path, class: "admin-button-secondary" %>
+  </div>
+<% end %>
