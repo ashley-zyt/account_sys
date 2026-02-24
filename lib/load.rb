@@ -26,7 +26,7 @@ class Load
 				    proxy_port = parts[1]  rescue ""
 				    proxy_username = parts[2] rescue ""
 				    proxy_password = parts[3] rescue ""
-					Browser.create(profile_name: adspower_user_name, cloud_id: cloud_id, proxy_type: "socks5", proxy_host: proxy_host,proxy_port: proxy_port, proxy_username: proxy_username, proxy_password: proxy_password, status: "online", purpose: "warmup")
+					Browser.create(profile_name: adspower_user_name, cloud_id: cloud_id, proxy_type: "socks5", proxy_host: proxy_host,proxy_port: proxy_port, proxy_username: proxy_username, proxy_password: proxy_password, status: "正常", purpose: "账号培育")
 				end
 			end
 		end
