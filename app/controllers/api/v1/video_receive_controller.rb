@@ -74,7 +74,7 @@ module Api
 			# 实现方式：查询该主题下状态正常的账号，提取其平台并去重
 			# 返回值示例：[:tiktok, :kuaishou, :youtube]
 			def target_platforms_for_theme(theme)
-				Account.active.where(theme: theme).distinct.pluck(:platform).map { |p| Account.platforms.key(p) }.compact
+				Account.active.where(theme: theme).distinct.pluck(:platform)
 			end
 
 			# 构建新创建任务的返回信息
