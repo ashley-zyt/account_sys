@@ -5,7 +5,7 @@
   账号与任务运行情况一览
 <% end %>
 
-<div class="admin-grid">
+<div class="admin-grid-three">
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
@@ -26,35 +26,89 @@
     <div class="admin-metric-row">
       <div class="admin-metric">
         <div class="admin-metric-label">
-          总账号数
-        </div>
-        <div class="admin-metric-value">
-          <%= @accounts_total %>
-        </div>
-        <div class="admin-metric-trend">
-          所有平台合计
-        </div>
-      </div>
-      <div class="admin-metric">
-        <div class="admin-metric-label">
-          可用账号
+          正常
         </div>
         <div class="admin-metric-value">
           <%= @accounts_active %>
         </div>
         <div class="admin-metric-trend admin-metric-trend-up">
-          正常状态账号
+          可用状态
         </div>
       </div>
       <div class="admin-metric">
         <div class="admin-metric-label">
-          任务密度
+          未登录
         </div>
         <div class="admin-metric-value">
-          <%= @accounts_active.positive? ? (@move_tasks_total.to_f / @accounts_active).round(1) : 0 %>
+          <%= @accounts_unlogged %>
         </div>
         <div class="admin-metric-trend">
-          每个可用账号平均任务量
+          需重新授权
+        </div>
+      </div>
+      <div class="admin-metric">
+        <div class="admin-metric-label">
+          封禁/停用
+        </div>
+        <div class="admin-metric-value">
+          <%= @accounts_banned %>
+        </div>
+        <div class="admin-metric-trend admin-metric-trend-down">
+          不可用
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          浏览器概览
+        </div>
+        <div class="admin-card-subtitle">
+          指纹浏览器节点状态
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <span class="admin-tag">
+          总计 <%= @browsers_total %> 个
+        </span>
+      </div>
+    </div>
+
+    <div class="admin-metric-row">
+      <div class="admin-metric">
+        <div class="admin-metric-label">
+          正常
+        </div>
+        <div class="admin-metric-value">
+          <%= @browsers_normal %>
+        </div>
+        <div class="admin-metric-trend admin-metric-trend-up">
+          连接正常
+        </div>
+      </div>
+      <div class="admin-metric">
+        <div class="admin-metric-label">
+          网络问题
+        </div>
+        <div class="admin-metric-value">
+          <%= @browsers_network_error %>
+        </div>
+        <div class="admin-metric-trend admin-metric-trend-down">
+          代理异常
+        </div>
+      </div>
+      <div class="admin-metric">
+        <div class="admin-metric-label">
+          平均账号
+        </div>
+        <div class="admin-metric-value">
+          <%= @browsers_total.positive? ? (@accounts_total.to_f / @browsers_total).round(1) : 0 %>
+        </div>
+        <div class="admin-metric-trend">
+          单浏览器负载
         </div>
       </div>
     </div>
@@ -88,25 +142,17 @@
       </div>
       <div class="admin-kpi-item">
         <div class="admin-kpi-label">
-          等待发布
+          队列中
         </div>
         <div class="admin-kpi-value">
-          <%= @move_tasks_waiting %>
-        </div>
-      </div>
-      <div class="admin-kpi-item">
-        <div class="admin-kpi-label">
-          执行中
-        </div>
-        <div class="admin-kpi-value">
-          <%= @move_tasks_executing %>
+          <%= @move_tasks_waiting + @move_tasks_executing %>
         </div>
       </div>
       <div class="admin-kpi-item">
         <div class="admin-kpi-label">
           成功
         </div>
-        <div class="admin-kpi-value">
+        <div class="admin-kpi-value" style="color: var(--success);">
           <%= @move_tasks_success %>
         </div>
       </div>
@@ -114,7 +160,7 @@
         <div class="admin-kpi-label">
           失败
         </div>
-        <div class="admin-kpi-value">
+        <div class="admin-kpi-value" style="color: var(--error);">
           <%= @move_tasks_failed %>
         </div>
       </div>
@@ -257,6 +303,23 @@
       <li class="admin-list-item">
         <div class="admin-list-title-row">
           <div class="admin-list-title">
+            浏览器管理
+          </div>
+          <span class="admin-badge">
+            <%= @browsers_total %>
+          </span>
+        </div>
+        <div class="admin-list-meta">
+          管理指纹浏览器与代理配置
+        </div>
+        <div>
+          <%= link_to "进入列表", admin_browsers_path, class: "admin-link-quiet" %>
+        </div>
+      </li>
+
+      <li class="admin-list-item">
+        <div class="admin-list-title-row">
+          <div class="admin-list-title">
             任务队列
           </div>
           <span class="admin-badge">
@@ -271,6 +334,30 @@
         </div>
       </li>
     </ul>
+
+    <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
+      <div class="admin-card-subtitle" style="margin-bottom: 12px;">
+        今日系统运行
+      </div>
+      <div style="display: flex; gap: 20px;">
+        <div>
+          <div class="admin-label-muted" style="font-size: 11px;">
+            产生日志
+          </div>
+          <div style="font-size: 18px; font-weight: 600;">
+            <%= @today_logs_count %>
+          </div>
+        </div>
+        <div>
+          <div class="admin-label-muted" style="font-size: 11px;">
+            异常次数
+          </div>
+          <div style="font-size: 18px; font-weight: 600; color: <%= @today_errors_count > 0 ? 'var(--error)' : 'var(--text-primary)' %>;">
+            <%= @today_errors_count %>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

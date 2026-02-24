@@ -53,6 +53,23 @@
           Data
         </div>
         <ul class="admin-nav">
+          <% browsers_active = controller_path == "admin/browsers" %>
+          <li class="admin-nav-item <%= "active" if browsers_active %>">
+            <%= link_to admin_browsers_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  🌐
+                </div>
+                <div class="admin-nav-label">
+                  浏览器池
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Browsers
+              </div>
+            <% end %>
+          </li>
+          
           <% accounts_active = controller_path == "admin/accounts" %>
           <li class="admin-nav-item <%= "active" if accounts_active %>">
             <%= link_to admin_accounts_path, class: "admin-nav-link" do %>
@@ -87,22 +104,7 @@
             <% end %>
           </li>
 
-          <% browsers_active = controller_path == "admin/browsers" %>
-          <li class="admin-nav-item <%= "active" if browsers_active %>">
-            <%= link_to admin_browsers_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  🌐
-                </div>
-                <div class="admin-nav-label">
-                  浏览器池
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Browsers
-              </div>
-            <% end %>
-          </li>
+          
 
           <% logs_active = controller_path == "admin/task_logs" %>
           <li class="admin-nav-item <%= "active" if logs_active %>">
