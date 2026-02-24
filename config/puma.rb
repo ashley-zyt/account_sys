@@ -47,7 +47,7 @@ pidfile "#{Rails.root}/tmp/pids/puma.pid"
 state_path "#{Rails.root}/tmp/pids/puma.state"
 stdout_redirect "#{Rails.root}/log/puma.stdout.log", "#{Rails.root}/log/puma.stderr.log", true
 bind "unix://#{Rails.root}/tmp/account_sys.sock"
-daemonize
+# daemonize
 threads 0,4
 preload_app!
 
