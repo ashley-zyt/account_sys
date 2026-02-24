@@ -1,0 +1,1 @@
+rails s puma -e development -b 0.0.0.0 -p 3366
