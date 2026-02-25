@@ -52,7 +52,7 @@ module Api
 				render json: {
 					code: 200,
 					msg: '上报成功',
-					task_id: task.task_id,
+					task_id: task.id,
 					status: task.status
 				}
 			end
