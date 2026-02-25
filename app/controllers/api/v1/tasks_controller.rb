@@ -44,13 +44,8 @@ module Api
 					update_task_status!(task, status)
 					create_task_log!(task, status)
 				end
-
-				render json: {
-					code: 200,
-					msg: '上报成功',
-					task_id: task.id,
-					status: task.status
-				}
+				return render json: {type: '上报成功', message: "更新成功" }
+				
 			end
 			def update_task_status!(task, status)
 
