@@ -74,7 +74,7 @@ class Account < ApplicationRecord
 
 	# 获取指定主题、指定平台下可用的最久未使用账号
 	scope :available_for_theme_and_platform, ->(theme, platform) {
-		active.where(theme: theme, platform: platform).order('last_used_at ASC NULLS FIRST')
+		active.where(theme: theme, platform: platform).order(active.arel_table[:last_used_at].asc.nulls_first)
 	}
 
 	# 实例方法：标记账号已被使用，更新 last_used_at
