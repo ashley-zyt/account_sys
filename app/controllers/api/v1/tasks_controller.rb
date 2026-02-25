@@ -1,7 +1,7 @@
 module Api
 	module V1
 		class TasksController < ApplicationController
-			skip_before_action :verify_authenticity_token, only: [:acquire]
+			skip_before_action :verify_authenticity_token, only: [:fetch_next_executable_task]
 
 			def fetch_next_executable_task
 				loop do
