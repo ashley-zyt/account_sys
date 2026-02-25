@@ -93,7 +93,6 @@ class MoveTask < ApplicationRecord
 			account_id: nil,
 			browser_id: nil,
 			status: :pending,
-			assigned_at: nil,
 			start_at: nil    # 清空开始时间，因为是重新分配
 		)
 	end
@@ -113,7 +112,6 @@ class MoveTask < ApplicationRecord
 			error_msg
 			start_at
 			actual_publish_time
-			assigned_at
 			retry_count
 			group_id
 			created_at
@@ -127,7 +125,7 @@ class MoveTask < ApplicationRecord
 
 	# 如果你还想限制搜索字段（可选）
 	def self.ransackable_attributes(auth_object = nil)
-		["id", "video_url", "source_account_url", "theme", "title", "platform", "status", "group_id", "assigned_at", "start_at", "actual_publish_time", "retry_count", "created_at", "updated_at"]
+		["id", "video_url", "source_account_url", "theme", "title", "platform", "status", "group_id", "start_at", "actual_publish_time", "retry_count", "created_at", "updated_at"]
 	end
 
 	private

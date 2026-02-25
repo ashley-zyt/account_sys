@@ -15,7 +15,6 @@ class TaskAllocator
 					account_id: account.id,
 					browser_id: account.browser_id,
 					status: :waiting_publish,
-					assigned_at: Time.current
 				)
 				# 分配即记录（调度语义）
 				account.update!(last_used_at: Time.current)
