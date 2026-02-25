@@ -32,14 +32,16 @@ module Api
 				task_id = params[:id].to_s.strip
 				status    = params[:status].to_s.strip
 
-				return bad_request('task_id不能为空') if task_id.blank?
-				return bad_request('status不能为空') if status.blank?
+				return render json: {type: 'error', message: "task_id不能为空" } if task_id.blank?
+				return render json: {type: 'error', message: "status不能为空" } if status.blank?
 
 				task = MoveTask.find_by(id: task_id)
-				return not_found('任务不存在') unless task
+				# return not_found('任务不存在') unless task
+				return render json: {type: 'error', message: "任务不存在" } unless task
 
-				unless %w[success failed].include?(status)
-					return bad_request('status必须为 success 或 failed')
+				unless %w[success error].include?(status)
+					# return bad_request('status必须为 success 或 error')
+					return render json: {type: 'error', message: "更新成功" }
 				end
 
 				ActiveRecord::Base.transaction do
