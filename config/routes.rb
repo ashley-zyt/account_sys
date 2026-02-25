@@ -13,6 +13,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       post "video/receive", to: "video_receive#create"
       get "task/fetch_next_executable_task", to: "tasks#fetch_next_executable_task"
+      post "task/report", to: "tasks#report"
     end
   end
 

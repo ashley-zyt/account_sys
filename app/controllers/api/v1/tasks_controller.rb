@@ -29,13 +29,13 @@ module Api
 				end
 			end
 			def report
-				task_uuid = params[:task_uuid].to_s.strip
+				task_id = params[:id].to_s.strip
 				status    = params[:status].to_s.strip
 
-				return bad_request('task_uuid不能为空') if task_uuid.blank?
+				return bad_request('task_id不能为空') if task_uuid.blank?
 				return bad_request('status不能为空') if status.blank?
 
-				task = MoveTask.find_by(task_uuid: task_uuid)
+				task = MoveTask.find_by(id: task_id)
 				return not_found('任务不存在') unless task
 
 				unless %w[success failed].include?(status)
@@ -60,7 +60,7 @@ module Api
 				if status == 'success'
 					task.update!(
 						status: :success,
-						actual_publish_time: params[:publish_time] || now,
+						actual_publish_time: now,
 						error_msg: nil
 					)
 
@@ -69,9 +69,18 @@ module Api
 
 					task.update!(
 						status: :failed,
-						error_msg: params[:error_msg]
+						error_msg: params[:status_desp]
 					)
 				end
+			end
+			def create_task_log!(task, status)
+				TaskLog.create!(
+					task_uuid: task.task_uuid,
+					response_data: params.to_s,
+					status: status,
+					error_msg: params[:status_desp],
+					run_at: now
+				)
 			end
 		end
 	end
