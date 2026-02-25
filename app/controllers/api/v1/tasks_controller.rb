@@ -20,7 +20,7 @@ module Api
 					
 					# task = MoveTask.find(candidate_id)
 
-					task = MoveTask.find(1)
+					task = MoveTask.find(2)
 					return render json: {id: task.id,video_url: task.video_url,social_account_id: task.source_account_url,adspower_user_name: task.browser.profile_name,account_type: task.platform,title: task.title}
 				end
 			end
