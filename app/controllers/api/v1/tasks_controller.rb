@@ -32,7 +32,7 @@ module Api
 				task_id = params[:id].to_s.strip
 				status    = params[:status].to_s.strip
 
-				return bad_request('task_id不能为空') if task_uuid.blank?
+				return bad_request('task_id不能为空') if task_id.blank?
 				return bad_request('status不能为空') if status.blank?
 
 				task = MoveTask.find_by(id: task_id)
@@ -50,7 +50,7 @@ module Api
 				render json: {
 					code: 200,
 					msg: '上报成功',
-					task_uuid: task.task_uuid,
+					task_id: task.task_id,
 					status: task.status
 				}
 			end
