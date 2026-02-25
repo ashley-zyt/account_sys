@@ -57,12 +57,11 @@ module Api
 				}
 			end
 			def update_task_status!(task, status)
-				now = Time.current
 
 				if status == 'success'
 					task.update!(
 						status: :success,
-						actual_publish_time: now,
+						actual_publish_time: Time.current,
 						error_msg: nil
 					)
 
@@ -81,7 +80,7 @@ module Api
 					response_data: params.to_s,
 					status: status,
 					error_msg: params[:status_desp],
-					run_at: now
+					run_at: Time.current
 				)
 			end
 		end
