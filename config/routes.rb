@@ -12,6 +12,7 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       post "video/receive", to: "video_receive#create"
+      get "task/fetch_next_executable_task", to: "tasks#fetch_next_executable_task"
     end
   end
 
