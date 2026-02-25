@@ -112,7 +112,10 @@
                 </span>
               </td>
               <td>
-                <%= link_to "编辑", edit_admin_browser_path(browser), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "编辑", edit_admin_browser_path(browser), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "账号", admin_accounts_path(q: { browser_id_eq: browser.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                </div>
               </td>
             </tr>
           <% end %>

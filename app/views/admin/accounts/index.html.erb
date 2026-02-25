@@ -107,9 +107,7 @@
               </td>
               <td>
                 <% if account.browser %>
-                  <span class="admin-label-muted">
-                    <%= account.browser.profile_name %>
-                  </span>
+                  <%= link_to account.browser.profile_name, admin_browser_path(account.browser), class: "admin-link-quiet", style: "color: var(--accent);" %>
                 <% else %>
                   <span class="admin-label-muted">
                     未绑定
@@ -122,7 +120,10 @@
                 </span>
               </td>
               <td>
-                <%= link_to "编辑", edit_admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "编辑", edit_admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "任务", admin_move_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                </div>
               </td>
             </tr>
           <% end %>

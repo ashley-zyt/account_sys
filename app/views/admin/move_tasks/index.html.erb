@@ -69,6 +69,9 @@
             <th>
               创建时间
             </th>
+            <th>
+              操作
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -122,9 +125,7 @@
               </td>
               <td>
                 <% if task.browser %>
-                  <span class="admin-label-muted">
-                    <%= task.browser.profile_name %>
-                  </span>
+                  <%= link_to task.browser.profile_name, admin_browser_path(task.browser), class: "admin-link-quiet" %>
                 <% else %>
                   <span class="admin-label-muted">
                     未绑定
@@ -135,6 +136,9 @@
                 <span class="admin-label-muted">
                   <%= task.created_at&.strftime("%m-%d %H:%M") %>
                 </span>
+              </td>
+              <td>
+                <%= link_to "日志", admin_task_logs_path(q: { task_uuid_eq: task.task_uuid }), class: "admin-link-quiet", style: "color: var(--accent);" %>
               </td>
             </tr>
           <% end %>
