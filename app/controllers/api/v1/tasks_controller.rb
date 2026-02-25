@@ -75,10 +75,15 @@ module Api
 				end
 			end
 			def create_task_log!(task, status)
+				if status == 'success'
+					task_status = "success"
+				else
+					task_status = "failed"
+				end
 				TaskLog.create!(
 					task_uuid: task.task_uuid,
 					response_data: params.to_s,
-					status: status,
+					status: task_status,
 					error_msg: params[:status_desp],
 					run_at: Time.current
 				)
