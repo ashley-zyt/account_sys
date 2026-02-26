@@ -78,7 +78,7 @@ module Api
 					run_at: Time.current
 				)
 				if params[:status_desp].include?" not logged in"
-					task.account.update(status:1)
+					task.account.update(status:2)
 				end
 			end
 		end
