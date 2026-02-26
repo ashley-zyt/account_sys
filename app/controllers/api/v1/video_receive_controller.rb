@@ -29,11 +29,11 @@ module Api
 				# ---------- 3. 确定该主题下需要分发的平台列表 ----------
 				# 策略：只为主题下至少有一个可用账号的平台创建任务
 				#      避免产生永远无法分配的任务
-				platforms = target_platforms_for_theme(theme)
-				if platforms.empty?
-					return render_bad_request("主题「#{theme}」下无任何可用账号，无法创建任务")
-				end
-
+				# platforms = target_platforms_for_theme(theme)
+				# if platforms.empty?
+				# 	return render_bad_request("主题「#{theme}」下无任何可用账号，无法创建任务")
+				# end
+				platforms = ["youtube", "facebook", "twitter", "tiktok"]
 				# ---------- 4. 生成任务组ID，用于关联同一视频的多平台任务 ----------
 				group_id = SecureRandom.uuid
 				results = []
@@ -52,20 +52,11 @@ module Api
 					title = ThemeConfig.random_title(theme)
 
 					# 5.3 创建任务（任务分配失败初始状态 pending）
-					task = MoveTask.new(video_url: video_url,source_account_url: source_url,theme: theme,platform: platform,title: title,status: :pending,group_id: group_id)
-
-					if task.save
-						# 5.4 尝试立即分配账号
-						allocated = TaskAllocator.allocate(task)
-						results << build_task_result(task, allocated)
-					else
-						# 创建失败（通常不会发生，除非校验不通过）
-						results << {platform: platform,success: false,errors: task.errors.full_messages}
-					end
+					task = MoveTask.create(video_url: video_url,source_account_url: source_url,theme: theme,platform: platform,title: title,status: :pending,group_id: group_id)
 				end
 
 				# ---------- 6. 返回最终处理结果 ----------
-				render json: {code: 200,msg: '处理完成',group_id: group_id,tasks: results}
+				render json: {code: 200,msg: '处理完成',group_id: group_id}
 			end
 
 			private
