@@ -77,6 +77,9 @@ module Api
 					error_msg: params[:status_desp],
 					run_at: Time.current
 				)
+				if params[:status_desp].include?" not logged in"
+					task.account.update(status:1)
+				end
 			end
 		end
 	end
