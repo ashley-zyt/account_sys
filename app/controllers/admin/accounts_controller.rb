@@ -4,7 +4,11 @@ class Admin::AccountsController < Admin::BaseController
 
 	def index
 		@q = Account.ransack(params[:q])
-		@accounts = @q.result(distinct: true).order(created_at: :desc).page(params[:page]).per(10)
+		@accounts = @q.result(distinct: true)
+		             .includes(:browser)
+		             .order(created_at: :desc)
+		             .page(params[:page])
+		             .per(10)
 	end
 
 	def new

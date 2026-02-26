@@ -83,6 +83,11 @@ class Account < ApplicationRecord
 		update!(last_used_at: Time.current)
 	end
 
+	# 获取最后一次运行的日志
+	def last_task_log
+		@last_task_log ||= TaskLog.where(task_uuid: move_tasks.select(:task_uuid)).order(run_at: :desc).first
+	end
+
 	# --- Ransack 搜索白名单 ---
 	def self.ransackable_attributes(auth_object = nil)
 		%w[

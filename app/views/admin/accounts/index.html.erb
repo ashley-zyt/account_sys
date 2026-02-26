@@ -75,6 +75,9 @@
               最后使用时间
             </th>
             <th>
+              最后运行错误
+            </th>
+            <th>
               操作
             </th>
           </tr>
@@ -118,6 +121,22 @@
                 <span class="admin-label-muted">
                   <%= account.last_used_at&.strftime("%m-%d %H:%M") || "暂无" %>
                 </span>
+              </td>
+              <td>
+                <% last_log = account.last_task_log %>
+                <% if last_log && last_log.status == "failed" %>
+                  <span class="admin-label-muted" style="color: var(--danger);" title="<%= last_log.error_msg %>">
+                    <%= truncate(last_log.error_msg, length: 20) %>
+                  </span>
+                <% elsif last_log && last_log.status == "success" %>
+                  <span class="admin-label-muted" style="color: var(--success);">
+                    正常 (最后运行成功)
+                  </span>
+                <% else %>
+                  <span class="admin-label-muted">
+                    暂无运行日志
+                  </span>
+                <% end %>
               </td>
               <td>
                 <div style="display: flex; gap: 8px;">
