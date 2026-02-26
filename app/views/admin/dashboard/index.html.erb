@@ -208,73 +208,20 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          快速导航
+          系统统计
         </div>
         <div class="admin-card-subtitle">
-          常用列表入口
+          历史运行数据概览
         </div>
       </div>
     </div>
 
-    <ul class="admin-list">
-      <li class="admin-list-item">
-        <div class="admin-list-title-row">
-          <div class="admin-list-title">
-            账号管理
-          </div>
-          <span class="admin-badge">
-            <%= @accounts_total %>
-          </span>
-        </div>
-        <div class="admin-list-meta">
-          查看所有绑定的社交账号
-        </div>
-        <div>
-          <%= link_to "进入列表", admin_accounts_path, class: "admin-link-quiet" %>
-        </div>
-      </li>
-
-      <li class="admin-list-item">
-        <div class="admin-list-title-row">
-          <div class="admin-list-title">
-            浏览器管理
-          </div>
-          <span class="admin-badge">
-            <%= @browsers_total %>
-          </span>
-        </div>
-        <div class="admin-list-meta">
-          管理指纹浏览器与代理配置
-        </div>
-        <div>
-          <%= link_to "进入列表", admin_browsers_path, class: "admin-link-quiet" %>
-        </div>
-      </li>
-
-      <li class="admin-list-item">
-        <div class="admin-list-title-row">
-          <div class="admin-list-title">
-            任务队列
-          </div>
-          <span class="admin-badge">
-            <%= @move_tasks_total %>
-          </span>
-        </div>
-        <div class="admin-list-meta">
-          监控任务调度与执行情况
-        </div>
-        <div>
-          <%= link_to "查看任务", admin_move_tasks_path, class: "admin-link-quiet" %>
-        </div>
-      </li>
-    </ul>
-
-    <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
+    <div style="padding-top: 10px;">
       <div class="admin-card-subtitle" style="margin-bottom: 12px;">
-        今日系统运行
+        今日运行
       </div>
-      <div style="display: flex; gap: 20px;">
-        <%= link_to admin_task_logs_path(q: { created_at_gteq: Time.zone.now.beginning_of_day }), class: "admin-link-card", style: "text-decoration: none; color: inherit;" do %>
+      <div style="display: flex; gap: 20px; margin-bottom: 24px;">
+        <%= link_to admin_task_logs_path(q: { created_at_gteq: Time.zone.now.beginning_of_day }), class: "admin-link-card" do %>
           <div class="admin-label-muted" style="font-size: 11px;">
             产生日志
           </div>
@@ -282,12 +229,34 @@
             <%= @today_logs_count %>
           </div>
         <% end %>
-        <%= link_to admin_task_logs_path(q: { created_at_gteq: Time.zone.now.beginning_of_day, status_eq: 1 }), class: "admin-link-card", style: "text-decoration: none; color: inherit;" do %>
+        <%= link_to admin_task_logs_path(q: { created_at_gteq: Time.zone.now.beginning_of_day, status_eq: 1 }), class: "admin-link-card" do %>
           <div class="admin-label-muted" style="font-size: 11px;">
             异常次数
           </div>
           <div style="font-size: 18px; font-weight: 600; color: <%= @today_errors_count > 0 ? 'var(--error)' : 'var(--text-primary)' %>;">
             <%= @today_errors_count %>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="admin-card-subtitle" style="margin-bottom: 12px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
+        总计运行
+      </div>
+      <div style="display: flex; gap: 20px;">
+        <%= link_to admin_task_logs_path, class: "admin-link-card" do %>
+          <div class="admin-label-muted" style="font-size: 11px;">
+            总产生日志
+          </div>
+          <div style="font-size: 18px; font-weight: 600;">
+            <%= @total_logs_count %>
+          </div>
+        <% end %>
+        <%= link_to admin_task_logs_path(q: { status_eq: 1 }), class: "admin-link-card" do %>
+          <div class="admin-label-muted" style="font-size: 11px;">
+            总异常次数
+          </div>
+          <div style="font-size: 18px; font-weight: 600; color: <%= @total_errors_count > 0 ? 'var(--error)' : 'var(--text-primary)' %>;">
+            <%= @total_errors_count %>
           </div>
         <% end %>
       </div>

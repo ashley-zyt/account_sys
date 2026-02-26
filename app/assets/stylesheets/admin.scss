@@ -381,10 +381,20 @@ body.admin {
 }
 
 .admin-metric-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-link-card {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s;
+  display: block;
+}
+
+.admin-link-card:hover {
+  transform: translateY(-2px);
 }
 
 .admin-metric {

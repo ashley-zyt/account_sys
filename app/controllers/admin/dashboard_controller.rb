@@ -30,6 +30,9 @@ class Admin::DashboardController < Admin::BaseController
 		@today_logs_count = TaskLog.where("created_at >= ?", Time.zone.now.beginning_of_day).count
 		@today_errors_count = TaskLog.where("created_at >= ?", Time.zone.now.beginning_of_day).failed.count
 
+		@total_logs_count = TaskLog.count
+		@total_errors_count = TaskLog.failed.count
+
 		# 任务错误信息汇总（按错误内容分组统计）
 		@error_summary = MoveTask.failed
 		                        .where.not(error_msg: [nil, ""])
