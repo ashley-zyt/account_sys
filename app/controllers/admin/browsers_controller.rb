@@ -12,11 +12,21 @@ class Admin::BrowsersController < Admin::BaseController
 
 	def create
 		@browser = Browser.new(browser_params)
-		url = "http://174.139.46.15:8384/undetectable/profile_id?profile_id=#{@browser[:cloud_id]}"
-		detail_res = RestClient.get(url) rescue nil
-		detail_res = JSON.parse(detail_res) rescue nil
-		cloud_id = detail_res["data"]["cloud_id"] rescue nil
-		@browser["cloud_id"] = cloud_id
+		url = "http://174.139.46.15:8384/undetectable/list"
+		res = RestClient.get(url) rescue nil
+		if !res.nil?
+			res = JSON.parse(res)
+			res["data"].each do |data|
+				profile_id = data[0]
+				browser_data = data[1]
+				adspower_user_name = browser_data["name"]
+				if adspower_user_name == @browser[:profile_name]
+					cloud_id = browser_data["cloud_id"]
+					@browser[:cloud_id] = cloud_id
+					break
+				end
+			end
+		end
 		if @browser.save
 
 			redirect_to admin_browser_path(@browser), notice: "浏览器已成功创建"
