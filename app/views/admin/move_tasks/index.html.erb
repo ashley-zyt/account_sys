@@ -49,6 +49,9 @@
         <thead>
           <tr>
             <th>
+              ID
+            </th>
+            <th>
               任务
             </th>
             <th>
@@ -77,6 +80,11 @@
         <tbody>
           <% @move_tasks.each do |task| %>
             <tr>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.id %>
+                </span>
+              </td>
               <td>
                 <%= link_to truncate(task.title.presence || task.video_url, length: 40), admin_move_task_path(task), class: "admin-link-quiet" %>
               </td>
