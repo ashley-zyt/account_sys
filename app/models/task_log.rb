@@ -19,6 +19,9 @@
 #  index_task_logs_on_task_uuid  (task_uuid)
 #
 class TaskLog < ApplicationRecord
+	belongs_to :move_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
+	has_one :account, through: :move_task
+	has_one :browser, through: :move_task
 
 	# 基础校验
 	validates :task_uuid, presence: true

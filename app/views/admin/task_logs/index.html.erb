@@ -48,6 +48,15 @@
               任务 UUID
             </th>
             <th>
+              账号
+            </th>
+            <th>
+              平台
+            </th>
+            <th>
+              浏览器
+            </th>
+            <th>
               状态
             </th>
             <th>
@@ -65,7 +74,26 @@
           <% @task_logs.each do |log| %>
             <tr>
               <td>
-                <%= link_to log.task_uuid, admin_task_log_path(log), class: "admin-link-quiet" %>
+                <%= link_to truncate(log.task_uuid, length: 15), admin_task_log_path(log), class: "admin-link-quiet", title: log.task_uuid %>
+              </td>
+              <td>
+                <% if log.account %>
+                  <%= link_to log.account.account_name, admin_account_path(log.account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <% else %>
+                  <span class="admin-label-muted">未分配</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= log.move_task&.platform || "未知" %>
+                </span>
+              </td>
+              <td>
+                <% if log.browser %>
+                  <%= link_to log.browser.profile_name, admin_browser_path(log.browser), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <% else %>
+                  <span class="admin-label-muted">未绑定</span>
+                <% end %>
               </td>
               <td>
                 <% if log.status == "success" %>
