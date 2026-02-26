@@ -32,6 +32,18 @@
       </div>
       <div>
         <div class="admin-field-label">
+          账号主页
+        </div>
+        <div class="admin-field-value">
+          <% if @account.source_url.present? %>
+            <%= link_to @account.source_url, @account.source_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" %>
+          <% else %>
+            未设置
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
           主题
         </div>
         <div class="admin-field-value">

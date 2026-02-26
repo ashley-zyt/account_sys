@@ -7,7 +7,8 @@
 #  last_used_at(最后一次使用时间)                            :datetime
 #  platform(平台：facebook/twitter/tiktok/youtube/instagram) :integer          default("facebook")
 #  remark(备注信息)                                          :string(255)
-#  status(账号状态)                                          :integer          default("normal")
+#  source_url(账号主页链接)                                  :string(255)
+#  status(账号状态)                                          :integer          default("正常")
 #  theme(账号主题)                                           :string(255)
 #  work_type(工作运行方式：搬运/coze/其他)                   :integer
 #  created_at                                                :datetime         not null
@@ -20,6 +21,7 @@
 #  index_accounts_on_browser_id        (browser_id)
 #  index_accounts_on_last_used_at      (last_used_at)
 #  index_accounts_on_platform          (platform)
+#  index_accounts_on_source_url        (source_url)
 #
 class Account < ApplicationRecord
 	# 每个账号可以绑定一个指纹浏览器（用于发布/养号）

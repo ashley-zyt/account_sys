@@ -60,6 +60,7 @@ class Admin::AccountsController < Admin::BaseController
 	def account_params
 		params.require(:account).permit(
 			:account_name,
+			:source_url,
 			:theme,
 			:platform,
 			:status,

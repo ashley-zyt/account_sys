@@ -22,6 +22,12 @@
     </div>
     <div>
       <div class="admin-field-label">
+        账号主页链接
+      </div>
+      <%= f.text_field :source_url, class: "admin-input", placeholder: "请输入账号主页 URL" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
         主题
       </div>
       <%= f.select :theme, themes.map { |name| [name, name] }, { include_blank: "请选择主题" }, class: "admin-input" %>
