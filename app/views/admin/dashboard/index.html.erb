@@ -17,14 +17,14 @@
         </div>
       </div>
       <div class="admin-card-header-right">
-        <span class="admin-tag admin-tag-accent">
+        <%= link_to admin_accounts_path, class: "admin-tag admin-tag-accent" do %>
           总计 <%= @accounts_total %> 个
-        </span>
+        <% end %>
       </div>
     </div>
 
     <div class="admin-metric-row">
-      <div class="admin-metric">
+      <%= link_to admin_accounts_path(q: { status_eq: 0 }), class: "admin-metric admin-link-card" do %>
         <div class="admin-metric-label">
           正常
         </div>
@@ -34,8 +34,8 @@
         <div class="admin-metric-trend admin-metric-trend-up">
           可用状态
         </div>
-      </div>
-      <div class="admin-metric">
+      <% end %>
+      <%= link_to admin_accounts_path(q: { status_eq: 1 }), class: "admin-metric admin-link-card" do %>
         <div class="admin-metric-label">
           未登录
         </div>
@@ -45,8 +45,8 @@
         <div class="admin-metric-trend">
           需重新授权
         </div>
-      </div>
-      <div class="admin-metric">
+      <% end %>
+      <%= link_to admin_accounts_path(q: { status_eq: 2 }), class: "admin-metric admin-link-card" do %>
         <div class="admin-metric-label">
           封禁/停用
         </div>
@@ -56,7 +56,7 @@
         <div class="admin-metric-trend admin-metric-trend-down">
           不可用
         </div>
-      </div>
+      <% end %>
     </div>
   </div>
 
@@ -87,7 +87,7 @@
             <% stats = @platform_stats[platform] || { total: 0, active: 0, unlogged: 0, banned: 0 } %>
             <tr>
               <td style="padding: 8px;">
-                <span class="admin-label-muted" style="text-transform: capitalize;"><%= platform %></span>
+                <%= link_to platform.capitalize, admin_accounts_path(q: { platform_eq: Account.platforms[platform] }), class: "admin-link-quiet" %>
               </td>
               <td style="padding: 8px; text-align: center;"><%= stats[:total] %></td>
               <td style="padding: 8px; text-align: center; color: var(--success);"><%= stats[:active] %></td>
@@ -104,60 +104,6 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          浏览器概览
-        </div>
-        <div class="admin-card-subtitle">
-          指纹浏览器节点状态
-        </div>
-      </div>
-      <div class="admin-card-header-right">
-        <span class="admin-tag">
-          总计 <%= @browsers_total %> 个
-        </span>
-      </div>
-    </div>
-
-    <div class="admin-metric-row">
-      <div class="admin-metric">
-        <div class="admin-metric-label">
-          正常
-        </div>
-        <div class="admin-metric-value">
-          <%= @browsers_normal %>
-        </div>
-        <div class="admin-metric-trend admin-metric-trend-up">
-          连接正常
-        </div>
-      </div>
-      <div class="admin-metric">
-        <div class="admin-metric-label">
-          网络问题
-        </div>
-        <div class="admin-metric-value">
-          <%= @browsers_network_error %>
-        </div>
-        <div class="admin-metric-trend admin-metric-trend-down">
-          代理异常
-        </div>
-      </div>
-      <div class="admin-metric">
-        <div class="admin-metric-label">
-          平均账号
-        </div>
-        <div class="admin-metric-value">
-          <%= @browsers_total.positive? ? (@accounts_total.to_f / @browsers_total).round(1) : 0 %>
-        </div>
-        <div class="admin-metric-trend">
-          单浏览器负载
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="admin-card">
-    <div class="admin-card-header">
-      <div>
-        <div class="admin-card-title">
           任务状态分布
         </div>
         <div class="admin-card-subtitle">
@@ -165,45 +111,45 @@
         </div>
       </div>
       <div class="admin-card-header-right">
-        <span class="admin-tag">
+        <%= link_to admin_move_tasks_path, class: "admin-tag" do %>
           总任务 <%= @move_tasks_total %>
-        </span>
+        <% end %>
       </div>
     </div>
 
     <div class="admin-kpi">
-      <div class="admin-kpi-item">
+      <%= link_to admin_move_tasks_path(q: { status_eq: 0 }), class: "admin-kpi-item admin-link-card" do %>
         <div class="admin-kpi-label">
           待分配
         </div>
         <div class="admin-kpi-value">
           <%= @move_tasks_pending %>
         </div>
-      </div>
-      <div class="admin-kpi-item">
+      <% end %>
+      <%= link_to admin_move_tasks_path(q: { status_in: [1, 2] }), class: "admin-kpi-item admin-link-card" do %>
         <div class="admin-kpi-label">
           队列中
         </div>
         <div class="admin-kpi-value">
           <%= @move_tasks_waiting + @move_tasks_executing %>
         </div>
-      </div>
-      <div class="admin-kpi-item">
+      <% end %>
+      <%= link_to admin_move_tasks_path(q: { status_eq: 3 }), class: "admin-kpi-item admin-link-card" do %>
         <div class="admin-kpi-label">
           成功
         </div>
         <div class="admin-kpi-value" style="color: var(--success);">
           <%= @move_tasks_success %>
         </div>
-      </div>
-      <div class="admin-kpi-item">
+      <% end %>
+      <%= link_to admin_move_tasks_path(q: { status_eq: 4 }), class: "admin-kpi-item admin-link-card" do %>
         <div class="admin-kpi-label">
           失败
         </div>
         <div class="admin-kpi-value" style="color: var(--error);">
           <%= @move_tasks_failed %>
         </div>
-      </div>
+      <% end %>
     </div>
   </div>
 </div>
@@ -213,90 +159,38 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          最新任务
+          任务异常汇总
         </div>
         <div class="admin-card-subtitle">
-          最近创建的任务队列
+          失败任务常见错误原因 Top 5
         </div>
       </div>
       <div class="admin-card-header-right">
-        <span class="admin-tag">
-          最近 <%= @recent_tasks.size %> 条
-        </span>
-        <%= link_to "查看全部", admin_move_tasks_path, class: "admin-link-quiet" %>
+        <%= link_to "查看所有失败任务", admin_move_tasks_path(q: { status_eq: 4 }), class: "admin-link-quiet" %>
       </div>
     </div>
 
-    <% if @recent_tasks.any? %>
-      <div class="admin-table-wrapper admin-table-scroll">
+    <% if @error_summary.any? %>
+      <div class="admin-table-wrapper">
         <table class="admin-table">
           <thead>
             <tr>
-              <th>
-                任务
-              </th>
-              <th>
-                平台
-              </th>
-              <th>
-                账号
-              </th>
-              <th>
-                状态
-              </th>
-              <th>
-                创建时间
-              </th>
+              <th>错误描述</th>
+              <th style="text-align: center; width: 100px;">出现次数</th>
+              <th style="text-align: right; width: 120px;">操作</th>
             </tr>
           </thead>
           <tbody>
-            <% @recent_tasks.each do |task| %>
+            <% @error_summary.each do |msg, count| %>
               <tr>
                 <td>
-                  <%= link_to truncate(task.title.presence || task.video_url, length: 40), admin_move_task_path(task), class: "admin-link-quiet" %>
+                  <span class="admin-label-muted" style="color: var(--danger);"><%= msg %></span>
                 </td>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= task.platform %>
-                  </span>
+                <td style="text-align: center;">
+                  <span class="admin-badge"><%= count %></span>
                 </td>
-                <td>
-                  <% if task.account %>
-                    <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet" %>
-                  <% else %>
-                    <span class="admin-label-muted">
-                      未分配
-                    </span>
-                  <% end %>
-                </td>
-                <td>
-                  <% case task.status %>
-                  <% when "pending" %>
-                    <span class="admin-pill-status admin-pill-status-pending">
-                      <span class="admin-pill-status-dot"></span>
-                      待分配
-                    </span>
-                  <% when "waiting_publish", "executing" %>
-                    <span class="admin-pill-status admin-pill-status-pending">
-                      <span class="admin-pill-status-dot"></span>
-                      队列中
-                    </span>
-                  <% when "success" %>
-                    <span class="admin-pill-status admin-pill-status-success">
-                      <span class="admin-pill-status-dot"></span>
-                      成功
-                    </span>
-                  <% when "failed" %>
-                    <span class="admin-pill-status admin-pill-status-failed">
-                      <span class="admin-pill-status-dot"></span>
-                      失败
-                    </span>
-                  <% end %>
-                </td>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= task.created_at&.strftime("%m-%d %H:%M") %>
-                  </span>
+                <td style="text-align: right;">
+                  <%= link_to "查看详情", admin_move_tasks_path(q: { status_eq: 4, error_msg_cont: msg }), class: "admin-link-quiet", style: "color: var(--accent);" %>
                 </td>
               </tr>
             <% end %>
@@ -305,7 +199,7 @@
       </div>
     <% else %>
       <div class="admin-empty-state">
-        暂无任务数据。
+        目前暂无失败任务的错误汇总数据。
       </div>
     <% end %>
   </div>
@@ -380,24 +274,23 @@
         今日系统运行
       </div>
       <div style="display: flex; gap: 20px;">
-        <div>
+        <%= link_to admin_task_logs_path(q: { created_at_gteq: Time.zone.now.beginning_of_day }), class: "admin-link-card", style: "text-decoration: none; color: inherit;" do %>
           <div class="admin-label-muted" style="font-size: 11px;">
             产生日志
           </div>
           <div style="font-size: 18px; font-weight: 600;">
             <%= @today_logs_count %>
           </div>
-        </div>
-        <div>
+        <% end %>
+        <%= link_to admin_task_logs_path(q: { created_at_gteq: Time.zone.now.beginning_of_day, status_eq: 1 }), class: "admin-link-card", style: "text-decoration: none; color: inherit;" do %>
           <div class="admin-label-muted" style="font-size: 11px;">
             异常次数
           </div>
           <div style="font-size: 18px; font-weight: 600; color: <%= @today_errors_count > 0 ? 'var(--error)' : 'var(--text-primary)' %>;">
             <%= @today_errors_count %>
           </div>
-        </div>
+        <% end %>
       </div>
     </div>
   </div>
 </div>
-
