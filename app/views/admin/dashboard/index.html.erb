@@ -184,7 +184,7 @@
             <% @error_summary.each do |msg, count| %>
               <tr>
                 <td>
-                  <span class="admin-label-muted" style="color: var(--danger);"><%= msg %></span>
+                  <span class="admin-label-muted" style="color: var(--danger);" title="<%= msg %>"><%= truncate(msg, length: 50) %></span>
                 </td>
                 <td style="text-align: center;">
                   <span class="admin-badge"><%= count %></span>
