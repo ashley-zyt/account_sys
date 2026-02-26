@@ -51,7 +51,7 @@ module Api
 					# 5.2 生成标题（从主题标题池随机选取）
 					title = ThemeConfig.random_title(theme)
 
-					# 5.3 创建任务（初始状态 pending）
+					# 5.3 创建任务（任务分配失败初始状态 pending）
 					task = MoveTask.new(video_url: video_url,source_account_url: source_url,theme: theme,platform: platform,title: title,status: :pending,group_id: group_id)
 
 					if task.save

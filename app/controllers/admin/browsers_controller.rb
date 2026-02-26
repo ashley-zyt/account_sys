@@ -12,7 +12,13 @@ class Admin::BrowsersController < Admin::BaseController
 
 	def create
 		@browser = Browser.new(browser_params)
+		url = "http://174.139.46.15:8384/undetectable/profile_id?profile_id=#{@browser[:cloud_id]}"
+		detail_res = RestClient.get(url) rescue nil
+		detail_res = JSON.parse(detail_res) rescue nil
+		cloud_id = detail_res["data"]["cloud_id"] rescue nil
+		@browser["cloud_id"] = cloud_id
 		if @browser.save
+
 			redirect_to admin_browser_path(@browser), notice: "浏览器已成功创建"
 		else
 			render :new, status: :unprocessable_entity
