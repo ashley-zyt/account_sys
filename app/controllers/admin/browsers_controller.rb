@@ -12,23 +12,23 @@ class Admin::BrowsersController < Admin::BaseController
 
 	def create
 		@browser = Browser.new(browser_params)
-		url = "http://174.139.46.15:8384/undetectable/list"
-		res = RestClient.get(url) rescue nil
-		if !res.nil?
-			res = JSON.parse(res)
-			res["data"].each do |data|
-				profile_id = data[0]
-				browser_data = data[1]
-				adspower_user_name = browser_data["name"]
-				if adspower_user_name == @browser[:profile_name]
-					cloud_id = browser_data["cloud_id"]
-					@browser[:cloud_id] = cloud_id
-					break
+		if @browser.save
+			record = Browser.where(cloud_id:@browser[:cloud_id]).last
+			url = "http://174.139.46.15:8384/undetectable/list"
+			res = RestClient.get(url) rescue nil
+			if !res.nil?
+				res = JSON.parse(res)
+				res["data"].each do |data|
+					profile_id = data[0]
+					browser_data = data[1]
+					adspower_user_name = browser_data["name"]
+					if adspower_user_name == record[:profile_name]
+						cloud_id = browser_data["cloud_id"]
+						record.update(cloud_id:cloud_id)
+						break
+					end
 				end
 			end
-		end
-		if @browser.save
-
 			redirect_to admin_browser_path(@browser), notice: "浏览器已成功创建"
 		else
 			render :new, status: :unprocessable_entity
