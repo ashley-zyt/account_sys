@@ -48,7 +48,7 @@ class MoveTask < ApplicationRecord
 		twitter: 2,
 		tiktok: 3,
 		youtube: 4,
-		instagram: 5
+		# instagram: 5
 	}
 
 	validates :task_uuid, presence: true, uniqueness: true
