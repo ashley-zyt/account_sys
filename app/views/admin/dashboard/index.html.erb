@@ -104,10 +104,10 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          资源储备分布
+          储备资源状况
         </div>
         <div class="admin-card-subtitle">
-          各数据类型账号可用性
+          各数据类型今日待使用账号
         </div>
       </div>
       <div class="admin-card-header-right">
@@ -165,10 +165,11 @@
         </thead>
         <tbody>
           <% if @theme_platform_stats.any? %>
+            <% today_beginning = Time.zone.now.beginning_of_day %>
             <% @theme_platform_stats.each do |theme, platforms| %>
               <tr>
                 <td style="padding: 6px 8px;">
-                  <%= link_to theme, admin_accounts_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet", style: "font-weight: 500;" %>
+                  <%= link_to theme, admin_accounts_path(q: { theme_cont: theme, status_eq: 0, last_used_at_lt: today_beginning }), class: "admin-link-quiet", style: "font-weight: 500;" %>
                 </td>
                 <% Account.platforms.keys.each do |p| %>
                   <td style="padding: 6px 4px; text-align: center; color: <%= platforms[p].to_i > 0 ? 'var(--text-primary)' : 'var(--text-muted)' %>;">

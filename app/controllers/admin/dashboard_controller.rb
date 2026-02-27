@@ -16,9 +16,10 @@ class Admin::DashboardController < Admin::BaseController
 			end
 		end
 
-		# 资源储备分布（按主题和平台统计正常账号数量）
-		active_accounts = Account.active
-		@theme_platform_stats = active_accounts.group(:theme, :platform).count.each_with_object({}) do |((theme, platform), count), hash|
+		# 储备资源状况（按主题和平台统计今日待使用的正常账号数量）
+		today_beginning = Time.zone.now.beginning_of_day
+		to_be_used_accounts = Account.active.where("last_used_at IS NULL OR last_used_at < ?", today_beginning)
+		@theme_platform_stats = to_be_used_accounts.group(:theme, :platform).count.each_with_object({}) do |((theme, platform), count), hash|
 			hash[theme] ||= { total: 0 }
 			hash[theme][platform] = count
 			hash[theme][:total] += count
