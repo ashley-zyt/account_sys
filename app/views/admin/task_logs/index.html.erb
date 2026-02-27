@@ -68,6 +68,9 @@
             <th>
               创建时间
             </th>
+            <th>
+              操作
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -122,6 +125,13 @@
                 <span class="admin-label-muted">
                   <%= log.created_at&.strftime("%m-%d %H:%M") %>
                 </span>
+              </td>
+              <td>
+                <% if log.move_task %>
+                  <%= link_to "查看任务", admin_move_task_path(log.move_task), class: "admin-link-quiet", style: "color: var(--success);" %>
+                <% else %>
+                  <span class="admin-label-muted">任务不存在</span>
+                <% end %>
               </td>
             </tr>
           <% end %>
