@@ -39,7 +39,7 @@ class Account < ApplicationRecord
 		twitter: 2,
 		tiktok: 3,
 		youtube: 4,
-		instagram: 5
+		# instagram: 5
 	}
 
 	# 账号状态枚举

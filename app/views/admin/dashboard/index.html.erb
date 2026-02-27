@@ -104,10 +104,10 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          储备资源状况[待使用]
+          储备资源状况
         </div>
         <div class="admin-card-subtitle">
-          各主题下状态任务分布
+          各主题下 pending 状态任务分布
         </div>
       </div>
       <div class="admin-card-header-right">
@@ -116,41 +116,6 @@
         <% end %>
       </div>
     </div>
-
-    <!-- <div class="admin-kpi" style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);">
-      <%= link_to admin_move_tasks_path(q: { status_eq: 0 }), class: "admin-kpi-item admin-link-card" do %>
-        <div class="admin-kpi-label">
-          待分配
-        </div>
-        <div class="admin-kpi-value">
-          <%= @move_tasks_pending %>
-        </div>
-      <% end %>
-      <%= link_to admin_move_tasks_path(q: { status_in: [1, 2] }), class: "admin-kpi-item admin-link-card" do %>
-        <div class="admin-kpi-label">
-          队列中
-        </div>
-        <div class="admin-kpi-value">
-          <%= @move_tasks_waiting + @move_tasks_executing %>
-        </div>
-      <% end %>
-      <%= link_to admin_move_tasks_path(q: { status_eq: 3 }), class: "admin-kpi-item admin-link-card" do %>
-        <div class="admin-kpi-label">
-          成功
-        </div>
-        <div class="admin-kpi-value" style="color: var(--success);">
-          <%= @move_tasks_success %>
-        </div>
-      <% end %>
-      <%= link_to admin_move_tasks_path(q: { status_eq: 4 }), class: "admin-kpi-item admin-link-card" do %>
-        <div class="admin-kpi-label">
-          失败
-        </div>
-        <div class="admin-kpi-value" style="color: var(--error);">
-          <%= @move_tasks_failed %>
-        </div>
-      <% end %>
-    </div> -->
 
     <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
       <table class="admin-table" style="font-size: 11px;">
