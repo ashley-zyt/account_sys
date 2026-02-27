@@ -107,7 +107,7 @@
           储备资源状况
         </div>
         <div class="admin-card-subtitle">
-          各主题下 pending 状态任务分布
+          各主题下资源任务分布
         </div>
       </div>
       <div class="admin-card-header-right">
@@ -144,8 +144,11 @@
                     <% end %>
                   </td>
                 <% end %>
-                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: var(--accent); background: rgba(59, 130, 246, 0.05);">
+                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: <%= platforms[:total] < 5 ? 'var(--error)' : 'var(--accent)' %>; background: <%= platforms[:total] < 5 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.05)' %>;">
                   <%= platforms[:total] %>
+                  <% if platforms[:total] < 5 %>
+                    <span style="font-size: 10px; display: block; font-weight: normal;">库存不足</span>
+                  <% end %>
                 </td>
               </tr>
             <% end %>
