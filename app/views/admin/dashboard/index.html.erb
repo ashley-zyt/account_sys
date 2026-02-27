@@ -153,30 +153,36 @@
     </div>
 
     <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
-      <table class="admin-table" style="font-size: 12px;">
+      <table class="admin-table" style="font-size: 11px;">
         <thead>
           <tr style="background: rgba(15, 23, 42, 0.3);">
-            <th style="padding: 8px;">数据类型(主题)</th>
-            <th style="padding: 8px; text-align: center;">总账号</th>
-            <th style="padding: 8px; text-align: center;">已使用</th>
-            <th style="padding: 8px; text-align: center;">待使用</th>
+            <th style="padding: 6px 8px;">数据类型(主题)</th>
+            <% Account.platforms.keys.each do |p| %>
+              <th style="padding: 6px 4px; text-align: center; text-transform: capitalize;"><%= p.to_s[0..2] %></th>
+            <% end %>
+            <th style="padding: 6px 8px; text-align: center; background: rgba(59, 130, 246, 0.1);">总计</th>
           </tr>
         </thead>
         <tbody>
-          <% if @theme_resource_stats.any? %>
-            <% @theme_resource_stats.each do |theme, stats| %>
+          <% if @theme_platform_stats.any? %>
+            <% @theme_platform_stats.each do |theme, platforms| %>
               <tr>
-                <td style="padding: 8px;">
-                  <%= link_to theme, admin_accounts_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet" %>
+                <td style="padding: 6px 8px;">
+                  <%= link_to theme, admin_accounts_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet", style: "font-weight: 500;" %>
                 </td>
-                <td style="padding: 8px; text-align: center;"><%= stats[:total] %></td>
-                <td style="padding: 8px; text-align: center; color: var(--text-muted);"><%= stats[:used] %></td>
-                <td style="padding: 8px; text-align: center; color: var(--success); font-weight: 600;"><%= stats[:to_be_used] %></td>
+                <% Account.platforms.keys.each do |p| %>
+                  <td style="padding: 6px 4px; text-align: center; color: <%= platforms[p].to_i > 0 ? 'var(--text-primary)' : 'var(--text-muted)' %>;">
+                    <%= platforms[p] || 0 %>
+                  </td>
+                <% end %>
+                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: var(--success); background: rgba(34, 197, 94, 0.05);">
+                  <%= platforms[:total] %>
+                </td>
               </tr>
             <% end %>
           <% else %>
             <tr>
-              <td colspan="4" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无可用资源数据</td>
+              <td colspan="<%= Account.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无可用资源数据</td>
             </tr>
           <% end %>
         </tbody>

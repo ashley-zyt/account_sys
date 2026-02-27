@@ -16,19 +16,12 @@ class Admin::DashboardController < Admin::BaseController
 			end
 		end
 
-		# 资源储备分布（按主题统计账号使用情况）
-		today_beginning = Time.zone.now.beginning_of_day
+		# 资源储备分布（按主题和平台统计正常账号数量）
 		active_accounts = Account.active
-		theme_totals = active_accounts.group(:theme).count
-		theme_used = active_accounts.where("last_used_at >= ?", today_beginning).group(:theme).count
-
-		@theme_resource_stats = theme_totals.each_with_object({}) do |(theme, total), hash|
-			u_count = theme_used[theme] || 0
-			hash[theme] = {
-				total: total,
-				used: u_count,
-				to_be_used: total - u_count
-			}
+		@theme_platform_stats = active_accounts.group(:theme, :platform).count.each_with_object({}) do |((theme, platform), count), hash|
+			hash[theme] ||= { total: 0 }
+			hash[theme][platform] = count
+			hash[theme][:total] += count
 		end
 
 		@browsers_total = Browser.count
