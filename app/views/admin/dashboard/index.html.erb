@@ -136,19 +136,17 @@
                   <%= link_to theme, admin_move_tasks_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet", style: "font-weight: 500;" %>
                 </td>
                 <% MoveTask.platforms.keys.each do |p| %>
-                  <td style="padding: 6px 4px; text-align: center; color: <%= platforms[p].to_i > 0 ? 'var(--text-primary)' : 'var(--text-muted)' %>;">
-                    <% if platforms[p].to_i > 0 %>
-                      <%= link_to platforms[p], admin_move_tasks_path(q: { theme_cont: theme, platform_eq: MoveTask.platforms[p], status_eq: 0 }), class: "admin-link-quiet", style: "color: inherit;" %>
+                  <% count = platforms[p].to_i %>
+                  <td style="padding: 6px 4px; text-align: center; color: <%= count > 0 ? (count < 5 ? 'var(--error)' : 'var(--text-primary)') : 'var(--text-muted)' %>; font-weight: <%= count > 0 && count < 5 ? '600' : 'normal' %>;">
+                    <% if count > 0 %>
+                      <%= link_to count, admin_move_tasks_path(q: { theme_cont: theme, platform_eq: MoveTask.platforms[p], status_eq: 0 }), class: "admin-link-quiet", style: "color: inherit;" %>
                     <% else %>
                       0
                     <% end %>
                   </td>
                 <% end %>
-                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: <%= platforms[:total] < 5 ? 'var(--error)' : 'var(--accent)' %>; background: <%= platforms[:total] < 5 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.05)' %>;">
+                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: var(--accent); background: rgba(59, 130, 246, 0.05);">
                   <%= platforms[:total] %>
-                  <% if platforms[:total] < 5 %>
-                    <span style="font-size: 10px; display: block; font-weight: normal;">库存不足</span>
-                  <% end %>
                 </td>
               </tr>
             <% end %>
