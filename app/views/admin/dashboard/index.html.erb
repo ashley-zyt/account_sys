@@ -104,10 +104,10 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          储备资源状况
+          储备资源状况[待使用]
         </div>
         <div class="admin-card-subtitle">
-          各主题下 pending 状态任务分布
+          各主题下状态任务分布
         </div>
       </div>
       <div class="admin-card-header-right">
@@ -117,10 +117,10 @@
       </div>
     </div>
 
-    <div class="admin-kpi" style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);">
+    <!-- <div class="admin-kpi" style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);">
       <%= link_to admin_move_tasks_path(q: { status_eq: 0 }), class: "admin-kpi-item admin-link-card" do %>
         <div class="admin-kpi-label">
-          待分配 (Pending)
+          待分配
         </div>
         <div class="admin-kpi-value">
           <%= @move_tasks_pending %>
@@ -150,7 +150,7 @@
           <%= @move_tasks_failed %>
         </div>
       <% end %>
-    </div>
+    </div> -->
 
     <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
       <table class="admin-table" style="font-size: 11px;">
