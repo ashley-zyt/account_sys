@@ -137,7 +137,7 @@
                 </td>
                 <% MoveTask.platforms.keys.each do |p| %>
                   <% count = platforms[p].to_i %>
-                  <td style="padding: 6px 4px; text-align: center; color: <%= count > 0 ? (count < 5 ? 'var(--error)' : 'var(--text-primary)') : 'var(--text-muted)' %>; font-weight: <%= count > 0 && count < 5 ? '600' : 'normal' %>;">
+                  <td style="padding: 6px 4px; text-align: center; color: <%= count > 0 ? (count < 5 ? 'var(--danger)' : 'var(--text-primary)') : 'var(--text-muted)' %>; font-weight: <%= count > 0 && count < 5 ? '600' : 'normal' %>;">
                     <% if count > 0 %>
                       <%= link_to count, admin_move_tasks_path(q: { theme_cont: theme, platform_eq: MoveTask.platforms[p], status_eq: 0 }), class: "admin-link-quiet", style: "color: inherit;" %>
                     <% else %>
@@ -240,7 +240,7 @@
           <div class="admin-label-muted" style="font-size: 11px;">
             异常次数
           </div>
-          <div style="font-size: 18px; font-weight: 600; color: <%= @today_errors_count > 0 ? 'var(--error)' : 'var(--text-primary)' %>;">
+          <div style="font-size: 18px; font-weight: 600; color: <%= @today_errors_count > 0 ? 'var(--danger)' : 'var(--text-primary)' %>;">
             <%= @today_errors_count %>
           </div>
         <% end %>
