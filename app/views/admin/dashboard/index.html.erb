@@ -240,7 +240,7 @@
           <div class="admin-label-muted" style="font-size: 11px;">
             异常次数
           </div>
-          <div style="font-size: 18px; font-weight: 600; color: <%= @today_errors_count > 0 ? 'var(--danger)' : 'var(--text-primary)' %>;">
+          <div style="font-size: 18px; font-weight: 600; color: <%= @today_errors_count %>;">
             <%= @today_errors_count %>
           </div>
         <% end %>
