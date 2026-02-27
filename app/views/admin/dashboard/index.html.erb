@@ -104,10 +104,10 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          任务状态分布
+          资源储备分布
         </div>
         <div class="admin-card-subtitle">
-          调度队列当前负载
+          各数据类型账号可用性
         </div>
       </div>
       <div class="admin-card-header-right">
@@ -117,7 +117,7 @@
       </div>
     </div>
 
-    <div class="admin-kpi">
+    <div class="admin-kpi" style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);">
       <%= link_to admin_move_tasks_path(q: { status_eq: 0 }), class: "admin-kpi-item admin-link-card" do %>
         <div class="admin-kpi-label">
           待分配
@@ -150,6 +150,37 @@
           <%= @move_tasks_failed %>
         </div>
       <% end %>
+    </div>
+
+    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
+      <table class="admin-table" style="font-size: 12px;">
+        <thead>
+          <tr style="background: rgba(15, 23, 42, 0.3);">
+            <th style="padding: 8px;">数据类型(主题)</th>
+            <th style="padding: 8px; text-align: center;">总账号</th>
+            <th style="padding: 8px; text-align: center;">已使用</th>
+            <th style="padding: 8px; text-align: center;">待使用</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @theme_resource_stats.any? %>
+            <% @theme_resource_stats.each do |theme, stats| %>
+              <tr>
+                <td style="padding: 8px;">
+                  <%= link_to theme, admin_accounts_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet" %>
+                </td>
+                <td style="padding: 8px; text-align: center;"><%= stats[:total] %></td>
+                <td style="padding: 8px; text-align: center; color: var(--text-muted);"><%= stats[:used] %></td>
+                <td style="padding: 8px; text-align: center; color: var(--success); font-weight: 600;"><%= stats[:to_be_used] %></td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="4" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无可用资源数据</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
