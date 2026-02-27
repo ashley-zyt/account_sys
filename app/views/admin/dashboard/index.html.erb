@@ -107,12 +107,12 @@
           储备资源状况
         </div>
         <div class="admin-card-subtitle">
-          各数据类型今日待使用账号
+          各主题下 pending 状态任务分布
         </div>
       </div>
       <div class="admin-card-header-right">
-        <%= link_to admin_move_tasks_path, class: "admin-tag" do %>
-          总任务 <%= @move_tasks_total %>
+        <%= link_to admin_move_tasks_path(q: { status_eq: 0 }), class: "admin-tag" do %>
+          待处理总计 <%= @move_tasks_pending %>
         <% end %>
       </div>
     </div>
@@ -120,7 +120,7 @@
     <div class="admin-kpi" style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);">
       <%= link_to admin_move_tasks_path(q: { status_eq: 0 }), class: "admin-kpi-item admin-link-card" do %>
         <div class="admin-kpi-label">
-          待分配
+          待分配 (Pending)
         </div>
         <div class="admin-kpi-value">
           <%= @move_tasks_pending %>
@@ -156,8 +156,8 @@
       <table class="admin-table" style="font-size: 11px;">
         <thead>
           <tr style="background: rgba(15, 23, 42, 0.3);">
-            <th style="padding: 6px 8px;">数据类型(主题)</th>
-            <% Account.platforms.keys.each do |p| %>
+            <th style="padding: 6px 8px;">内容主题</th>
+            <% MoveTask.platforms.keys.each do |p| %>
               <th style="padding: 6px 4px; text-align: center; text-transform: capitalize;"><%= p.to_s[0..2] %></th>
             <% end %>
             <th style="padding: 6px 8px; text-align: center; background: rgba(59, 130, 246, 0.1);">总计</th>
@@ -165,25 +165,28 @@
         </thead>
         <tbody>
           <% if @theme_platform_stats.any? %>
-            <% today_beginning = Time.zone.now.beginning_of_day %>
             <% @theme_platform_stats.each do |theme, platforms| %>
               <tr>
                 <td style="padding: 6px 8px;">
-                  <%= link_to theme, admin_accounts_path(q: { theme_cont: theme, status_eq: 0, last_used_at_lt: today_beginning }), class: "admin-link-quiet", style: "font-weight: 500;" %>
+                  <%= link_to theme, admin_move_tasks_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet", style: "font-weight: 500;" %>
                 </td>
-                <% Account.platforms.keys.each do |p| %>
+                <% MoveTask.platforms.keys.each do |p| %>
                   <td style="padding: 6px 4px; text-align: center; color: <%= platforms[p].to_i > 0 ? 'var(--text-primary)' : 'var(--text-muted)' %>;">
-                    <%= platforms[p] || 0 %>
+                    <% if platforms[p].to_i > 0 %>
+                      <%= link_to platforms[p], admin_move_tasks_path(q: { theme_cont: theme, platform_eq: MoveTask.platforms[p], status_eq: 0 }), class: "admin-link-quiet", style: "color: inherit;" %>
+                    <% else %>
+                      0
+                    <% end %>
                   </td>
                 <% end %>
-                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: var(--success); background: rgba(34, 197, 94, 0.05);">
+                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: var(--accent); background: rgba(59, 130, 246, 0.05);">
                   <%= platforms[:total] %>
                 </td>
               </tr>
             <% end %>
           <% else %>
             <tr>
-              <td colspan="<%= Account.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无可用资源数据</td>
+              <td colspan="<%= MoveTask.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无待处理任务</td>
             </tr>
           <% end %>
         </tbody>
