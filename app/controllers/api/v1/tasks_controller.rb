@@ -5,7 +5,6 @@ module Api
 
 			def fetch_next_executable_task
 				task = MoveTask.where(status:"waiting_publish").where("account_id is not null").limit(1)
-				account = task.account
 				if !task.nil?
 					task.update(status:"executing")
 				end
