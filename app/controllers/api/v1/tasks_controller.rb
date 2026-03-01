@@ -6,6 +6,7 @@ module Api
 			def fetch_next_executable_task
 				task = MoveTask.where(status:"waiting_publish").where("account_id is not null").limit(1)
 				return render json: {id: nil,video_url: nil,social_account_id: nil,adspower_user_name: nil,account_type: nil,title: nil} if task.nil?
+				id = task.id
 				task.update(status:"executing")
 				task = MoveTask.find_by(id:id)
 				return render json: {id: task.id,video_url: task.video_url,social_account_id: task.source_account_url,adspower_user_name: task.browser.profile_name,account_type: task.platform,title: task.title}
