@@ -4,7 +4,7 @@ module Api
 			skip_before_action :verify_authenticity_token, only: [:report]
 
 			def fetch_next_executable_task
-				task = MoveTask.where(status:"waiting_publish").where("account_id is not null").limit(1)
+				task = MoveTask.where(status:"waiting_publish").where("account_id is not null").first
 				return render json: {id: nil,video_url: nil,social_account_id: nil,adspower_user_name: nil,account_type: nil,title: nil} if task.nil?
 				id = task.id
 				task.update(status:"executing")
