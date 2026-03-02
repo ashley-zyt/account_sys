@@ -1,6 +1,6 @@
 class Admin::AccountsController < Admin::BaseController
 	before_action :set_account, only: [:show, :edit, :update]
-	before_action :load_themes, only: [:new, :create, :edit, :update]
+	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
 		@q = Account.ransack(params[:q])

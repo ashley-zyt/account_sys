@@ -31,7 +31,7 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
-        <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
+        <%= f.select :theme_eq, @themes.map { |name| [name, name] }, { include_blank: "所有主题" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">平台</label>
@@ -39,7 +39,11 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
-        <%= f.select :status_eq, Account.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+        <%= f.select :status_eq, Account.statuses.map { |k, v| [k, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">工作模式</label>
+        <%= f.select :work_type_eq, Account.work_types.map { |k, v| [k, v] }, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
