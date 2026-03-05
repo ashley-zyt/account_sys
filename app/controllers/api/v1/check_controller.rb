@@ -4,10 +4,12 @@ module Api
 			skip_before_action :verify_authenticity_token, only: [:accounts,:update_account_status]
 			def accounts
 				datas = []
-				Account.active.each do |account|
-					browser = account.browser
-					datas << {id:account.id,platform:account.platform,profile_name:browser.profile_name}
-				end
+				# Account.active.each do |account|
+				# 	browser = account.browser
+				# 	datas << {id:account.id,platform:account.platform,profile_name:browser.profile_name}
+				# end
+				account = Account.active.first
+				datas << {id:account.id,platform:account.platform,profile_name:browser.profile_name}
 				return render json: datas
 			end
 			def update_account_status
