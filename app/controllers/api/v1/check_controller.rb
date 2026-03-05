@@ -1,7 +1,7 @@
 module Api
 	module V1
 		class CheckController < ApplicationController
-			skip_before_action :verify_authenticity_token, only: [:account_status,:update_account_status]
+			skip_before_action :verify_authenticity_token, only: [:accounts,:update_account_status]
 			def accounts
 				datas = []
 				Account.active.each do |account|
@@ -15,9 +15,11 @@ module Api
 				account = Account.find_by(id:id)
 				return render json: {type: 'error', message: "account不存在" } if account.nil?
 				status_desp = params[:status_desp]
+				status = "success"
 				if !status_desp.nil? or status_desp != ""
-					account.update(status:2,status_desp:status_desp)
+					status = "failed"
 				end
+				TaskLog.create(task_uuid:999,status:status,error_msg:status_desp,run_at:Time.now,response_data:params.to_s)
 				return render json: {type: 'success', message: "状态已同步" }
 			end
 		end
