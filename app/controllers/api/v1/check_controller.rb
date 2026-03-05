@@ -2,7 +2,7 @@ module Api
 	module V1
 		class CheckController < ApplicationController
 			skip_before_action :verify_authenticity_token, only: [:account_status,:update_account_status]
-			def account_status
+			def accounts
 				datas = []
 				Account.active.each do |account|
 					browser = account.browser
