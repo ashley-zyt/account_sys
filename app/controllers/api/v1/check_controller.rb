@@ -21,6 +21,9 @@ module Api
 				status = "success"
 				if !status_desp.nil? and status_desp != ""
 					status = "failed"
+					if status_desp.include?"page redirected" or status_desp.include?"page contains keyword"
+						account.update(status:2)
+					end
 				end
 				TaskLog.create(task_uuid:999,status:status,error_msg:status_desp,run_at:Time.now,response_data:params.to_s)
 				return render json: {type: 'success', message: "状态已同步" }
