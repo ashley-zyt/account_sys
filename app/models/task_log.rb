@@ -41,7 +41,7 @@ class TaskLog < ApplicationRecord
 	def display_account
 		if task_uuid == "999"
 			begin
-				data = JSON.parse(response_data)
+				data = eval(response_data)
 				Account.find_by(id: data["id"]) if data["id"].present?
 			rescue JSON::ParserError
 				nil
