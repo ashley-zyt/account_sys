@@ -8,7 +8,7 @@ module Api
 				# 	browser = account.browser
 				# 	datas << {id:account.id,platform:account.platform,profile_name:browser.profile_name}
 				# end
-				account = Account.find(2)
+				account = Account.find(4)
 				browser = account.browser
 				datas << {id:account.id,platform:account.platform,profile_name:browser.profile_name}
 				return render json: datas
