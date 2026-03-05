@@ -14,7 +14,8 @@ Rails.application.routes.draw do
       post "video/receive", to: "video_receive#create"
       get "task/fetch_next_executable_task", to: "tasks#fetch_next_executable_task"
       get "task/report", to: "tasks#report"
-      get "check/account_status", to: "check#account_status"
+      get "check/account_status"
+      post "check/update_account_status"
     end
   end
 
