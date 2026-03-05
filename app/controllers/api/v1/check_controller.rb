@@ -9,6 +9,7 @@ module Api
 				# 	datas << {id:account.id,platform:account.platform,profile_name:browser.profile_name}
 				# end
 				account = Account.active.first
+				browser = account.browser
 				datas << {id:account.id,platform:account.platform,profile_name:browser.profile_name}
 				return render json: datas
 			end
