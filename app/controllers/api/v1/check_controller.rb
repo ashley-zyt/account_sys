@@ -8,7 +8,7 @@ module Api
 				# 	browser = account.browser
 				# 	datas << {id:account.id,platform:account.platform,profile_name:browser.profile_name}
 				# end
-				account = Account.find(20)
+				account = Account.find(184)
 				browser = account.browser
 				datas << {id:account.id,platform:account.platform,profile_name:browser.profile_name}
 				return render json: datas
@@ -19,7 +19,7 @@ module Api
 				return render json: {type: 'error', message: "account不存在" } if account.nil?
 				status_desp = params[:status_desp]
 				status = "success"
-				if !status_desp.nil? or status_desp != ""
+				if !status_desp.nil? and status_desp != ""
 					status = "failed"
 				end
 				TaskLog.create(task_uuid:999,status:status,error_msg:status_desp,run_at:Time.now,response_data:params.to_s)
