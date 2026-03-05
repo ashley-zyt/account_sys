@@ -32,10 +32,42 @@ class TaskLog < ApplicationRecord
 		failed: 1
 	}
 
-	# 最近日志
-	scope :recent, -> {
-		order(run_at: :desc)
+	# 作用域：获取今日产生的日志
+	scope :today, -> {
+		where("created_at >= ?", Time.zone.now.beginning_of_day)
 	}
+
+	# 获取展示用的账号对象
+	def display_account
+		if task_uuid == "999"
+			begin
+				data = JSON.parse(response_data)
+				Account.find_by(id: data["id"]) if data["id"].present?
+			rescue JSON::ParserError
+				nil
+			end
+		else
+			account
+		end
+	end
+
+	# 获取展示用的平台名称
+	def display_platform
+		if task_uuid == "999"
+			display_account&.platform || "未知"
+		else
+			move_task&.platform || "未知"
+		end
+	end
+
+	# 获取展示用的浏览器对象
+	def display_browser
+		if task_uuid == "999"
+			display_account&.browser
+		else
+			browser
+		end
+	end
 
 	def self.ransackable_attributes(auth_object = nil)
 		%w[

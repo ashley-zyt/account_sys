@@ -80,20 +80,22 @@
                 <%= link_to truncate(log.task_uuid, length: 15), admin_task_log_path(log), class: "admin-link-quiet", title: log.task_uuid %>
               </td>
               <td>
-                <% if log.account %>
-                  <%= link_to log.account.account_name, admin_account_path(log.account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <% acc = log.display_account %>
+                <% if acc %>
+                  <%= link_to acc.account_name, admin_account_path(acc), class: "admin-link-quiet", style: "color: var(--accent);" %>
                 <% else %>
                   <span class="admin-label-muted">未分配</span>
                 <% end %>
               </td>
               <td>
                 <span class="admin-label-muted">
-                  <%= log.move_task&.platform || "未知" %>
+                  <%= log.display_platform %>
                 </span>
               </td>
               <td>
-                <% if log.browser %>
-                  <%= link_to log.browser.profile_name, admin_browser_path(log.browser), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <% br = log.display_browser %>
+                <% if br %>
+                  <%= link_to br.profile_name, admin_browser_path(br), class: "admin-link-quiet", style: "color: var(--accent);" %>
                 <% else %>
                   <span class="admin-label-muted">未绑定</span>
                 <% end %>
