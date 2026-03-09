@@ -34,6 +34,13 @@ class Admin::DashboardController < Admin::BaseController
 			hash[theme][:total] += count
 		end
 
+		# 账号资源分布 (各主题下各平台的活跃账号数量)
+		@account_distribution_stats = Account.active.group(:theme, :platform).count.each_with_object({}) do |((theme, platform), count), hash|
+			hash[theme] ||= { total: 0 }
+			hash[theme][platform] = count
+			hash[theme][:total] += count
+		end
+
 		@browsers_total = Browser.count
 		@browsers_normal = Browser.where(status: 0).count
 		@browsers_network_error = Browser.where(status: 1).count
