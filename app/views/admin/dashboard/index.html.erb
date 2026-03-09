@@ -5,7 +5,7 @@
   账号与任务运行情况一览
 <% end %>
 
-<div class="admin-grid">
+<div class="admin-grid-three">
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
@@ -60,48 +60,6 @@
     </div>
   </div>
 
-  <div class="admin-card">
-    <div class="admin-card-header" style="margin-bottom: 12px;">
-      <div>
-        <div class="admin-card-title">
-          平台分布
-        </div>
-        <div class="admin-card-subtitle">
-          各社交平台账号状态
-        </div>
-      </div>
-    </div>
-    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
-      <table class="admin-table" style="font-size: 12px;">
-        <thead>
-          <tr style="background: rgba(15, 23, 42, 0.3);">
-            <th style="padding: 8px;">平台</th>
-            <th style="padding: 8px; text-align: center;">总计</th>
-            <th style="padding: 8px; text-align: center;">正常</th>
-            <th style="padding: 8px; text-align: center;">未登录</th>
-            <th style="padding: 8px; text-align: center;">封禁</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% Account.platforms.keys.each do |platform| %>
-            <% stats = @platform_stats[platform] || { total: 0, active: 0, unlogged: 0, banned: 0 } %>
-            <tr>
-              <td style="padding: 8px;">
-                <%= link_to platform.capitalize, admin_accounts_path(q: { platform_eq: Account.platforms[platform] }), class: "admin-link-quiet" %>
-              </td>
-              <td style="padding: 8px; text-align: center;"><%= stats[:total] %></td>
-              <td style="padding: 8px; text-align: center; color: var(--success);"><%= stats[:active] %></td>
-              <td style="padding: 8px; text-align: center; color: var(--warning);"><%= stats[:unlogged] %></td>
-              <td style="padding: 8px; text-align: center; color: var(--danger);"><%= stats[:banned] %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<div class="admin-grid-three-equal">
   <%# 账号储备状况 %>
   <div class="admin-card">
     <div class="admin-card-header">
@@ -163,6 +121,48 @@
     </div>
   </div>
 
+  <div class="admin-card">
+    <div class="admin-card-header" style="margin-bottom: 12px;">
+      <div>
+        <div class="admin-card-title">
+          平台分布
+        </div>
+        <div class="admin-card-subtitle">
+          各社交平台账号状态
+        </div>
+      </div>
+    </div>
+    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
+      <table class="admin-table" style="font-size: 12px;">
+        <thead>
+          <tr style="background: rgba(15, 23, 42, 0.3);">
+            <th style="padding: 8px;">平台</th>
+            <th style="padding: 8px; text-align: center;">总计</th>
+            <th style="padding: 8px; text-align: center;">正常</th>
+            <th style="padding: 8px; text-align: center;">未登录</th>
+            <th style="padding: 8px; text-align: center;">封禁</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% Account.platforms.keys.each do |platform| %>
+            <% stats = @platform_stats[platform] || { total: 0, active: 0, unlogged: 0, banned: 0 } %>
+            <tr>
+              <td style="padding: 8px;">
+                <%= link_to platform.capitalize, admin_accounts_path(q: { platform_eq: Account.platforms[platform] }), class: "admin-link-quiet" %>
+              </td>
+              <td style="padding: 8px; text-align: center;"><%= stats[:total] %></td>
+              <td style="padding: 8px; text-align: center; color: var(--success);"><%= stats[:active] %></td>
+              <td style="padding: 8px; text-align: center; color: var(--warning);"><%= stats[:unlogged] %></td>
+              <td style="padding: 8px; text-align: center; color: var(--danger);"><%= stats[:banned] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="admin-grid-two-equal">
   <%# 搬运资源状况 %>
   <div class="admin-card">
     <div class="admin-card-header">
@@ -317,7 +317,7 @@
     </div>
   </div>
 
-  <%# 平台成功率统计 %>
+  <%# platform 成功率统计 %>
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
