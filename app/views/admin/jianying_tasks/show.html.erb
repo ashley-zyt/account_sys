@@ -1,0 +1,173 @@
+<% content_for :page_title do %>
+  剪映任务详情
+<% end %>
+<% content_for :page_subtitle do %>
+  任务 <%= @jianying_task.id %> 的执行情况
+<% end %>
+
+<div class="admin-grid">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          基本信息
+        </div>
+        <div class="admin-card-subtitle">
+          OSS 视频及主题配置
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <%= link_to "编辑任务", edit_admin_jianying_task_path(@jianying_task), class: "admin-button-secondary" %>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          任务 UUID
+        </div>
+        <div class="admin-field-value">
+          <%= @jianying_task.task_uuid %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          平台
+        </div>
+        <div class="admin-field-value">
+          <%= @jianying_task.platform %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          主题
+        </div>
+        <div class="admin-field-value">
+          <%= @jianying_task.theme %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          状态
+        </div>
+        <div class="admin-field-value">
+          <%= @jianying_task.status %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          任务组 ID (Group ID)
+        </div>
+        <div class="admin-field-value">
+          <%= @jianying_task.group_id || "无" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          创建时间
+        </div>
+        <div class="admin-field-value">
+          <%= @jianying_task.created_at&.strftime("%Y-%m-%d %H:%M") %>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      OSS 视频与标题
+    </div>
+    <div class="admin-section-subtitle">
+      剪映生成的视频地址与发布标题
+    </div>
+
+    <div>
+      <div class="admin-field-label">
+        OSS 视频地址
+      </div>
+      <div class="admin-field-value" style="word-break: break-all;">
+        <%= link_to @jianying_task.oss_url, @jianying_task.oss_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" if @jianying_task.oss_url.present? %>
+      </div>
+    </div>
+
+    <div style="margin-top: 10px;">
+      <div class="admin-field-label">
+        发布标题
+      </div>
+      <div class="admin-field-value">
+        <%= @jianying_task.title %>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          执行信息
+        </div>
+        <div class="admin-card-subtitle">
+          账号、浏览器及时间线
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          执行账号
+        </div>
+        <div class="admin-field-value">
+          <% if @jianying_task.account %>
+            <%= link_to @jianying_task.account.account_name, admin_account_path(@jianying_task.account), class: "admin-link-quiet" %>
+          <% else %>
+            未分配
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          浏览器
+        </div>
+        <div class="admin-field-value">
+          <% if @jianying_task.browser %>
+            <%= link_to @jianying_task.browser.profile_name, admin_browser_path(@jianying_task.browser), class: "admin-link-quiet" %>
+          <% else %>
+            未绑定
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          开始时间
+        </div>
+        <div class="admin-field-value">
+          <%= @jianying_task.start_at&.strftime("%Y-%m-%d %H:%M") || "未开始" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          实际发布时间
+        </div>
+        <div class="admin-field-value">
+          <%= @jianying_task.actual_publish_time&.strftime("%Y-%m-%d %H:%M") || "暂无" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      错误信息
+    </div>
+    <div class="admin-section-subtitle">
+      失败原因或异常详情
+    </div>
+
+    <% if @jianying_task.error_msg.present? %>
+      <div class="admin-empty-state" style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.5);">
+        <pre style="margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 11px;"><%= @jianying_task.error_msg %></pre>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        暂无错误信息。
+      </div>
+    <% end %>
+  </div>
+</div>

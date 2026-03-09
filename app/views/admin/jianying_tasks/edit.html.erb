@@ -1,0 +1,8 @@
+<% content_for :page_title do %>
+  编辑剪映任务
+<% end %>
+<% content_for :page_subtitle do %>
+  修改任务 <%= @jianying_task.id %> 的配置
+<% end %>
+
+<%= render "form", jianying_task: @jianying_task %>

@@ -5,7 +5,7 @@
   账号与任务运行情况一览
 <% end %>
 
-<div class="admin-grid-three">
+<div class="admin-grid">
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
@@ -99,7 +99,10 @@
       </table>
     </div>
   </div>
+</div>
 
+<div class="admin-grid-two-equal">
+  <%# 搬运资源状况 %>
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
@@ -107,12 +110,12 @@
           搬运资源储备状况
         </div>
         <div class="admin-card-subtitle">
-          各主题下资源任务分布
+          各主题下搬运任务分布 (Pending)
         </div>
       </div>
       <div class="admin-card-header-right">
         <%= link_to admin_move_tasks_path(q: { status_eq: 0 }), class: "admin-tag" do %>
-          待处理总计 <%= @move_tasks_pending %>
+          搬运待处理: <%= @move_tasks_pending %>
         <% end %>
       </div>
     </div>
@@ -152,7 +155,68 @@
             <% end %>
           <% else %>
             <tr>
-              <td colspan="<%= MoveTask.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无待处理任务</td>
+              <td colspan="<%= MoveTask.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无搬运待处理任务</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <%# 剪映资源状况 %>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          剪映资源储备状况
+        </div>
+        <div class="admin-card-subtitle">
+          各主题下剪映任务分布 (Pending)
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <%= link_to admin_jianying_tasks_path(q: { status_eq: 0 }), class: "admin-tag admin-tag-accent" do %>
+          剪映待处理: <%= JianyingTask.pending.count %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
+      <table class="admin-table" style="font-size: 11px;">
+        <thead>
+          <tr style="background: rgba(15, 23, 42, 0.3);">
+            <th style="padding: 6px 8px;">内容主题</th>
+            <% JianyingTask.platforms.keys.each do |p| %>
+              <th style="padding: 6px 4px; text-align: center; text-transform: capitalize;"><%= p.to_s[0..2] %></th>
+            <% end %>
+            <th style="padding: 6px 8px; text-align: center; background: rgba(139, 92, 246, 0.1);">总计</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @jianying_theme_platform_stats.any? %>
+            <% @jianying_theme_platform_stats.each do |theme, platforms| %>
+              <tr>
+                <td style="padding: 6px 8px;">
+                  <%= link_to theme, admin_jianying_tasks_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet", style: "font-weight: 500;" %>
+                </td>
+                <% JianyingTask.platforms.keys.each do |p| %>
+                  <% count = platforms[p].to_i %>
+                  <td style="padding: 6px 4px; text-align: center; color: <%= count > 0 ? (count < 5 ? 'var(--danger)' : 'var(--text-primary)') : 'var(--text-muted)' %>; font-weight: <%= count > 0 && count < 5 ? '600' : 'normal' %>;">
+                    <% if count > 0 %>
+                      <%= link_to count, admin_jianying_tasks_path(q: { theme_cont: theme, platform_eq: JianyingTask.platforms[p], status_eq: 0 }), class: "admin-link-quiet", style: "color: inherit;" %>
+                    <% else %>
+                      0
+                    <% end %>
+                  </td>
+                <% end %>
+                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: #8b5cf6; background: rgba(139, 92, 246, 0.05);">
+                  <%= platforms[:total] %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="<%= JianyingTask.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无剪映待处理任务</td>
             </tr>
           <% end %>
         </tbody>
@@ -240,7 +304,7 @@
           <div class="admin-label-muted" style="font-size: 11px;">
             异常次数
           </div>
-          <div style="font-size: 18px; font-weight: 600; color: <%= @today_errors_count %>;">
+          <div style="font-size: 18px; font-weight: 600; color: var(--danger);">
             <%= @today_errors_count %>
           </div>
         <% end %>
@@ -262,7 +326,7 @@
           <div class="admin-label-muted" style="font-size: 11px;">
             总异常次数
           </div>
-          <div style="font-size: 18px; font-weight: 600; color: <%= @total_errors_count > 0 ? 'var(--error)' : 'var(--text-primary)' %>;">
+          <div style="font-size: 18px; font-weight: 600; color: var(--danger);">
             <%= @total_errors_count %>
           </div>
         <% end %>

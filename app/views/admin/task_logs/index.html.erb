@@ -129,8 +129,13 @@
                 </span>
               </td>
               <td>
-                <% if log.move_task %>
-                  <%= link_to "查看任务", admin_move_task_path(log.move_task), class: "admin-link-quiet", style: "color: var(--success);" %>
+                <% t = log.task %>
+                <% if t %>
+                  <% if t.is_a?(MoveTask) %>
+                    <%= link_to "查看搬运任务", admin_move_task_path(t), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% else %>
+                    <%= link_to "查看剪映任务", admin_jianying_task_path(t), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% end %>
                 <% else %>
                   <span class="admin-label-muted">任务不存在</span>
                 <% end %>

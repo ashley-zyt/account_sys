@@ -7,6 +7,7 @@ Rails.application.routes.draw do
     resources :move_tasks, only: [:index, :show]
     resources :browsers, only: [:index, :show, :new, :create, :edit, :update]
     resources :task_logs, only: [:index, :show]
+    resources :jianying_tasks
   end
 
   namespace :api do

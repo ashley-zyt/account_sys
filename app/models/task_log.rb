@@ -20,8 +20,12 @@
 #
 class TaskLog < ApplicationRecord
 	belongs_to :move_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
-	has_one :account, through: :move_task
-	has_one :browser, through: :move_task
+	belongs_to :jianying_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
+
+	# 获取当前关联的具体任务对象
+	def task
+		move_task || jianying_task
+	end
 
 	# 基础校验
 	validates :task_uuid, presence: true
@@ -43,11 +47,11 @@ class TaskLog < ApplicationRecord
 			begin
 				data = eval(response_data)
 				Account.find_by(id: data["id"]) if data["id"].present?
-			rescue JSON::ParserError
+			rescue JSON::ParserError, SyntaxError, NameError
 				nil
 			end
 		else
-			account
+			task&.account
 		end
 	end
 
@@ -56,7 +60,7 @@ class TaskLog < ApplicationRecord
 		if task_uuid == "999"
 			display_account&.platform || "未知"
 		else
-			move_task&.platform || "未知"
+			task&.platform || "未知"
 		end
 	end
 
@@ -65,7 +69,7 @@ class TaskLog < ApplicationRecord
 		if task_uuid == "999"
 			display_account&.browser
 		else
-			browser
+			task&.browser
 		end
 	end
 

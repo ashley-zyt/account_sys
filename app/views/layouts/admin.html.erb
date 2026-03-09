@@ -104,6 +104,23 @@
             <% end %>
           </li>
 
+          <% jianying_active = controller_path == "admin/jianying_tasks" %>
+          <li class="admin-nav-item <%= "active" if jianying_active %>">
+            <%= link_to admin_jianying_tasks_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  ✂️
+                </div>
+                <div class="admin-nav-label">
+                  剪映资源队列
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Jianying Tasks
+              </div>
+            <% end %>
+          </li>
+
           
 
           <% logs_active = controller_path == "admin/task_logs" %>

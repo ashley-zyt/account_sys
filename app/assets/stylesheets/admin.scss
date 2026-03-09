@@ -252,6 +252,14 @@ body.admin {
   align-items: flex-start;
 }
 
+.admin-grid-two-equal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 20px;
+}
+
 .admin-grid-full {
   display: grid;
   grid-template-columns: 1.8fr 1.2fr;
