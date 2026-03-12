@@ -101,5 +101,6 @@ class Admin::DashboardController < Admin::BaseController
 		                                    arr << { account: account, failure_count: count }
 		                                  end
 
-		@total_logs_count = TaskLog.countend
+		@total_logs_count = TaskLog.count
+	end
 end
