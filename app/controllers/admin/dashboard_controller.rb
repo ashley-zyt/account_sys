@@ -80,11 +80,26 @@ class Admin::DashboardController < Admin::BaseController
 		end
 
 		# 任务错误信息汇总（按错误内容分组统计）
-		@error_summary = MoveTask.failed
+		@error_summary = TaskLog.failed
+		                        .where("created_at >= ?", 7.days.ago)
 		                        .where.not(error_msg: [nil, ""])
 		                        .group(:error_msg)
 		                        .order("count_all DESC")
 		                        .limit(5)
 		                        .count
-	end
+
+		# 最近一周异常账号排行
+		@account_failure_ranking = TaskLog.failed
+		                                  .where("created_at >= ?", 7.days.ago)
+		                                  .group(:account_id)
+		                                  .order("count_all DESC")
+		                                  .limit(5)
+		                                  .count
+		                                  .each_with_object([]) do |(account_id, count), arr|
+		                                    account = Account.find_by(id: account_id)
+		                                    next unless account
+		                                    arr << { account: account, failure_count: count }
+		                                  end
+
+		@total_logs_count = TaskLog.countend
 end
