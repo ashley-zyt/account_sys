@@ -88,24 +88,6 @@ class Admin::DashboardController < Admin::BaseController
 		                        .limit(5)
 		                        .count
 
-		# 最近一周异常账号排行
-		failed_logs = TaskLog.failed
-		                      .where("created_at >= ?", 7.days.ago)
-		                      .includes(:move_task, :jianying_task)
-		
-		account_failure_counts = Hash.new(0)
-		failed_logs.each do |log|
-			acc = log.display_account
-			account_failure_counts[acc.id] += 1 if acc
-		end
-
-		@account_failure_ranking = account_failure_counts.sort_by { |_, count| -count }
-		                                                .first(5)
-		                                                .each_with_object([]) do |(acc_id, count), arr|
-		                                                  acc = Account.find_by(id: acc_id)
-		                                                  arr << { account: acc, failure_count: count } if acc
-		                                                end
-
 		@total_logs_count = TaskLog.count
 	end
 end
