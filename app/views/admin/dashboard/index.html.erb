@@ -401,7 +401,7 @@
                   </span>
                 </td>
                 <td style="text-align: right;">
-                  <%= link_to "查看日志", admin_task_logs_path(q: { account_id_eq: item[:account].id, status_eq: 1, created_at_gteq: 7.days.ago.beginning_of_day }), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "查看日志", admin_task_logs_path(q: { move_task_account_id_eq_or_jianying_task_account_id_eq: item[:account].id, status_eq: 1, created_at_gteq: 7.days.ago.beginning_of_day }), class: "admin-link-quiet", style: "color: var(--accent);" %>
                 </td>
               </tr>
             <% end %>

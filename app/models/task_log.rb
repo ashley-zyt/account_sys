@@ -73,17 +73,19 @@ class TaskLog < ApplicationRecord
 		end
 	end
 
+	def self.ransackable_associations(auth_object = nil)
+		%w[move_task jianying_task]
+	end
+
 	def self.ransackable_attributes(auth_object = nil)
 		%w[
 			id
 			task_uuid
-			account_id
 			request_data
 			response_data
 			status
 			error_msg
 			run_at
-			duration_ms
 			created_at
 			updated_at
 		]
