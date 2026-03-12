@@ -57,37 +57,7 @@ class Admin::DashboardController < Admin::BaseController
 
 		@total_logs_count = TaskLog.count
 		@total_errors_count = TaskLog.failed.count
-
-		# 平台成功率统计 (基于最近 1000 条日志)
-		recent_logs = TaskLog.order(created_at: :desc).limit(1000)
-		@platform_success_rates = recent_logs.each_with_object({}) do |log, hash|
-			platform = log.display_platform
-			next if platform == "未知"
-			hash[platform] ||= { total: 0, success: 0 }
-			hash[platform][:total] += 1
-			hash[platform][:success] += 1 if log.status == "success"
-		end
-
-		# 最近 7 天执行趋势
-		@daily_stats = (0..6).to_a.reverse.each_with_object({}) do |i, hash|
-			date = i.days.ago.to_date
-			start_time = date.beginning_of_day
-			end_time = date.end_of_day
-			hash[date.strftime("%m-%d")] = {
-				success: TaskLog.where(created_at: start_time..end_time, status: "success").count,
-				failed: TaskLog.where(created_at: start_time..end_time, status: "failed").count
-			}
-		end
-
-		# 任务错误信息汇总（按错误内容分组统计）
-		@error_summary = TaskLog.failed
-		                        .where("created_at >= ?", 7.days.ago)
-		                        .where.not(error_msg: [nil, ""])
-		                        .group(:error_msg)
-		                        .order("count_all DESC")
-		                        .limit(5)
-		                        .count
-
-		@total_logs_count = TaskLog.count
+	end
+end
 	end
 end
