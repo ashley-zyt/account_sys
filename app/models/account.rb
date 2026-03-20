@@ -28,6 +28,7 @@ class Account < ApplicationRecord
 	belongs_to :browser, optional: true
 	# 一个账号可产生多个发布任务，账号删除时任务保留（置空 account_id）
 	has_many :move_tasks, dependent: :nullify
+	has_many :jianying_tasks, dependent: :nullify
 
 	# 回调：当账号状态变更时，同步更新浏览器的“无效”状态
 	after_save :sync_browser_status, if: :saved_change_to_status?
@@ -91,6 +92,32 @@ class Account < ApplicationRecord
 	# 获取最后一次运行的日志
 	def last_task_log
 		@last_task_log ||= TaskLog.where(task_uuid: move_tasks.select(:task_uuid)).order(run_at: :desc).first
+	end
+
+	# 获取该账号最后一次成功运行任务的时间
+	def last_successful_run_at
+		# 结合搬运任务和剪映任务的成功日志进行查询
+		move_uuids = move_tasks.select(:task_uuid)
+		jianying_uuids = jianying_tasks.select(:task_uuid)
+		
+		TaskLog.success
+		       .where("task_uuid IN (?) OR task_uuid IN (?)", move_uuids, jianying_uuids)
+		       .order(run_at: :desc)
+		       .pick(:run_at)
+	end
+
+	# 类方法：统计所有已封禁或退出的账号及其最后一次成功运行时间
+	def self.banned_or_unlogged_last_success_stats
+		# status 1: 未登录, 2: 封禁/停用
+		where(status: ["未登录", "封禁/停用"]).find_each.map do |account|
+			{
+				account_id: account.id,
+				account_name: account.account_name,
+				platform: account.platform,
+				status: account.status,
+				last_success_at: account.last_successful_run_at
+			}
+		end
 	end
 
 	private
