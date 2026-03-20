@@ -27,11 +27,32 @@ class Browser < ApplicationRecord
 	# - online        : 在线且空闲，可分配任务
 	# - offline       : 离线（关机、未启动）
 	# - network_error : 网络异常（代理失效、无法联网）
-	# - busy          : 忙碌（正在执行任务，暂不接收新任务）
+	# - invalid       : 无效（关联的所有账号都已失效）
 	enum status: {
 		"正常": 0,          # 正常可用
-		"网络问题": 1        # 网络问题
+		"网络问题": 1,       # 网络问题
+		"无效": 2           # 关联账号全部失效
 	}
+
+	# 检查并更新浏览器状态
+	# 如果该浏览器下的所有账号都已经不是“正常”状态，则标记为“无效”
+	def update_status_by_accounts!
+		# 如果没有绑定账号，保持原状态或根据业务逻辑调整
+		return if accounts.blank?
+
+		if accounts.active.count == 0
+			# 如果所有账号都不是“正常”状态（active scope 通常定义为 status: "正常"）
+			无效! unless 无效?
+		elsif 无效?
+			# 如果之前是无效，但现在有了正常账号，恢复为“正常”
+			正常!
+		end
+	end
+
+	# 类方法：批量更新所有浏览器的状态
+	def self.update_all_statuses_by_accounts!
+		all.find_each(&:update_status_by_accounts!)
+	end
 
 	# 浏览器用途枚举
 	# - warmup    : 养号（模拟正常行为，暂不用于发布）

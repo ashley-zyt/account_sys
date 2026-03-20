@@ -29,6 +29,9 @@ class Account < ApplicationRecord
 	# 一个账号可产生多个发布任务，账号删除时任务保留（置空 account_id）
 	has_many :move_tasks, dependent: :nullify
 
+	# 回调：当账号状态变更时，同步更新浏览器的“无效”状态
+	after_save :sync_browser_status, if: :saved_change_to_status?
+
 	# 基础校验
 	validates :account_name, presence: true
 	# 主题校验
@@ -88,6 +91,13 @@ class Account < ApplicationRecord
 	# 获取最后一次运行的日志
 	def last_task_log
 		@last_task_log ||= TaskLog.where(task_uuid: move_tasks.select(:task_uuid)).order(run_at: :desc).first
+	end
+
+	private
+
+	# 同步更新浏览器的状态
+	def sync_browser_status
+		browser&.update_status_by_accounts!
 	end
 
 	# --- Ransack 搜索白名单 ---

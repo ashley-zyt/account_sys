@@ -83,9 +83,23 @@
                 </span>
               </td>
               <td>
-                <span class="admin-label-muted">
-                  <%= browser.status %>
-                </span>
+                <% case browser.status %>
+                <% when "正常" %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>
+                    正常
+                  </span>
+                <% when "网络问题" %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>
+                    网络问题
+                  </span>
+                <% when "无效" %>
+                  <span class="admin-pill-status admin-pill-status-failed" style="opacity: 0.6; filter: grayscale(1);">
+                    <span class="admin-pill-status-dot" style="background: var(--text-muted);"></span>
+                    无效
+                  </span>
+                <% end %>
               </td>
               <td>
                 <span class="admin-label-muted">

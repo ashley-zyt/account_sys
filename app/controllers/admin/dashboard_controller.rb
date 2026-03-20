@@ -44,6 +44,7 @@ class Admin::DashboardController < Admin::BaseController
 		@browsers_total = Browser.count
 		@browsers_normal = Browser.where(status: 0).count
 		@browsers_network_error = Browser.where(status: 1).count
+		@browsers_invalid = Browser.where(status: 2).count
 
 		@move_tasks_total = MoveTask.count
 		@move_tasks_pending = MoveTask.pending.count
@@ -57,5 +58,7 @@ class Admin::DashboardController < Admin::BaseController
 
 		@total_logs_count = TaskLog.count
 		@total_errors_count = TaskLog.failed.count
+	end
+end
 	end
 end
