@@ -58,7 +58,6 @@ class Admin::DashboardController < Admin::BaseController
 
 		@total_logs_count = TaskLog.count
 		@total_errors_count = TaskLog.failed.count
-	end
-end
+
 	end
 end
