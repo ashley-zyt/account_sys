@@ -54,6 +54,9 @@ gem 'whenever'
 gem 'sassc-rails'
 gem 'rest-client'
 gem 'devise'
+
+gem 'aliyun-sdk', '~> 0.8.0'
+gem 'aliyun-oss'
 # gem 'chartjs-ruby', require: false
 gem 'ffi', '~> 1.15.0'
 gem 'concurrent-ruby', '1.3.4'

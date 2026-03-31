@@ -92,6 +92,45 @@ class JianyingTask < ApplicationRecord
 		%w[account browser]
 	end
 
+	def self.load_oss_source_task
+		endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
+		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+		bucket_name = 'jianying-videos'
+		client = Aliyun::OSS::Client.new(
+			endpoint: endpoint,access_key_id: access_key_id,access_key_secret: access_key_secret
+		)
+		bucket = client.get_bucket(bucket_name)
+		prefix_data = {"wulongwushi"=>"舞狮舞龙","food"=>"中国美食制作","hanfu"=>"汉服秀","mimgshengguji"=>"名胜古迹","zhongguowu"=>"中国舞","wushu"=>"武术表演"}
+		# prefix_data = {"wulongwushi"=>"舞狮舞龙"}
+		prefix_data.each do |prefix_d|
+			p prefix = prefix_d[0]
+			p theme = prefix_data[prefix]
+			objects = bucket.list_objects(prefix: prefix)
+			objects.each do |obj|
+				obj_key = obj.key
+				if obj_key != prefix+"/"
+					expire_at = Time.parse('2027-12-31 23:59:59')
+					p video_url = bucket.object_url(obj_key, expire_at)
+					platforms = ["youtube", "facebook", "twitter", "tiktok"]
+					group_id = SecureRandom.uuid
+					results = []
+					platforms.each do |platform|
+						filename = video_url.split("hangzhou.aliyuncs.com/").last.split("?Expires=").first
+						existing_task = JianyingTask.where(platform: platform).where("oss_url like '%#{filename}%'").count
+						if existing_task > 0
+							# 已存在任务，直接返回现有信息（不重复创建）
+							next
+						end
+						title = ThemeConfig.random_title(theme)
+						task = JianyingTask.create(oss_url: video_url,theme: theme,title: title,status: "pending",platform: platform,group_id: group_id)
+
+					end
+				end
+			end
+		end
+	end
+
 	private
 
 	def generate_task_uuid
