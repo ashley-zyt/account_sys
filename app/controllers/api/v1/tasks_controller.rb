@@ -83,7 +83,7 @@ module Api
 					error_msg: params[:status_desp],
 					run_at: Time.current
 				)
-				if params[:status_desp].include?" not logged in" or params[:status_desp].include?"account verification"
+				if params[:status_desp].include?"not logged in" or params[:status_desp].include?"account verification" or params[:status_desp].include?"some of your media failed to upload" or params[:status_desp].include?"account banned or human verification required" or params[:status_desp].include?"account verification required after upload"
 					task.account.update(status:2)
 				end
 			end
