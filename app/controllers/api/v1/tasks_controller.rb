@@ -4,12 +4,26 @@ module Api
 			skip_before_action :verify_authenticity_token, only: [:report]
 
 			def fetch_next_executable_task
-				task = MoveTask.where(status:"waiting_publish").where("account_id is not null").first
-				return render json: {id: nil,video_url: nil,social_account_id: nil,adspower_user_name: nil,account_type: nil,title: nil} if task.nil?
-				id = task.id
-				task.update(status:"executing")
-				task = MoveTask.find_by(id:id)
-				return render json: {id: task.id,video_url: task.video_url,social_account_id: task.source_account_url,adspower_user_name: task.browser.profile_name,account_type: task.platform,title: task.title}
+				next_task = MoveTask.where(status:"waiting_publish").where("account_id is not null").first
+				# 释放亨亨猫类型的错误资源
+				TaskLog.where(status: "failed").where("error_msg like '%哼哼猫%' or error_msg like '%亨亨猫%'").where("created_at > ?",Time.now-1.days).each do |task_log|
+					task = MoveTask.find_by(task_uuid:task_log.task_uuid)
+					if task.error_msg.include?"哼哼猫" or task.error_msg.include?"亨亨猫"
+						task.update(status:"pending",error_msg:nil,start_at:nil,actual_publish_time:nil,browser_id:nil)
+					end
+				end
+				# 分配今日资源
+				Account.active.where(work_type:0).each do |account|
+					task = MoveTask.where(status:"pending").where(platform:account.platform,theme:account["theme"]).order("created_at asc").first
+					if !task.nil?
+						task.update(account_id: account.id,browser_id: account.browser_id,status:"waiting_publish")
+					end
+				end
+				return render json: {id: nil,video_url: nil,social_account_id: nil,adspower_user_name: nil,account_type: nil,title: nil} if next_task.nil?
+				id = next_task.id
+				next_task.update(status:"executing")
+				next_task = MoveTask.find_by(id:id)
+				return render json: {id: next_task.id,video_url: next_task.video_url,social_account_id: next_task.source_account_url,adspower_user_name: next_task.browser.profile_name,account_type: next_task.platform,title: next_task.title}
 				# loop do
 				# 	candidate_id = MoveTask.with_account_unused_today.limit(1).pluck(:id).first
 				# 	return render json: {id: nil,video_url: nil,social_account_id: nil,adspower_user_name: nil,account_type: nil,title: nil} unless candidate_id
