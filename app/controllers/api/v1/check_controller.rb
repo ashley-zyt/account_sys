@@ -43,7 +43,7 @@ module Api
 						ips << host
 					end
 				end
-				return render json: ips
+				return render json: ips.uniq
 			end
 		end
 	end
