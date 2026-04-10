@@ -28,6 +28,23 @@ module Api
 				TaskLog.create(task_uuid:999,status:status,error_msg:status_desp,run_at:Time.now,response_data:params.to_s)
 				return render json: {type: 'success', message: "状态已同步" }
 			end
+			# 获取需要续费的代理列表
+			def valid_proxies
+				browser_ids = Account.where(status:0).pluck("browser_id")
+				hosts = Browser.where(id:browser_ids).pluck("proxy_host")
+				ips = []
+				hosts.each do |host|
+					if host.include?":"
+						ip = host.split(":").first rescue ""
+						if ip.nil? or ip != ""
+							ips << ip
+						end
+					else
+						ips << host
+					end
+				end
+				return render json: ips
+			end
 		end
 	end
 end

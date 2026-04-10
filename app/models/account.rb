@@ -109,7 +109,7 @@ class Account < ApplicationRecord
 	# 类方法：统计所有已封禁或退出的账号及其最后一次成功运行时间
 	def self.banned_or_unlogged_last_success_stats
 		# status 1: 未登录, 2: 封禁/停用
-		where(status: ["未登录", "封禁/停用"]).find_each.map do |account|
+		where(status: [ "封禁/停用"]).where(platform:4).find_each.map do |account|
 			{
 				account_id: account.id,
 				account_name: account.account_name,
