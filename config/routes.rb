@@ -16,6 +16,7 @@ Rails.application.routes.draw do
       get "task/fetch_next_executable_task", to: "tasks#fetch_next_executable_task"
       get "task/report", to: "tasks#report"
       get "check/accounts"
+      get "check/valid_proxies"
       post "check/update_account_status"
     end
   end
