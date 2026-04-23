@@ -9,9 +9,9 @@ module Api
 					# 释放亨亨猫类型的错误资源
 					TaskLog.where(status: "failed").where("created_at > ?",Time.now-1.days).each do |task_log|
 						task = MoveTask.find_by(task_uuid:task_log.task_uuid)
-						if task_log.error_msg.include?"哼哼猫" or task_log.error_msg.include?"亨亨猫"
-							task.update(status:"pending",error_msg:nil,start_at:nil,actual_publish_time:nil,browser_id:nil)
-						end
+						# if task_log.error_msg.include?"哼哼猫" or task_log.error_msg.include?"亨亨猫"
+						# 	task.update(status:"pending",error_msg:nil,start_at:nil,actual_publish_time:nil,browser_id:nil)
+						# end
 					end
 					# 分配今日资源
 					Account.active.where(work_type:0).each do |account|
