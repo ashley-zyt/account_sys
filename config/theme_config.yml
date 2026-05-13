@@ -3,6 +3,8 @@ themes:
     source_accounts:
       - "https://www.douyin.com/user/MS4wLjABAAAAS2emYzTYdteuFsNKLDN-CQWOjz1YE3pD0AqdD0tdoxo?from_tab_name=main"
       - "https://www.douyin.com/user/MS4wLjABAAAAqJA8Ht-Og_K9OqEfZK3eH63B88x5KiP_ZdbGV5zd3Yw?from_tab_name=main"
+      - "https://www.douyin.com/user/MS4wLjABAAAAW_rdRMeR5kbVcGwbi05AGmftOz1MZ7IiOuWZKzRUs1b4Cfh1q0sgNk9Zs0GXZ5OZ?from_tab_name=main&vid=7582078325431094577"
+      - ""
     titles:
       - "🌟 Discover the Magic of Chinese Cuisine! With over 5,000 years of history, every dish tells a story. #FoodCulture #ChineseCooking"
       - "Your kitchen smells like a bustling Chinese street food market! 🏮🔥 Try this irresistible recipe. #ChineseCooking"
@@ -24,6 +26,7 @@ themes:
       - "Unlock Chinese cuisine: master textures and balanced flavors. #ChineseFood"
       - "Discover Chinese cooking art through professional techniques made simple. #ChineseCuisine"
       - "Experience Chinese cooking magic with clever hacks for home kitchens. #ChineseCooking"
+    ai_keyword: ""
 
   武术表演:
     source_accounts:
