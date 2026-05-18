@@ -98,9 +98,13 @@
                 <% end %>
               </td>
               <td>
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
                   <%= link_to "详情", admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                  <%= link_to "编辑", edit_admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if kol.kol_platform_accounts.any? && !kol.conversations.any? %>
+                    <button type="button" class="admin-button-primary" style="padding: 4px 10px; font-size: 11px;" onclick="openInitiateModal(<%= kol.id %>)">
+                      发起联系
+                    </button>
+                  <% end %>
                 </div>
               </td>
             </tr>
@@ -117,3 +121,38 @@
     </div>
   <% end %>
 </div>
+
+<div id="initiate-modal" class="admin-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 1000; justify-content: center; align-items: center;">
+  <div class="admin-modal-content" style="background: #1e293b; border-radius: 12px; width: 500px; max-width: 90%; max-height: 90%; overflow: hidden;">
+    <iframe id="modal-iframe" style="width: 100%; height: 100%; border: none; min-height: 500px;" src=""></iframe>
+  </div>
+</div>
+
+<script>
+  function openInitiateModal(kolId) {
+    const modal = document.getElementById('initiate-modal');
+    const iframe = document.getElementById('modal-iframe');
+    iframe.src = '/admin/kols/' + kolId + '/initiate_contact';
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeInitiateModal() {
+    const modal = document.getElementById('initiate-modal');
+    const iframe = document.getElementById('modal-iframe');
+    modal.style.display = 'none';
+    iframe.src = '';
+    document.body.style.overflow = '';
+    if (typeof refreshPage !== 'undefined') {
+      refreshPage();
+    } else {
+      location.reload();
+    }
+  }
+
+  document.getElementById('initiate-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeInitiateModal();
+    }
+  });
+</script>

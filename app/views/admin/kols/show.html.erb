@@ -134,7 +134,11 @@
                 <% end %>
               </td>
               <td>
-                <button type="button" class="admin-button-secondary" style="padding: 4px 10px; margin-left: 0;" onclick="openContactModal('<%= account.platform %>', <%= account.id %>, '<%= account.nick_name %>')">发起联系</button>
+                <% if @kol.conversations.where(kol_platform_account_id: account.id).none? %>
+                  <button type="button" class="admin-button-primary" style="padding: 4px 10px; font-size: 11px;" onclick="openContactModal('<%= account.platform %>', <%= account.id %>, '<%= account.nick_name %>')">发起联系</button>
+                <% else %>
+                  <span class="admin-label-muted">已有会话</span>
+                <% end %>
               </td>
             </tr>
           <% end %>
@@ -148,20 +152,23 @@
 
 <div id="contact-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000;">
   <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);" onclick="closeContactModal()"></div>
-  <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: radial-gradient(circle at top, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.96)); border-radius: 12px; border: 1px solid var(--border-subtle); padding: 24px; box-sizing: border-box;">
+  <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: #1e293b; border-radius: 12px; padding: 24px; box-sizing: border-box;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <div style="font-size: 14px; font-weight: 560;">发起联系</div>
-      <button onclick="closeContactModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px;">✕</button>
+      <div style="font-size: 16px; font-weight: 600; color: #f1f5f9;">发起联系</div>
+      <button onclick="closeContactModal()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 20px;">&times;</button>
     </div>
-    <input type="hidden" id="contact-platform">
     <input type="hidden" id="contact-kol-platform-account-id">
     <div style="margin-bottom: 12px;">
-      <div class="admin-field-label">平台</div>
-      <div class="admin-field-value" id="contact-platform-display">-</div>
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 4px;">KOL</div>
+      <div style="font-size: 14px; color: #e2e8f0;"><%= @kol.kol_name %></div>
     </div>
     <div style="margin-bottom: 12px;">
-      <div class="admin-field-label">选择运营账号</div>
-      <select id="contact-social-account" class="admin-input" style="width: 100%;">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 4px;">平台账号</div>
+      <div style="font-size: 14px; color: #e2e8f0;" id="contact-account-display">-</div>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">选择运营账号</div>
+      <select id="contact-social-account" class="admin-input" style="width: 100%; padding: 8px 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(71, 85, 105, 0.8); border-radius: 6px; color: #e2e8f0; font-size: 13px;">
         <option value="">请选择运营账号</option>
         <% @accounts.each do |account| %>
           <option value="<%= account.id %>"><%= account.account_name %> (<%= account.platform.humanize %>)</option>
@@ -169,31 +176,33 @@
       </select>
     </div>
     <div style="margin-bottom: 12px;">
-      <div class="admin-field-label">选择模板</div>
-      <select id="contact-template" class="admin-input" style="width: 100%;">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">选择模板</div>
+      <select id="contact-template" class="admin-input" style="width: 100%; padding: 8px 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(71, 85, 105, 0.8); border-radius: 6px; color: #e2e8f0; font-size: 13px;">
         <option value="">请选择模板</option>
         <% @templates.each do |template| %>
-          <option value="<%= template.id %>"><%= template.platform.humanize %> - <%= template.template_type.humanize %></option>
+          <option value="<%= template.id %>" data-content="<%= template.content %>"><%= template.platform.humanize %> - <%= template.template_type.humanize %></option>
         <% end %>
       </select>
     </div>
     <div style="margin-bottom: 16px;">
-      <div class="admin-field-label">消息预览</div>
-      <div id="contact-preview" style="padding: 10px; background: rgba(15, 23, 42, 0.8); border-radius: 6px; border: 1px solid rgba(31, 41, 55, 0.9); font-size: 12px; color: var(--text-secondary);">请选择模板查看预览</div>
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">消息预览</div>
+      <div id="contact-preview" style="padding: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(71, 85, 105, 0.6); border-radius: 6px; font-size: 13px; color: #cbd5e1; line-height: 1.5;">请选择模板查看预览</div>
     </div>
     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-      <button onclick="closeContactModal()" class="admin-button-secondary">取消</button>
-      <button onclick="sendContact()" class="admin-button-primary">发送</button>
+      <button onclick="closeContactModal()" style="padding: 8px 16px; background: transparent; border: 1px solid rgba(71, 85, 105, 0.8); border-radius: 6px; color: #94a3b8; cursor: pointer; font-size: 13px;">取消</button>
+      <button onclick="sendContact()" id="send-btn" style="padding: 8px 16px; background: #3b82f6; border: 1px solid #3b82f6; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">发起会话</button>
     </div>
   </div>
 </div>
 
 <script>
   function openContactModal(platform, accountId, nickName) {
-    document.getElementById('contact-platform').value = platform;
     document.getElementById('contact-kol-platform-account-id').value = accountId;
-    document.getElementById('contact-platform-display').textContent = platform.replace(/_/g, ' ').toUpperCase();
+    document.getElementById('contact-account-display').textContent = platform.replace('_', ' ').toUpperCase() + ' @' + nickName;
     document.getElementById('contact-preview').textContent = '请选择模板查看预览';
+    document.getElementById('contact-social-account').value = '';
+    document.getElementById('contact-template').value = '';
+    document.getElementById('send-btn').disabled = true;
     document.getElementById('contact-modal').style.display = 'block';
   }
 
@@ -203,15 +212,63 @@
 
   document.getElementById('contact-template').addEventListener('change', function() {
     const preview = document.getElementById('contact-preview');
-    if (this.value) {
-      preview.textContent = '加载中...';
+    const selectedOption = this.options[this.selectedIndex];
+    if (this.value && selectedOption && selectedOption.dataset.content) {
+      preview.textContent = selectedOption.dataset.content;
+      updateSendButton();
     } else {
       preview.textContent = '请选择模板查看预览';
+      updateSendButton();
     }
   });
 
+  document.getElementById('contact-social-account').addEventListener('change', updateSendButton);
+
+  function updateSendButton() {
+    const account = document.getElementById('contact-social-account').value;
+    const template = document.getElementById('contact-template').value;
+    document.getElementById('send-btn').disabled = !(account && template);
+  }
+
   function sendContact() {
-    alert('消息发送功能开发中');
-    closeContactModal();
+    const accountId = document.getElementById('contact-social-account').value;
+    const templateId = document.getElementById('contact-template').value;
+    const kolPlatformAccountId = document.getElementById('contact-kol-platform-account-id').value;
+
+    if (!accountId || !templateId) {
+      alert('请选择运营账号和消息模板');
+      return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '<%= start_conversation_admin_kol_path(@kol) %>';
+
+    const csrfToken = document.createElement('input');
+    csrfToken.type = 'hidden';
+    csrfToken.name = 'authenticity_token';
+    csrfToken.value = '<%= form_authenticity_token %>';
+    form.appendChild(csrfToken);
+
+    const accountInput = document.createElement('input');
+    accountInput.type = 'hidden';
+    accountInput.name = 'account_id';
+    accountInput.value = accountId;
+    form.appendChild(accountInput);
+
+    const templateInput = document.createElement('input');
+    templateInput.type = 'hidden';
+    templateInput.name = 'template_id';
+    templateInput.value = templateId;
+    form.appendChild(templateInput);
+
+    const kolAccountInput = document.createElement('input');
+    kolAccountInput.type = 'hidden';
+    kolAccountInput.name = 'kol_platform_account_id';
+    kolAccountInput.value = kolPlatformAccountId;
+    form.appendChild(kolAccountInput);
+
+    document.body.appendChild(form);
+    form.submit();
   }
 </script>

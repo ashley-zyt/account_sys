@@ -1,5 +1,5 @@
 class Admin::KolsController < Admin::BaseController
-  before_action :set_kol, only: [:show, :edit, :update]
+  before_action :set_kol, only: [:show, :edit, :update, :initiate_contact, :start_conversation]
 
   def index
     @q = Kol.ransack(params[:q])
@@ -15,7 +15,7 @@ class Admin::KolsController < Admin::BaseController
   def show
     @platform_accounts = @kol.kol_platform_accounts.includes(:conversations)
     @conversations = @kol.conversations.includes(:kol_platform_account).order(created_at: :desc)
-    
+
     @accounts = Account.all
     @templates = MessageTemplate.all
   end
@@ -43,6 +43,32 @@ class Admin::KolsController < Admin::BaseController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  def initiate_contact
+    @accounts = Account.all
+    @templates = MessageTemplate.all
+    @platform_accounts = @kol.kol_platform_accounts
+    render layout: false
+  end
+
+  def start_conversation
+    account = Account.find(params[:account_id])
+    template = MessageTemplate.find(params[:template_id])
+    kol_platform_account = KolPlatformAccount.find(params[:kol_platform_account_id])
+
+    conversation = Conversation.create!(
+      kol: @kol,
+      kol_platform_account: kol_platform_account,
+      account: account,
+      platform: kol_platform_account.platform,
+      status: :pending,
+      latest_message: template.content.truncate(100)
+    )
+
+    redirect_to admin_kol_path(@kol), notice: "已成功发起会话"
+  rescue ActiveRecord::RecordNotFound => e
+    redirect_to admin_kol_path(@kol), alert: "创建会话失败：#{e.message}"
   end
 
   private
