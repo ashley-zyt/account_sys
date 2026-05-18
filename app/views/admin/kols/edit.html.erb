@@ -100,6 +100,38 @@
       <button type="button" class="admin-button-secondary" onclick="addPlatformAccount()">+ 添加平台账号</button>
     </div>
 
+    <template id="platform-account-template">
+      <div class="platform-account-row" style="padding: 12px; margin-bottom: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border: 1px solid rgba(31, 41, 55, 0.9);">
+        <div class="admin-two-column">
+          <div>
+            <div class="admin-field-label">平台</div>
+            <select class="admin-input" name="kol[kol_platform_accounts_attributes][INDEX][platform]">
+              <option value="">选择平台</option>
+              <% KolPlatformAccount.platforms.each do |k, v| %>
+                <option value="<%= k %>"><%= k.humanize %></option>
+              <% end %>
+            </select>
+          </div>
+          <div>
+            <div class="admin-field-label">平台昵称</div>
+            <input type="text" class="admin-input" placeholder="输入平台昵称" name="kol[kol_platform_accounts_attributes][INDEX][nick_name]">
+          </div>
+          <div>
+            <div class="admin-field-label">主页链接</div>
+            <input type="text" class="admin-input" placeholder="输入主页链接" name="kol[kol_platform_accounts_attributes][INDEX][profile_url]">
+          </div>
+          <div>
+            <div class="admin-field-label">粉丝数</div>
+            <input type="text" class="admin-input" placeholder="输入粉丝数" name="kol[kol_platform_accounts_attributes][INDEX][follower_count]">
+          </div>
+        </div>
+        <div style="margin-top: 8px;">
+          <input type="hidden" value="0" name="kol[kol_platform_accounts_attributes][INDEX][_destroy]">
+          <button type="button" class="admin-button-secondary" style="padding: 4px 10px; margin-left: 0; color: var(--danger); border-color: rgba(239, 68, 68, 0.5);" onclick="removePlatformAccount(this)">删除</button>
+        </div>
+      </div>
+    </template>
+
     <div style="margin-top: 20px;">
       <button type="submit" class="admin-button-primary">保存修改</button>
       <%= link_to "取消", admin_kol_path(@kol), class: "admin-button-secondary" %>
@@ -108,39 +140,35 @@
 <% end %>
 
 <script>
+  let platformAccountIndex = <%= @kol.kol_platform_accounts.count %>;
+
   function addPlatformAccount() {
     const wrapper = document.getElementById('platform-accounts-wrapper');
-    const rows = wrapper.querySelectorAll('.platform-account-row');
-    const template = rows[0];
+    const template = document.getElementById('platform-account-template');
     if (!template) return;
 
-    const newRow = template.cloneNode(true);
-    const destroyInput = newRow.querySelector('input[type="hidden"][value="0"]');
+    const newRow = template.content.cloneNode(true);
+    const html = newRow.firstElementChild.outerHTML.replace(/INDEX/g, platformAccountIndex++);
 
-    newRow.querySelectorAll('input[type="text"], select').forEach(input => {
-      const name = input.name.replace(/\[\d+\]/, `[${rows.length}]`);
-      input.name = name;
-      input.id = input.id.replace(/\[\d+\]/, `[${rows.length}]`);
-      if (input.tagName === 'INPUT' && input.type === 'text') {
-        input.value = '';
-      }
-    });
-
-    if (destroyInput) {
-      destroyInput.name = destroyInput.name.replace(/\[\d+\]/, `[${rows.length}]`);
-    }
-
-    wrapper.appendChild(newRow);
+    wrapper.insertAdjacentHTML('beforeend', html);
   }
 
   function removePlatformAccount(btn) {
     const row = btn.closest('.platform-account-row');
-    const destroyInput = row.querySelector('input[type="hidden"][value="0"]');
-    if (destroyInput) {
-      destroyInput.value = '1';
-      row.style.display = 'none';
+    const wrapper = document.getElementById('platform-accounts-wrapper');
+    const rows = wrapper.querySelectorAll('.platform-account-row:not([style*="display: none"])');
+
+    if (rows.length > 1) {
+      const destroyInput = row.querySelector('input[type="hidden"][value="0"]');
+      if (destroyInput) {
+        destroyInput.value = '1';
+        row.style.display = 'none';
+      } else {
+        row.remove();
+      }
     } else {
-      row.remove();
+      row.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+      row.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
     }
   }
 </script>

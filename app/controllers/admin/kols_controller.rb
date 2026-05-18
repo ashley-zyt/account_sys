@@ -22,7 +22,7 @@ class Admin::KolsController < Admin::BaseController
 
   def new
     @kol = Kol.new
-    5.times { @kol.kol_platform_accounts.build }
+    @kol.kol_platform_accounts.build
   end
 
   def create
