@@ -85,9 +85,9 @@ class Admin::KolsController < Admin::BaseController
     Rails.logger.info "[start_conversation] uncontacted_accounts count: #{uncontacted_accounts.count}"
 
     if uncontacted_accounts.any?
-      account = uncontacted_accounts.order('last_used_at ASC NULLS FIRST').first
+      account = uncontacted_accounts.order(Arel.sql('ISNULL(last_used_at), last_used_at ASC')).first
     else
-      account = accounts.order('last_used_at ASC NULLS FIRST').first
+      account = accounts.order(Arel.sql('ISNULL(last_used_at), last_used_at ASC')).first
     end
     Rails.logger.info "[start_conversation] selected account: #{account.id}, #{account.account_name}"
 
