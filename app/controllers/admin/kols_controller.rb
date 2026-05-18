@@ -55,20 +55,45 @@ class Admin::KolsController < Admin::BaseController
     template = MessageTemplate.find(params[:template_id])
     kol_platform_account = KolPlatformAccount.find(params[:kol_platform_account_id])
 
-    account = select_account_for_kol(@kol, kol_platform_account.platform)
+    platform = kol_platform_account.platform
+    platform_value = platform.is_a?(Integer) ? platform : Account.platforms[platform]
 
-    conversation = Conversation.create!(
+    accounts = Account.where(status: "正常").where(platform: platform_value)
+
+    if accounts.empty?
+      redirect_to admin_kol_path(@kol), alert: "该平台没有可用的运营账号"
+      return
+    end
+
+    contacted_account_ids = @kol.conversations.pluck(:account_id).uniq
+    
+    if contacted_account_ids.present?
+      uncontacted_accounts = accounts.where.not(id: contacted_account_ids)
+    else
+      uncontacted_accounts = accounts
+    end
+
+    if uncontacted_accounts.any?
+      account = uncontacted_accounts.order('last_used_at ASC NULLS FIRST').first
+    else
+      account = accounts.order('last_used_at ASC NULLS FIRST').first
+    end
+
+    conversation = Conversation.new(
       kol: @kol,
       kol_platform_account: kol_platform_account,
       account: account,
-      platform: kol_platform_account.platform,
-      status: "待发送",
+      platform: platform_value,
+      status: 0,
       latest_message: template.content.truncate(100)
     )
 
-    account.mark_as_assigned!
-
-    redirect_to admin_kol_path(@kol), notice: "已成功发起会话"
+    if conversation.save
+      account.mark_as_assigned!
+      redirect_to admin_kol_path(@kol), notice: "已成功发起会话"
+    else
+      redirect_to admin_kol_path(@kol), alert: "创建会话失败：#{conversation.errors.full_messages.join(', ')}"
+    end
   rescue ActiveRecord::RecordNotFound => e
     redirect_to admin_kol_path(@kol), alert: "创建会话失败：#{e.message}"
   rescue => e
@@ -76,21 +101,6 @@ class Admin::KolsController < Admin::BaseController
   end
 
   private
-
-  def select_account_for_kol(kol, platform)
-    accounts = Account.active.where(platform: platform)
-
-    raise "该平台没有可用的运营账号" if accounts.empty?
-
-    contacted_account_ids = kol.conversations.pluck(:account_id).uniq
-    uncontacted_accounts = accounts.where.not(id: contacted_account_ids)
-
-    if uncontacted_accounts.any?
-      return uncontacted_accounts.order(last_used_at: :asc).first
-    else
-      return accounts.order(last_used_at: :asc).first
-    end
-  end
 
   def set_kol
     @kol = Kol.find(params[:id])
