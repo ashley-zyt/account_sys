@@ -55,9 +55,6 @@ class Admin::KolsController < Admin::BaseController
     Rails.logger.info "[start_conversation] 开始创建会话"
     Rails.logger.info "[start_conversation] params: #{params.inspect}"
 
-    template = MessageTemplate.find(params[:template_id])
-    Rails.logger.info "[start_conversation] template found: #{template.id}"
-
     kol_platform_account = KolPlatformAccount.find(params[:kol_platform_account_id])
     Rails.logger.info "[start_conversation] kol_platform_account found: #{kol_platform_account.id}, platform: #{kol_platform_account.platform}"
 
@@ -77,13 +74,29 @@ class Admin::KolsController < Admin::BaseController
     account = select_least_used_account(accounts)
     Rails.logger.info "[start_conversation] selected account: #{account.id}, #{account.account_name}"
 
+    custom_message = params[:custom_message]&.strip
+    template_id = params[:template_id]
+
+    if custom_message.present?
+      message_content = custom_message
+      Rails.logger.info "[start_conversation] 使用自定义消息"
+    elsif template_id.present?
+      template = MessageTemplate.find(template_id)
+      message_content = template.content
+      Rails.logger.info "[start_conversation] 使用模板消息: #{template.id}"
+    else
+      Rails.logger.error "[start_conversation] 没有提供消息内容"
+      redirect_to admin_kol_path(@kol), alert: "请选择消息模板或输入自定义消息"
+      return
+    end
+
     conversation = Conversation.new(
       kol: @kol,
       kol_platform_account: kol_platform_account,
       account: account,
       platform: platform_value,
       status: 0,
-      latest_message: template.content.truncate(100)
+      latest_message: message_content.truncate(100)
     )
     Rails.logger.info "[start_conversation] conversation prepared, about to save"
 

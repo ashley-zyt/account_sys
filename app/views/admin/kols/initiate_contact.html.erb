@@ -48,7 +48,7 @@
       color: #94a3b8;
       margin-bottom: 6px;
     }
-    .form-select, .form-input {
+    .form-select, .form-input, .form-textarea {
       width: 100%;
       padding: 8px 12px;
       background: rgba(15, 23, 42, 0.8);
@@ -57,9 +57,14 @@
       color: #e2e8f0;
       font-size: 13px;
     }
-    .form-select:focus, .form-input:focus {
+    .form-select:focus, .form-input:focus, .form-textarea:focus {
       outline: none;
       border-color: #3b82f6;
+    }
+    .form-textarea {
+      min-height: 100px;
+      resize: vertical;
+      font-family: inherit;
     }
     .platform-accounts {
       display: grid;
@@ -133,6 +138,29 @@
       overflow-y: auto;
       line-height: 1.5;
     }
+    .mode-switch {
+      display: flex;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(71, 85, 105, 0.6);
+      border-radius: 6px;
+      padding: 4px;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 6px 12px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: #94a3b8;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-btn.active {
+      background: #3b82f6;
+      color: #fff;
+    }
     .modal-footer {
       display: flex;
       justify-content: flex-end;
@@ -203,8 +231,16 @@
     </div>
 
     <div class="form-group">
+      <label class="form-label">消息模式</label>
+      <div class="mode-switch">
+        <button type="button" class="mode-btn active" onclick="switchMode('template')">使用模板</button>
+        <button type="button" class="mode-btn" onclick="switchMode('custom')">自定义消息</button>
+      </div>
+    </div>
+
+    <div class="form-group" id="template-section">
       <label class="form-label">选择消息模板</label>
-      <select name="template_id" id="template-select" class="form-select" required onchange="updatePreview()">
+      <select name="template_id" id="template-select" class="form-select" onchange="updatePreview()">
         <option value="">选择消息模板</option>
         <% @templates.each do |template| %>
           <option value="<%= template.id %>" data-content="<%= template.content %>">
@@ -214,9 +250,14 @@
       </select>
     </div>
 
+    <div class="form-group" id="custom-section" style="display: none;">
+      <label class="form-label">自定义消息内容</label>
+      <textarea name="custom_message" id="custom-message" class="form-textarea" placeholder="请输入自定义消息内容..."></textarea>
+    </div>
+
     <div class="form-group">
       <label class="form-label">消息预览</label>
-      <div id="message-preview" class="message-preview">请选择消息模板查看预览</div>
+      <div id="message-preview" class="message-preview">请选择消息模板或输入自定义消息</div>
     </div>
 
     <div class="modal-footer">
@@ -231,14 +272,53 @@
       radio.addEventListener('change', updateSubmitState);
     });
 
+    function switchMode(mode) {
+      const templateBtn = document.querySelector('.mode-btn:nth-child(1)');
+      const customBtn = document.querySelector('.mode-btn:nth-child(2)');
+      const templateSection = document.getElementById('template-section');
+      const customSection = document.getElementById('custom-section');
+      const templateSelect = document.getElementById('template-select');
+      const customMessage = document.getElementById('custom-message');
+
+      if (mode === 'template') {
+        templateBtn.classList.add('active');
+        customBtn.classList.remove('active');
+        templateSection.style.display = 'block';
+        customSection.style.display = 'none';
+        templateSelect.required = true;
+        customMessage.required = false;
+      } else {
+        templateBtn.classList.remove('active');
+        customBtn.classList.add('active');
+        templateSection.style.display = 'none';
+        customSection.style.display = 'block';
+        templateSelect.required = false;
+        customMessage.required = true;
+      }
+      updateSubmitState();
+    }
+
     function updateSubmitState() {
       const accountSelected = document.querySelector('input[name="kol_platform_account_id"]:checked');
-      const templateSelect = document.querySelector('select[name="template_id"]').value;
+      const templateBtn = document.querySelector('.mode-btn:nth-child(1)');
+      const templateSelected = document.querySelector('select[name="template_id"]').value;
+      const customMessage = document.querySelector('textarea[name="custom_message"]').value.trim();
       const submitBtn = document.getElementById('submit-btn');
-      submitBtn.disabled = !(accountSelected && templateSelect);
+      
+      let valid = false;
+      if (templateBtn.classList.contains('active')) {
+        valid = accountSelected && templateSelected;
+      } else {
+        valid = accountSelected && customMessage;
+      }
+      submitBtn.disabled = !valid;
     }
 
     document.getElementById('template-select').addEventListener('change', updateSubmitState);
+    document.getElementById('custom-message').addEventListener('input', function() {
+      document.getElementById('message-preview').textContent = this.value || '请输入自定义消息';
+      updateSubmitState();
+    });
 
     function updatePreview() {
       const select = document.getElementById('template-select');
@@ -247,7 +327,7 @@
       if (option && option.dataset.content) {
         preview.textContent = option.dataset.content;
       } else {
-        preview.textContent = '请选择消息模板查看预览';
+        preview.textContent = '请选择消息模板';
       }
       updateSubmitState();
     }
@@ -275,6 +355,7 @@
       const form = document.getElementById('contact-form');
       const kolPlatformAccountId = document.querySelector('input[name="kol_platform_account_id"]:checked').value;
       const templateId = document.getElementById('template-select').value;
+      const customMessage = document.getElementById('custom-message').value.trim();
       const actionUrl = form.action;
       const csrfToken = document.querySelector('input[name="authenticity_token"]').value;
 
@@ -283,7 +364,8 @@
           actionUrl: actionUrl,
           authenticity_token: csrfToken,
           kol_platform_account_id: kolPlatformAccountId,
-          template_id: templateId
+          template_id: templateId,
+          custom_message: customMessage
         });
       } else {
         const submitFormElement = document.createElement('form');
@@ -307,6 +389,12 @@
         templateInput.name = 'template_id';
         templateInput.value = templateId;
         submitFormElement.appendChild(templateInput);
+
+        const customInput = document.createElement('input');
+        customInput.type = 'hidden';
+        customInput.name = 'custom_message';
+        customInput.value = customMessage;
+        submitFormElement.appendChild(customInput);
 
         document.body.appendChild(submitFormElement);
         submitFormElement.submit();
