@@ -29,6 +29,8 @@ class Account < ApplicationRecord
 	# 一个账号可产生多个发布任务，账号删除时任务保留（置空 account_id）
 	has_many :move_tasks, dependent: :nullify
 	has_many :jianying_tasks, dependent: :nullify
+	# 账号可参与多个会话
+	has_many :conversations, dependent: :destroy
 
 	# 回调：当账号状态变更时，同步更新浏览器的“无效”状态
 	after_save :sync_browser_status, if: :saved_change_to_status?

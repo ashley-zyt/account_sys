@@ -16,7 +16,7 @@ class Admin::KolsController < Admin::BaseController
     @platform_accounts = @kol.kol_platform_accounts.includes(:conversations)
     @conversations = @kol.conversations.includes(:kol_platform_account).order(created_at: :desc)
     
-    @social_accounts = SocialAccount.all
+    @accounts = Account.all
     @templates = MessageTemplate.all
   end
 

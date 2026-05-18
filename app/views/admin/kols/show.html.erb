@@ -132,8 +132,8 @@
           <label class="admin-form-label">选择运营账号</label>
           <select id="contact-social-account" class="admin-select" required>
             <option value="">请选择</option>
-            <% @social_accounts.each do |sa| %>
-              <option value="<%= sa.id %>"><%= sa.nick_name %></option>
+            <% @accounts.each do |account| %>
+              <option value="<%= account.id %>"><%= account.account_name %></option>
             <% end %>
           </select>
         </div>

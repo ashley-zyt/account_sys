@@ -8,6 +8,9 @@ Rails.application.routes.draw do
     resources :jianying_tasks, only: [:index, :show]
     resources :browsers, only: [:index, :show, :new, :create, :edit, :update]
     resources :task_logs, only: [:index, :show]
+    resources :kols, only: [:index, :show, :new, :create, :edit, :update]
+    resources :conversations, only: [:index, :show]
+    resources :message_templates, only: [:index, :new, :create, :edit, :update, :destroy]
   end
 
   namespace :api do
