@@ -203,16 +203,6 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">选择运营账号</label>
-      <select name="account_id" class="form-select" required>
-        <option value="">选择运营账号</option>
-        <% @accounts.each do |account| %>
-          <option value="<%= account.id %>"><%= account.account_name %> (<%= account.platform.humanize %>)</option>
-        <% end %>
-      </select>
-    </div>
-
-    <div class="form-group">
       <label class="form-label">选择消息模板</label>
       <select name="template_id" id="template-select" class="form-select" required onchange="updatePreview()">
         <option value="">选择消息模板</option>
@@ -243,13 +233,11 @@
 
     function updateSubmitState() {
       const accountSelected = document.querySelector('input[name="kol_platform_account_id"]:checked');
-      const accountSelect = document.querySelector('select[name="account_id"]').value;
       const templateSelect = document.querySelector('select[name="template_id"]').value;
       const submitBtn = document.getElementById('submit-btn');
-      submitBtn.disabled = !(accountSelected && accountSelect && templateSelect);
+      submitBtn.disabled = !(accountSelected && templateSelect);
     }
 
-    document.querySelector('select[name="account_id"]').addEventListener('change', updateSubmitState);
     document.getElementById('template-select').addEventListener('change', updateSubmitState);
 
     function updatePreview() {

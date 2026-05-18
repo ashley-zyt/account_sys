@@ -46,16 +46,16 @@ class Admin::KolsController < Admin::BaseController
   end
 
   def initiate_contact
-    @accounts = Account.all
     @templates = MessageTemplate.all
     @platform_accounts = @kol.kol_platform_accounts
     render layout: false
   end
 
   def start_conversation
-    account = Account.find(params[:account_id])
     template = MessageTemplate.find(params[:template_id])
     kol_platform_account = KolPlatformAccount.find(params[:kol_platform_account_id])
+
+    account = select_account_for_kol(@kol, kol_platform_account.platform)
 
     conversation = Conversation.create!(
       kol: @kol,
@@ -66,9 +66,33 @@ class Admin::KolsController < Admin::BaseController
       latest_message: template.content.truncate(100)
     )
 
+    account.mark_as_assigned!
+
     redirect_to admin_kol_path(@kol), notice: "已成功发起会话"
   rescue ActiveRecord::RecordNotFound => e
     redirect_to admin_kol_path(@kol), alert: "创建会话失败：#{e.message}"
+  rescue => e
+    redirect_to admin_kol_path(@kol), alert: "创建会话失败：#{e.message}"
+  end
+
+  def select_account_for_kol(kol, platform)
+    accounts = Account.active.where(platform: platform)
+
+    raise "该平台没有可用的运营账号" if accounts.empty?
+
+    contacted_account_ids = kol.conversations.pluck(:account_id).uniq
+    uncontacted_accounts = accounts.where.not(id: contacted_account_ids)
+
+    if uncontacted_accounts.any?
+      uncontacted_accounts.order(last_used_at: :asc).first
+    else
+      accounts
+        .left_outer_joins(:conversations)
+        .where(conversations: { kol_id: kol.id })
+        .group('accounts.id')
+        .order('COUNT(conversations.id) ASC, accounts.last_used_at ASC')
+        .first
+    end
   end
 
   private

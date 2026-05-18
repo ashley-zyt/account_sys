@@ -167,15 +167,6 @@
       <div style="font-size: 14px; color: #e2e8f0;" id="contact-account-display">-</div>
     </div>
     <div style="margin-bottom: 12px;">
-      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">选择运营账号</div>
-      <select id="contact-social-account" class="admin-input" style="width: 100%; padding: 8px 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(71, 85, 105, 0.8); border-radius: 6px; color: #e2e8f0; font-size: 13px;">
-        <option value="">请选择运营账号</option>
-        <% @accounts.each do |account| %>
-          <option value="<%= account.id %>"><%= account.account_name %> (<%= account.platform.humanize %>)</option>
-        <% end %>
-      </select>
-    </div>
-    <div style="margin-bottom: 12px;">
       <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">选择模板</div>
       <select id="contact-template" class="admin-input" style="width: 100%; padding: 8px 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(71, 85, 105, 0.8); border-radius: 6px; color: #e2e8f0; font-size: 13px;">
         <option value="">请选择模板</option>
@@ -200,7 +191,6 @@
     document.getElementById('contact-kol-platform-account-id').value = accountId;
     document.getElementById('contact-account-display').textContent = platform.replace('_', ' ').toUpperCase() + ' @' + nickName;
     document.getElementById('contact-preview').textContent = '请选择模板查看预览';
-    document.getElementById('contact-social-account').value = '';
     document.getElementById('contact-template').value = '';
     document.getElementById('send-btn').disabled = true;
     document.getElementById('contact-modal').style.display = 'block';
@@ -215,28 +205,19 @@
     const selectedOption = this.options[this.selectedIndex];
     if (this.value && selectedOption && selectedOption.dataset.content) {
       preview.textContent = selectedOption.dataset.content;
-      updateSendButton();
+      document.getElementById('send-btn').disabled = false;
     } else {
       preview.textContent = '请选择模板查看预览';
-      updateSendButton();
+      document.getElementById('send-btn').disabled = true;
     }
   });
 
-  document.getElementById('contact-social-account').addEventListener('change', updateSendButton);
-
-  function updateSendButton() {
-    const account = document.getElementById('contact-social-account').value;
-    const template = document.getElementById('contact-template').value;
-    document.getElementById('send-btn').disabled = !(account && template);
-  }
-
   function sendContact() {
-    const accountId = document.getElementById('contact-social-account').value;
     const templateId = document.getElementById('contact-template').value;
     const kolPlatformAccountId = document.getElementById('contact-kol-platform-account-id').value;
 
-    if (!accountId || !templateId) {
-      alert('请选择运营账号和消息模板');
+    if (!templateId) {
+      alert('请选择消息模板');
       return;
     }
 
@@ -249,12 +230,6 @@
     csrfToken.name = 'authenticity_token';
     csrfToken.value = '<%= form_authenticity_token %>';
     form.appendChild(csrfToken);
-
-    const accountInput = document.createElement('input');
-    accountInput.type = 'hidden';
-    accountInput.name = 'account_id';
-    accountInput.value = accountId;
-    form.appendChild(accountInput);
 
     const templateInput = document.createElement('input');
     templateInput.type = 'hidden';
