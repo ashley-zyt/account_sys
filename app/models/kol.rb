@@ -20,6 +20,8 @@ class Kol < ApplicationRecord
   has_many :kol_platform_accounts, dependent: :destroy
   has_many :conversations, dependent: :destroy
 
+  accepts_nested_attributes_for :kol_platform_accounts, allow_destroy: true, reject_if: ->(attrs) { attrs['platform'].blank? && attrs['nick_name'].blank? }
+
   validates :kol_name, presence: true
 
   def self.ransackable_attributes(auth_object = nil)

@@ -22,6 +22,7 @@ class Admin::KolsController < Admin::BaseController
 
   def new
     @kol = Kol.new
+    5.times { @kol.kol_platform_accounts.build }
   end
 
   def create
@@ -34,6 +35,7 @@ class Admin::KolsController < Admin::BaseController
   end
 
   def edit
+    (5 - @kol.kol_platform_accounts.count).times { @kol.kol_platform_accounts.build }
   end
 
   def update
@@ -56,7 +58,8 @@ class Admin::KolsController < Admin::BaseController
       :nick_name,
       :location,
       :category,
-      :notes
+      :notes,
+      kol_platform_accounts_attributes: [:id, :platform, :nick_name, :profile_url, :follower_count, :_destroy]
     )
   end
 end

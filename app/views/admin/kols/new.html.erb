@@ -5,19 +5,19 @@
   创建一个新的KOL记录
 <% end %>
 
-<div class="admin-card">
-  <div class="admin-card-header">
-    <div>
-      <div class="admin-card-title">
-        KOL信息
-      </div>
-      <div class="admin-card-subtitle">
-        填写KOL基础信息
+<%= form_with model: [:admin, @kol], class: "admin-form", id: "kol-form" do |f| %>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          KOL信息
+        </div>
+        <div class="admin-card-subtitle">
+          填写KOL基础信息
+        </div>
       </div>
     </div>
-  </div>
 
-  <%= form_with model: [:admin, @kol], class: "admin-form" do |f| %>
     <% if @kol.errors.any? %>
       <div class="admin-empty-state" style="margin-bottom: 12px;">
         <ul class="admin-list">
@@ -51,12 +51,96 @@
 
     <div style="margin-top: 16px;">
       <div class="admin-field-label">备注</div>
-      <%= f.text_area :notes, rows: 4, class: "admin-input", placeholder: "输入备注信息" %>
+      <%= f.text_area :notes, rows: 3, class: "admin-input", placeholder: "输入备注信息" %>
+    </div>
+  </div>
+
+  <div class="admin-card" style="margin-top: 20px;">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          平台账号信息
+        </div>
+        <div class="admin-card-subtitle">
+          填写KOL在各平台的账号信息（可填写多个）
+        </div>
+      </div>
+    </div>
+
+    <div id="platform-accounts-wrapper">
+      <%= f.fields_for :kol_platform_accounts do |account| %>
+        <div class="platform-account-row" style="padding: 12px; margin-bottom: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border: 1px solid rgba(31, 41, 55, 0.9);">
+          <div class="admin-two-column">
+            <div>
+              <div class="admin-field-label">平台</div>
+              <%= account.select :platform, KolPlatformAccount.platforms.map { |k, v| [k.humanize, k] }, { include_blank: "选择平台" }, class: "admin-input" %>
+            </div>
+            <div>
+              <div class="admin-field-label">平台昵称</div>
+              <%= account.text_field :nick_name, class: "admin-input", placeholder: "输入平台昵称" %>
+            </div>
+            <div>
+              <div class="admin-field-label">主页链接</div>
+              <%= account.text_field :profile_url, class: "admin-input", placeholder: "输入主页链接" %>
+            </div>
+            <div>
+              <div class="admin-field-label">粉丝数</div>
+              <%= account.text_field :follower_count, class: "admin-input", placeholder: "输入粉丝数" %>
+            </div>
+          </div>
+          <div style="margin-top: 8px;">
+            <%= account.hidden_field :_destroy, value: 0 %>
+            <button type="button" class="admin-button-secondary" style="padding: 4px 10px; margin-left: 0; color: var(--danger); border-color: rgba(239, 68, 68, 0.5);" onclick="removePlatformAccount(this)">删除</button>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <button type="button" class="admin-button-secondary" onclick="addPlatformAccount()">+ 添加平台账号</button>
     </div>
 
     <div style="margin-top: 20px;">
       <button type="submit" class="admin-button-primary">创建KOL</button>
       <%= link_to "取消", admin_kols_path, class: "admin-button-secondary" %>
     </div>
-  <% end %>
-</div>
+  </div>
+<% end %>
+
+<script>
+  function addPlatformAccount() {
+    const wrapper = document.getElementById('platform-accounts-wrapper');
+    const rows = wrapper.querySelectorAll('.platform-account-row');
+    const template = rows[0];
+    if (!template) return;
+
+    const newRow = template.cloneNode(true);
+    const destroyInput = newRow.querySelector('input[type="hidden"][value="0"]');
+
+    newRow.querySelectorAll('input[type="text"], select').forEach(input => {
+      const name = input.name.replace(/\[\d+\]/, `[${rows.length}]`);
+      input.name = name;
+      input.id = input.id.replace(/\[\d+\]/, `[${rows.length}]`);
+      if (input.tagName === 'INPUT' && input.type === 'text') {
+        input.value = '';
+      }
+    });
+
+    if (destroyInput) {
+      destroyInput.name = destroyInput.name.replace(/\[\d+\]/, `[${rows.length}]`);
+    }
+
+    wrapper.appendChild(newRow);
+  }
+
+  function removePlatformAccount(btn) {
+    const row = btn.closest('.platform-account-row');
+    const destroyInput = row.querySelector('input[type="hidden"][value="0"]');
+    if (destroyInput) {
+      destroyInput.value = '1';
+      row.style.display = 'none';
+    } else {
+      row.remove();
+    }
+  }
+</script>
