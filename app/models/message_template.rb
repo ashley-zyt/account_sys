@@ -25,11 +25,11 @@ class MessageTemplate < ApplicationRecord
 	}
 
   enum template_type: {
-    first_contact: 0,
-    follow_up: 1,
-    reply: 2,
-    cooperation: 3,
-    closing: 4
+    "初次联系": 0,
+    "跟进": 1,
+    "普通回复": 2,
+    "合作确认": 3,
+    "结束沟通": 4
   }
 
   validates :platform, presence: true
