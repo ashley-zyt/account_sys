@@ -35,7 +35,6 @@ class Admin::KolsController < Admin::BaseController
   end
 
   def edit
-    (5 - @kol.kol_platform_accounts.count).times { @kol.kol_platform_accounts.build }
   end
 
   def update
