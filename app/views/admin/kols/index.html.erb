@@ -145,21 +145,35 @@
     document.body.style.overflow = '';
   }
 
-  function submitContactForm(actionUrl, data) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = actionUrl;
+  function submitContactRequest(data) {
+    closeInitiateModal();
 
-    Object.keys(data).forEach(key => {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = key;
-      input.value = data[key];
-      form.appendChild(input);
-    });
+    setTimeout(() => {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = data.actionUrl;
 
-    document.body.appendChild(form);
-    form.submit();
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'authenticity_token';
+      csrfInput.value = data.authenticity_token;
+      form.appendChild(csrfInput);
+
+      const kolAccountInput = document.createElement('input');
+      kolAccountInput.type = 'hidden';
+      kolAccountInput.name = 'kol_platform_account_id';
+      kolAccountInput.value = data.kol_platform_account_id;
+      form.appendChild(kolAccountInput);
+
+      const templateInput = document.createElement('input');
+      templateInput.type = 'hidden';
+      templateInput.name = 'template_id';
+      templateInput.value = data.template_id;
+      form.appendChild(templateInput);
+
+      document.body.appendChild(form);
+      form.submit();
+    }, 300);
   }
 
   document.getElementById('initiate-modal').addEventListener('click', function(e) {

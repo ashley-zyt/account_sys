@@ -62,7 +62,7 @@ class Admin::KolsController < Admin::BaseController
       kol_platform_account: kol_platform_account,
       account: account,
       platform: kol_platform_account.platform,
-      status: :pending,
+      status: "待发送",
       latest_message: template.content.truncate(100)
     )
 

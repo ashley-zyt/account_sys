@@ -278,17 +278,39 @@
       const actionUrl = form.action;
       const csrfToken = document.querySelector('input[name="authenticity_token"]').value;
 
-      closeModal();
+      if (window.parent && window.parent.submitContactRequest) {
+        window.parent.submitContactRequest({
+          actionUrl: actionUrl,
+          authenticity_token: csrfToken,
+          kol_platform_account_id: kolPlatformAccountId,
+          template_id: templateId
+        });
+      } else {
+        const submitFormElement = document.createElement('form');
+        submitFormElement.method = 'POST';
+        submitFormElement.action = actionUrl;
 
-      setTimeout(() => {
-        if (window.parent && window.parent.submitContactForm) {
-          window.parent.submitContactForm(actionUrl, {
-            authenticity_token: csrfToken,
-            kol_platform_account_id: kolPlatformAccountId,
-            template_id: templateId
-          });
-        }
-      }, 300);
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'authenticity_token';
+        csrfInput.value = csrfToken;
+        submitFormElement.appendChild(csrfInput);
+
+        const kolAccountInput = document.createElement('input');
+        kolAccountInput.type = 'hidden';
+        kolAccountInput.name = 'kol_platform_account_id';
+        kolAccountInput.value = kolPlatformAccountId;
+        submitFormElement.appendChild(kolAccountInput);
+
+        const templateInput = document.createElement('input');
+        templateInput.type = 'hidden';
+        templateInput.name = 'template_id';
+        templateInput.value = templateId;
+        submitFormElement.appendChild(templateInput);
+
+        document.body.appendChild(submitFormElement);
+        submitFormElement.submit();
+      }
     }
   </script>
 </body>
