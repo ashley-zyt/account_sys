@@ -75,6 +75,8 @@ class Admin::KolsController < Admin::BaseController
     redirect_to admin_kol_path(@kol), alert: "创建会话失败：#{e.message}"
   end
 
+  private
+
   def select_account_for_kol(kol, platform)
     accounts = Account.active.where(platform: platform)
 
@@ -84,18 +86,11 @@ class Admin::KolsController < Admin::BaseController
     uncontacted_accounts = accounts.where.not(id: contacted_account_ids)
 
     if uncontacted_accounts.any?
-      uncontacted_accounts.order(last_used_at: :asc).first
+      return uncontacted_accounts.order(last_used_at: :asc).first
     else
-      accounts
-        .left_outer_joins(:conversations)
-        .where(conversations: { kol_id: kol.id })
-        .group('accounts.id')
-        .order('COUNT(conversations.id) ASC, accounts.last_used_at ASC')
-        .first
+      return accounts.order(last_used_at: :asc).first
     end
   end
-
-  private
 
   def set_kol
     @kol = Kol.find(params[:id])
