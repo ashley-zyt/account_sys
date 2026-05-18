@@ -11,7 +11,7 @@
   
   <div class="admin-card-body">
     <div class="admin-search-bar">
-      <%= search_form_for @q do |f| %>
+      <%= search_form_for @q, url: admin_conversations_path do |f| %>
         <div class="admin-search-row">
           <div class="admin-search-group">
             <%= f.label :platform_eq, class: "admin-search-label" %>
