@@ -1,15 +1,10 @@
 class CreateConversations < ActiveRecord::Migration[6.1]
   def change
     create_table :conversations do |t|
-      t.references :kol, type: :bigint, null: false, foreign_key: true
+      t.bigint :kol_id, null: false, comment: "KOL ID"
 
-      t.references :kol_platform_account,
-                   null: false,
-                   foreign_key: true
-
-      t.references :social_account,
-                   null: false,
-                   foreign_key: true
+      t.bigint :kol_platform_account_id, null: false, comment: "KOL平台账号ID"
+      t.bigint :social_account_id, null: false, comment: "运营账号ID"
 
       t.integer :platform,
                 null: false,
@@ -32,8 +27,11 @@ class CreateConversations < ActiveRecord::Migration[6.1]
       t.timestamps
     end
 
-    add_index :conversations, :platform
-    add_index :conversations, :status
+    add_index :conversations, :kol_id 
+    add_index :conversations, :kol_platform_account_id 
+    add_index :conversations, :social_account_id 
+    add_index :conversations, :platform 
+    add_index :conversations, :status 
     add_index :conversations, :last_message_at
   end
 end
