@@ -39,13 +39,12 @@ class Conversation < ApplicationRecord
 	}
 
   enum status: {
-    pending: 0,
-    contacted: 1,
-    replied: 2,
-    negotiating: 3,
-    cooperated: 4,
-    rejected: 5,
-    closed: 6
+    "待发送": 0,#会话创建了但还没真正发消息
+    "已联系": 1,#已发送私信,等待回复
+    "已回复": 2,#对方已经回复消息
+    "已合作": 3,#已确认合作
+    "已拒绝": 5,#对方明确拒绝
+    "已关闭": 6#人工结束会话
   }
 
   validates :platform, presence: true
