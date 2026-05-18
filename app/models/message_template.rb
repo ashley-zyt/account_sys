@@ -24,7 +24,7 @@ class MessageTemplate < ApplicationRecord
 		instagram: 5
 	}
 
-  enum :template_type, {
+  enum template_type: {
     first_contact: 0,
     follow_up: 1,
     reply: 2,
