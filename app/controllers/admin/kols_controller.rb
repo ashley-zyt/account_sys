@@ -74,21 +74,7 @@ class Admin::KolsController < Admin::BaseController
       return
     end
 
-    contacted_account_ids = @kol.conversations.pluck(:account_id).uniq
-    Rails.logger.info "[start_conversation] contacted_account_ids: #{contacted_account_ids}"
-
-    if contacted_account_ids.present?
-      uncontacted_accounts = accounts.where.not(id: contacted_account_ids)
-    else
-      uncontacted_accounts = accounts
-    end
-    Rails.logger.info "[start_conversation] uncontacted_accounts count: #{uncontacted_accounts.count}"
-
-    if uncontacted_accounts.any?
-      account = uncontacted_accounts.order(Arel.sql('ISNULL(last_used_at), last_used_at ASC')).first
-    else
-      account = accounts.order(Arel.sql('ISNULL(last_used_at), last_used_at ASC')).first
-    end
+    account = select_least_used_account(accounts)
     Rails.logger.info "[start_conversation] selected account: #{account.id}, #{account.account_name}"
 
     conversation = Conversation.new(
@@ -103,7 +89,6 @@ class Admin::KolsController < Admin::BaseController
 
     if conversation.save
       Rails.logger.info "[start_conversation] conversation saved successfully: #{conversation.id}"
-      account.mark_as_assigned!
       redirect_to admin_kol_path(@kol), notice: "已成功发起会话"
     else
       Rails.logger.error "[start_conversation] conversation save failed: #{conversation.errors.full_messages}"
@@ -118,6 +103,25 @@ class Admin::KolsController < Admin::BaseController
   end
 
   private
+
+  def select_least_used_account(accounts)
+    account_ids = accounts.pluck(:id)
+
+    conversation_counts = Conversation.where(account_id: account_ids)
+      .group(:account_id)
+      .count
+
+    accounts_array = accounts.map do |account|
+      {
+        account: account,
+        conversation_count: conversation_counts[account.id] || 0
+      }
+    end
+
+    accounts_array.sort_by! { |item| [item[:conversation_count], item[:account].id] }
+
+    accounts_array.first[:account]
+  end
 
   def set_kol
     @kol = Kol.find(params[:id])
