@@ -12,7 +12,7 @@
 #  updated_at                             :datetime         not null
 #  kol_id(KOL ID)                         :bigint           not null
 #  kol_platform_account_id(KOL平台账号ID) :bigint           not null
-#  social_account_id(运营账号ID)          :bigint           not null
+#  account_id(运营账号ID)                :bigint           not null
 #
 # Indexes
 #
@@ -20,7 +20,7 @@
 #  index_conversations_on_kol_platform_account_id  (kol_platform_account_id)
 #  index_conversations_on_last_message_at          (last_message_at)
 #  index_conversations_on_platform                 (platform)
-#  index_conversations_on_social_account_id        (social_account_id)
+#  index_conversations_on_account_id               (account_id)
 #  index_conversations_on_status                   (status)
 #
 class Conversation < ApplicationRecord
@@ -50,4 +50,12 @@ class Conversation < ApplicationRecord
 
   validates :platform, presence: true
   validates :status, presence: true
+
+  def self.ransackable_attributes(auth_object = nil)
+    ["account_id", "closed_at", "created_at", "id", "kol_id", "kol_platform_account_id", "last_message_at", "latest_message", "platform", "status", "updated_at"]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    ["kol", "kol_platform_account", "account", "conversation_messages"]
+  end
 end

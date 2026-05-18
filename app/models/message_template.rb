@@ -35,4 +35,12 @@ class MessageTemplate < ApplicationRecord
   validates :platform, presence: true
   validates :template_type, presence: true
   validates :content, presence: true
+
+  def self.ransackable_attributes(auth_object = nil)
+    ["content", "created_at", "id", "language", "platform", "template_type", "updated_at"]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    []
+  end
 end

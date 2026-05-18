@@ -21,4 +21,12 @@ class Kol < ApplicationRecord
   has_many :conversations, dependent: :destroy
 
   validates :kol_name, presence: true
+
+  def self.ransackable_attributes(auth_object = nil)
+    ["category", "created_at", "id", "kol_name", "location", "nick_name", "notes", "updated_at"]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    ["kol_platform_accounts", "conversations"]
+  end
 end
