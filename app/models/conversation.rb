@@ -12,7 +12,7 @@
 #  updated_at                             :datetime         not null
 #  kol_id(KOL ID)                         :bigint           not null
 #  kol_platform_account_id(KOL平台账号ID) :bigint           not null
-#  account_id(运营账号ID)                 :bigint           not null
+#  social_account_id(运营账号ID)          :bigint           not null
 #
 # Indexes
 #
@@ -20,7 +20,7 @@
 #  index_conversations_on_kol_platform_account_id  (kol_platform_account_id)
 #  index_conversations_on_last_message_at          (last_message_at)
 #  index_conversations_on_platform                 (platform)
-#  index_conversations_on_account_id               (account_id)
+#  index_conversations_on_social_account_id        (social_account_id)
 #  index_conversations_on_status                   (status)
 #
 class Conversation < ApplicationRecord
