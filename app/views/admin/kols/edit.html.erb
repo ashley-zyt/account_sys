@@ -156,19 +156,18 @@
   function removePlatformAccount(btn) {
     const row = btn.closest('.platform-account-row');
     const wrapper = document.getElementById('platform-accounts-wrapper');
-    const rows = wrapper.querySelectorAll('.platform-account-row:not([style*="display: none"])');
-
-    if (rows.length > 1) {
-      const destroyInput = row.querySelector('input[type="hidden"][value="0"]');
-      if (destroyInput) {
-        destroyInput.value = '1';
+    const destroyInput = row.querySelector('input[type="hidden"][name*="[id]"]');
+    
+    if (destroyInput) {
+      // 已有数据库记录的，软删除
+      const _destroyInput = row.querySelector('input[type="hidden"][name*="[_destroy]"]');
+      if (_destroyInput) {
+        _destroyInput.value = '1';
         row.style.display = 'none';
-      } else {
-        row.remove();
       }
     } else {
-      row.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
-      row.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+      // 新添加的还没保存的，直接移除
+      row.remove();
     }
   }
 </script>
