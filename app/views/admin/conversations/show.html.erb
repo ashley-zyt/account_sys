@@ -1,0 +1,76 @@
+<% content_for :page_title, "会话详情" %>
+<% content_for :page_subtitle, "#{@conversation.platform.humanize} - #{@conversation.kol.kol_name}" %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div class="admin-card-title">
+      <span class="admin-card-icon">💬</span>
+      <%= @conversation.platform.humanize %> 会话
+    </div>
+    <div class="admin-card-actions">
+      <%= link_to "返回列表", admin_conversations_path, class: "admin-btn admin-btn-outline" %>
+    </div>
+  </div>
+
+  <div class="admin-card-body">
+    <div class="admin-section">
+      <h3 class="admin-section-title">会话信息</h3>
+      <div class="admin-info-grid">
+        <div class="admin-info-item">
+          <span class="admin-info-label">KOL</span>
+          <span class="admin-info-value"><%= link_to @conversation.kol.kol_name, admin_kol_path(@conversation.kol), class: "admin-link" %></span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">平台账号</span>
+          <span class="admin-info-value">@<%= @conversation.kol_platform_account.nick_name %></span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">平台</span>
+          <span class="admin-info-value"><%= @conversation.platform.humanize %></span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">状态</span>
+          <span class="admin-info-value"><span class="admin-badge admin-badge-<%= @conversation.status %>"><%= @conversation.status.humanize %></span></span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">创建时间</span>
+          <span class="admin-info-value"><%= @conversation.created_at.strftime("%Y-%m-%d %H:%M") %></span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">最后消息</span>
+          <span class="admin-info-value"><%= @conversation.last_message_at.present? ? @conversation.last_message_at.strftime("%Y-%m-%d %H:%M") : "无" %></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h3 class="admin-section-title">消息记录</h3>
+      
+      <div class="admin-messages">
+        <% @messages.each do |msg| %>
+          <div class="admin-message admin-message-<%= msg.sender_type == 0 ? 'in' : 'out' %>">
+            <div class="admin-message-avatar">
+              <%= msg.sender_type == 0 ? '👤' : '🤖' %>
+            </div>
+            <div class="admin-message-content">
+              <div class="admin-message-header">
+                <span class="admin-message-sender"><%= msg.sender_type == 0 ? 'KOL' : '运营' %></span>
+                <span class="admin-message-time"><%= msg.sent_at.strftime("%Y-%m-%d %H:%M") %></span>
+              </div>
+              <div class="admin-message-text">
+                <%= msg.content %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      
+      <% if @messages.empty? %>
+        <div class="admin-empty-state">
+          <div class="admin-empty-icon">📭</div>
+          <div class="admin-empty-text">暂无消息记录</div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

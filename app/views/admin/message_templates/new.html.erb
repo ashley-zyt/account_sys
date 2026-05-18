@@ -1,0 +1,51 @@
+<% content_for :page_title, "新建消息模板" %>
+<% content_for :page_subtitle, "创建新的消息模板" %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div class="admin-card-title">
+      <span class="admin-card-icon">📝</span>
+      新建消息模板
+    </div>
+    <div class="admin-card-actions">
+      <%= link_to "返回列表", admin_message_templates_path, class: "admin-btn admin-btn-outline" %>
+    </div>
+  </div>
+  
+  <div class="admin-card-body">
+    <%= form_for [:admin, @template] do |f| %>
+      <div class="admin-form">
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <%= f.label :platform, class: "admin-form-label" %>
+            <%= f.select :platform, options_for_select(@platforms.map { |k, v| [k.humanize, k] }), 
+              { include_blank: "请选择平台" }, 
+              class: "admin-select", required: true %>
+          </div>
+          <div class="admin-form-group">
+            <%= f.label :template_type, class: "admin-form-label" %>
+            <%= f.select :template_type, options_for_select(@template_types.map { |k, v| [k.humanize, k] }), 
+              { include_blank: "请选择类型" }, 
+              class: "admin-select", required: true %>
+          </div>
+          <div class="admin-form-group">
+            <%= f.label :language, class: "admin-form-label" %>
+            <%= f.text_field :language, value: @template.language.presence || "en", 
+              class: "admin-input", placeholder: "语言代码" %>
+          </div>
+        </div>
+        
+        <div class="admin-form-group">
+          <%= f.label :content, class: "admin-form-label" %>
+          <%= f.text_area :content, rows: 8, class: "admin-textarea", 
+            placeholder: "输入消息模板内容", required: true %>
+        </div>
+        
+        <div class="admin-form-actions">
+          <%= f.submit "创建模板", class: "admin-btn admin-btn-primary" %>
+          <%= link_to "取消", admin_message_templates_path, class: "admin-btn admin-btn-outline" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

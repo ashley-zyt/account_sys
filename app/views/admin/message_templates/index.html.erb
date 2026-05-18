@@ -1,0 +1,80 @@
+<% content_for :page_title, "消息模板" %>
+<% content_for :page_subtitle, "管理消息模板" %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div class="admin-card-title">
+      <span class="admin-card-icon">📝</span>
+      消息模板
+    </div>
+    <div class="admin-card-actions">
+      <%= link_to "新建模板", new_admin_message_template_path, class: "admin-btn admin-btn-primary" %>
+    </div>
+  </div>
+  
+  <div class="admin-card-body">
+    <div class="admin-search-bar">
+      <%= search_form_for @q do |f| %>
+        <div class="admin-search-row">
+          <div class="admin-search-group">
+            <%= f.label :platform_eq, class: "admin-search-label" %>
+            <%= f.select :platform_eq, options_for_select([["全部平台", ""]] + @platforms.map { |p| [p.humanize, p] }), class: "admin-select" %>
+          </div>
+          <div class="admin-search-group">
+            <%= f.label :template_type_eq, class: "admin-search-label" %>
+            <%= f.select :template_type_eq, options_for_select([["全部类型", ""]] + @template_types.map { |t| [t.humanize, t] }), class: "admin-select" %>
+          </div>
+          <div class="admin-search-group">
+            <%= f.label :language_eq, class: "admin-search-label" %>
+            <%= f.select :language_eq, options_for_select([["全部语言", ""]] + @languages.map { |l| [l.upcase, l] }), class: "admin-select" %>
+          </div>
+          <div class="admin-search-group admin-search-submit">
+            <%= f.submit "筛选", class: "admin-btn admin-btn-secondary" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>平台</th>
+            <th>类型</th>
+            <th>语言</th>
+            <th>内容预览</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @templates.each do |template| %>
+            <tr>
+              <td><%= template.platform.humanize %></td>
+              <td><%= template.template_type.humanize %></td>
+              <td><%= template.language.upcase %></td>
+              <td><%= template.content.truncate(50) %></td>
+              <td>
+                <div class="admin-actions">
+                  <%= link_to "编辑", edit_admin_message_template_path(template), class: "admin-action-btn" %>
+                  <%= link_to "删除", admin_message_template_path(template), 
+                    method: :delete, 
+                    data: { confirm: "确定删除此模板？" },
+                    class: "admin-action-btn admin-action-btn-danger" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @templates.empty? %>
+      <div class="admin-empty-state">
+        <div class="admin-empty-icon">📝</div>
+        <div class="admin-empty-text">暂无消息模板</div>
+      </div>
+    <% end %>
+
+    <%= paginate @templates, theme: "admin" %>
+  </div>
+</div>

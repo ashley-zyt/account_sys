@@ -122,7 +122,6 @@
           </li>
 
           
-
           <% logs_active = controller_path == "admin/task_logs" %>
           <li class="admin-nav-item <%= "active" if logs_active %>">
             <%= link_to admin_task_logs_path, class: "admin-nav-link" do %>
@@ -136,6 +135,62 @@
               </div>
               <div class="admin-nav-meta">
                 Logs
+              </div>
+            <% end %>
+          </li>
+        </ul>
+
+        <div class="admin-sidebar-section-title">
+          KOL
+        </div>
+        <ul class="admin-nav">
+          <% kols_active = controller_path == "admin/kols" %>
+          <li class="admin-nav-item <%= "active" if kols_active %>">
+            <%= link_to admin_kols_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  👥
+                </div>
+                <div class="admin-nav-label">
+                  KOL列表
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                KOLs
+              </div>
+            <% end %>
+          </li>
+          
+          <% conversations_active = controller_path == "admin/conversations" %>
+          <li class="admin-nav-item <%= "active" if conversations_active %>">
+            <%= link_to admin_conversations_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  💬
+                </div>
+                <div class="admin-nav-label">
+                  会话中心
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Conversations
+              </div>
+            <% end %>
+          </li>
+          
+          <% templates_active = controller_path == "admin/message_templates" %>
+          <li class="admin-nav-item <%= "active" if templates_active %>">
+            <%= link_to admin_message_templates_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  📝
+                </div>
+                <div class="admin-nav-label">
+                  消息模板
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Templates
               </div>
             <% end %>
           </li>

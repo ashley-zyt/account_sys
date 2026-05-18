@@ -1,0 +1,83 @@
+<% content_for :page_title, "会话中心" %>
+<% content_for :page_subtitle, "管理KOL对话" %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div class="admin-card-title">
+      <span class="admin-card-icon">💬</span>
+      会话中心
+    </div>
+  </div>
+  
+  <div class="admin-card-body">
+    <div class="admin-search-bar">
+      <%= search_form_for @q do |f| %>
+        <div class="admin-search-row">
+          <div class="admin-search-group">
+            <%= f.label :platform_eq, class: "admin-search-label" %>
+            <%= f.select :platform_eq, options_for_select([["全部平台", ""]] + @platforms.map { |p| [p.humanize, p] }), class: "admin-select" %>
+          </div>
+          <div class="admin-search-group">
+            <%= f.label :status_eq, class: "admin-search-label" %>
+            <%= f.select :status_eq, options_for_select([["全部状态", ""]] + @statuses.map { |s| [s.humanize, s] }), class: "admin-select" %>
+          </div>
+          <div class="admin-search-group">
+            <%= f.label :kol_id_eq, class: "admin-search-label" %>
+            <%= f.select :kol_id_eq, options_for_select([["全部KOL", ""]] + @kols.map { |k| [k.kol_name, k.id] }), class: "admin-select" %>
+          </div>
+          <div class="admin-search-group admin-search-submit">
+            <%= f.submit "筛选", class: "admin-btn admin-btn-secondary" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="admin-conversation-list">
+      <% @conversations.each do |conv| %>
+        <div class="admin-conversation-card" data-conversation-id="<%= conv.id %>">
+          <div class="admin-conversation-header">
+            <div class="admin-conversation-left">
+              <div class="admin-conversation-avatar">
+                <%= conv.platform[0].upcase %>
+              </div>
+              <div class="admin-conversation-info">
+                <div class="admin-conversation-title">
+                  <%= conv.kol.kol_name %>
+                  <span class="admin-conversation-platform"><%= conv.platform.humanize %></span>
+                </div>
+                <div class="admin-conversation-subtitle">
+                  @<%= conv.kol_platform_account.nick_name %>
+                </div>
+              </div>
+            </div>
+            <div class="admin-conversation-right">
+              <span class="admin-badge admin-badge-<%= conv.status %>"><%= conv.status.humanize %></span>
+            </div>
+          </div>
+          
+          <div class="admin-conversation-body">
+            <div class="admin-conversation-preview">
+              <%= conv.latest_message.presence || "暂无消息" %>
+            </div>
+            <div class="admin-conversation-meta">
+              <%= conv.last_message_at.present? ? conv.last_message_at.strftime("%Y-%m-%d %H:%M") : "从未发送消息" %>
+            </div>
+          </div>
+          
+          <div class="admin-conversation-footer">
+            <%= link_to "查看详情", admin_conversation_path(conv), class: "admin-btn admin-btn-outline" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <% if @conversations.empty? %>
+      <div class="admin-empty-state">
+        <div class="admin-empty-icon">💬</div>
+        <div class="admin-empty-text">暂无会话</div>
+      </div>
+    <% end %>
+
+    <%= paginate @conversations, theme: "admin" %>
+  </div>
+</div>

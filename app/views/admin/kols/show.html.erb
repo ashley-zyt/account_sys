@@ -1,0 +1,213 @@
+<% content_for :page_title, @kol.kol_name %>
+<% content_for :page_subtitle, "KOL详情" %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div class="admin-card-title">
+      <span class="admin-card-icon">👤</span>
+      <%= @kol.kol_name %>
+    </div>
+    <div class="admin-card-actions">
+      <%= link_to "编辑", edit_admin_kol_path(@kol), class: "admin-btn admin-btn-secondary" %>
+      <%= link_to "返回列表", admin_kols_path, class: "admin-btn admin-btn-outline" %>
+    </div>
+  </div>
+
+  <div class="admin-card-body">
+    <div class="admin-section">
+      <h3 class="admin-section-title">KOL基础信息</h3>
+      <div class="admin-info-grid">
+        <div class="admin-info-item">
+          <span class="admin-info-label">KOL名称</span>
+          <span class="admin-info-value"><%= @kol.kol_name %></span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">昵称</span>
+          <span class="admin-info-value"><%= @kol.nick_name.presence || "-" %></span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">地区</span>
+          <span class="admin-info-value"><%= @kol.location.presence || "-" %></span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">类别</span>
+          <span class="admin-info-value"><%= @kol.category.presence || "-" %></span>
+        </div>
+        <div class="admin-info-item admin-info-full">
+          <span class="admin-info-label">备注</span>
+          <span class="admin-info-value"><%= @kol.notes.presence || "-" %></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <h3 class="admin-section-title">平台账号列表</h3>
+      <div class="admin-list">
+        <% @platform_accounts.each do |account| %>
+          <div class="admin-list-item">
+            <div class="admin-list-item-left">
+              <div class="admin-list-item-icon">📱</div>
+              <div class="admin-list-item-content">
+                <div class="admin-list-item-title">
+                  <%= account.platform.humanize %>
+                </div>
+                <div class="admin-list-item-subtitle">
+                  @<%= account.nick_name %> | 粉丝 <%= account.follower_count.presence || "-" %>
+                </div>
+              </div>
+            </div>
+            <div class="admin-list-item-right">
+              <%= button_to "发起联系", "#", 
+                class: "admin-btn admin-btn-primary admin-contact-btn",
+                data: { 
+                  platform: account.platform,
+                  kol_platform_account_id: account.id,
+                  nick_name: account.nick_name 
+                } %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      
+      <% if @platform_accounts.empty? %>
+        <div class="admin-empty-state">
+          <div class="admin-empty-icon">📱</div>
+          <div class="admin-empty-text">暂无平台账号</div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="admin-section">
+      <h3 class="admin-section-title">历史会话记录</h3>
+      <div class="admin-list">
+        <% @conversations.each do |conv| %>
+          <div class="admin-list-item">
+            <div class="admin-list-item-left">
+              <div class="admin-list-item-icon">💬</div>
+              <div class="admin-list-item-content">
+                <div class="admin-list-item-title">
+                  <%= conv.platform.humanize %> 会话
+                </div>
+                <div class="admin-list-item-subtitle">
+                  状态: <%= conv.status.humanize %> | 
+                  账号: @<%= conv.kol_platform_account.nick_name %>
+                </div>
+              </div>
+            </div>
+            <div class="admin-list-item-right">
+              <%= link_to "查看", admin_conversation_path(conv), class: "admin-btn admin-btn-outline" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      
+      <% if @conversations.empty? %>
+        <div class="admin-empty-state">
+          <div class="admin-empty-icon">💬</div>
+          <div class="admin-empty-text">暂无会话记录</div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="admin-modal" id="contact-modal">
+  <div class="admin-modal-backdrop" data-dismiss="modal"></div>
+  <div class="admin-modal-content">
+    <div class="admin-modal-header">
+      <div class="admin-modal-title">发起联系</div>
+      <button class="admin-modal-close" data-dismiss="modal">✕</button>
+    </div>
+    <div class="admin-modal-body">
+      <form id="contact-form">
+        <input type="hidden" id="contact-platform">
+        <input type="hidden" id="contact-kol-platform-account-id">
+        
+        <div class="admin-form-group">
+          <label class="admin-form-label">平台</label>
+          <div class="admin-form-control-plain" id="contact-platform-display"></div>
+        </div>
+        
+        <div class="admin-form-group">
+          <label class="admin-form-label">选择运营账号</label>
+          <select id="contact-social-account" class="admin-select" required>
+            <option value="">请选择</option>
+            <% @social_accounts.each do |sa| %>
+              <option value="<%= sa.id %>"><%= sa.nick_name %></option>
+            <% end %>
+          </select>
+        </div>
+        
+        <div class="admin-form-group">
+          <label class="admin-form-label">选择模板</label>
+          <select id="contact-template" class="admin-select" required>
+            <option value="">请选择</option>
+            <% @templates.each do |template| %>
+              <option value="<%= template.id %>">
+                <%= template.platform.humanize %> - <%= template.template_type.humanize %>
+              </option>
+            <% end %>
+          </select>
+        </div>
+        
+        <div class="admin-form-group">
+          <label class="admin-form-label">消息预览</label>
+          <div class="admin-form-control-plain admin-message-preview" id="contact-preview">
+            请选择模板查看预览
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="admin-modal-footer">
+      <button class="admin-btn admin-btn-outline" data-dismiss="modal">取消</button>
+      <button class="admin-btn admin-btn-primary" id="contact-submit">发送</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('contact-modal');
+    const backdrop = modal.querySelector('.admin-modal-backdrop');
+    const closeBtn = modal.querySelector('.admin-modal-close');
+    const contactBtns = document.querySelectorAll('.admin-contact-btn');
+    
+    contactBtns.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const platform = this.dataset.platform;
+        const accountId = this.dataset.kolPlatformAccountId;
+        const nickName = this.dataset.nickName;
+        
+        document.getElementById('contact-platform').value = platform;
+        document.getElementById('contact-kol-platform-account-id').value = accountId;
+        document.getElementById('contact-platform-display').textContent = platform.replace(/_/g, ' ').toUpperCase();
+        document.getElementById('contact-preview').textContent = '请选择模板查看预览';
+        
+        modal.style.display = 'block';
+      });
+    });
+    
+    backdrop.addEventListener('click', function() {
+      modal.style.display = 'none';
+    });
+    
+    closeBtn.addEventListener('click', function() {
+      modal.style.display = 'none';
+    });
+    
+    document.getElementById('contact-template').addEventListener('change', function() {
+      const templateId = this.value;
+      if (templateId) {
+        document.getElementById('contact-preview').textContent = '加载中...';
+      } else {
+        document.getElementById('contact-preview').textContent = '请选择模板查看预览';
+      }
+    });
+    
+    document.getElementById('contact-submit').addEventListener('click', function() {
+      alert('消息发送功能开发中');
+      modal.style.display = 'none';
+    });
+  });
+</script>
