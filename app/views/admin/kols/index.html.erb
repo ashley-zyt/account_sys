@@ -143,11 +143,23 @@
     modal.style.display = 'none';
     iframe.src = '';
     document.body.style.overflow = '';
-    if (typeof refreshPage !== 'undefined') {
-      refreshPage();
-    } else {
-      location.reload();
-    }
+  }
+
+  function submitContactForm(actionUrl, data) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = actionUrl;
+
+    Object.keys(data).forEach(key => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = data[key];
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
   }
 
   document.getElementById('initiate-modal').addEventListener('click', function(e) {

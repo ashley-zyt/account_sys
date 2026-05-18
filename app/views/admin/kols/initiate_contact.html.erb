@@ -221,7 +221,7 @@
 
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
-      <button type="submit" class="btn btn-primary" id="submit-btn" disabled>发起会话</button>
+      <button type="button" class="btn btn-primary" id="submit-btn" disabled onclick="submitForm()">发起会话</button>
     </div>
   </form>
 
@@ -269,6 +269,26 @@
       } else {
         window.close();
       }
+    }
+
+    function submitForm() {
+      const form = document.getElementById('contact-form');
+      const kolPlatformAccountId = document.querySelector('input[name="kol_platform_account_id"]:checked').value;
+      const templateId = document.getElementById('template-select').value;
+      const actionUrl = form.action;
+      const csrfToken = document.querySelector('input[name="authenticity_token"]').value;
+
+      closeModal();
+
+      setTimeout(() => {
+        if (window.parent && window.parent.submitContactForm) {
+          window.parent.submitContactForm(actionUrl, {
+            authenticity_token: csrfToken,
+            kol_platform_account_id: kolPlatformAccountId,
+            template_id: templateId
+          });
+        }
+      }, 300);
     }
   </script>
 </body>

@@ -213,37 +213,41 @@
   });
 
   function sendContact() {
-    const templateId = document.getElementById('contact-template').value;
-    const kolPlatformAccountId = document.getElementById('contact-kol-platform-account-id').value;
+      const templateId = document.getElementById('contact-template').value;
+      const kolPlatformAccountId = document.getElementById('contact-kol-platform-account-id').value;
 
-    if (!templateId) {
-      alert('请选择消息模板');
-      return;
+      if (!templateId) {
+        alert('请选择消息模板');
+        return;
+      }
+
+      closeContactModal();
+
+      setTimeout(() => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<%= start_conversation_admin_kol_path(@kol) %>';
+
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'authenticity_token';
+        csrfToken.value = '<%= form_authenticity_token %>';
+        form.appendChild(csrfToken);
+
+        const templateInput = document.createElement('input');
+        templateInput.type = 'hidden';
+        templateInput.name = 'template_id';
+        templateInput.value = templateId;
+        form.appendChild(templateInput);
+
+        const kolAccountInput = document.createElement('input');
+        kolAccountInput.type = 'hidden';
+        kolAccountInput.name = 'kol_platform_account_id';
+        kolAccountInput.value = kolPlatformAccountId;
+        form.appendChild(kolAccountInput);
+
+        document.body.appendChild(form);
+        form.submit();
+      }, 300);
     }
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '<%= start_conversation_admin_kol_path(@kol) %>';
-
-    const csrfToken = document.createElement('input');
-    csrfToken.type = 'hidden';
-    csrfToken.name = 'authenticity_token';
-    csrfToken.value = '<%= form_authenticity_token %>';
-    form.appendChild(csrfToken);
-
-    const templateInput = document.createElement('input');
-    templateInput.type = 'hidden';
-    templateInput.name = 'template_id';
-    templateInput.value = templateId;
-    form.appendChild(templateInput);
-
-    const kolAccountInput = document.createElement('input');
-    kolAccountInput.type = 'hidden';
-    kolAccountInput.name = 'kol_platform_account_id';
-    kolAccountInput.value = kolPlatformAccountId;
-    form.appendChild(kolAccountInput);
-
-    document.body.appendChild(form);
-    form.submit();
-  }
 </script>
