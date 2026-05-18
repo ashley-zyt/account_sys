@@ -1,4 +1,4 @@
-class CreateConversations < ActiveRecord::Migration[7.2]
+class CreateConversations < ActiveRecord::Migration[6.1]
   def change
     create_table :conversations do |t|
       t.references :kol, null: false, foreign_key: true

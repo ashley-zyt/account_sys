@@ -1,4 +1,4 @@
-class CreateKolPlatformAccounts < ActiveRecord::Migration[7.2]
+class CreateKolPlatformAccounts < ActiveRecord::Migration[6.1]
   def change
     create_table :kol_platform_accounts do |t|
       t.references :kol, null: false, foreign_key: true

@@ -1,4 +1,4 @@
-class CreateMessageTemplates < ActiveRecord::Migration[7.2]
+class CreateMessageTemplates < ActiveRecord::Migration[6.1]
   def change
     create_table :message_templates do |t|
       t.integer :platform,

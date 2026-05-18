@@ -1,4 +1,4 @@
-class CreateConversationMessages < ActiveRecord::Migration[7.2]
+class CreateConversationMessages < ActiveRecord::Migration[6.1]
   def change
     create_table :conversation_messages do |t|
       t.references :conversation,
