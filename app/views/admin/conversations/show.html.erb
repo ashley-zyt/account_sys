@@ -1,76 +1,95 @@
-<% content_for :page_title, "会话详情" %>
-<% content_for :page_subtitle, "#{@conversation.platform.humanize} - #{@conversation.kol.kol_name}" %>
+<% content_for :page_title do %>
+  会话详情
+<% end %>
+<% content_for :page_subtitle do %>
+  <%= @conversation.kol.kol_name %> - <%= @conversation.platform.humanize %>
+<% end %>
 
-<div class="admin-card">
-  <div class="admin-card-header">
-    <div class="admin-card-title">
-      <span class="admin-card-icon">💬</span>
-      <%= @conversation.platform.humanize %> 会话
+<div class="admin-grid">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          会话信息
+        </div>
+        <div class="admin-card-subtitle">
+          会话基本信息和状态
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <%= link_to "返回列表", admin_conversations_path, class: "admin-button-secondary" %>
+      </div>
     </div>
-    <div class="admin-card-actions">
-      <%= link_to "返回列表", admin_conversations_path, class: "admin-btn admin-btn-outline" %>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">KOL</div>
+        <div class="admin-field-value">
+          <%= link_to @conversation.kol.kol_name, admin_kol_path(@conversation.kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">平台</div>
+        <div class="admin-field-value"><%= @conversation.platform.humanize %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">KOL账号</div>
+        <div class="admin-field-value">@<%= @conversation.kol_platform_account.nick_name %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">状态</div>
+        <div class="admin-field-value"><span class="admin-badge"><%= @conversation.status.humanize %></span></div>
+      </div>
+      <div>
+        <div class="admin-field-label">创建时间</div>
+        <div class="admin-field-value"><%= @conversation.created_at.strftime("%Y-%m-%d %H:%M") %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">最后消息</div>
+        <div class="admin-field-value"><%= @conversation.last_message_at.present? ? @conversation.last_message_at.strftime("%Y-%m-%d %H:%M") : "暂无" %></div>
+      </div>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <div class="admin-field-label">最新消息摘要</div>
+      <div class="admin-field-value" style="background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; font-size: 12px;">
+        <%= @conversation.latest_message.presence || "暂无消息" %>
+      </div>
     </div>
   </div>
 
-  <div class="admin-card-body">
-    <div class="admin-section">
-      <h3 class="admin-section-title">会话信息</h3>
-      <div class="admin-info-grid">
-        <div class="admin-info-item">
-          <span class="admin-info-label">KOL</span>
-          <span class="admin-info-value"><%= link_to @conversation.kol.kol_name, admin_kol_path(@conversation.kol), class: "admin-link" %></span>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          消息记录
         </div>
-        <div class="admin-info-item">
-          <span class="admin-info-label">平台账号</span>
-          <span class="admin-info-value">@<%= @conversation.kol_platform_account.nick_name %></span>
-        </div>
-        <div class="admin-info-item">
-          <span class="admin-info-label">平台</span>
-          <span class="admin-info-value"><%= @conversation.platform.humanize %></span>
-        </div>
-        <div class="admin-info-item">
-          <span class="admin-info-label">状态</span>
-          <span class="admin-info-value"><span class="admin-badge admin-badge-<%= @conversation.status %>"><%= @conversation.status.humanize %></span></span>
-        </div>
-        <div class="admin-info-item">
-          <span class="admin-info-label">创建时间</span>
-          <span class="admin-info-value"><%= @conversation.created_at.strftime("%Y-%m-%d %H:%M") %></span>
-        </div>
-        <div class="admin-info-item">
-          <span class="admin-info-label">最后消息</span>
-          <span class="admin-info-value"><%= @conversation.last_message_at.present? ? @conversation.last_message_at.strftime("%Y-%m-%d %H:%M") : "无" %></span>
+        <div class="admin-card-subtitle">
+          全部聊天消息
         </div>
       </div>
     </div>
 
-    <div class="admin-section">
-      <h3 class="admin-section-title">消息记录</h3>
-      
-      <div class="admin-messages">
+    <% if @messages.any? %>
+      <div style="max-height: 400px; overflow-y: auto;">
         <% @messages.each do |msg| %>
-          <div class="admin-message admin-message-<%= msg.sender_type == 0 ? 'in' : 'out' %>">
-            <div class="admin-message-avatar">
-              <%= msg.sender_type == 0 ? '👤' : '🤖' %>
+          <div style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: <%= msg.sender_type == 0 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(34, 197, 94, 0.1)' %>; border: 1px solid <%= msg.sender_type == 0 ? 'rgba(59, 130, 246, 0.3)' : 'rgba(34, 197, 94, 0.3)' %>;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-size: 11px; font-weight: 560; color: <%= msg.sender_type == 0 ? '#93c5fd' : '#86efac' %>;">
+                <%= msg.sender_type == 0 ? 'KOL' : '运营' %>
+              </span>
+              <span style="font-size: 11px; color: var(--text-muted);">
+                <%= msg.sent_at.strftime("%m-%d %H:%M") %>
+              </span>
             </div>
-            <div class="admin-message-content">
-              <div class="admin-message-header">
-                <span class="admin-message-sender"><%= msg.sender_type == 0 ? 'KOL' : '运营' %></span>
-                <span class="admin-message-time"><%= msg.sent_at.strftime("%Y-%m-%d %H:%M") %></span>
-              </div>
-              <div class="admin-message-text">
-                <%= msg.content %>
-              </div>
+            <div style="font-size: 13px; color: var(--text-primary);">
+              <%= msg.content %>
             </div>
           </div>
         <% end %>
       </div>
-      
-      <% if @messages.empty? %>
-        <div class="admin-empty-state">
-          <div class="admin-empty-icon">📭</div>
-          <div class="admin-empty-text">暂无消息记录</div>
-        </div>
-      <% end %>
-    </div>
+    <% else %>
+      <div class="admin-empty-state">暂无消息记录。</div>
+    <% end %>
   </div>
 </div>

@@ -1,41 +1,51 @@
-<% content_for :page_title, "消息模板" %>
-<% content_for :page_subtitle, "管理消息模板" %>
+<% content_for :page_title do %>
+  消息模板
+<% end %>
+<% content_for :page_subtitle do %>
+  管理消息模板
+<% end %>
 
 <div class="admin-card">
   <div class="admin-card-header">
-    <div class="admin-card-title">
-      <span class="admin-card-icon">📝</span>
-      消息模板
+    <div>
+      <div class="admin-card-title">
+        模板列表
+      </div>
+      <div class="admin-card-subtitle">
+        管理和筛选消息模板
+      </div>
     </div>
-    <div class="admin-card-actions">
-      <%= link_to "新建模板", new_admin_message_template_path, class: "admin-btn admin-btn-primary" %>
+    <div class="admin-card-header-right">
+      <%= link_to "新建模板", new_admin_message_template_path, class: "admin-button-secondary" %>
+      <span class="admin-tag">
+        共 <%= @templates.total_count %> 条
+      </span>
     </div>
   </div>
-  
-  <div class="admin-card-body">
-    <div class="admin-search-bar">
-      <%= search_form_for @q, url: admin_message_templates_path do |f| %>
-        <div class="admin-search-row">
-          <div class="admin-search-group">
-            <%= f.label :platform_eq, class: "admin-search-label" %>
-            <%= f.select :platform_eq, options_for_select([["全部平台", ""]] + @platforms.map { |p| [p.humanize, p] }), class: "admin-select" %>
-          </div>
-          <div class="admin-search-group">
-            <%= f.label :template_type_eq, class: "admin-search-label" %>
-            <%= f.select :template_type_eq, options_for_select([["全部类型", ""]] + @template_types.map { |t| [t.humanize, t] }), class: "admin-select" %>
-          </div>
-          <div class="admin-search-group">
-            <%= f.label :language_eq, class: "admin-search-label" %>
-            <%= f.select :language_eq, options_for_select([["全部语言", ""]] + @languages.map { |l| [l.upcase, l] }), class: "admin-select" %>
-          </div>
-          <div class="admin-search-group admin-search-submit">
-            <%= f.submit "筛选", class: "admin-btn admin-btn-secondary" %>
-          </div>
-        </div>
-      <% end %>
-    </div>
 
-    <div class="admin-table-wrapper">
+  <div class="admin-filter-form">
+    <%= search_form_for @q, url: admin_message_templates_path, class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <%= f.select :platform_eq, @platforms.map { |p| [p.humanize, p] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">类型</label>
+        <%= f.select :template_type_eq, @template_types.map { |t| [t.humanize, t] }, { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">语言</label>
+        <%= f.select :language_eq, @languages.map { |l| [l.upcase, l] }, { include_blank: "所有语言" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_message_templates_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @templates.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
       <table class="admin-table">
         <thead>
           <tr>
@@ -49,17 +59,14 @@
         <tbody>
           <% @templates.each do |template| %>
             <tr>
-              <td><%= template.platform.humanize %></td>
-              <td><%= template.template_type.humanize %></td>
-              <td><%= template.language.upcase %></td>
-              <td><%= template.content.truncate(50) %></td>
+              <td><span class="admin-label-muted"><%= template.platform.humanize %></span></td>
+              <td><span class="admin-label-muted"><%= template.template_type.humanize %></span></td>
+              <td><span class="admin-label-muted"><%= template.language.upcase %></span></td>
+              <td><span class="admin-label-muted"><%= template.content.truncate(50) %></span></td>
               <td>
-                <div class="admin-actions">
-                  <%= link_to "编辑", edit_admin_message_template_path(template), class: "admin-action-btn" %>
-                  <%= link_to "删除", admin_message_template_path(template), 
-                    method: :delete, 
-                    data: { confirm: "确定删除此模板？" },
-                    class: "admin-action-btn admin-action-btn-danger" %>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "编辑", edit_admin_message_template_path(template), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "删除", admin_message_template_path(template), method: :delete, data: { confirm: "确定删除此模板？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
                 </div>
               </td>
             </tr>
@@ -67,14 +74,12 @@
         </tbody>
       </table>
     </div>
-
-    <% if @templates.empty? %>
-      <div class="admin-empty-state">
-        <div class="admin-empty-icon">📝</div>
-        <div class="admin-empty-text">暂无消息模板</div>
-      </div>
-    <% end %>
-
-    <%= paginate @templates %>
-  </div>
+    <div class="admin-pagination">
+      <%= paginate @templates %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无消息模板。
+    </div>
+  <% end %>
 </div>

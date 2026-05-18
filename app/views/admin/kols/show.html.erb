@@ -1,213 +1,217 @@
-<% content_for :page_title, @kol.kol_name %>
-<% content_for :page_subtitle, "KOL详情" %>
+<% content_for :page_title do %>
+  KOL详情
+<% end %>
+<% content_for :page_subtitle do %>
+  <%= @kol.kol_name %> 的基础信息与平台账号
+<% end %>
 
-<div class="admin-card">
-  <div class="admin-card-header">
-    <div class="admin-card-title">
-      <span class="admin-card-icon">👤</span>
-      <%= @kol.kol_name %>
+<div class="admin-grid">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          基本信息
+        </div>
+        <div class="admin-card-subtitle">
+          KOL基础资料
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <%= link_to "编辑KOL", edit_admin_kol_path(@kol), class: "admin-button-secondary" %>
+      </div>
     </div>
-    <div class="admin-card-actions">
-      <%= link_to "编辑", edit_admin_kol_path(@kol), class: "admin-btn admin-btn-secondary" %>
-      <%= link_to "返回列表", admin_kols_path, class: "admin-btn admin-btn-outline" %>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">KOL名称</div>
+        <div class="admin-field-value"><%= @kol.kol_name %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">昵称</div>
+        <div class="admin-field-value"><%= @kol.nick_name.presence || "-" %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">地区</div>
+        <div class="admin-field-value"><%= @kol.location.presence || "-" %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">类别</div>
+        <div class="admin-field-value"><%= @kol.category.presence || "-" %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">创建时间</div>
+        <div class="admin-field-value"><%= @kol.created_at&.strftime("%Y-%m-%d %H:%M") %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">会话数</div>
+        <div class="admin-field-value"><%= @kol.conversations.count %></div>
+      </div>
+      <div class="admin-two-column" style="grid-column: span 2;">
+        <div>
+          <div class="admin-field-label">备注</div>
+          <div class="admin-field-value"><%= @kol.notes.presence || "无" %></div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="admin-card-body">
-    <div class="admin-section">
-      <h3 class="admin-section-title">KOL基础信息</h3>
-      <div class="admin-info-grid">
-        <div class="admin-info-item">
-          <span class="admin-info-label">KOL名称</span>
-          <span class="admin-info-value"><%= @kol.kol_name %></span>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          历史会话
         </div>
-        <div class="admin-info-item">
-          <span class="admin-info-label">昵称</span>
-          <span class="admin-info-value"><%= @kol.nick_name.presence || "-" %></span>
-        </div>
-        <div class="admin-info-item">
-          <span class="admin-info-label">地区</span>
-          <span class="admin-info-value"><%= @kol.location.presence || "-" %></span>
-        </div>
-        <div class="admin-info-item">
-          <span class="admin-info-label">类别</span>
-          <span class="admin-info-value"><%= @kol.category.presence || "-" %></span>
-        </div>
-        <div class="admin-info-item admin-info-full">
-          <span class="admin-info-label">备注</span>
-          <span class="admin-info-value"><%= @kol.notes.presence || "-" %></span>
+        <div class="admin-card-subtitle">
+          该KOL关联的会话记录
         </div>
       </div>
     </div>
 
-    <div class="admin-section">
-      <h3 class="admin-section-title">平台账号列表</h3>
-      <div class="admin-list">
-        <% @platform_accounts.each do |account| %>
-          <div class="admin-list-item">
-            <div class="admin-list-item-left">
-              <div class="admin-list-item-icon">📱</div>
-              <div class="admin-list-item-content">
-                <div class="admin-list-item-title">
-                  <%= account.platform.humanize %>
-                </div>
-                <div class="admin-list-item-subtitle">
-                  @<%= account.nick_name %> | 粉丝 <%= account.follower_count.presence || "-" %>
-                </div>
-              </div>
-            </div>
-            <div class="admin-list-item-right">
-              <%= button_to "发起联系", "#", 
-                class: "admin-btn admin-btn-primary admin-contact-btn",
-                data: { 
-                  platform: account.platform,
-                  kol_platform_account_id: account.id,
-                  nick_name: account.nick_name 
-                } %>
-            </div>
-          </div>
-        <% end %>
+    <% if @conversations.any? %>
+      <div class="admin-table-wrapper admin-table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>平台</th>
+              <th>状态</th>
+              <th>最后消息</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @conversations.each do |conv| %>
+              <tr>
+                <td><span class="admin-label-muted"><%= conv.platform.humanize %></span></td>
+                <td><span class="admin-badge"><%= conv.status.humanize %></span></td>
+                <td><span class="admin-label-muted"><%= conv.last_message_at&.strftime("%m-%d %H:%M") || "暂无" %></span></td>
+                <td><%= link_to "查看", admin_conversation_path(conv), class: "admin-link-quiet", style: "color: var(--accent);" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
       </div>
-      
-      <% if @platform_accounts.empty? %>
-        <div class="admin-empty-state">
-          <div class="admin-empty-icon">📱</div>
-          <div class="admin-empty-text">暂无平台账号</div>
-        </div>
-      <% end %>
-    </div>
-
-    <div class="admin-section">
-      <h3 class="admin-section-title">历史会话记录</h3>
-      <div class="admin-list">
-        <% @conversations.each do |conv| %>
-          <div class="admin-list-item">
-            <div class="admin-list-item-left">
-              <div class="admin-list-item-icon">💬</div>
-              <div class="admin-list-item-content">
-                <div class="admin-list-item-title">
-                  <%= conv.platform.humanize %> 会话
-                </div>
-                <div class="admin-list-item-subtitle">
-                  状态: <%= conv.status.humanize %> | 
-                  账号: @<%= conv.kol_platform_account.nick_name %>
-                </div>
-              </div>
-            </div>
-            <div class="admin-list-item-right">
-              <%= link_to "查看", admin_conversation_path(conv), class: "admin-btn admin-btn-outline" %>
-            </div>
-          </div>
-        <% end %>
-      </div>
-      
-      <% if @conversations.empty? %>
-        <div class="admin-empty-state">
-          <div class="admin-empty-icon">💬</div>
-          <div class="admin-empty-text">暂无会话记录</div>
-        </div>
-      <% end %>
-    </div>
+    <% else %>
+      <div class="admin-empty-state">暂无会话记录。</div>
+    <% end %>
   </div>
 </div>
 
-<div class="admin-modal" id="contact-modal">
-  <div class="admin-modal-backdrop" data-dismiss="modal"></div>
-  <div class="admin-modal-content">
-    <div class="admin-modal-header">
-      <div class="admin-modal-title">发起联系</div>
-      <button class="admin-modal-close" data-dismiss="modal">✕</button>
+<div class="admin-card" style="margin-top: 20px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        平台账号列表
+      </div>
+      <div class="admin-card-subtitle">
+        KOL在各平台的账号信息
+      </div>
     </div>
-    <div class="admin-modal-body">
-      <form id="contact-form">
-        <input type="hidden" id="contact-platform">
-        <input type="hidden" id="contact-kol-platform-account-id">
-        
-        <div class="admin-form-group">
-          <label class="admin-form-label">平台</label>
-          <div class="admin-form-control-plain" id="contact-platform-display"></div>
-        </div>
-        
-        <div class="admin-form-group">
-          <label class="admin-form-label">选择运营账号</label>
-          <select id="contact-social-account" class="admin-select" required>
-            <option value="">请选择</option>
-            <% @accounts.each do |account| %>
-              <option value="<%= account.id %>"><%= account.account_name %></option>
-            <% end %>
-          </select>
-        </div>
-        
-        <div class="admin-form-group">
-          <label class="admin-form-label">选择模板</label>
-          <select id="contact-template" class="admin-select" required>
-            <option value="">请选择</option>
-            <% @templates.each do |template| %>
-              <option value="<%= template.id %>">
-                <%= template.platform.humanize %> - <%= template.template_type.humanize %>
-              </option>
-            <% end %>
-          </select>
-        </div>
-        
-        <div class="admin-form-group">
-          <label class="admin-form-label">消息预览</label>
-          <div class="admin-form-control-plain admin-message-preview" id="contact-preview">
-            请选择模板查看预览
-          </div>
-        </div>
-      </form>
+  </div>
+
+  <% if @platform_accounts.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>平台</th>
+            <th>昵称</th>
+            <th>粉丝数</th>
+            <th>主页链接</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @platform_accounts.each do |account| %>
+            <tr>
+              <td><span class="admin-label-muted"><%= account.platform.humanize %></span></td>
+              <td><span class="admin-label-muted">@<%= account.nick_name %></span></td>
+              <td><span class="admin-label-muted"><%= account.follower_count.presence || "-" %></span></td>
+              <td>
+                <% if account.profile_url.present? %>
+                  <%= link_to "访问主页", account.profile_url, class: "admin-link-quiet", style: "color: var(--accent);", target: "_blank" %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td>
+                <button type="button" class="admin-button-secondary" style="padding: 4px 10px; margin-left: 0;" onclick="openContactModal('<%= account.platform %>', <%= account.id %>, '<%= account.nick_name %>')">发起联系</button>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
-    <div class="admin-modal-footer">
-      <button class="admin-btn admin-btn-outline" data-dismiss="modal">取消</button>
-      <button class="admin-btn admin-btn-primary" id="contact-submit">发送</button>
+  <% else %>
+    <div class="admin-empty-state">暂无平台账号。</div>
+  <% end %>
+</div>
+
+<div id="contact-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000;">
+  <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);" onclick="closeContactModal()"></div>
+  <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: radial-gradient(circle at top, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.96)); border-radius: 12px; border: 1px solid var(--border-subtle); padding: 24px; box-sizing: border-box;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div style="font-size: 14px; font-weight: 560;">发起联系</div>
+      <button onclick="closeContactModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px;">✕</button>
+    </div>
+    <input type="hidden" id="contact-platform">
+    <input type="hidden" id="contact-kol-platform-account-id">
+    <div style="margin-bottom: 12px;">
+      <div class="admin-field-label">平台</div>
+      <div class="admin-field-value" id="contact-platform-display">-</div>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <div class="admin-field-label">选择运营账号</div>
+      <select id="contact-social-account" class="admin-input" style="width: 100%;">
+        <option value="">请选择运营账号</option>
+        <% @accounts.each do |account| %>
+          <option value="<%= account.id %>"><%= account.account_name %> (<%= account.platform.humanize %>)</option>
+        <% end %>
+      </select>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <div class="admin-field-label">选择模板</div>
+      <select id="contact-template" class="admin-input" style="width: 100%;">
+        <option value="">请选择模板</option>
+        <% @templates.each do |template| %>
+          <option value="<%= template.id %>"><%= template.platform.humanize %> - <%= template.template_type.humanize %></option>
+        <% end %>
+      </select>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <div class="admin-field-label">消息预览</div>
+      <div id="contact-preview" style="padding: 10px; background: rgba(15, 23, 42, 0.8); border-radius: 6px; border: 1px solid rgba(31, 41, 55, 0.9); font-size: 12px; color: var(--text-secondary);">请选择模板查看预览</div>
+    </div>
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button onclick="closeContactModal()" class="admin-button-secondary">取消</button>
+      <button onclick="sendContact()" class="admin-button-primary">发送</button>
     </div>
   </div>
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('contact-modal');
-    const backdrop = modal.querySelector('.admin-modal-backdrop');
-    const closeBtn = modal.querySelector('.admin-modal-close');
-    const contactBtns = document.querySelectorAll('.admin-contact-btn');
-    
-    contactBtns.forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const platform = this.dataset.platform;
-        const accountId = this.dataset.kolPlatformAccountId;
-        const nickName = this.dataset.nickName;
-        
-        document.getElementById('contact-platform').value = platform;
-        document.getElementById('contact-kol-platform-account-id').value = accountId;
-        document.getElementById('contact-platform-display').textContent = platform.replace(/_/g, ' ').toUpperCase();
-        document.getElementById('contact-preview').textContent = '请选择模板查看预览';
-        
-        modal.style.display = 'block';
-      });
-    });
-    
-    backdrop.addEventListener('click', function() {
-      modal.style.display = 'none';
-    });
-    
-    closeBtn.addEventListener('click', function() {
-      modal.style.display = 'none';
-    });
-    
-    document.getElementById('contact-template').addEventListener('change', function() {
-      const templateId = this.value;
-      if (templateId) {
-        document.getElementById('contact-preview').textContent = '加载中...';
-      } else {
-        document.getElementById('contact-preview').textContent = '请选择模板查看预览';
-      }
-    });
-    
-    document.getElementById('contact-submit').addEventListener('click', function() {
-      alert('消息发送功能开发中');
-      modal.style.display = 'none';
-    });
+  function openContactModal(platform, accountId, nickName) {
+    document.getElementById('contact-platform').value = platform;
+    document.getElementById('contact-kol-platform-account-id').value = accountId;
+    document.getElementById('contact-platform-display').textContent = platform.replace(/_/g, ' ').toUpperCase();
+    document.getElementById('contact-preview').textContent = '请选择模板查看预览';
+    document.getElementById('contact-modal').style.display = 'block';
+  }
+
+  function closeContactModal() {
+    document.getElementById('contact-modal').style.display = 'none';
+  }
+
+  document.getElementById('contact-template').addEventListener('change', function() {
+    const preview = document.getElementById('contact-preview');
+    if (this.value) {
+      preview.textContent = '加载中...';
+    } else {
+      preview.textContent = '请选择模板查看预览';
+    }
   });
+
+  function sendContact() {
+    alert('消息发送功能开发中');
+    closeContactModal();
+  }
 </script>

@@ -1,41 +1,51 @@
-<% content_for :page_title, "KOL列表" %>
-<% content_for :page_subtitle, "管理KOL资源" %>
+<% content_for :page_title do %>
+  KOL列表
+<% end %>
+<% content_for :page_subtitle do %>
+  管理KOL资源
+<% end %>
 
 <div class="admin-card">
   <div class="admin-card-header">
-    <div class="admin-card-title">
-      <span class="admin-card-icon">👥</span>
-      KOL列表
+    <div>
+      <div class="admin-card-title">
+        KOL列表
+      </div>
+      <div class="admin-card-subtitle">
+        管理和筛选KOL信息
+      </div>
     </div>
-    <div class="admin-card-actions">
-      <%= link_to "新增KOL", new_admin_kol_path, class: "admin-btn admin-btn-primary" %>
+    <div class="admin-card-header-right">
+      <%= link_to "新增KOL", new_admin_kol_path, class: "admin-button-secondary" %>
+      <span class="admin-tag">
+        共 <%= @kols.total_count %> 条
+      </span>
     </div>
   </div>
-  
-  <div class="admin-card-body">
-    <div class="admin-search-bar">
-      <%= search_form_for @q, url: admin_kols_path do |f| %>
-        <div class="admin-search-row">
-          <div class="admin-search-group">
-            <%= f.label :kol_name_cont, class: "admin-search-label" %>
-            <%= f.text_field :kol_name_cont, placeholder: "搜索KOL名称", class: "admin-input" %>
-          </div>
-          <div class="admin-search-group">
-            <%= f.label :category_eq, class: "admin-search-label" %>
-            <%= f.select :category_eq, options_for_select([["全部", ""]] + @categories.map { |c| [c, c] }), class: "admin-select" %>
-          </div>
-          <div class="admin-search-group">
-            <%= f.label :location_eq, class: "admin-search-label" %>
-            <%= f.select :location_eq, options_for_select([["全部", ""]] + @locations.map { |l| [l, l] }), class: "admin-select" %>
-          </div>
-          <div class="admin-search-group admin-search-submit">
-            <%= f.submit "搜索", class: "admin-btn admin-btn-secondary" %>
-          </div>
-        </div>
-      <% end %>
-    </div>
 
-    <div class="admin-table-wrapper">
+  <div class="admin-filter-form">
+    <%= search_form_for @q, url: admin_kols_path, class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">KOL名称</label>
+        <%= f.search_field :kol_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索KOL名称..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">类别</label>
+        <%= f.select :category_eq, @categories.map { |c| [c, c] }, { include_blank: "所有类别" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">地区</label>
+        <%= f.select :location_eq, @locations.map { |l| [l, l] }, { include_blank: "所有地区" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_kols_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @kols.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
       <table class="admin-table">
         <thead>
           <tr>
@@ -52,23 +62,45 @@
         <tbody>
           <% @kols.each do |kol| %>
             <tr>
-              <td><%= link_to kol.kol_name, admin_kol_path(kol), class: "admin-link" %></td>
-              <td><%= kol.nick_name.presence || "-" %></td>
-              <td><%= kol.location.presence || "-" %></td>
-              <td><%= kol.category.presence || "-" %></td>
-              <td><%= kol.kol_platform_accounts.count %></td>
-              <td><%= kol.conversations.count %></td>
+              <td>
+                <%= link_to kol.kol_name, admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= kol.nick_name.presence || "-" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= kol.location.presence || "-" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= kol.category.presence || "-" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= kol.kol_platform_accounts.count %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= kol.conversations.count %>
+                </span>
+              </td>
               <td>
                 <% if kol.conversations.any? %>
-                  <span class="admin-badge admin-badge-success">活跃</span>
+                  <span class="admin-badge" style="background: rgba(34, 197, 94, 0.18); color: #bbf7d0;">活跃</span>
                 <% else %>
-                  <span class="admin-badge admin-badge-secondary">待联系</span>
+                  <span class="admin-badge">待联系</span>
                 <% end %>
               </td>
               <td>
-                <div class="admin-actions">
-                  <%= link_to "详情", admin_kol_path(kol), class: "admin-action-btn" %>
-                  <%= link_to "编辑", edit_admin_kol_path(kol), class: "admin-action-btn" %>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "详情", admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "编辑", edit_admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
                 </div>
               </td>
             </tr>
@@ -76,14 +108,12 @@
         </tbody>
       </table>
     </div>
-
-    <% if @kols.empty? %>
-      <div class="admin-empty-state">
-        <div class="admin-empty-icon">👤</div>
-        <div class="admin-empty-text">暂无KOL数据</div>
-      </div>
-    <% end %>
-
-    <%= paginate @kols %>
-  </div>
+    <div class="admin-pagination">
+      <%= paginate @kols %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无KOL数据。
+    </div>
+  <% end %>
 </div>

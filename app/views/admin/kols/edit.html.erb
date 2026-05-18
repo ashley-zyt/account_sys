@@ -1,52 +1,62 @@
-<% content_for :page_title, "编辑KOL" %>
-<% content_for :page_subtitle, "修改KOL信息" %>
+<% content_for :page_title do %>
+  编辑KOL
+<% end %>
+<% content_for :page_subtitle do %>
+  修改 <%= @kol.kol_name %> 的信息
+<% end %>
 
 <div class="admin-card">
   <div class="admin-card-header">
-    <div class="admin-card-title">
-      <span class="admin-card-icon">👥</span>
-      编辑KOL
-    </div>
-    <div class="admin-card-actions">
-      <%= link_to "返回列表", admin_kols_path, class: "admin-btn admin-btn-outline" %>
+    <div>
+      <div class="admin-card-title">
+        KOL信息
+      </div>
+      <div class="admin-card-subtitle">
+        修改KOL基础信息
+      </div>
     </div>
   </div>
-  
-  <div class="admin-card-body">
-    <%= form_for [:admin, @kol] do |f| %>
-      <div class="admin-form">
-        <div class="admin-form-row">
-          <div class="admin-form-group">
-            <%= f.label :kol_name, class: "admin-form-label" %>
-            <%= f.text_field :kol_name, class: "admin-input", placeholder: "KOL名称", required: true %>
-          </div>
-          <div class="admin-form-group">
-            <%= f.label :nick_name, class: "admin-form-label" %>
-            <%= f.text_field :nick_name, class: "admin-input", placeholder: "昵称" %>
-          </div>
-        </div>
-        
-        <div class="admin-form-row">
-          <div class="admin-form-group">
-            <%= f.label :location, class: "admin-form-label" %>
-            <%= f.text_field :location, class: "admin-input", placeholder: "地区" %>
-          </div>
-          <div class="admin-form-group">
-            <%= f.label :category, class: "admin-form-label" %>
-            <%= f.text_field :category, class: "admin-input", placeholder: "类别" %>
-          </div>
-        </div>
-        
-        <div class="admin-form-group">
-          <%= f.label :notes, class: "admin-form-label" %>
-          <%= f.text_area :notes, rows: 4, class: "admin-textarea", placeholder: "备注信息" %>
-        </div>
-        
-        <div class="admin-form-actions">
-          <%= f.submit "保存修改", class: "admin-btn admin-btn-primary" %>
-          <%= link_to "取消", admin_kols_path, class: "admin-btn admin-btn-outline" %>
-        </div>
+
+  <%= form_with model: [:admin, @kol], class: "admin-form" do |f| %>
+    <% if @kol.errors.any? %>
+      <div class="admin-empty-state" style="margin-bottom: 12px;">
+        <ul class="admin-list">
+          <% @kol.errors.full_messages.each do |msg| %>
+            <li class="admin-list-item">
+              <div class="admin-list-title"><%= msg %></div>
+            </li>
+          <% end %>
+        </ul>
       </div>
     <% end %>
-  </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">KOL名称</div>
+        <%= f.text_field :kol_name, class: "admin-input", placeholder: "输入KOL名称", required: true %>
+      </div>
+      <div>
+        <div class="admin-field-label">昵称</div>
+        <%= f.text_field :nick_name, class: "admin-input", placeholder: "输入昵称" %>
+      </div>
+      <div>
+        <div class="admin-field-label">地区</div>
+        <%= f.text_field :location, class: "admin-input", placeholder: "输入地区" %>
+      </div>
+      <div>
+        <div class="admin-field-label">类别</div>
+        <%= f.text_field :category, class: "admin-input", placeholder: "输入类别" %>
+      </div>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <div class="admin-field-label">备注</div>
+      <%= f.text_area :notes, rows: 4, class: "admin-input", placeholder: "输入备注信息" %>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <button type="submit" class="admin-button-primary">保存修改</button>
+      <%= link_to "取消", admin_kol_path(@kol), class: "admin-button-secondary" %>
+    </div>
+  <% end %>
 </div>
