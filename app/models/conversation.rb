@@ -36,7 +36,7 @@ class Conversation < ApplicationRecord
 		tiktok: 3,
 		youtube: 4,
 		instagram: 5
-	}
+	}, prefix: true
 
   enum :status, {
     pending: 0,
