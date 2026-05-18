@@ -167,6 +167,13 @@
       <div style="font-size: 14px; color: #e2e8f0;" id="contact-account-display">-</div>
     </div>
     <div style="margin-bottom: 12px;">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">消息模式</div>
+      <div style="display: flex; gap: 8px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(71, 85, 105, 0.6); border-radius: 6px; padding: 4px;">
+        <button type="button" id="mode-template-btn" style="flex: 1; padding: 6px 12px; background: #3b82f6; border: none; border-radius: 4px; color: #fff; font-size: 12px; cursor: pointer;" onclick="switchContactMode('template')">使用模板</button>
+        <button type="button" id="mode-custom-btn" style="flex: 1; padding: 6px 12px; background: transparent; border: none; border-radius: 4px; color: #94a3b8; font-size: 12px; cursor: pointer;" onclick="switchContactMode('custom')">自定义消息</button>
+      </div>
+    </div>
+    <div id="contact-template-section" style="margin-bottom: 12px;">
       <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">选择模板</div>
       <select id="contact-template" class="admin-input" style="width: 100%; padding: 8px 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(71, 85, 105, 0.8); border-radius: 6px; color: #e2e8f0; font-size: 13px;">
         <option value="">请选择模板</option>
@@ -175,13 +182,17 @@
         <% end %>
       </select>
     </div>
+    <div id="contact-custom-section" style="margin-bottom: 12px; display: none;">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">自定义消息</div>
+      <textarea id="contact-custom-message" style="width: 100%; padding: 8px 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(71, 85, 105, 0.8); border-radius: 6px; color: #e2e8f0; font-size: 13px; min-height: 100px; resize: vertical;" placeholder="请输入自定义消息内容..."></textarea>
+    </div>
     <div style="margin-bottom: 16px;">
       <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">消息预览</div>
-      <div id="contact-preview" style="padding: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(71, 85, 105, 0.6); border-radius: 6px; font-size: 13px; color: #cbd5e1; line-height: 1.5;">请选择模板查看预览</div>
+      <div id="contact-preview" style="padding: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(71, 85, 105, 0.6); border-radius: 6px; font-size: 13px; color: #cbd5e1; line-height: 1.5;">请选择模板或输入自定义消息</div>
     </div>
     <div style="display: flex; gap: 8px; justify-content: flex-end;">
       <button onclick="closeContactModal()" style="padding: 8px 16px; background: transparent; border: 1px solid rgba(71, 85, 105, 0.8); border-radius: 6px; color: #94a3b8; cursor: pointer; font-size: 13px;">取消</button>
-      <button onclick="sendContact()" id="send-btn" style="padding: 8px 16px; background: #3b82f6; border: 1px solid #3b82f6; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">发起会话</button>
+      <button onclick="sendContact()" id="send-btn" disabled style="padding: 8px 16px; background: #1e3a5f; border: 1px solid #1e3a5f; border-radius: 6px; color: #64748b; cursor: not-allowed; font-size: 13px;">发起会话</button>
     </div>
   </div>
 </div>
@@ -190,9 +201,20 @@
   function openContactModal(platform, accountId, nickName) {
     document.getElementById('contact-kol-platform-account-id').value = accountId;
     document.getElementById('contact-account-display').textContent = platform.replace('_', ' ').toUpperCase() + ' @' + nickName;
-    document.getElementById('contact-preview').textContent = '请选择模板查看预览';
+    document.getElementById('contact-preview').textContent = '请选择模板或输入自定义消息';
     document.getElementById('contact-template').value = '';
+    document.getElementById('contact-custom-message').value = '';
     document.getElementById('send-btn').disabled = true;
+    document.getElementById('send-btn').style.background = '#1e3a5f';
+    document.getElementById('send-btn').style.borderColor = '#1e3a5f';
+    document.getElementById('send-btn').style.color = '#64748b';
+    document.getElementById('send-btn').style.cursor = 'not-allowed';
+    document.getElementById('contact-template-section').style.display = 'block';
+    document.getElementById('contact-custom-section').style.display = 'none';
+    document.getElementById('mode-template-btn').style.background = '#3b82f6';
+    document.getElementById('mode-template-btn').style.color = '#fff';
+    document.getElementById('mode-custom-btn').style.background = 'transparent';
+    document.getElementById('mode-custom-btn').style.color = '#94a3b8';
     document.getElementById('contact-modal').style.display = 'block';
   }
 
@@ -200,54 +222,115 @@
     document.getElementById('contact-modal').style.display = 'none';
   }
 
+  function switchContactMode(mode) {
+    const templateBtn = document.getElementById('mode-template-btn');
+    const customBtn = document.getElementById('mode-custom-btn');
+    const templateSection = document.getElementById('contact-template-section');
+    const customSection = document.getElementById('contact-custom-section');
+
+    if (mode === 'template') {
+      templateBtn.style.background = '#3b82f6';
+      templateBtn.style.color = '#fff';
+      customBtn.style.background = 'transparent';
+      customBtn.style.color = '#94a3b8';
+      templateSection.style.display = 'block';
+      customSection.style.display = 'none';
+      document.getElementById('contact-custom-message').value = '';
+    } else {
+      templateBtn.style.background = 'transparent';
+      templateBtn.style.color = '#94a3b8';
+      customBtn.style.background = '#3b82f6';
+      customBtn.style.color = '#fff';
+      templateSection.style.display = 'none';
+      customSection.style.display = 'block';
+      document.getElementById('contact-template').value = '';
+    }
+    updateSendBtnState();
+  }
+
+  function updateSendBtnState() {
+    const templateBtn = document.getElementById('mode-template-btn');
+    const templateSelected = document.getElementById('contact-template').value;
+    const customMessage = document.getElementById('contact-custom-message').value.trim();
+    const sendBtn = document.getElementById('send-btn');
+    
+    let valid = false;
+    if (templateBtn.style.background === 'rgb(59, 130, 246)') {
+      valid = templateSelected !== '';
+    } else {
+      valid = customMessage !== '';
+    }
+    
+    if (valid) {
+      sendBtn.disabled = false;
+      sendBtn.style.background = '#3b82f6';
+      sendBtn.style.borderColor = '#3b82f6';
+      sendBtn.style.color = '#fff';
+      sendBtn.style.cursor = 'pointer';
+    } else {
+      sendBtn.disabled = true;
+      sendBtn.style.background = '#1e3a5f';
+      sendBtn.style.borderColor = '#1e3a5f';
+      sendBtn.style.color = '#64748b';
+      sendBtn.style.cursor = 'not-allowed';
+    }
+  }
+
   document.getElementById('contact-template').addEventListener('change', function() {
     const preview = document.getElementById('contact-preview');
     const selectedOption = this.options[this.selectedIndex];
     if (this.value && selectedOption && selectedOption.dataset.content) {
       preview.textContent = selectedOption.dataset.content;
-      document.getElementById('send-btn').disabled = false;
     } else {
       preview.textContent = '请选择模板查看预览';
-      document.getElementById('send-btn').disabled = true;
     }
+    updateSendBtnState();
+  });
+
+  document.getElementById('contact-custom-message').addEventListener('input', function() {
+    const preview = document.getElementById('contact-preview');
+    preview.textContent = this.value || '请输入自定义消息';
+    updateSendBtnState();
   });
 
   function sendContact() {
-      const templateId = document.getElementById('contact-template').value;
-      const kolPlatformAccountId = document.getElementById('contact-kol-platform-account-id').value;
+    const templateId = document.getElementById('contact-template').value;
+    const customMessage = document.getElementById('contact-custom-message').value.trim();
+    const kolPlatformAccountId = document.getElementById('contact-kol-platform-account-id').value;
 
-      if (!templateId) {
-        alert('请选择消息模板');
-        return;
-      }
+    closeContactModal();
 
-      closeContactModal();
+    setTimeout(() => {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '<%= start_conversation_admin_kol_path(@kol) %>';
 
-      setTimeout(() => {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '<%= start_conversation_admin_kol_path(@kol) %>';
+      const csrfToken = document.createElement('input');
+      csrfToken.type = 'hidden';
+      csrfToken.name = 'authenticity_token';
+      csrfToken.value = '<%= form_authenticity_token %>';
+      form.appendChild(csrfToken);
 
-        const csrfToken = document.createElement('input');
-        csrfToken.type = 'hidden';
-        csrfToken.name = 'authenticity_token';
-        csrfToken.value = '<%= form_authenticity_token %>';
-        form.appendChild(csrfToken);
+      const templateInput = document.createElement('input');
+      templateInput.type = 'hidden';
+      templateInput.name = 'template_id';
+      templateInput.value = templateId;
+      form.appendChild(templateInput);
 
-        const templateInput = document.createElement('input');
-        templateInput.type = 'hidden';
-        templateInput.name = 'template_id';
-        templateInput.value = templateId;
-        form.appendChild(templateInput);
+      const customInput = document.createElement('input');
+      customInput.type = 'hidden';
+      customInput.name = 'custom_message';
+      customInput.value = customMessage;
+      form.appendChild(customInput);
 
-        const kolAccountInput = document.createElement('input');
-        kolAccountInput.type = 'hidden';
-        kolAccountInput.name = 'kol_platform_account_id';
-        kolAccountInput.value = kolPlatformAccountId;
-        form.appendChild(kolAccountInput);
+      const kolAccountInput = document.createElement('input');
+      kolAccountInput.type = 'hidden';
+      kolAccountInput.name = 'kol_platform_account_id';
+      kolAccountInput.value = kolPlatformAccountId;
+      form.appendChild(kolAccountInput);
 
-        document.body.appendChild(form);
-        form.submit();
-      }, 300);
-    }
+      document.body.appendChild(form);
+      form.submit();
+    }, 300);
+  }
 </script>
