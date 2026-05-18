@@ -27,11 +27,11 @@ class CreateConversations < ActiveRecord::Migration[6.1]
       t.timestamps
     end
 
-    add_index :conversations, :kol_id 
-    add_index :conversations, :kol_platform_account_id 
-    add_index :conversations, :account_id 
-    add_index :conversations, :platform 
-    add_index :conversations, :status 
+    add_index :conversations, :kol_id
+    add_index :conversations, :kol_platform_account_id
+    add_index :conversations, :account_id
+    add_index :conversations, :platform
+    add_index :conversations, :status
     add_index :conversations, :last_message_at
   end
 end
