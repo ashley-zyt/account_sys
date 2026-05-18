@@ -1,7 +1,7 @@
 class CreateConversations < ActiveRecord::Migration[6.1]
   def change
     create_table :conversations do |t|
-      t.references :kol, null: false, foreign_key: true
+      t.references :kol, type: :bigint, null: false, foreign_key: true
 
       t.references :kol_platform_account,
                    null: false,

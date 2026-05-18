@@ -1,7 +1,7 @@
 class CreateConversationMessages < ActiveRecord::Migration[6.1]
   def change
     create_table :conversation_messages do |t|
-      t.references :conversation,
+      t.references :conversation,type: :bigint,
                    null: false,
                    foreign_key: true
 

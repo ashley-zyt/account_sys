@@ -1,7 +1,7 @@
 class CreateKolPlatformAccounts < ActiveRecord::Migration[6.1]
   def change
     create_table :kol_platform_accounts do |t|
-      t.references :kol, null: false, foreign_key: true
+      t.references :kol, type: :bigint, null: false, foreign_key: true
 
       t.integer :platform, null: false, comment: "平台"
 
