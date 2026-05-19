@@ -97,6 +97,7 @@
                       发起联系
                     </button>
                   <% end %>
+                  <%= link_to "删除", admin_kol_path(kol), method: :delete, data: { confirm: "确定要删除该KOL吗？这将同时删除相关的会话和消息，此操作不可撤销。" }, class: "admin-button-danger", style: "padding: 4px 10px; font-size: 11px;" %>
                 </div>
               </td>
             </tr>

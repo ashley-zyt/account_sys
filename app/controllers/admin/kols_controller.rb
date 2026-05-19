@@ -1,5 +1,5 @@
 class Admin::KolsController < Admin::BaseController
-  before_action :set_kol, only: [:show, :edit, :update, :initiate_contact, :start_conversation]
+  before_action :set_kol, only: [:show, :edit, :update, :destroy, :initiate_contact, :start_conversation]
 
   def index
     @q = Kol.ransack(params[:q])
@@ -43,6 +43,20 @@ class Admin::KolsController < Admin::BaseController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  def destroy
+    kol_name = @kol.kol_name
+    conversation_count = @kol.conversations.count
+    message_count = @kol.conversations.joins(:conversation_messages).count
+
+    if @kol.destroy
+      redirect_to admin_kols_path, notice: "已成功删除KOL「#{kol_name}」，同时清除了 #{conversation_count} 个会话和 #{message_count} 条消息"
+    else
+      redirect_to admin_kols_path, alert: "删除失败：#{@kol.errors.full_messages.join(', ')}"
+    end
+  rescue => e
+    redirect_to admin_kols_path, alert: "删除失败：#{e.message}"
   end
 
   def initiate_contact

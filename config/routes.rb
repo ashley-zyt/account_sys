@@ -8,7 +8,7 @@ Rails.application.routes.draw do
     resources :jianying_tasks, only: [:index, :show]
     resources :browsers, only: [:index, :show, :new, :create, :edit, :update]
     resources :task_logs, only: [:index, :show]
-    resources :kols, only: [:index, :show, :new, :create, :edit, :update] do
+    resources :kols, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member do
         get :initiate_contact
         post :start_conversation
@@ -26,6 +26,8 @@ Rails.application.routes.draw do
       get "check/accounts"
       get "check/valid_proxies"
       post "check/update_account_status"
+      get "kol/fetch_conversation", to: "kols#fetch_conversation"
+      get "kol/get_latest_message", to: "kols#get_latest_message"
     end
   end
 
