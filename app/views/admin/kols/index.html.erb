@@ -17,9 +17,6 @@
     </div>
     <div class="admin-card-header-right">
       <%= link_to "新增KOL", new_admin_kol_path, class: "admin-button-secondary" %>
-      <button type="button" class="admin-button-primary" onclick="batchInitiateContact()">
-        一键发起联系
-      </button>
       <span class="admin-tag">
         共 <%= @kols.total_count %> 条
       </span>
@@ -40,9 +37,12 @@
         <label class="admin-filter-label">地区</label>
         <%= f.select :location_eq, @locations.map { |l| [l, l] }, { include_blank: "所有地区" }, class: "admin-input admin-filter-input" %>
       </div>
-      <div style="margin-left: auto;">
+      <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
         <%= link_to "重置", admin_kols_path, class: "admin-button-secondary" %>
+        <button type="button" class="admin-button-primary" onclick="batchInitiateContact()">
+          一键发起联系
+        </button>
       </div>
     <% end %>
   </div>
@@ -95,7 +95,13 @@
               <td>
                 <div style="display: flex; gap: 8px; align-items: center;">
                   <%= link_to "详情", admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                  <%= link_to "删除", admin_kol_path(kol), method: :delete, data: { confirm: "确定要删除该KOL吗？这将同时删除相关的会话和消息，此操作不可撤销。" }, style: "padding: 4px 10px; font-size: 11px; background-color: #dc2626; color: white; border-radius: 4px; text-decoration: none; font-weight: 500;" %>
+                  <form action="<%= admin_kol_path(kol) %>" method="POST" style="display: inline;" onsubmit="return confirm('确定要删除该KOL吗？这将同时删除相关的会话和消息，此操作不可撤销。')">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
+                    <button type="submit" style="padding: 4px 10px; font-size: 11px; background-color: #dc2626; color: white; border-radius: 4px; text-decoration: none; font-weight: 500; border: none; cursor: pointer;">
+                      删除
+                    </button>
+                  </form>
                   <% if kol.kol_platform_accounts.any? && !kol.conversations.any? %>
                     <button type="button" class="admin-button-primary" style="padding: 4px 10px; font-size: 11px;" onclick="openInitiateModal(<%= kol.id %>)">
                       发起联系
