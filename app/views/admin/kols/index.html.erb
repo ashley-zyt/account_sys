@@ -17,6 +17,9 @@
     </div>
     <div class="admin-card-header-right">
       <%= link_to "新增KOL", new_admin_kol_path, class: "admin-button-secondary" %>
+      <button type="button" class="admin-button-primary" onclick="batchInitiateContact()">
+        一键发起联系
+      </button>
       <span class="admin-tag">
         共 <%= @kols.total_count %> 条
       </span>
@@ -92,12 +95,12 @@
               <td>
                 <div style="display: flex; gap: 8px; align-items: center;">
                   <%= link_to "详情", admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "删除", admin_kol_path(kol), method: :delete, data: { confirm: "确定要删除该KOL吗？这将同时删除相关的会话和消息，此操作不可撤销。" }, style: "padding: 4px 10px; font-size: 11px; background-color: #dc2626; color: white; border-radius: 4px; text-decoration: none; font-weight: 500;" %>
                   <% if kol.kol_platform_accounts.any? && !kol.conversations.any? %>
                     <button type="button" class="admin-button-primary" style="padding: 4px 10px; font-size: 11px;" onclick="openInitiateModal(<%= kol.id %>)">
                       发起联系
                     </button>
                   <% end %>
-                  <%= link_to "删除", admin_kol_path(kol), method: :delete, data: { confirm: "确定要删除该KOL吗？这将同时删除相关的会话和消息，此操作不可撤销。" }, class: "admin-button-danger", style: "padding: 4px 10px; font-size: 11px;" %>
                 </div>
               </td>
             </tr>
@@ -122,6 +125,11 @@
 </div>
 
 <script>
+  function batchInitiateContact() {
+    // 一键发起联系功能，待实现
+    alert('一键发起联系功能开发中...');
+  }
+
   function openInitiateModal(kolId) {
     const modal = document.getElementById('initiate-modal');
     const iframe = document.getElementById('modal-iframe');
