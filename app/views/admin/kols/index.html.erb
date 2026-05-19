@@ -52,14 +52,14 @@
       <table class="admin-table">
         <thead>
           <tr>
-            <th>KOL名称</th>
-            <th>昵称</th>
-            <th>地区</th>
-            <th>类别</th>
-            <th>平台数</th>
-            <th>会话数</th>
-            <th>操作</th>
-          </tr>
+              <th>KOL名称</th>
+              <th>昵称</th>
+              <th>地区</th>
+              <th>类别</th>
+              <th>平台账号数</th>
+              <th>会话数</th>
+              <th>操作</th>
+            </tr>
         </thead>
         <tbody>
           <% @kols.each do |kol| %>
@@ -95,6 +95,7 @@
               <td>
                 <div style="display: flex; gap: 8px; align-items: center;">
                   <%= link_to "详情", admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "编辑", edit_admin_kol_path(kol), style: "padding: 4px 10px; font-size: 11px; background-color: #3b82f6; color: white; border-radius: 4px; text-decoration: none; font-weight: 500;" %>
                   <form action="<%= admin_kol_path(kol) %>" method="POST" style="display: inline;" onsubmit="return confirm('确定要删除该KOL吗？这将同时删除相关的会话和消息，此操作不可撤销。')">
                     <input type="hidden" name="_method" value="DELETE">
                     <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
