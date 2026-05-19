@@ -23,7 +23,7 @@
 class ConversationMessage < ApplicationRecord
   belongs_to :conversation
 
-  enum :sender_type, {
+  enum sender_type: {
     social_account: 0,
     kol: 1
   }
