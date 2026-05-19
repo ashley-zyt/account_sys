@@ -14,7 +14,11 @@ Rails.application.routes.draw do
         post :start_conversation
       end
     end
-    resources :conversations, only: [:index, :show]
+    resources :conversations, only: [:index, :show] do
+      member do
+        post :update_status
+      end
+    end
     resources :message_templates, only: [:index, :new, :create, :edit, :update, :destroy]
   end
 

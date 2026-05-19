@@ -83,7 +83,19 @@
                 </span>
               </td>
               <td>
-                <%= link_to "查看", admin_conversation_path(conv), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <%= link_to "查看", admin_conversation_path(conv), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if conv.status != "已合作" && conv.status != "已拒绝" && conv.status != "已关闭" %>
+                    <select onchange="changeConversationStatus(<%= conv.id %>, this.value)" style="padding: 4px 8px; font-size: 11px; border-radius: 4px; border: 1px solid #475569; background-color: #1e293b; color: white; cursor: pointer;">
+                      <option value="">更改状态</option>
+                      <option value="已合作">已合作</option>
+                      <option value="已拒绝">已拒绝</option>
+                      <option value="已关闭">关闭会话</option>
+                    </select>
+                  <% else %>
+                    <span class="admin-label-muted" style="font-size: 11px; color: #64748b;">已结束</span>
+                  <% end %>
+                </div>
               </td>
             </tr>
           <% end %>
@@ -99,3 +111,33 @@
     </div>
   <% end %>
 </div>
+
+<script>
+  function changeConversationStatus(conversationId, newStatus) {
+    if (!newStatus) return;
+
+    if (!confirm('确定要将该会话状态更改为「' + newStatus + '」吗？')) {
+      location.reload();
+      return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/conversations/' + conversationId + '/update_status';
+
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'authenticity_token';
+    csrfInput.value = '<%= form_authenticity_token %>';
+    form.appendChild(csrfInput);
+
+    const statusInput = document.createElement('input');
+    statusInput.type = 'hidden';
+    statusInput.name = 'status';
+    statusInput.value = newStatus;
+    form.appendChild(statusInput);
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+</script>
