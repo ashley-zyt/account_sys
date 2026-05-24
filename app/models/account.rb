@@ -65,7 +65,8 @@ class Account < ApplicationRecord
 	enum work_type: {
 		"视频搬运": 0,
 		"coze": 1,
-		"capcut": 2
+		"capcut": 2,
+		"人工运营": 3
 	}
 
 	# 作用域：获取当前可用的账号（仅 正常 状态）
