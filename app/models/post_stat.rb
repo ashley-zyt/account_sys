@@ -22,14 +22,15 @@
 #
 
 class PostStat < ApplicationRecord
-  belongs_to :account
+	belongs_to :account
 
-  validates :account_id, presence: true
-  validates :post_date, presence: true
-  validates :likes_count, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :shares_count, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :comments_count, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :views_count, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+	validates :account_id, presence: true
+	validates :post_date, presence: true
+	validates :url, presence: true, uniqueness: true
+	validates :likes_count, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+	validates :shares_count, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+	validates :comments_count, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+	validates :views_count, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
   scope :by_account, ->(account_id) { where(account_id: account_id) }
   scope :by_date_range, ->(start_date, end_date) { where(post_date: start_date..end_date) }
