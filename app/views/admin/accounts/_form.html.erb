@@ -30,7 +30,12 @@
       <div class="admin-field-label">
         主题
       </div>
-      <%= f.select :theme, themes.map { |name| [name, name] }, { include_blank: "请选择主题" }, class: "admin-input" %>
+      <%= render 'admin/shared/searchable_theme_select', 
+        name: 'account[theme]', 
+        themes: themes, 
+        selected: account.theme, 
+        placeholder: '请选择主题',
+        include_blank: '请选择主题' %>
     </div>
     <div>
       <div class="admin-field-label">

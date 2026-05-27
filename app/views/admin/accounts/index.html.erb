@@ -31,7 +31,12 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
-        <%= f.select :theme_eq, @themes.map { |name| [name, name] }, { include_blank: "所有主题" }, class: "admin-input admin-filter-input" %>
+        <%= render 'admin/shared/searchable_theme_select', 
+          name: 'q[theme_eq]', 
+          themes: @themes, 
+          selected: params.dig(:q, :theme_eq), 
+          placeholder: '所有主题',
+          include_blank: '所有主题' %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">平台</label>
