@@ -20,7 +20,12 @@ Rails.application.routes.draw do
       end
     end
     resources :message_templates, only: [:index, :new, :create, :edit, :update, :destroy]
-    resources :themes, only: [:index, :new, :create, :edit, :update, :destroy]
+    resources :themes, only: [:index, :create, :edit, :update, :destroy] do
+      collection do
+        get :new_modal
+        get :edit_modal
+      end
+    end
   end
 
   namespace :api do

@@ -16,7 +16,7 @@
       </div>
     </div>
     <div class="admin-card-header-right">
-      <%= link_to "新增主题", new_admin_theme_path, class: "admin-button-secondary" %>
+      <button type="button" class="admin-button-secondary" onclick="openNewThemeModal()">新增主题</button>
       <span class="admin-tag">
         共 <%= @themes.total_count %> 条
       </span>
@@ -46,7 +46,7 @@
               <td><span class="admin-label-muted"><%= theme.created_at.strftime("%Y-%m-%d") %></span></td>
               <td>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <%= link_to "编辑", edit_admin_theme_path(theme), style: "padding: 4px 10px; font-size: 11px; background-color: #3b82f6; color: white; border-radius: 4px; text-decoration: none; font-weight: 500;" %>
+                  <button type="button" onclick="openEditThemeModal(<%= theme.id %>)" style="padding: 4px 10px; font-size: 11px; background-color: #3b82f6; color: white; border-radius: 4px; text-decoration: none; font-weight: 500; border: none; cursor: pointer;">编辑</button>
                   <form action="<%= admin_theme_path(theme) %>" method="POST" style="display: inline;" onsubmit="return confirm('确定要删除该主题吗？')">
                     <input type="hidden" name="_method" value="DELETE">
                     <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
@@ -70,3 +70,38 @@
     </div>
   <% end %>
 </div>
+
+<div id="theme-modal" class="admin-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 1000; justify-content: center; align-items: center;">
+  <div class="admin-modal-content" style="background: #1e293b; border-radius: 12px; width: 600px; max-width: 90%; max-height: 90%; overflow: hidden;">
+    <iframe id="theme-iframe" style="width: 100%; height: 100%; border: none; min-height: 500px;" src=""></iframe>
+  </div>
+</div>
+
+<script>
+  var themeModal = document.getElementById('theme-modal');
+  var themeIframe = document.getElementById('theme-iframe');
+
+  function openNewThemeModal() {
+    themeIframe.src = '<%= new_modal_admin_themes_path %>';
+    themeModal.style.display = 'flex';
+  }
+
+  function openEditThemeModal(id) {
+    themeIframe.src = '/admin/themes/' + id + '/edit_modal';
+    themeModal.style.display = 'flex';
+  }
+
+  function closeThemeModal(refresh) {
+    themeModal.style.display = 'none';
+    themeIframe.src = '';
+    if (refresh) {
+      location.reload();
+    }
+  }
+
+  themeModal.addEventListener('click', function(e) {
+    if (e.target === themeModal) {
+      closeThemeModal(false);
+    }
+  });
+</script>

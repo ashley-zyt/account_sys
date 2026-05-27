@@ -1,14 +1,8 @@
 class Admin::ThemesController < Admin::BaseController
-  before_action :set_theme, only: [:show, :edit, :update, :destroy]
+  before_action :set_theme, only: [:edit, :update, :destroy]
 
   def index
     @themes = Theme.order(created_at: :desc).page(params[:page]).per(10)
-  end
-
-  def show
-  end
-
-  def new
     @theme = Theme.new
   end
 
@@ -18,24 +12,42 @@ class Admin::ThemesController < Admin::BaseController
   def create
     @theme = Theme.new(theme_params)
 
-    if @theme.save
-      redirect_to admin_themes_path, notice: '主题创建成功'
-    else
-      render :new
+    respond_to do |format|
+      if @theme.save
+        format.html { redirect_to admin_themes_path, notice: '主题创建成功' }
+        format.json { render json: { success: true, message: '主题创建成功' } }
+      else
+        format.html { redirect_to admin_themes_path, alert: @theme.errors.full_messages.join(', ') }
+        format.json { render json: { success: false, message: @theme.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+      end
     end
   end
 
   def update
-    if @theme.update(theme_params)
-      redirect_to admin_themes_path, notice: '主题更新成功'
-    else
-      render :edit
+    respond_to do |format|
+      if @theme.update(theme_params)
+        format.html { redirect_to admin_themes_path, notice: '主题更新成功' }
+        format.json { render json: { success: true, message: '主题更新成功' } }
+      else
+        format.html { redirect_to admin_themes_path, alert: @theme.errors.full_messages.join(', ') }
+        format.json { render json: { success: false, message: @theme.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+      end
     end
   end
 
   def destroy
     @theme.destroy
     redirect_to admin_themes_path, notice: '主题删除成功'
+  end
+
+  def new_modal
+    @theme = Theme.new
+    render layout: false
+  end
+
+  def edit_modal
+    @theme = Theme.find(params[:id])
+    render layout: false
   end
 
   private
