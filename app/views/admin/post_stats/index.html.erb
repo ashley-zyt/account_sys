@@ -12,11 +12,10 @@
         发文数据列表
       </div>
       <div class="admin-card-subtitle">
-        管理和查看账号发文统计数据
+        查看账号发文统计数据
       </div>
     </div>
     <div class="admin-card-header-right">
-      <%= link_to "新增数据", new_admin_post_stat_path, class: "admin-button-secondary" %>
       <span class="admin-tag">
         共 <%= @post_stats.total_count %> 条
       </span>
@@ -58,7 +57,6 @@
             <th>评论数</th>
             <th>浏览数</th>
             <th>数据更新时间</th>
-            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -108,12 +106,6 @@
                 <span class="admin-label-muted">
                   <%= stat.data_updated_at&.strftime("%Y-%m-%d %H:%M") || "-" %>
                 </span>
-              </td>
-              <td>
-                <div style="display: flex; gap: 8px;">
-                  <%= link_to "编辑", edit_admin_post_stat_path(stat), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                  <%= link_to "删除", admin_post_stat_path(stat), method: :delete, data: { confirm: "确定要删除这条数据吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
-                </div>
               </td>
             </tr>
           <% end %>
