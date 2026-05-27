@@ -23,6 +23,8 @@ Rails.application.routes.draw do
     resources :themes, only: [:index, :create, :edit, :update, :destroy] do
       collection do
         get :new_modal
+      end
+      member do
         get :edit_modal
       end
     end
