@@ -18,6 +18,14 @@
 class Theme < ApplicationRecord
   validates :name, presence: true, uniqueness: true
 
+  before_save :convert_empty_strings_to_null
+
+  def convert_empty_strings_to_null
+    self.oss_directory = nil if oss_directory.blank?
+    self.titles = nil if titles.blank?
+    self.remark = nil if remark.blank?
+  end
+
   def titles_array
     return [] unless titles.present?
     titles.split("\n").map(&:strip).reject(&:empty?)
