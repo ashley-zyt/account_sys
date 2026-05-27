@@ -20,6 +20,7 @@ Rails.application.routes.draw do
       end
     end
     resources :message_templates, only: [:index, :new, :create, :edit, :update, :destroy]
+    resources :themes, only: [:index, :new, :create, :edit, :update, :destroy]
   end
 
   namespace :api do

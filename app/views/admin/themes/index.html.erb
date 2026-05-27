@@ -1,0 +1,72 @@
+<% content_for :page_title do %>
+  主题管理
+<% end %>
+<% content_for :page_subtitle do %>
+  管理内容主题
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        主题列表
+      </div>
+      <div class="admin-card-subtitle">
+        管理和编辑内容主题
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "新增主题", new_admin_theme_path, class: "admin-button-secondary" %>
+      <span class="admin-tag">
+        共 <%= @themes.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <% if @themes.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>主题名称</th>
+            <th>OSS目录名</th>
+            <th>待选标题数量</th>
+            <th>备注</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @themes.each do |theme| %>
+            <tr>
+              <td><%= theme.name %></td>
+              <td><span class="admin-label-muted"><%= theme.oss_directory.presence || '未设置' %></span></td>
+              <td><span class="admin-label-muted"><%= theme.titles_array.size %></span></td>
+              <td><span class="admin-label-muted"><%= theme.remark.present? ? theme.remark.truncate(20) : '无' %></span></td>
+              <td><span class="admin-label-muted"><%= theme.created_at.strftime("%Y-%m-%d") %></span></td>
+              <td>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <%= link_to "编辑", edit_admin_theme_path(theme), style: "padding: 4px 10px; font-size: 11px; background-color: #3b82f6; color: white; border-radius: 4px; text-decoration: none; font-weight: 500;" %>
+                  <form action="<%= admin_theme_path(theme) %>" method="POST" style="display: inline;" onsubmit="return confirm('确定要删除该主题吗？')">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
+                    <button type="submit" style="padding: 4px 10px; font-size: 11px; background-color: #dc2626; color: white; border-radius: 4px; text-decoration: none; font-weight: 500; border: none; cursor: pointer;">
+                      删除
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @themes %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无主题数据。
+    </div>
+  <% end %>
+</div>

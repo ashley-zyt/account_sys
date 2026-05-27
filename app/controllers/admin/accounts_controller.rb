@@ -46,15 +46,7 @@ class Admin::AccountsController < Admin::BaseController
 	end
 
 	def load_themes
-		raw = ThemeConfig.config["themes"]
-		@themes =
-			if raw.is_a?(Hash)
-				raw.keys
-			elsif raw.is_a?(Array)
-				raw.map { |t| t["name"] }.compact
-			else
-				[]
-			end
+		@themes = Theme.all_names
 	end
 
 	def account_params
