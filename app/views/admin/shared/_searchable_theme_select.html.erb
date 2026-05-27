@@ -1,76 +1,89 @@
-<div class="searchable-select-wrapper">
-  <div class="searchable-select" data-select-name="<%= name %>">
-    <div class="searchable-select-selected" tabindex="0">
-      <span class="searchable-select-value">
+<div class="custom-select-container">
+  <div class="custom-select" data-select-name="<%= name %>">
+    <div class="custom-select-trigger" onclick="toggleCustomSelect(this)">
+      <span class="custom-select-value">
         <%= selected.present? ? selected : placeholder %>
       </span>
-      <span class="searchable-select-arrow">▼</span>
+      <span class="custom-select-arrow">▼</span>
     </div>
-    <div class="searchable-select-dropdown" style="display: none;">
-      <input type="text" class="searchable-select-input" placeholder="搜索主题...">
-      <ul class="searchable-select-list">
+    <div class="custom-select-options" style="display: none;">
+      <input type="text" class="custom-select-search" oninput="filterCustomSelect(this)" placeholder="搜索主题...">
+      <div class="custom-select-options-list">
         <% if include_blank %>
-          <li class="searchable-select-option" data-value="">
-            <span class="searchable-select-option-text"><%= include_blank %></span>
-          </li>
+          <div class="custom-select-option" data-value="" onclick="selectCustomOption(this)">
+            <%= include_blank %>
+          </div>
         <% end %>
         <% themes.each do |theme| %>
-          <li class="searchable-select-option" data-value="<%= theme %>">
-            <span class="searchable-select-option-text"><%= theme %></span>
-          </li>
+          <div class="custom-select-option" data-value="<%= theme %>" onclick="selectCustomOption(this)">
+            <%= theme %>
+          </div>
         <% end %>
-      </ul>
+      </div>
     </div>
-    <input type="hidden" name="<%= name %>" value="<%= selected %>" class="searchable-select-hidden">
+    <input type="hidden" name="<%= name %>" value="<%= selected %>" class="custom-select-hidden-input">
   </div>
 </div>
 
-<style scoped>
-  .searchable-select-wrapper {
+<style>
+  .custom-select-container {
     position: relative;
     width: 100%;
+    min-width: 150px;
   }
 
-  .searchable-select {
+  .custom-select {
     position: relative;
     width: 100%;
     font-size: 14px;
+    font-family: inherit;
   }
 
-  .searchable-select-selected {
+  .custom-select-trigger {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px;
+    padding: 8px 12px;
     background: #1e293b;
     border: 1px solid #334155;
     border-radius: 6px;
     cursor: pointer;
     color: #e2e8f0;
-    min-height: 40px;
+    min-height: 38px;
+    user-select: none;
+    transition: border-color 0.2s;
   }
 
-  .searchable-select-selected:hover {
+  .custom-select-trigger:hover {
     border-color: #475569;
   }
 
-  .searchable-select-selected:focus {
+  .custom-select-trigger:focus {
     outline: none;
     border-color: #3b82f6;
   }
 
-  .searchable-select-value {
+  .custom-select-value {
     flex: 1;
     text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .searchable-select-arrow {
+  .custom-select-arrow {
     font-size: 10px;
     color: #64748b;
     margin-left: 8px;
+    pointer-events: none;
+    transition: transform 0.2s;
   }
 
-  .searchable-select-dropdown {
+  .custom-select.open .custom-select-arrow {
+    transform: rotate(180deg);
+  }
+
+  .custom-select-options {
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
@@ -78,11 +91,12 @@
     background: #1e293b;
     border: 1px solid #334155;
     border-radius: 6px;
-    z-index: 100;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
   }
 
-  .searchable-select-input {
+  .custom-select-search {
     width: 100%;
     padding: 10px 12px;
     border: none;
@@ -91,101 +105,103 @@
     color: #e2e8f0;
     font-size: 14px;
     box-sizing: border-box;
+    font-family: inherit;
   }
 
-  .searchable-select-input:focus {
+  .custom-select-search:focus {
     outline: none;
   }
 
-  .searchable-select-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  .custom-select-search::placeholder {
+    color: #64748b;
+  }
+
+  .custom-select-options-list {
     max-height: 200px;
     overflow-y: auto;
   }
 
-  .searchable-select-option {
+  .custom-select-option {
     padding: 10px 12px;
     cursor: pointer;
     color: #e2e8f0;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .searchable-select-option:hover {
+  .custom-select-option:hover {
     background: #334155;
   }
 
-  .searchable-select-option-text {
-    display: block;
-  }
-
-  .searchable-select-hidden {
+  .custom-select-hidden-input {
     display: none;
   }
 </style>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const selectWrappers = document.querySelectorAll('.searchable-select');
+  function toggleCustomSelect(trigger) {
+    var select = trigger.closest('.custom-select');
+    var options = select.querySelector('.custom-select-options');
     
-    selectWrappers.forEach(function(wrapper) {
-      const selectedDiv = wrapper.querySelector('.searchable-select-selected');
-      const dropdown = wrapper.querySelector('.searchable-select-dropdown');
-      const input = wrapper.querySelector('.searchable-select-input');
-      const list = wrapper.querySelector('.searchable-select-list');
-      const hiddenInput = wrapper.querySelector('.searchable-select-hidden');
-      const valueSpan = wrapper.querySelector('.searchable-select-value');
-      const placeholder = valueSpan.textContent.trim();
-
-      selectedDiv.addEventListener('click', function(e) {
-        e.stopPropagation();
-        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-        if (dropdown.style.display === 'block') {
-          input.focus();
-        }
-      });
-
-      input.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const options = list.querySelectorAll('.searchable-select-option');
-        
-        options.forEach(function(option) {
-          const text = option.textContent.toLowerCase();
-          if (text.includes(searchTerm)) {
-            option.style.display = 'block';
-          } else {
-            option.style.display = 'none';
-          }
-        });
-      });
-
-      list.addEventListener('click', function(e) {
-        const option = e.target.closest('.searchable-select-option');
-        if (option) {
-          const value = option.getAttribute('data-value');
-          const text = option.textContent.trim();
-          
-          hiddenInput.value = value;
-          valueSpan.textContent = text || placeholder;
-          dropdown.style.display = 'none';
-        }
-      });
-
-      document.addEventListener('click', function(e) {
-        if (!wrapper.contains(e.target)) {
-          dropdown.style.display = 'none';
-        }
-      });
-
-      selectedDiv.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          dropdown.style.display = 'block';
-          input.focus();
-        } else if (e.key === 'Escape') {
-          dropdown.style.display = 'none';
-        }
-      });
+    document.querySelectorAll('.custom-select').forEach(function(s) {
+      if (s !== select) {
+        s.classList.remove('open');
+        s.querySelector('.custom-select-options').style.display = 'none';
+      }
     });
+    
+    if (options.style.display === 'none' || options.style.display === '') {
+      options.style.display = 'block';
+      select.classList.add('open');
+      setTimeout(function() {
+        var searchInput = select.querySelector('.custom-select-search');
+        if (searchInput) {
+          searchInput.value = '';
+          searchInput.focus();
+          filterCustomSelect(searchInput);
+        }
+      }, 50);
+    } else {
+      options.style.display = 'none';
+      select.classList.remove('open');
+    }
+  }
+
+  function filterCustomSelect(input) {
+    var select = input.closest('.custom-select');
+    var options = select.querySelectorAll('.custom-select-option');
+    var searchTerm = input.value.toLowerCase();
+    
+    options.forEach(function(option) {
+      var text = option.textContent.toLowerCase();
+      option.style.display = text.includes(searchTerm) ? 'block' : 'none';
+    });
+  }
+
+  function selectCustomOption(option) {
+    var select = option.closest('.custom-select');
+    var value = option.getAttribute('data-value');
+    var text = option.textContent.trim();
+    var valueSpan = select.querySelector('.custom-select-value');
+    var hiddenInput = select.querySelector('.custom-select-hidden-input');
+    var placeholder = select.dataset.placeholder || '请选择';
+    
+    hiddenInput.value = value;
+    valueSpan.textContent = text || placeholder;
+    
+    var options = select.querySelector('.custom-select-options');
+    options.style.display = 'none';
+    select.classList.remove('open');
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.custom-select')) {
+      document.querySelectorAll('.custom-select').forEach(function(select) {
+        select.classList.remove('open');
+        select.querySelector('.custom-select-options').style.display = 'none';
+      });
+    }
   });
 </script>
