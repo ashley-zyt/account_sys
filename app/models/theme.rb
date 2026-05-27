@@ -16,7 +16,7 @@
 #  index_themes_on_oss_directory  (oss_directory) UNIQUE
 #
 class Theme < ApplicationRecord
-  validates :name, presence: true, uniqueness: true
+  validates :name, presence: { message: '主题名称不能为空' }, uniqueness: { message: '该主题名称已存在' }
 
   before_save :convert_empty_strings_to_null
 
