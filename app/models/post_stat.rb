@@ -19,6 +19,7 @@
 #
 #  index_post_stats_on_account_id  (account_id)
 #  index_post_stats_on_post_date   (post_date)
+#  index_post_stats_on_url         (url) UNIQUE
 #
 
 class PostStat < ApplicationRecord
