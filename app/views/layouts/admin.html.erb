@@ -28,7 +28,7 @@
         </div>
 
         <div class="admin-sidebar-section-title">
-          Overview
+          概览
         </div>
         <ul class="admin-nav">
           <% dashboard_active = controller_path == "admin/dashboard" %>
@@ -43,14 +43,14 @@
                 </div>
               </div>
               <div class="admin-nav-meta">
-                概览
+                Dashboard
               </div>
             <% end %>
           </li>
         </ul>
 
         <div class="admin-sidebar-section-title">
-          Data
+          账号管理
         </div>
         <ul class="admin-nav">
           <% browsers_active = controller_path == "admin/browsers" %>
@@ -86,7 +86,12 @@
               </div>
             <% end %>
           </li>
+        </ul>
 
+        <div class="admin-sidebar-section-title">
+          任务管理
+        </div>
+        <ul class="admin-nav">
           <% tasks_active = controller_path == "admin/move_tasks" %>
           <li class="admin-nav-item <%= "active" if tasks_active %>">
             <%= link_to admin_move_tasks_path, class: "admin-nav-link" do %>
@@ -120,7 +125,6 @@
               </div>
             <% end %>
           </li>
-
           
           <% logs_active = controller_path == "admin/task_logs" %>
           <li class="admin-nav-item <%= "active" if logs_active %>">
@@ -141,7 +145,7 @@
         </ul>
 
         <div class="admin-sidebar-section-title">
-          KOL
+          KOL管理
         </div>
         <ul class="admin-nav">
           <% kols_active = controller_path == "admin/kols" %>
@@ -177,7 +181,12 @@
               </div>
             <% end %>
           </li>
-          
+        </ul>
+
+        <div class="admin-sidebar-section-title">
+          消息管理
+        </div>
+        <ul class="admin-nav">
           <% templates_active = controller_path == "admin/message_templates" %>
           <li class="admin-nav-item <%= "active" if templates_active %>">
             <%= link_to admin_message_templates_path, class: "admin-nav-link" do %>
