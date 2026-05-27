@@ -160,7 +160,7 @@
                 </div>
               </div>
               <div class="admin-nav-meta">
-                KOLs
+                KOL
               </div>
             <% end %>
           </li>
@@ -181,12 +181,7 @@
               </div>
             <% end %>
           </li>
-        </ul>
-
-        <div class="admin-sidebar-section-title">
-          消息管理
-        </div>
-        <ul class="admin-nav">
+          
           <% templates_active = controller_path == "admin/message_templates" %>
           <li class="admin-nav-item <%= "active" if templates_active %>">
             <%= link_to admin_message_templates_path, class: "admin-nav-link" do %>
@@ -203,7 +198,12 @@
               </div>
             <% end %>
           </li>
+        </ul>
 
+        <div class="admin-sidebar-section-title">
+          基础配置
+        </div>
+        <ul class="admin-nav">
           <% themes_active = controller_path == "admin/themes" %>
           <li class="admin-nav-item <%= "active" if themes_active %>">
             <%= link_to admin_themes_path, class: "admin-nav-link" do %>
