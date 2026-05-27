@@ -31,6 +31,8 @@ class Account < ApplicationRecord
 	has_many :jianying_tasks, dependent: :nullify
 	# 账号可参与多个会话
 	has_many :conversations, dependent: :destroy
+	# 账号可有多条发文数据记录
+	has_many :post_stats, dependent: :destroy
 
 	# 回调：当账号状态变更时，同步更新浏览器的“无效”状态
 	after_save :sync_browser_status, if: :saved_change_to_status?

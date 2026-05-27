@@ -86,6 +86,23 @@
               </div>
             <% end %>
           </li>
+          
+          <% post_stats_active = controller_path == "admin/post_stats" %>
+          <li class="admin-nav-item <%= "active" if post_stats_active %>">
+            <%= link_to admin_post_stats_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  📈
+                </div>
+                <div class="admin-nav-label">
+                  发文数据统计
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Post Stats
+              </div>
+            <% end %>
+          </li>
         </ul>
 
         <div class="admin-sidebar-section-title">

@@ -26,6 +26,7 @@ Rails.application.routes.draw do
         get :edit_modal
       end
     end
+    resources :post_stats, only: [:index, :new, :create, :edit, :update, :destroy]
   end
 
   namespace :api do

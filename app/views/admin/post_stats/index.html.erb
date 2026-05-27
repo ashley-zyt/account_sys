@@ -1,0 +1,131 @@
+<% content_for :page_title do %>
+  发文数据统计
+<% end %>
+<% content_for :page_subtitle do %>
+  记录每个账号的发文数据
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        发文数据列表
+      </div>
+      <div class="admin-card-subtitle">
+        管理和查看账号发文统计数据
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "新增数据", new_admin_post_stat_path, class: "admin-button-secondary" %>
+      <span class="admin-tag">
+        共 <%= @post_stats.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">账号</label>
+        <%= f.select :account_id_eq, @accounts.map { |a| [a.account_name, a.id] }, { include_blank: "所有账号" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">发文日期</label>
+        <%= f.date_field :post_date_eq, class: "admin-input admin-filter-input", placeholder: "选择日期" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">标题</label>
+        <%= f.search_field :title_cont, class: "admin-input admin-filter-input", placeholder: "搜索标题..." %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_post_stats_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @post_stats.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>账号</th>
+            <th>发文日期</th>
+            <th>标题</th>
+            <th>链接</th>
+            <th>点赞数</th>
+            <th>转发数</th>
+            <th>评论数</th>
+            <th>浏览数</th>
+            <th>数据更新时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @post_stats.each do |stat| %>
+            <tr>
+              <td>
+                <%= link_to stat.account&.account_name, admin_account_path(stat.account), class: "admin-link-quiet" %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.post_date.strftime("%Y-%m-%d") %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.title || "-" %>
+                </span>
+              </td>
+              <td>
+                <% if stat.url.present? %>
+                  <%= link_to "查看", stat.url, class: "admin-link-quiet", target: "_blank", style: "color: var(--accent);" %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.likes_count || 0 %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.shares_count || 0 %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.comments_count || 0 %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.views_count || 0 %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.data_updated_at&.strftime("%Y-%m-%d %H:%M") || "-" %>
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "编辑", edit_admin_post_stat_path(stat), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "删除", admin_post_stat_path(stat), method: :delete, data: { confirm: "确定要删除这条数据吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @post_stats %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无发文数据。
+    </div>
+  <% end %>
+</div>
