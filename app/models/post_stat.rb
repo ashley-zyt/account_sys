@@ -2,18 +2,18 @@
 #
 # Table name: post_stats
 #
-#  id               :bigint           not null, primary key
-#  account_id       :bigint           not null
-#  post_date        :date             not null
-#  title            :string(255)
-#  url              :string(255)
-#  likes_count      :integer          default(0)
-#  shares_count     :integer          default(0)
-#  comments_count   :integer          default(0)
-#  views_count      :integer          default(0)
-#  data_updated_at  :datetime
-#  created_at       :datetime         not null
-#  updated_at       :datetime         not null
+#  id                            :bigint           not null, primary key
+#  comments_count(评论数量)      :integer          default(0)
+#  data_updated_at(数据更新时间) :datetime
+#  likes_count(点赞数量)         :integer          default(0)
+#  post_date(发文日期)           :date             not null
+#  shares_count(转发数量)        :integer          default(0)
+#  title(发文标题)               :string(255)
+#  url(发文链接)                 :string(255)
+#  views_count(浏览数量)         :integer          default(0)
+#  created_at                    :datetime         not null
+#  updated_at                    :datetime         not null
+#  account_id(账号ID)            :bigint           not null
 #
 # Indexes
 #
