@@ -49,7 +49,7 @@ class Admin::OperationTasksController < Admin::BaseController
 		endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
 		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
 		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
-		bucket_name = 'jianying-videos'
+		bucket_name = 'operation-videos'
 
 		client = Aliyun::OSS::Client.new(
 			endpoint: endpoint,
