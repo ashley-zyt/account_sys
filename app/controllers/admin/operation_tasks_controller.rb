@@ -51,6 +51,10 @@ class Admin::OperationTasksController < Admin::BaseController
 		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
 		bucket_name = 'yh0520'
 
+		# 验证配置
+		raise "ALIYUN_ACCESS_KEY_ID 未配置" if access_key_id.blank?
+		raise "ALIYUN_ACCESS_KEY_SECRET 未配置" if access_key_secret.blank?
+
 		client = Aliyun::OSS::Client.new(
 			endpoint: endpoint,
 			access_key_id: access_key_id,
@@ -63,13 +67,10 @@ class Admin::OperationTasksController < Admin::BaseController
 		encoded_filename = URI.encode(file.original_filename, /[^a-zA-Z0-9\.\-\_]/)
 		file_name = "operation/#{SecureRandom.uuid}/#{encoded_filename}"
 		
-		# 上传文件
-		bucket.put_object(file_name) do |stream|
-			stream.write(file.read)
-		end
+		# 上传文件 - 使用 put_object 方法的正确格式
+		bucket.put_object(file_name, file: file.tempfile.path)
 
-		# 生成带签名的 URL，有效期到 2027 年
-		expire_at = Time.parse('2027-12-31 23:59:59')
-		bucket.object_url(file_name, expire_at)
+		# 生成公共访问 URL（如果 bucket 是公共读）
+		"https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{file_name}"
 	end
 end
