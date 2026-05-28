@@ -49,7 +49,7 @@ class Admin::OperationTasksController < Admin::BaseController
 		endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
 		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
 		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
-		bucket_name = 'operation-viodes'
+		bucket_name = 'jianying-videos'
 
 		client = Aliyun::OSS::Client.new(
 			endpoint: endpoint,
@@ -59,11 +59,14 @@ class Admin::OperationTasksController < Admin::BaseController
 
 		bucket = client.get_bucket(bucket_name)
 
-		# 生成唯一文件名
-		file_name = "operation/#{SecureRandom.uuid}/#{file.original_filename}"
+		# 生成唯一文件名（处理中文文件名）
+		encoded_filename = URI.encode(file.original_filename, /[^a-zA-Z0-9\.\-\_]/)
+		file_name = "operation/#{SecureRandom.uuid}/#{encoded_filename}"
 		
 		# 上传文件
-		bucket.put_object(file_name, file.read)
+		bucket.put_object(file_name) do |stream|
+			stream.write(file.read)
+		end
 
 		# 生成带签名的 URL，有效期到 2027 年
 		expire_at = Time.parse('2027-12-31 23:59:59')
