@@ -44,24 +44,24 @@
     align-items: center;
     justify-content: space-between;
     padding: 6px 12px;
-    background-color: var(--bg-input);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 6px;
     cursor: pointer;
-    color: var(--text-color);
-    height: 38px;
+    color: #cbd5e1;
+    height: 36px;
     user-select: none;
     transition: border-color 0.2s, box-shadow 0.2s;
     font-size: 14px;
   }
 
   .custom-select-trigger:hover {
-    border-color: var(--border-color-hover);
+    border-color: #64748b;
   }
 
   .custom-select-trigger:focus {
     outline: none;
-    border-color: var(--accent);
+    border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 
@@ -75,7 +75,7 @@
 
   .custom-select-arrow {
     font-size: 12px;
-    color: var(--text-muted);
+    color: #94a3b8;
     margin-left: 8px;
     pointer-events: none;
     transition: transform 0.2s;
@@ -90,11 +90,11 @@
     top: calc(100% + 4px);
     left: 0;
     right: 0;
-    background-color: var(--bg-input);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 6px;
     z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     overflow: hidden;
   }
 
@@ -102,9 +102,9 @@
     width: 100%;
     padding: 8px 12px;
     border: none;
-    border-bottom: 1px solid var(--border-color);
-    background-color: var(--bg-input);
-    color: var(--text-color);
+    border-bottom: 1px solid #475569;
+    background: #1e293b;
+    color: #cbd5e1;
     font-size: 14px;
     box-sizing: border-box;
     font-family: inherit;
@@ -115,7 +115,7 @@
   }
 
   .custom-select-search::placeholder {
-    color: var(--text-muted);
+    color: #64748b;
   }
 
   .custom-select-options-list {
@@ -126,7 +126,7 @@
   .custom-select-option {
     padding: 8px 12px;
     cursor: pointer;
-    color: var(--text-color);
+    color: #cbd5e1;
     transition: background-color 0.2s;
     white-space: nowrap;
     overflow: hidden;
@@ -134,7 +134,7 @@
   }
 
   .custom-select-option:hover {
-    background-color: var(--bg-hover);
+    background: #334155;
   }
 
   .custom-select-hidden-input {
