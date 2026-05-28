@@ -128,25 +128,42 @@
     const uploadArea = document.getElementById('video-upload-area');
     const fileInput = document.querySelector('.admin-upload-input');
 
-    uploadArea.addEventListener('click', function() {
+    uploadArea.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
       fileInput.click();
     });
 
     uploadArea.addEventListener('dragover', function(e) {
       e.preventDefault();
+      e.stopPropagation();
       uploadArea.classList.add('dragover');
     });
 
-    uploadArea.addEventListener('dragleave', function() {
+    uploadArea.addEventListener('dragleave', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
       uploadArea.classList.remove('dragover');
     });
 
     uploadArea.addEventListener('drop', function(e) {
       e.preventDefault();
+      e.stopPropagation();
       uploadArea.classList.remove('dragover');
+      
       const files = e.dataTransfer.files;
       if (files.length > 0) {
-        fileInput.files = files;
+        const dt = new DataTransfer();
+        dt.items.add(files[0]);
+        fileInput.files = dt.files;
+        
+        uploadArea.style.borderColor = '#22c55e';
+        uploadArea.innerHTML = `
+          <div class="admin-upload-icon">✓</div>
+          <div class="admin-upload-text">已选择: ${files[0].name}</div>
+          <div class="admin-upload-hint">点击更换文件</div>
+          <input type="file" name="video_file" accept="video/*" class="admin-upload-input" required>
+        `;
       }
     });
 
@@ -157,6 +174,7 @@
           <div class="admin-upload-icon">✓</div>
           <div class="admin-upload-text">已选择: ${this.files[0].name}</div>
           <div class="admin-upload-hint">点击更换文件</div>
+          <input type="file" name="video_file" accept="video/*" class="admin-upload-input" required>
         `;
       }
     });
