@@ -49,7 +49,7 @@ class Admin::OperationTasksController < Admin::BaseController
 		endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
 		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
 		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
-		bucket_name = 'yh0520'
+		bucket_name = 'operation-viodes'
 
 		# 验证配置
 		raise "ALIYUN_ACCESS_KEY_ID 未配置" if access_key_id.blank?
@@ -65,7 +65,7 @@ class Admin::OperationTasksController < Admin::BaseController
 
 		# 生成唯一文件名（处理中文文件名）
 		encoded_filename = URI.encode(file.original_filename, /[^a-zA-Z0-9\.\-\_]/)
-		file_name = "operation/#{SecureRandom.uuid}/#{encoded_filename}"
+		file_name = "#{SecureRandom.uuid}_#{encoded_filename}"
 		
 		# 上传文件 - 使用 put_object 方法的正确格式
 		bucket.put_object(file_name, file: file.tempfile.path)
