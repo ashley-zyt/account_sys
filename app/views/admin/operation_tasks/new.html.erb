@@ -1,0 +1,164 @@
+<% content_for :page_title do %>
+  添加运营资源
+<% end %>
+<% content_for :page_subtitle do %>
+  上传运营剪辑的视频到资源队列
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        新增运营视频
+      </div>
+      <div class="admin-card-subtitle">
+        填写主题、标题并上传视频文件
+      </div>
+    </div>
+  </div>
+
+  <%= form_with(model: [:admin, @operation_task], url: admin_operation_tasks_path, html: { multipart: true }) do |form| %>
+    <div class="admin-form-group">
+      <label class="admin-form-label">
+        主题 <span style="color: #ef4444;">*</span>
+      </label>
+      <%= form.text_field :theme, class: "admin-input", placeholder: "请输入主题，如：中国美食制作", required: true %>
+    </div>
+
+    <div class="admin-form-group">
+      <label class="admin-form-label">
+        标题 <span style="color: #ef4444;">*</span>
+      </label>
+      <%= form.text_field :title, class: "admin-input", placeholder: "请输入发布标题", required: true %>
+    </div>
+
+    <div class="admin-form-group">
+      <label class="admin-form-label">
+        视频文件 <span style="color: #ef4444;">*</span>
+      </label>
+      <div class="admin-upload-area" id="video-upload-area">
+        <div class="admin-upload-icon">
+          🎬
+        </div>
+        <div class="admin-upload-text">
+          点击或拖拽上传视频文件
+        </div>
+        <div class="admin-upload-hint">
+          支持 MP4、MOV、AVI 等格式
+        </div>
+        <%= file_field_tag :video_file, accept: "video/*", class: "admin-upload-input", required: true %>
+      </div>
+      <% if params[:video_file].present? %>
+        <div class="admin-form-hint" style="color: var(--accent);">
+          已选择文件: <%= params[:video_file].original_filename %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="admin-form-actions">
+      <%= link_to "取消", admin_operation_tasks_path, class: "admin-button-secondary" %>
+      <%= form.submit "提交", class: "admin-button-primary" %>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  .admin-upload-area {
+    border: 2px dashed #475569;
+    border-radius: 8px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(30, 41, 59, 0.5);
+  }
+
+  .admin-upload-area:hover {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .admin-upload-area.dragover {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.15);
+  }
+
+  .admin-upload-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+
+  .admin-upload-text {
+    font-size: 14px;
+    color: #cbd5e1;
+    margin-bottom: 4px;
+  }
+
+  .admin-upload-hint {
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  .admin-upload-input {
+    display: none;
+  }
+
+  .admin-form-group {
+    margin-bottom: 16px;
+  }
+
+  .admin-form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #94a3b8;
+  }
+
+  .admin-form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #334155;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('video-upload-area');
+    const fileInput = document.querySelector('.admin-upload-input');
+
+    uploadArea.addEventListener('click', function() {
+      fileInput.click();
+    });
+
+    uploadArea.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', function() {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+      }
+    });
+
+    fileInput.addEventListener('change', function() {
+      if (this.files.length > 0) {
+        uploadArea.style.borderColor = '#22c55e';
+        uploadArea.innerHTML = `
+          <div class="admin-upload-icon">✓</div>
+          <div class="admin-upload-text">已选择: ${this.files[0].name}</div>
+          <div class="admin-upload-hint">点击更换文件</div>
+        `;
+      }
+    });
+  });
+</script>

@@ -16,6 +16,7 @@
       </div>
     </div>
     <div class="admin-card-header-right">
+      <%= link_to "新增", new_admin_operation_task_path, class: "admin-button-primary" %>
       <span class="admin-tag">
         共 <%= @operation_tasks.total_count %> 条
       </span>

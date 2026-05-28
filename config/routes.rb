@@ -6,7 +6,7 @@ Rails.application.routes.draw do
     resources :accounts, only: [:index, :show, :new, :create, :edit, :update]
     resources :move_tasks, only: [:index, :show]
     resources :jianying_tasks, only: [:index, :show]
-    resources :operation_tasks, only: [:index, :show]
+    resources :operation_tasks, only: [:index, :show, :new, :create]
     resources :browsers, only: [:index, :show, :new, :create, :edit, :update]
     resources :task_logs, only: [:index, :show]
     resources :kols, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
