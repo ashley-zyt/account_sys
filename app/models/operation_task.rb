@@ -1,0 +1,2 @@
+class OperationTasks < ApplicationRecord
+end
