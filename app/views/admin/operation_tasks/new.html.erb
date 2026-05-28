@@ -36,23 +36,19 @@
       <label class="admin-form-label">
         视频文件 <span style="color: #ef4444;">*</span>
       </label>
-      <div class="admin-upload-area" id="video-upload-area">
-        <div class="admin-upload-icon">
-          🎬
-        </div>
-        <div class="admin-upload-text">
-          点击或拖拽上传视频文件
-        </div>
-        <div class="admin-upload-hint">
-          支持 MP4、MOV、AVI 等格式
-        </div>
-        <%= file_field_tag :video_file, accept: "video/*", class: "admin-upload-input", required: true %>
+      <div class="upload-container">
+        <input type="file" name="video_file" id="video-upload-input" accept="video/*" class="video-upload-input" required>
+        <label for="video-upload-input" class="upload-label" id="upload-label">
+          <div class="upload-icon">🎬</div>
+          <div class="upload-text" id="upload-text">点击选择视频文件</div>
+          <div class="upload-hint">支持 MP4、MOV、AVI 等格式</div>
+        </label>
       </div>
-      <% if params[:video_file].present? %>
-        <div class="admin-form-hint" style="color: var(--accent);">
-          已选择文件: <%= params[:video_file].original_filename %>
-        </div>
-      <% end %>
+      <div id="selected-file-info" style="margin-top: 8px; display: none;">
+        <span style="color: #22c55e;">✓</span>
+        <span id="file-name" style="margin-left: 8px; color: #cbd5e1;"></span>
+        <button type="button" id="clear-file" style="margin-left: 12px; color: #ef4444; font-size: 12px; background: none; border: none; cursor: pointer;">清除</button>
+      </div>
     </div>
 
     <div class="admin-form-actions">
@@ -63,44 +59,52 @@
 </div>
 
 <style>
-  .admin-upload-area {
+  .upload-container {
+    position: relative;
+  }
+
+  .video-upload-input {
+    display: none;
+  }
+
+  .upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     border: 2px dashed #475569;
     border-radius: 8px;
     padding: 32px;
-    text-align: center;
     cursor: pointer;
     transition: all 0.2s;
     background: rgba(30, 41, 59, 0.5);
+    min-height: 140px;
   }
 
-  .admin-upload-area:hover {
+  .upload-label:hover {
     border-color: #3b82f6;
     background: rgba(59, 130, 246, 0.1);
   }
 
-  .admin-upload-area.dragover {
+  .upload-label.dragover {
     border-color: #3b82f6;
     background: rgba(59, 130, 246, 0.15);
   }
 
-  .admin-upload-icon {
+  .upload-icon {
     font-size: 48px;
     margin-bottom: 12px;
   }
 
-  .admin-upload-text {
+  .upload-text {
     font-size: 14px;
     color: #cbd5e1;
     margin-bottom: 4px;
   }
 
-  .admin-upload-hint {
+  .upload-hint {
     font-size: 12px;
     color: #64748b;
-  }
-
-  .admin-upload-input {
-    display: none;
   }
 
   .admin-form-group {
@@ -125,58 +129,70 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    const uploadArea = document.getElementById('video-upload-area');
-    const fileInput = document.querySelector('.admin-upload-input');
+    const fileInput = document.getElementById('video-upload-input');
+    const uploadLabel = document.getElementById('upload-label');
+    const uploadText = document.getElementById('upload-text');
+    const selectedFileInfo = document.getElementById('selected-file-info');
+    const fileName = document.getElementById('file-name');
+    const clearFile = document.getElementById('clear-file');
 
-    uploadArea.addEventListener('click', function(e) {
+    // 拖拽相关事件
+    uploadLabel.addEventListener('dragover', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      fileInput.click();
+      uploadLabel.classList.add('dragover');
     });
 
-    uploadArea.addEventListener('dragover', function(e) {
+    uploadLabel.addEventListener('dragleave', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      uploadArea.classList.add('dragover');
+      uploadLabel.classList.remove('dragover');
     });
 
-    uploadArea.addEventListener('dragleave', function(e) {
+    uploadLabel.addEventListener('drop', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      uploadArea.classList.remove('dragover');
-    });
-
-    uploadArea.addEventListener('drop', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      uploadArea.classList.remove('dragover');
+      uploadLabel.classList.remove('dragover');
       
       const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        const dt = new DataTransfer();
-        dt.items.add(files[0]);
-        fileInput.files = dt.files;
-        
-        uploadArea.style.borderColor = '#22c55e';
-        uploadArea.innerHTML = `
-          <div class="admin-upload-icon">✓</div>
-          <div class="admin-upload-text">已选择: ${files[0].name}</div>
-          <div class="admin-upload-hint">点击更换文件</div>
-          <input type="file" name="video_file" accept="video/*" class="admin-upload-input" required>
-        `;
+      if (files.length > 0 && files[0].type.startsWith('video/')) {
+        fileInput.files = files;
+        updateFileInfo(files[0]);
+      } else if (files.length > 0) {
+        alert('请选择视频文件');
       }
     });
 
-    fileInput.addEventListener('change', function() {
+    // 文件选择事件
+    fileInput.addEventListener('change', function(e) {
       if (this.files.length > 0) {
-        uploadArea.style.borderColor = '#22c55e';
-        uploadArea.innerHTML = `
-          <div class="admin-upload-icon">✓</div>
-          <div class="admin-upload-text">已选择: ${this.files[0].name}</div>
-          <div class="admin-upload-hint">点击更换文件</div>
-          <input type="file" name="video_file" accept="video/*" class="admin-upload-input" required>
-        `;
+        updateFileInfo(this.files[0]);
       }
     });
+
+    // 清除文件
+    clearFile.addEventListener('click', function() {
+      fileInput.value = '';
+      uploadLabel.style.borderColor = '#475569';
+      uploadText.textContent = '点击选择视频文件';
+      uploadLabel.innerHTML = `
+        <div class="upload-icon">🎬</div>
+        <div class="upload-text" id="upload-text">点击选择视频文件</div>
+        <div class="upload-hint">支持 MP4、MOV、AVI 等格式</div>
+      `;
+      selectedFileInfo.style.display = 'none';
+    });
+
+    function updateFileInfo(file) {
+      uploadLabel.style.borderColor = '#22c55e';
+      uploadLabel.innerHTML = `
+        <div class="upload-icon">✓</div>
+        <div class="upload-text" id="upload-text">已选择: ${file.name}</div>
+        <div class="upload-hint">点击可更换文件</div>
+      `;
+      fileName.textContent = file.name;
+      selectedFileInfo.style.display = 'flex';
+      selectedFileInfo.style.alignItems = 'center';
+    }
   });
 </script>
