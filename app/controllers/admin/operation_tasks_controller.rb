@@ -8,6 +8,7 @@ class Admin::OperationTasksController < Admin::BaseController
                          .order(created_at: :desc)
                          .page(params[:page])
                          .per(10)
+    @themes = Theme.pluck(:name)
   end
 
   def show

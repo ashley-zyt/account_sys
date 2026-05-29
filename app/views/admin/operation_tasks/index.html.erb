@@ -31,7 +31,7 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
-        <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
+        <%= f.select :theme_eq, @themes.map { |t| [t, t] }, { include_blank: "所有主题" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">平台</label>
