@@ -21,10 +21,24 @@
 class TaskLog < ApplicationRecord
 	belongs_to :move_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
 	belongs_to :jianying_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
+	belongs_to :operation_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
 
 	# 获取当前关联的具体任务对象
 	def task
-		move_task || jianying_task
+		move_task || jianying_task || operation_task
+	end
+
+	# 获取任务类型
+	def task_type
+		if move_task.present?
+			"搬运任务"
+		elsif jianying_task.present?
+			"剪映任务"
+		elsif operation_task.present?
+			"运营任务"
+		else
+			"未知"
+		end
 	end
 
 	# 基础校验
@@ -74,7 +88,7 @@ class TaskLog < ApplicationRecord
 	end
 
 	def self.ransackable_associations(auth_object = nil)
-		%w[move_task jianying_task]
+		%w[move_task jianying_task operation_task]
 	end
 
 	def self.ransackable_attributes(auth_object = nil)
