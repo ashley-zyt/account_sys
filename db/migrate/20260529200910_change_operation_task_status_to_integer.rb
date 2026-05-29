@@ -1,4 +1,4 @@
-class ChangeOperationTaskStatusToInteger < ActiveRecord::Migration[7.0]
+class ChangeOperationTaskStatusToInteger < ActiveRecord::Migration[6.1]
   def up
     # 先删除索引
     remove_index :operation_tasks, :status if index_exists?(:operation_tasks, :status)
