@@ -5,6 +5,7 @@
 #  id                                                        :bigint           not null, primary key
 #  account_name(账号名)                                      :string(255)
 #  last_used_at(最后一次使用时间)                            :datetime
+#  operator                                                  :string(255)
 #  platform(平台：facebook/twitter/tiktok/youtube/instagram) :integer          default("facebook")
 #  remark(备注信息)                                          :string(255)
 #  source_url(账号主页链接)                                  :string(255)

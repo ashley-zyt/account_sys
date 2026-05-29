@@ -2,30 +2,30 @@
 #
 # Table name: operation_tasks
 #
-#  id                   :bigint           not null, primary key
-#  theme                :string(255)      comment('主题')
-#  title                :string(255)      comment('标题')
-#  oss_url              :string(255)      comment('OSS文件地址')
-#  account_id           :bigint           comment('账号ID')
-#  status               :string(255)      default('pending'), comment('状态(pending/processing/completed/failed)')
-#  error_msg            :text(65535)      comment('错误信息')
-#  start_at             :datetime         comment('开始时间')
-#  actual_publish_time  :datetime         comment('实际发布时间')
-#  browser_id           :string(255)      comment('浏览器ID')
-#  platform             :string(255)      comment('平台')
-#  group_id             :bigint           comment('分组ID')
-#  task_uuid            :string(255)      comment('任务UUID')
-#  created_at           :datetime         not null
-#  updated_at           :datetime         not null
+#  id                                                :bigint           not null, primary key
+#  actual_publish_time(实际发布时间)                 :datetime
+#  error_msg(错误信息)                               :text(65535)
+#  oss_url(OSS文件地址)                              :string(255)
+#  platform(平台)                                    :string(255)
+#  start_at(开始时间)                                :datetime
+#  status(状态(pending/processing/completed/failed)) :string(255)      default("pending")
+#  task_uuid(任务UUID)                               :string(255)
+#  theme(主题)                                       :string(255)
+#  title(标题)                                       :string(255)
+#  created_at                                        :datetime         not null
+#  updated_at                                        :datetime         not null
+#  account_id(账号ID)                                :bigint
+#  browser_id(浏览器ID)                              :string(255)
+#  group_id(分组ID)                                  :bigint
 #
 # Indexes
 #
-#  index_operation_tasks_on_account_id                           (account_id)
-#  index_operation_tasks_on_platform                            (platform)
-#  index_operation_tasks_on_status                              (status)
-#  index_operation_tasks_on_task_uuid                           (task_uuid) UNIQUE
-#  index_operation_tasks_on_oss_url_and_platform                (oss_url,platform) UNIQUE
-#  index_operation_tasks_on_account_id_and_oss_url              (account_id,oss_url) UNIQUE
+#  index_operation_tasks_on_account_id              (account_id)
+#  index_operation_tasks_on_account_id_and_oss_url  (account_id,oss_url) UNIQUE
+#  index_operation_tasks_on_oss_url_and_platform    (oss_url,platform) UNIQUE
+#  index_operation_tasks_on_platform                (platform)
+#  index_operation_tasks_on_status                  (status)
+#  index_operation_tasks_on_task_uuid               (task_uuid) UNIQUE
 #
 
 class OperationTask < ApplicationRecord
