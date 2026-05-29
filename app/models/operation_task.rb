@@ -2,21 +2,21 @@
 #
 # Table name: operation_tasks
 #
-#  id                                                                :bigint           not null, primary key
-#  actual_publish_time(实际发布时间)                                 :datetime
-#  error_msg(错误信息/失败原因)                                      :text(65535)
-#  oss_url(OSS文件地址)                                              :string(255)
-#  platform(目标发布平台)                                            :integer
-#  start_at(任务开始时间)                                            :datetime
-#  status(任务状态 pending/waiting_publish/executing/success/failed) :integer          default("pending")
-#  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
-#  theme(内容主题)                                                   :string(255)
-#  title(发布标题)                                                   :string(255)
-#  created_at                                                        :datetime         not null
-#  updated_at                                                        :datetime         not null
-#  account_id(发布账号ID)                                            :bigint
-#  browser_id(执行任务的浏览器ID)                                    :string(255)
-#  group_id(任务组ID)                                                :bigint
+#  id                                :bigint           not null, primary key
+#  actual_publish_time(实际发布时间) :datetime
+#  error_msg(错误信息)               :text(65535)
+#  oss_url(OSS文件地址)              :string(255)
+#  platform(平台)                    :string(255)
+#  start_at(开始时间)                :datetime
+#  status                            :integer          default("pending")
+#  task_uuid(任务UUID)               :string(255)
+#  theme(主题)                       :string(255)
+#  title(标题)                       :string(255)
+#  created_at                        :datetime         not null
+#  updated_at                        :datetime         not null
+#  account_id(账号ID)                :bigint
+#  browser_id(浏览器ID)              :string(255)
+#  group_id(分组ID)                  :bigint
 #
 # Indexes
 #
