@@ -2,21 +2,21 @@
 #
 # Table name: operation_tasks
 #
-#  id                                                :bigint           not null, primary key
-#  actual_publish_time(实际发布时间)                 :datetime
-#  error_msg(错误信息)                               :text(65535)
-#  oss_url(OSS文件地址)                              :string(255)
-#  platform(平台)                                    :string(255)
-#  start_at(开始时间)                                :datetime
-#  status(状态(pending/processing/completed/failed)) :string(255)      default("pending")
-#  task_uuid(任务UUID)                               :string(255)
-#  theme(主题)                                       :string(255)
-#  title(标题)                                       :string(255)
-#  created_at                                        :datetime         not null
-#  updated_at                                        :datetime         not null
-#  account_id(账号ID)                                :bigint
-#  browser_id(浏览器ID)                              :string(255)
-#  group_id(分组ID)                                  :bigint
+#  id                                                                :bigint           not null, primary key
+#  actual_publish_time(实际发布时间)                                 :datetime
+#  error_msg(错误信息/失败原因)                                      :text(65535)
+#  oss_url(OSS文件地址)                                              :string(255)
+#  platform(目标发布平台)                                            :integer
+#  start_at(任务开始时间)                                            :datetime
+#  status(任务状态 pending/waiting_publish/executing/success/failed) :integer          default("pending")
+#  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
+#  theme(内容主题)                                                   :string(255)
+#  title(发布标题)                                                   :string(255)
+#  created_at                                                        :datetime         not null
+#  updated_at                                                        :datetime         not null
+#  account_id(发布账号ID)                                            :bigint
+#  browser_id(执行任务的浏览器ID)                                    :string(255)
+#  group_id(任务组ID)                                                :bigint
 #
 # Indexes
 #
@@ -32,18 +32,20 @@ class OperationTask < ApplicationRecord
 	belongs_to :account, optional: true
 
 	enum status: {
-		pending: 'pending',          # 待发布
-		processing: 'processing',    # 处理中
-		completed: 'completed',      # 已完成
-		failed: 'failed'             # 失败
+		pending: 0,          # 待分配账号
+		waiting_publish: 1,  # 等待发布
+		executing: 2,        # 执行中
+		success: 3,          # 成功
+		failed: 4            # 失败
 	}
 
+	# 平台枚举（与 Account.platform 一致）
 	enum platform: {
-		facebook: 'facebook',
-		twitter: 'twitter',
-		tiktok: 'tiktok',
-		youtube: 'youtube',
-		instagram: 'instagram'
+		facebook: 1,
+		twitter: 2,
+		tiktok: 3,
+		youtube: 4,
+		instagram: 5
 	}
 
 	validates :title, presence: true
@@ -51,15 +53,35 @@ class OperationTask < ApplicationRecord
 	validates :task_uuid, uniqueness: true, allow_nil: true
 	validates :platform, presence: true
 
+	# 非 pending 状态必须有账号
+	validates :account_id, presence: true, unless: :pending?
+
 	before_validation :generate_task_uuid, on: :create
 
+	# 作用域：获取可执行任务
+	scope :runnable, -> {
+		where(status: :waiting_publish)
+	}
+
+	# 作用域：按平台筛选待分配任务
 	scope :pending_for_platform, ->(platform) {
 		where(status: :pending, platform: platform).order(created_at: :asc)
 	}
 
-	scope :waiting_to_execute, -> {
-		where(status: :pending).order(created_at: :asc)
+	# 最近任务
+	scope :recent, -> {
+		order(created_at: :desc)
 	}
+
+	# 重置任务到 pending 状态
+	def reset_to_pending!
+		update!(
+			account_id: nil,
+			browser_id: nil,
+			status: :pending,
+			start_at: nil
+		)
+	end
 
 	def self.ransackable_attributes(auth_object = nil)
 		%w[id task_uuid oss_url theme title status error_msg start_at actual_publish_time account_id browser_id platform group_id created_at updated_at]
@@ -72,6 +94,6 @@ class OperationTask < ApplicationRecord
 	private
 
 	def generate_task_uuid
-		self.task_uuid ||= SecureRandom.uuid
+		self.task_uuid ||= "OP-#{SecureRandom.uuid}"
 	end
 end

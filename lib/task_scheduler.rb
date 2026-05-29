@@ -37,7 +37,7 @@ class TaskScheduler
 					pending_task.update!(
 						account_id: account.id,
 						browser_id: account.browser_id,
-						status: :processing
+						status: :waiting_publish
 					)
 				end
 				Rails.logger.info "人工运营账号 #{account.account_name}[#{account.platform}] 分配运营资源成功"

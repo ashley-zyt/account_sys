@@ -105,17 +105,22 @@
                 <% when "pending" %>
                   <span class="admin-pill-status admin-pill-status-pending">
                     <span class="admin-pill-status-dot"></span>
-                    待发布
+                    待分配
                   </span>
-                <% when "processing" %>
+                <% when "waiting_publish" %>
                   <span class="admin-pill-status admin-pill-status-pending">
                     <span class="admin-pill-status-dot"></span>
-                    处理中
+                    等待发布
                   </span>
-                <% when "completed" %>
+                <% when "executing" %>
+                  <span class="admin-pill-status admin-pill-status-pending">
+                    <span class="admin-pill-status-dot"></span>
+                    执行中
+                  </span>
+                <% when "success" %>
                   <span class="admin-pill-status admin-pill-status-success">
                     <span class="admin-pill-status-dot"></span>
-                    已完成
+                    成功
                   </span>
                 <% when "failed" %>
                   <span class="admin-pill-status admin-pill-status-failed">
