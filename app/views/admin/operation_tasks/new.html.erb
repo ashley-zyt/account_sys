@@ -24,7 +24,12 @@
       <label class="admin-form-label">
         主题 <span style="color: #ef4444;">*</span>
       </label>
-      <input type="text" name="operation_task[theme]" id="theme" class="admin-input" placeholder="请输入主题，如：中国美食制作" required>
+      <select name="operation_task[theme]" id="theme" class="admin-input" required>
+        <option value="">请选择主题</option>
+        <% @themes.each do |theme| %>
+          <option value="<%= theme %>"><%= theme %></option>
+        <% end %>
+      </select>
     </div>
 
     <div class="admin-form-group">

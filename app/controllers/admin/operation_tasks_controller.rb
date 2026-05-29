@@ -15,6 +15,7 @@ class Admin::OperationTasksController < Admin::BaseController
 
   def new
     @operation_task = OperationTask.new
+    @themes = Theme.pluck(:name)
   end
 
   def create
