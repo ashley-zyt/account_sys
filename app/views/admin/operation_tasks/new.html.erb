@@ -24,12 +24,12 @@
       <label class="admin-form-label">
         主题 <span style="color: #ef4444;">*</span>
       </label>
-      <select name="operation_task[theme]" id="theme" class="admin-input" required>
-        <option value="">请选择主题</option>
-        <% @themes.each do |theme| %>
-          <option value="<%= theme %>"><%= theme %></option>
-        <% end %>
-      </select>
+      <%= render 'admin/shared/searchable_theme_select',
+        name: 'operation_task[theme]',
+        themes: @themes,
+        selected: nil,
+        placeholder: '请选择主题',
+        include_blank: '请选择主题' %>
     </div>
 
     <div class="admin-form-group">
