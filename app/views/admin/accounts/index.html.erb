@@ -47,8 +47,12 @@
         <%= f.select :status_eq, Account.statuses.map { |k, v| [k, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label"></label>
+        <label class="admin-filter-label">工作模式</label>
         <%= f.select :work_type_eq, Account.work_types.map { |k, v| [k, v] }, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">运营人员</label>
+        <%= f.select :operator_eq, Account::OPERATORS.map { |o| [o, o] }, { include_blank: "所有人员" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
@@ -79,6 +83,9 @@
             </th>
             <th>
               工作模式
+            </th>
+            <th>
+              运营人员
             </th>
             <th>
               绑定浏览器
@@ -125,6 +132,11 @@
               <td>
                 <span class="admin-label-muted">
                   <%= account.work_type %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= account.operator.presence || "-" %>
                 </span>
               </td>
               <td>

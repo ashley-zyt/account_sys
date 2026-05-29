@@ -71,6 +71,9 @@ class Account < ApplicationRecord
 		"人工运营": 3
 	}
 
+	# 运营人员枚举
+	OPERATORS = ["张俊", "许淑雯", "石欢欢", "杜维"]
+
 	# 作用域：获取当前可用的账号（仅 正常 状态）
 	scope :active, -> {
 		正常
@@ -154,6 +157,6 @@ class Account < ApplicationRecord
 
 	# Ransack 搜索允许的字段
 	def self.ransackable_attributes(auth_object = nil)
-		["id", "account_name", "theme", "platform", "status", "work_type", "browser_id", "last_used_at", "remark", "created_at", "updated_at"]
+		["id", "account_name", "theme", "platform", "status", "work_type", "browser_id", "last_used_at", "remark", "operator", "created_at", "updated_at"]
 	end
 end

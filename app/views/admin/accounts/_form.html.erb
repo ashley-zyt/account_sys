@@ -63,6 +63,12 @@
     </div>
     <div>
       <div class="admin-field-label">
+        运营人员
+      </div>
+      <%= f.select :operator, Account::OPERATORS.map { |o| [o, o] }, { include_blank: "请选择运营人员" }, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
         备注
       </div>
       <%= f.text_field :remark, class: "admin-input" %>
