@@ -18,16 +18,28 @@ class Admin::OperationTasksController < Admin::BaseController
   end
 
   def create
-    @operation_task = OperationTask.new(operation_task_params)
-
     if params[:video_file].present?
       oss_url = upload_to_oss(params[:video_file])
-      @operation_task.oss_url = oss_url
-    end
+      theme = operation_task_params[:theme]
+      title = operation_task_params[:title]
 
-    if @operation_task.save
+      platforms = %w[facebook twitter tiktok youtube instagram]
+      group_id = SecureRandom.uuid
+
+      platforms.each do |platform|
+        OperationTask.create(
+          theme: theme,
+          title: title,
+          oss_url: oss_url,
+          platform: platform,
+          status: :pending,
+          group_id: group_id
+        )
+      end
+
       redirect_to admin_operation_tasks_path, notice: '运营资源添加成功'
     else
+      @operation_task = OperationTask.new(operation_task_params)
       render :new
     end
   end
