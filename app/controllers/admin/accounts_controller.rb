@@ -58,6 +58,7 @@ class Admin::AccountsController < Admin::BaseController
 			:status,
 			:work_type,
 			:browser_id,
+			:operator,
 			:remark
 		)
 	end
