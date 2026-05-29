@@ -20,6 +20,11 @@ class Admin::OperationTasksController < Admin::BaseController
   def create
     @operation_task = OperationTask.new(operation_task_params)
 
+    if params[:video_file].present?
+      oss_url = upload_to_oss(params[:video_file])
+      @operation_task.oss_url = oss_url
+    end
+
     if @operation_task.save
       redirect_to admin_operation_tasks_path, notice: '运营资源添加成功'
     else
@@ -27,7 +32,17 @@ class Admin::OperationTasksController < Admin::BaseController
     end
   end
 
-  def get_upload_params
+  private
+
+  def set_operation_task
+    @operation_task = OperationTask.find(params[:id])
+  end
+
+  def operation_task_params
+    params.require(:operation_task).permit(:theme, :title, :oss_url, :platform, :status, :error_msg)
+  end
+
+  def upload_to_oss(file)
     require 'aliyun/oss'
 
     endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
@@ -46,26 +61,11 @@ class Admin::OperationTasksController < Admin::BaseController
 
     bucket = client.get_bucket(bucket_name)
 
-    file_name = params[:file_name]
-    raise "缺少文件名" if file_name.blank?
+    encoded_filename = URI.encode(file.original_filename, /[^a-zA-Z0-9\.\-\_]/)
+    file_name = "#{SecureRandom.uuid}_#{encoded_filename}"
 
-    expire_seconds = 3600
-    url = bucket.object_url(file_name, Time.now + expire_seconds)
+    bucket.put_object(file_name, file: file.tempfile.path)
 
-    render json: {
-      oss_url: url.split('?').first,
-      upload_url: url,
-      file_name: file_name
-    }
-  end
-
-  private
-
-  def set_operation_task
-    @operation_task = OperationTask.find(params[:id])
-  end
-
-  def operation_task_params
-    params.require(:operation_task).permit(:theme, :title, :oss_url, :platform, :status, :error_msg)
+    "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{file_name}"
   end
 end
