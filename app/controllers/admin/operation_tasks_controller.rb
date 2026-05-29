@@ -20,17 +20,43 @@ class Admin::OperationTasksController < Admin::BaseController
 	def create
 		@operation_task = OperationTask.new(operation_task_params)
 
-		# 上传视频到 OSS
-		if params[:video_file].present?
-			oss_url = upload_to_oss(params[:video_file])
-			@operation_task.oss_url = oss_url
-		end
-
 		if @operation_task.save
 			redirect_to admin_operation_tasks_path, notice: '运营资源添加成功'
 		else
 			render :new
 		end
+	end
+
+	def get_upload_params
+		require 'aliyun/oss'
+
+		endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
+		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+		bucket_name = 'operation-viodes'
+
+		raise "ALIYUN_ACCESS_KEY_ID 未配置" if access_key_id.blank?
+		raise "ALIYUN_ACCESS_KEY_SECRET 未配置" if access_key_secret.blank?
+
+		client = Aliyun::OSS::Client.new(
+			endpoint: endpoint,
+			access_key_id: access_key_id,
+			access_key_secret: access_key_secret
+		end
+
+		bucket = client.get_bucket(bucket_name)
+
+		file_name = params[:file_name]
+		raise "缺少文件名" if file_name.blank?
+
+		expire_seconds = 3600
+		url = bucket.object_url(file_name, Time.now + expire_seconds)
+
+		render json: {
+			oss_url: url.split('?').first,
+			upload_url: url,
+			file_name: file_name
+		}
 	end
 
 	private
@@ -40,37 +66,6 @@ class Admin::OperationTasksController < Admin::BaseController
 	end
 
 	def operation_task_params
-		params.require(:operation_task).permit(:theme, :title)
-	end
-
-	def upload_to_oss(file)
-		require 'aliyun/oss'
-		
-		endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
-		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
-		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
-		bucket_name = 'operation-viodes'
-
-		# 验证配置
-		raise "ALIYUN_ACCESS_KEY_ID 未配置" if access_key_id.blank?
-		raise "ALIYUN_ACCESS_KEY_SECRET 未配置" if access_key_secret.blank?
-
-		client = Aliyun::OSS::Client.new(
-			endpoint: endpoint,
-			access_key_id: access_key_id,
-			access_key_secret: access_key_secret
-		)
-
-		bucket = client.get_bucket(bucket_name)
-
-		# 生成唯一文件名（处理中文文件名）
-		encoded_filename = URI.encode(file.original_filename, /[^a-zA-Z0-9\.\-\_]/)
-		file_name = "#{SecureRandom.uuid}_#{encoded_filename}"
-		
-		# 上传文件 - 使用 put_object 方法的正确格式
-		bucket.put_object(file_name, file: file.tempfile.path)
-
-		# 生成公共访问 URL（如果 bucket 是公共读）
-		"https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{file_name}"
+		params.require(:operation_task).permit(:theme, :title, :oss_url, :platform, :status, :error_msg)
 	end
 end

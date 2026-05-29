@@ -17,41 +17,149 @@
     </div>
   </div>
 
-  <%= form_with(model: [:admin, @operation_task], url: admin_operation_tasks_path, html: { multipart: true }) do |form| %>
-    <div class="admin-form-group">
-      <label class="admin-form-label">
-        主题 <span style="color: #ef4444;">*</span>
-      </label>
-      <%= form.text_field :theme, class: "admin-input", placeholder: "请输入主题，如：中国美食制作", required: true %>
-    </div>
+  <div class="admin-form-group">
+    <label class="admin-form-label">
+      主题 <span style="color: #ef4444;">*</span>
+    </label>
+    <input type="text" id="theme" class="admin-input" placeholder="请输入主题，如：中国美食制作" required>
+  </div>
 
-    <div class="admin-form-group">
-      <label class="admin-form-label">
-        标题 <span style="color: #ef4444;">*</span>
-      </label>
-      <%= form.text_field :title, class: "admin-input", placeholder: "请输入发布标题", required: true %>
-    </div>
+  <div class="admin-form-group">
+    <label class="admin-form-label">
+      标题 <span style="color: #ef4444;">*</span>
+    </label>
+    <input type="text" id="title" class="admin-input" placeholder="请输入发布标题" required>
+  </div>
 
-    <div class="admin-form-group">
-      <label class="admin-form-label">
-        视频文件 <span style="color: #ef4444;">*</span>
-      </label>
-      <input type="file" name="video_file" id="video_file" accept="video/*" required style="margin-bottom: 8px;">
-      <div id="file_preview" style="margin-top: 8px; color: #94a3b8; font-size: 13px;"></div>
+  <div class="admin-form-group">
+    <label class="admin-form-label">
+      视频文件 <span style="color: #ef4444;">*</span>
+    </label>
+    <input type="file" id="video_file" accept="video/*" style="margin-bottom: 8px;">
+    <div id="upload_status" style="margin-top: 8px; color: #94a3b8; font-size: 13px;"></div>
+    <div id="progress_bar" style="margin-top: 8px; display: none;">
+      <div style="background: #334155; border-radius: 4px; height: 8px; overflow: hidden;">
+        <div id="progress" style="background: #3b82f6; height: 100%; width: 0%; transition: width 0.3s;"></div>
+      </div>
+      <div id="progress_text" style="color: #94a3b8; font-size: 12px; margin-top: 4px;">0%</div>
     </div>
+  </div>
 
-    <div class="admin-form-actions">
-      <%= link_to "取消", admin_operation_tasks_path, class: "admin-button-secondary" %>
-      <%= form.submit "提交", class: "admin-button-primary" %>
-    </div>
-  <% end %>
+  <div class="admin-form-actions">
+    <a href="/admin/operation_tasks" class="admin-button-secondary">取消</a>
+    <button type="button" id="submit_btn" class="admin-button-primary">提交</button>
+  </div>
 </div>
 
 <script>
+  let uploadedOssUrl = '';
+
   document.getElementById('video_file').addEventListener('change', function(e) {
     var file = e.target.files[0];
     if (file) {
-      document.getElementById('file_preview').textContent = '已选择: ' + file.name + ' (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
+      document.getElementById('upload_status').textContent = '已选择: ' + file.name + ' (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
+    }
+  });
+
+  document.getElementById('submit_btn').addEventListener('click', async function() {
+    var theme = document.getElementById('theme').value.trim();
+    var title = document.getElementById('title').value.trim();
+    var videoFile = document.getElementById('video_file').files[0];
+
+    if (!theme) {
+      alert('请输入主题');
+      return;
+    }
+    if (!title) {
+      alert('请输入标题');
+      return;
+    }
+    if (!videoFile) {
+      alert('请选择视频文件');
+      return;
+    }
+
+    var btn = document.getElementById('submit_btn');
+    btn.disabled = true;
+    btn.textContent = '上传中...';
+
+    try {
+      var fileName = videoFile.name;
+      var statusEl = document.getElementById('upload_status');
+      var progressBar = document.getElementById('progress_bar');
+      var progressEl = document.getElementById('progress');
+      var progressText = document.getElementById('progress_text');
+
+      statusEl.textContent = '正在获取上传参数...';
+      progressBar.style.display = 'block';
+      progressEl.style.width = '10%';
+      progressText.textContent = '10%';
+
+      var paramsResponse = await fetch('/admin/operation_tasks/get_upload_params?file_name=' + encodeURIComponent(fileName));
+      var params = await paramsResponse.json();
+
+      if (params.error) {
+        throw new Error(params.error);
+      }
+
+      statusEl.textContent = '正在上传视频到 OSS...';
+      progressEl.style.width = '30%';
+      progressText.textContent = '30%';
+
+      var xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+          var percent = Math.round(30 + (e.loaded / e.total) * 60);
+          progressEl.style.width = percent + '%';
+          progressText.textContent = percent + '%';
+        }
+      });
+
+      await new Promise(function(resolve, reject) {
+        xhr.open('PUT', params.upload_url, true);
+        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            progressEl.style.width = '95%';
+            progressText.textContent = '95%';
+            resolve();
+          } else {
+            reject(new Error('上传失败: ' + xhr.status));
+          }
+        };
+        xhr.onerror = function() {
+          reject(new Error('上传失败'));
+        };
+        xhr.send(videoFile);
+      });
+
+      uploadedOssUrl = params.oss_url;
+      statusEl.textContent = '上传完成，正在保存...';
+      progressEl.style.width = '98%';
+      progressText.textContent = '98%';
+
+      var formData = new FormData();
+      formData.append('authenticity_token', document.querySelector('meta[name="csrf-token"]').content);
+      formData.append('operation_task[theme]', theme);
+      formData.append('operation_task[title]', title);
+      formData.append('operation_task[oss_url]', uploadedOssUrl);
+
+      var saveResponse = await fetch('/admin/operation_tasks', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (saveResponse.redirected) {
+        window.location.href = saveResponse.url;
+      } else if (!saveResponse.ok) {
+        throw new Error('保存失败');
+      } else {
+        window.location.href = '/admin/operation_tasks';
+      }
+    } catch (err) {
+      alert('上传失败: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = '提交';
     }
   });
 </script>
