@@ -1,4 +1,4 @@
-class ChangeOperationTaskPlatformToInteger < ActiveRecord::Migration[7.0]
+class ChangeOperationTaskPlatformToInteger < ActiveRecord::Migration[6.1]
   def up
     # 先删除唯一索引
     remove_index :operation_tasks, name: 'index_operation_tasks_on_oss_url_and_platform' rescue nil
