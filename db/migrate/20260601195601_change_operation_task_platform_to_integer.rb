@@ -1,4 +1,4 @@
-class ChangeOperationTaskPlatformToInteger < ActiveRecord::Migration[7.0]
+class ChangeOperationTaskPlatformToInteger < ActiveRecord::Migration[6.1]
   def up
     # 先备份数据
     rename_column :operation_tasks, :platform, :platform_string
