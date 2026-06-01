@@ -30,6 +30,7 @@
 
 class OperationTask < ApplicationRecord
 	belongs_to :account, optional: true
+	belongs_to :browser, optional: true
 
 	enum status: {
 		pending: 0,          # 待分配账号
