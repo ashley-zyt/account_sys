@@ -4,6 +4,7 @@
 #
 #  id                                :bigint           not null, primary key
 #  actual_publish_time(实际发布时间) :datetime
+#  description                       :string(255)
 #  error_msg(错误信息)               :text(65535)
 #  oss_url(OSS文件地址)              :string(255)
 #  platform(平台)                    :string(255)
