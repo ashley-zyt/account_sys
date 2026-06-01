@@ -28,10 +28,13 @@ class Admin::OperationTasksController < Admin::BaseController
       platforms = %w[facebook twitter tiktok youtube instagram]
       group_id = SecureRandom.uuid
 
+      description = operation_task_params[:description]
+
       platforms.each do |platform|
         OperationTask.create(
           theme: theme,
           title: title,
+          description: description,
           oss_url: oss_url,
           platform: platform,
           status: :pending,
@@ -53,7 +56,7 @@ class Admin::OperationTasksController < Admin::BaseController
   end
 
   def operation_task_params
-    params.require(:operation_task).permit(:theme, :title, :oss_url, :platform, :status, :error_msg)
+    params.require(:operation_task).permit(:theme, :title, :description, :oss_url, :platform, :status, :error_msg)
   end
 
   def upload_to_oss(file)
