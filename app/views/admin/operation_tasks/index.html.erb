@@ -35,11 +35,7 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">平台</label>
-        <%= f.select :platform_eq, OperationTask.platforms.map { |k, v| [k.to_s.titleize, k] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
-      </div>
-      <div class="admin-filter-group">
-        <label class="admin-filter-label">状态</label>
-        <%= f.select :status_eq, OperationTask.statuses.map { |k, v| [k.to_s.titleize, k] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+        <%= f.select :platform_eq, ["facebook", "twitter", "tiktok", "youtube", "instagram"].map { |p| [p.titleize, p] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>

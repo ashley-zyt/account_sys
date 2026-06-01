@@ -40,15 +40,6 @@ class OperationTask < ApplicationRecord
 		failed: 4            # 失败
 	}
 
-	# 平台枚举（与 Account.platform 一致）
-	enum platform: {
-		facebook: 1,
-		twitter: 2,
-		tiktok: 3,
-		youtube: 4,
-		instagram: 5
-	}
-
 	validates :title, presence: true
 	validates :oss_url, presence: true
 	validates :task_uuid, uniqueness: true, allow_nil: true

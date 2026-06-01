@@ -6,14 +6,9 @@ module Api
 			def fetch_next_executable_task
 				next_task = MoveTask.where(status:"waiting_publish").where("account_id is not null").first
 				if next_task.nil?
-					# 释放亨亨猫类型的错误资源
 					TaskLog.where(status: "failed").where("created_at > ?",Time.now-1.days).each do |task_log|
 						task = MoveTask.find_by(task_uuid:task_log.task_uuid)
-						# if task_log.error_msg.include?"哼哼猫" or task_log.error_msg.include?"亨亨猫"
-						# 	task.update(status:"pending",error_msg:nil,start_at:nil,actual_publish_time:nil,browser_id:nil)
-						# end
 					end
-					# 分配今日资源
 					Account.active.where(work_type:0).each do |account|
 						task = MoveTask.where(status:"pending").where(platform:account.platform,theme:account["theme"]).order("created_at asc").first
 						if !task.nil?
@@ -26,25 +21,41 @@ module Api
 				next_task.update(status:"executing")
 				next_task = MoveTask.find_by(id:id)
 				return render json: {id: next_task.id,video_url: next_task.video_url,social_account_id: next_task.source_account_url,adspower_user_name: next_task.browser.profile_name,account_type: next_task.platform,title: next_task.title}
-				# loop do
-				# 	candidate_id = MoveTask.with_account_unused_today.limit(1).pluck(:id).first
-				# 	return render json: {id: nil,video_url: nil,social_account_id: nil,adspower_user_name: nil,account_type: nil,title: nil} unless candidate_id
-
-				# 	today_begin = Time.current.beginning_of_day
-    # 				used_account_ids = MoveTask.where(start_at: today_begin..).distinct.pluck(:account_id).compact
-    # 				if used_account_ids.empty?
-				# 		affected = MoveTask.where(id: candidate_id, status: :waiting_publish).update_all(status: :executing,start_at: Time.current,updated_at: Time.current)
-				# 	else
-				# 		affected = MoveTask.where(id: candidate_id, status: :waiting_publish).where.not(account_id: used_account_ids).update_all(status: :executing,start_at: Time.current,updated_at: Time.current)
-				# 	end
-
-				# 	next if affected.zero?
-				# 	Rails.logger.info candidate_id
-				# 	task = MoveTask.find(candidate_id)
-				# 	Rails.logger.info JSON.parse(task.to_json)
-				# 	return render json: {id: task.id,video_url: task.video_url,social_account_id: task.source_account_url,adspower_user_name: task.browser.profile_name,account_type: task.platform,title: task.title}
-				# end
 			end
+
+			def fetch_operation_task
+				next_task = OperationTask.where(status: :waiting_publish)
+				                        .where("account_id IS NOT NULL")
+				                        .order(created_at: :asc)
+				                        .first
+
+				if next_task.nil?
+					return render json: {
+						type: 'error',
+						message: '暂无待发布的运营任务'
+					}
+				end
+
+				task_id = next_task.id
+				next_task.update!(status: :executing, start_at: Time.current)
+
+				return render json: {
+					type: 'success',
+					data: {
+						id: next_task.id,
+						task_uuid: next_task.task_uuid,
+						oss_url: next_task.oss_url,
+						title: next_task.title,
+						theme: next_task.theme,
+						platform: next_task.platform,
+						account_id: next_task.account_id,
+						browser_id: next_task.browser_id,
+						account_name: next_task.account&.account_name,
+						browser_name: next_task.browser&.profile_name
+					}
+				}
+			end
+
 			def report
 				task_id = params[:id].to_s.strip
 				status    = params[:status].to_s.strip
@@ -52,46 +63,53 @@ module Api
 				return render json: {type: 'error', message: "task_id不能为空" } if task_id.blank?
 				return render json: {type: 'error', message: "status不能为空" } if status.blank?
 
-				task = MoveTask.find_by(id: task_id)
-				# return not_found('任务不存在') unless task
+				task = find_task_by_id(task_id)
 				return render json: {type: 'error', message: "任务不存在" } unless task
 
 				unless %w[success error].include?(status)
-					# return bad_request('status必须为 success 或 error')
-					return render json: {type: 'error', message: "更新成功" }
+					return render json: {type: 'error', message: "状态必须为 success 或 error" }
 				end
 
 				ActiveRecord::Base.transaction do
 					update_task_status!(task, status)
 					create_task_log!(task, status)
 				end
-				return render json: {type: '上报成功', message: "更新成功" }
-				
+				return render json: {type: 'success', message: "更新成功" }
 			end
-			def update_task_status!(task, status)
 
+			private
+
+			def find_task_by_id(task_id)
+				task = MoveTask.find_by(id: task_id)
+				return task if task
+
+				task = JianyingTask.find_by(id: task_id)
+				return task if task
+
+				task = OperationTask.find_by(id: task_id)
+				return task if task
+
+				nil
+			end
+
+			def update_task_status!(task, status)
 				if status == 'success'
 					task.update!(
 						status: :success,
 						actual_publish_time: Time.current,
 						error_msg: nil
 					)
-
 				else
-					# task.increment!(:retry_count)
-
 					task.update!(
 						status: :failed,
 						error_msg: params[:status_desp]
 					)
 				end
 			end
+
 			def create_task_log!(task, status)
-				if status == 'success'
-					task_status = "success"
-				else
-					task_status = "failed"
-				end
+				task_status = status == 'success' ? "success" : "failed"
+
 				TaskLog.create!(
 					task_uuid: task.task_uuid,
 					response_data: params.to_s,
@@ -99,8 +117,15 @@ module Api
 					error_msg: params[:status_desp],
 					run_at: Time.current
 				)
-				if params[:status_desp].include?"not logged in" or params[:status_desp].include?"account verification" or params[:status_desp].include?"some of your media failed to upload" or params[:status_desp].include?"account banned or human verification required" or params[:status_desp].include?"account verification required after upload"
-					task.account.update(status:2)
+
+				if params[:status_desp].present? && (
+					params[:status_desp].include?("not logged in") ||
+					params[:status_desp].include?("account verification") ||
+					params[:status_desp].include?("some of your media failed to upload") ||
+					params[:status_desp].include?("account banned or human verification required") ||
+					params[:status_desp].include?("account verification required after upload")
+				)
+					task.account&.update(status: 2)
 				end
 			end
 		end
