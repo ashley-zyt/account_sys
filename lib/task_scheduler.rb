@@ -24,13 +24,13 @@ class TaskScheduler
 		Account.active.where(work_type: "人工运营").each do |account|
 			has_posted_today = OperationTask.exists?(
 				account_id: account.id,
-				status: :completed,
+				status: :success,
 				actual_publish_time: today_start..today_end
 			)
 
 			next if has_posted_today
 
-			pending_task = OperationTask.where(status: :pending, platform: account.platform).order(created_at: :asc).first
+			pending_task = OperationTask.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
 
 			if pending_task
 				ActiveRecord::Base.transaction do
@@ -40,9 +40,9 @@ class TaskScheduler
 						status: :waiting_publish
 					)
 				end
-				Rails.logger.info "人工运营账号 #{account.account_name}[#{account.platform}] 分配运营资源成功"
+				Rails.logger.info "人工运营账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配运营资源成功"
 			else
-				Rails.logger.warn "人工运营账号 #{account.account_name}[#{account.platform}] 暂无可用运营资源"
+				Rails.logger.warn "人工运营账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用运营资源"
 			end
 		end
 	end
