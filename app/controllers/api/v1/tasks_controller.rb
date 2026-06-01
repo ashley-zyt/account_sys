@@ -47,6 +47,7 @@ module Api
 						task_uuid: next_task.task_uuid,
 						oss_url: next_task.oss_url,
 						title: next_task.title,
+						description: next_task.description,
 						theme: next_task.theme,
 						platform: next_task.platform,
 						account_id: next_task.account_id,
