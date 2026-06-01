@@ -7,7 +7,7 @@
 #  description                       :text(65535)
 #  error_msg(错误信息)               :text(65535)
 #  oss_url(OSS文件地址)              :string(255)
-#  platform(平台)                    :string(255)
+#  platform                          :integer
 #  start_at(开始时间)                :datetime
 #  status                            :integer          default("pending")
 #  task_uuid(任务UUID)               :string(255)
@@ -24,7 +24,6 @@
 #  index_operation_tasks_on_account_id              (account_id)
 #  index_operation_tasks_on_account_id_and_oss_url  (account_id,oss_url) UNIQUE
 #  index_operation_tasks_on_oss_url_and_platform    (oss_url,platform) UNIQUE
-#  index_operation_tasks_on_platform                (platform)
 #  index_operation_tasks_on_status                  (status)
 #  index_operation_tasks_on_task_uuid               (task_uuid) UNIQUE
 #
