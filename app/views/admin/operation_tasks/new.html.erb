@@ -349,7 +349,7 @@ document.addEventListener('turbo:load', function() {
   form.addEventListener('submit', function(e) {
     e.preventDefault();
 
-    var themeInput = document.querySelector('select[name="operation_task[theme]"]');
+    var themeInput = document.querySelector('input[name="operation_task[theme]"]');
     var theme = themeInput ? themeInput.value.trim() : '';
     var title = document.getElementById('title').value.trim();
     var videoFile = fileInput.files[0];
