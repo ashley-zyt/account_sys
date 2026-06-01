@@ -349,11 +349,12 @@ document.addEventListener('turbo:load', function() {
   form.addEventListener('submit', function(e) {
     e.preventDefault();
 
-    var theme = document.getElementById('theme').value.trim();
+    var themeInput = document.querySelector('select[name="operation_task[theme]"]');
+    var theme = themeInput ? themeInput.value.trim() : '';
     var title = document.getElementById('title').value.trim();
     var videoFile = fileInput.files[0];
 
-    if (!theme) { alert('请输入主题'); return; }
+    if (!theme) { alert('请选择主题'); return; }
     if (!title) { alert('请输入标题'); return; }
     if (!videoFile) { alert('请选择视频文件'); return; }
 
