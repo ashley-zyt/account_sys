@@ -59,13 +59,19 @@ module Api
 			end
 
 			def report
+				task_type = params[:task_type].to_s.strip
 				task_id = params[:id].to_s.strip
 				status    = params[:status].to_s.strip
 
+				return render json: {type: 'error', message: "task_type不能为空" } if task_type.blank?
 				return render json: {type: 'error', message: "task_id不能为空" } if task_id.blank?
 				return render json: {type: 'error', message: "status不能为空" } if status.blank?
 
-				task = find_task_by_id(task_id)
+				unless %w[move operation jianying].include?(task_type)
+					return render json: {type: 'error', message: "task_type必须为 move、operation 或 jianying" }
+				end
+
+				task = find_task_by_type_and_id(task_type, task_id)
 				return render json: {type: 'error', message: "任务不存在" } unless task
 
 				unless %w[success error].include?(status)
@@ -81,17 +87,17 @@ module Api
 
 			private
 
-			def find_task_by_id(task_id)
-				task = MoveTask.find_by(id: task_id)
-				return task if task
-
-				task = JianyingTask.find_by(id: task_id)
-				return task if task
-
-				task = OperationTask.find_by(id: task_id)
-				return task if task
-
-				nil
+			def find_task_by_type_and_id(task_type, task_id)
+				case task_type
+				when 'move'
+					MoveTask.find_by(id: task_id)
+				when 'operation'
+					OperationTask.find_by(id: task_id)
+				when 'jianying'
+					JianyingTask.find_by(id: task_id)
+				else
+					nil
+				end
 			end
 
 			def update_task_status!(task, status)
