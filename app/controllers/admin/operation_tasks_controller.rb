@@ -92,10 +92,13 @@ class Admin::OperationTasksController < Admin::BaseController
 
     # 手动生成带签名的URL（有效期1年）
     expires = (Time.now + 365 * 24 * 3600).to_i
+    
+    # 签名字符串中使用原始文件名（不编码）
     signature = generate_oss_signature(file_name, expires, access_key_id, access_key_secret, bucket_name)
     
-    # 构造完整的签名URL
-    signed_url = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{file_name}?OSSAccessKeyId=#{access_key_id}&Expires=#{expires}&Signature=#{URI.encode(signature)}"
+    # URL中使用编码后的文件名
+    encoded_file_name = URI.encode(file_name, /[^a-zA-Z0-9\.\-\_\/]/)
+    signed_url = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_file_name}?OSSAccessKeyId=#{access_key_id}&Expires=#{expires}&Signature=#{URI.encode(signature)}"
     
     # 打印日志验证签名URL
     Rails.logger.info "========== OSS上传调试 =========="
@@ -111,13 +114,16 @@ class Admin::OperationTasksController < Admin::BaseController
 
   # 手动生成OSS签名
   def generate_oss_signature(object_name, expires, access_key_id, access_key_secret, bucket_name)
-    # 构建签名字符串
+    # 构建签名字符串 - 必须包含换行符，格式: GET\nContent-MD5\nContent-Type\nExpires\n/bucket/object
     string_to_sign = "GET\n\n\n#{expires}\n/#{bucket_name}/#{object_name}"
+    
+    # 打印签名字符串用于调试
+    Rails.logger.info "签名字符串: #{string_to_sign.inspect}"
     
     # 使用HMAC-SHA1签名
     signature = OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)
     
-    # Base64编码并URL安全处理
-    Base64.strict_encode64(signature).gsub('+', '%2B').gsub('/', '%2F').gsub('=', '%3D')
+    # Base64编码（使用标准encode64而非strict_encode64）
+    Base64.encode64(signature).strip.gsub('+', '%2B').gsub('/', '%2F').gsub('=', '%3D')
   end
 end
