@@ -6,9 +6,6 @@ module Api
 			def fetch_next_executable_task
 				next_task = MoveTask.where(status:"waiting_publish").where("account_id is not null").first
 				if next_task.nil?
-					TaskLog.where(status: "failed").where("created_at > ?",Time.now-1.days).each do |task_log|
-						task = MoveTask.find_by(task_uuid:task_log.task_uuid)
-					end
 					Account.active.where(work_type:0).each do |account|
 						task = MoveTask.where(status:"pending").where(platform:account.platform,theme:account["theme"]).order("created_at asc").first
 						if !task.nil?
