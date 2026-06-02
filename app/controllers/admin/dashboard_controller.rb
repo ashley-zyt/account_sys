@@ -34,12 +34,31 @@ class Admin::DashboardController < Admin::BaseController
 			hash[theme][:total] += count
 		end
 
-		# 账号资源分布 (各主题下各平台的活跃账号数量)
-		@account_distribution_stats = Account.active.group(:theme, :platform).count.each_with_object({}) do |((theme, platform), count), hash|
-			hash[theme] ||= { total: 0 }
-			hash[theme][platform] = count
-			hash[theme][:total] += count
+		# 视频搬运账号统计 (work_type = 0)
+		@auto_account_stats = Account.where(work_type: 0).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
+			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
+			hash[platform][:total] += count
+			case status
+			when "正常" then hash[platform][:active] += count
+			when "未登录" then hash[platform][:unlogged] += count
+			when "封禁/停用" then hash[platform][:banned] += count
+			end
 		end
+		@auto_account_total = Account.where(work_type: 0).count
+		@auto_account_active = Account.where(work_type: 0).active.count
+
+		# 人工运营账号统计 (work_type = 1)
+		@manual_account_stats = Account.where(work_type: 1).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
+			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
+			hash[platform][:total] += count
+			case status
+			when "正常" then hash[platform][:active] += count
+			when "未登录" then hash[platform][:unlogged] += count
+			when "封禁/停用" then hash[platform][:banned] += count
+			end
+		end
+		@manual_account_total = Account.where(work_type: 1).count
+		@manual_account_active = Account.where(work_type: 1).active.count
 
 		@browsers_total = Browser.count
 		@browsers_normal = Browser.where(status: 0).count
