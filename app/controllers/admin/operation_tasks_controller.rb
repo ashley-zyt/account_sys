@@ -93,25 +93,25 @@ class Admin::OperationTasksController < Admin::BaseController
     
     bucket.put_object(encoded_file_name, file: file.tempfile.path)
 
-    # 手动生成带签名的URL（有效期1年）
-    expires = (Time.now + 365 * 24 * 3600).to_i
+    # 参考提供的代码生成签名URL（有效期7天）
+    verb = "GET"
+    content_md5 = ""
+    content_type = ""
+    ts = (Time.now.to_i + 604800)  # 7天有效期
+    cano_res = "/#{bucket_name}/#{base_name}"
+    sign_string = "#{verb}\n#{content_md5}\n#{content_type}\n#{ts}\n#{cano_res}"
     
-    # 签名字符串中使用原始文件名（不编码）- 这是关键！
-    signature = generate_oss_signature(base_name, expires, access_key_id, access_key_secret, bucket_name)
+    # 生成签名
+    signature = OpenSSL::HMAC.digest("sha1", access_key_secret, sign_string).to_s
+    signature = Base64.strict_encode64(signature).strip
+    signature = URI.encode_www_form_component(signature)
     
-    # URL中使用编码后的文件名
-    signed_url = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_file_name}?OSSAccessKeyId=#{access_key_id}&Expires=#{expires}&Signature=#{URI.encode(signature)}"
+    # URL中的文件名也需要编码
+    encoded_url_name = URI.encode_www_form_component(base_name)
     
-    # 打印日志验证签名URL
-    Rails.logger.info "========== OSS上传调试 =========="
-    Rails.logger.info "原始文件名: #{file.original_filename}"
-    Rails.logger.info "OSS对象名(原始): #{base_name}"
-    Rails.logger.info "OSS对象名(编码后): #{encoded_file_name}"
-    Rails.logger.info "生成的签名URL: #{signed_url}"
-    Rails.logger.info "URL包含Signature: #{signed_url.include?('Signature')}"
-    Rails.logger.info "URL包含Expires: #{signed_url.include?('Expires')}"
-    Rails.logger.info "=================================="
-    
+    # 构建最终的签名URL
+    signed_url = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_url_name}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
+        
     return signed_url
   end
 
