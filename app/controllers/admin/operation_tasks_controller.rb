@@ -83,6 +83,7 @@ class Admin::OperationTasksController < Admin::BaseController
 
     bucket.put_object(file_name, file: file.tempfile.path)
 
-    "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{file_name}"
+    # 生成带签名的URL（有效期1年）
+    bucket.object_url(file_name, false, 365 * 24 * 3600)
   end
 end
