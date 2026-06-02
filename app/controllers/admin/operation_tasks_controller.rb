@@ -90,9 +90,12 @@ class Admin::OperationTasksController < Admin::BaseController
 
     bucket.put_object(file_name, file: file.tempfile.path)
 
-    # 生成带签名的URL（有效期1年）
-    # 使用sign_url方法确保生成带签名的URL
-    signed_url = bucket.sign_url('GET', file_name, 365 * 24 * 3600)
+    # 手动生成带签名的URL（有效期1年）
+    expires = (Time.now + 365 * 24 * 3600).to_i
+    signature = generate_oss_signature(file_name, expires, access_key_id, access_key_secret)
+    
+    # 构造完整的签名URL
+    signed_url = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{file_name}?OSSAccessKeyId=#{access_key_id}&Expires=#{expires}&Signature=#{URI.encode(signature)}"
     
     # 打印日志验证签名URL
     Rails.logger.info "========== OSS上传调试 =========="
@@ -104,5 +107,17 @@ class Admin::OperationTasksController < Admin::BaseController
     Rails.logger.info "=================================="
     
     return signed_url
+  end
+
+  # 手动生成OSS签名
+  def generate_oss_signature(object_name, expires, access_key_id, access_key_secret)
+    # 构建签名字符串
+    string_to_sign = "GET\n\n\n#{expires}\n/#{bucket_name}/#{object_name}"
+    
+    # 使用HMAC-SHA1签名
+    signature = OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)
+    
+    # Base64编码并URL安全处理
+    Base64.strict_encode64(signature).gsub('+', '%2B').gsub('/', '%2F').gsub('=', '%3D')
   end
 end
