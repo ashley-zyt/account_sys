@@ -91,7 +91,8 @@ class Admin::OperationTasksController < Admin::BaseController
     bucket.put_object(file_name, file: file.tempfile.path)
 
     # 生成带签名的URL（有效期1年）
-    signed_url = bucket.object_url(file_name, false, 365 * 24 * 3600)
+    # 使用sign_url方法确保生成带签名的URL
+    signed_url = bucket.sign_url('GET', file_name, 365 * 24 * 3600)
     
     # 打印日志验证签名URL
     Rails.logger.info "========== OSS上传调试 =========="
