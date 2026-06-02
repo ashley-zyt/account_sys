@@ -92,6 +92,16 @@ class Admin::OperationTasksController < Admin::BaseController
 
     # 生成带签名的URL（有效期1年）
     signed_url = bucket.object_url(file_name, false, 365 * 24 * 3600)
+    
+    # 打印日志验证签名URL
+    Rails.logger.info "========== OSS上传调试 =========="
+    Rails.logger.info "原始文件名: #{file.original_filename}"
+    Rails.logger.info "OSS对象名: #{file_name}"
+    Rails.logger.info "生成的签名URL: #{signed_url}"
+    Rails.logger.info "URL包含Signature: #{signed_url.include?('Signature')}"
+    Rails.logger.info "URL包含Expires: #{signed_url.include?('Expires')}"
+    Rails.logger.info "=================================="
+    
     return signed_url
   end
 end
