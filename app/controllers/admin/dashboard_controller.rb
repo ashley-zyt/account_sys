@@ -47,8 +47,8 @@ class Admin::DashboardController < Admin::BaseController
 		@auto_account_total = Account.where(work_type: 0).count
 		@auto_account_active = Account.where(work_type: 0).active.count
 
-		# 人工运营账号统计 (work_type = 1)
-		@manual_account_stats = Account.where(work_type: 1).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
+		# 人工运营账号统计 (work_type = 3)
+		@manual_account_stats = Account.where(work_type: 3).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
 			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
 			hash[platform][:total] += count
 			case status
