@@ -85,19 +85,21 @@ class Admin::OperationTasksController < Admin::BaseController
 
     bucket = client.get_bucket(bucket_name)
 
-    encoded_filename = URI.encode(file.original_filename, /[^a-zA-Z0-9\.\-\_]/)
-    file_name = "#{SecureRandom.uuid}_#{encoded_filename}"
-
-    bucket.put_object(file_name, file: file.tempfile.path)
+    # 生成UUID前缀的文件名
+    base_name = "#{SecureRandom.uuid}_#{file.original_filename}"
+    
+    # 编码后的文件名用于OSS上传和URL
+    encoded_file_name = URI.encode(base_name, /[^a-zA-Z0-9\.\-\_]/)
+    
+    bucket.put_object(encoded_file_name, file: file.tempfile.path)
 
     # 手动生成带签名的URL（有效期1年）
     expires = (Time.now + 365 * 24 * 3600).to_i
     
-    # 签名字符串中使用原始文件名（不编码）
-    signature = generate_oss_signature(file_name, expires, access_key_id, access_key_secret, bucket_name)
+    # 签名字符串中使用原始文件名（不编码）- 这是关键！
+    signature = generate_oss_signature(base_name, expires, access_key_id, access_key_secret, bucket_name)
     
     # URL中使用编码后的文件名
-    encoded_file_name = URI.encode(file_name, /[^a-zA-Z0-9\.\-\_\/]/)
     signed_url = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_file_name}?OSSAccessKeyId=#{access_key_id}&Expires=#{expires}&Signature=#{URI.encode(signature)}"
     
     # 打印日志验证签名URL
