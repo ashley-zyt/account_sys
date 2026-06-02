@@ -71,6 +71,9 @@
               账号
             </th>
             <th>
+              浏览器
+            </th>
+            <th>
               创建时间
             </th>
             <th>
@@ -141,6 +144,11 @@
                     未分配
                   </span>
                 <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.browser&.profile_name || "未绑定" %>
+                </span>
               </td>
               <td>
                 <span class="admin-label-muted">

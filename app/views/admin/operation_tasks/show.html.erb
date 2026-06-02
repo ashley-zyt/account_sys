@@ -125,7 +125,11 @@
           浏览器
         </div>
         <div class="admin-field-value">
-          <%= @operation_task.browser_id || "未绑定" %>
+          <% if @operation_task.browser_id %>
+            <%= @operation_task.browser_id %> - <%= @operation_task.browser&.profile_name %>
+          <% else %>
+            未绑定
+          <% end %>
         </div>
       </div>
       <div>
