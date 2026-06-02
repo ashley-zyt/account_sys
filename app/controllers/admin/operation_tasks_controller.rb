@@ -91,6 +91,7 @@ class Admin::OperationTasksController < Admin::BaseController
     bucket.put_object(file_name, file: file.tempfile.path)
 
     # 生成带签名的URL（有效期1年）
-    bucket.object_url(file_name, false, 365 * 24 * 3600)
+    signed_url = bucket.object_url(file_name, false, 365 * 24 * 3600)
+    return signed_url
   end
 end
