@@ -57,8 +57,8 @@ class Admin::DashboardController < Admin::BaseController
 			when "封禁/停用" then hash[platform][:banned] += count
 			end
 		end
-		@manual_account_total = Account.where(work_type: 1).count
-		@manual_account_active = Account.where(work_type: 1).active.count
+		@manual_account_total = Account.where(work_type: 3).count
+		@manual_account_active = Account.where(work_type: 3).active.count
 
 		@browsers_total = Browser.count
 		@browsers_normal = Browser.where(status: 0).count
