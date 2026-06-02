@@ -34,7 +34,6 @@ class Admin::OperationTasksController < Admin::BaseController
         OperationTask.create(
           theme: theme,
           title: title,
-          description: description,
           oss_url: oss_url,
           platform: platform,
           status: :pending,
