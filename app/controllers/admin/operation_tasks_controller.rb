@@ -98,7 +98,12 @@ class Admin::OperationTasksController < Admin::BaseController
     content_md5 = ""
     content_type = ""
     ts = (Time.now.to_i + 604800)  # 7天有效期
-    cano_res = "/#{bucket_name}/#{base_name}"
+    
+    # 文件名编码 - 签名字符串和URL中必须使用相同的编码方式
+    encoded_filename = URI.encode_www_form_component(base_name)
+    
+    # 签名字符串中使用编码后的文件名
+    cano_res = "/#{bucket_name}/#{encoded_filename}"
     sign_string = "#{verb}\n#{content_md5}\n#{content_type}\n#{ts}\n#{cano_res}"
     
     # 生成签名
@@ -106,11 +111,8 @@ class Admin::OperationTasksController < Admin::BaseController
     signature = Base64.strict_encode64(signature).strip
     signature = URI.encode_www_form_component(signature)
     
-    # URL中的文件名也需要编码
-    encoded_url_name = URI.encode_www_form_component(base_name)
-    
-    # 构建最终的签名URL
-    signed_url = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_url_name}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
+    # 构建最终的签名URL - 使用相同的编码文件名
+    signed_url = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_filename}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
         
     return signed_url
   end
