@@ -85,13 +85,11 @@ class Admin::OperationTasksController < Admin::BaseController
 
     bucket = client.get_bucket(bucket_name)
 
-    # 生成UUID前缀的文件名
-    base_name = "#{SecureRandom.uuid}_#{file.original_filename}"
+    # 直接使用UUID作为文件名（保留扩展名），剔除原始文件名
+    extension = File.extname(file.original_filename)
+    base_name = "#{SecureRandom.uuid}#{extension}"
     
-    # 编码后的文件名用于OSS上传和URL
-    encoded_file_name = URI.encode(base_name, /[^a-zA-Z0-9\.\-\_]/)
-    
-    bucket.put_object(encoded_file_name, file: file.tempfile.path)
+    bucket.put_object(base_name, file: file.tempfile.path)
 
     # 参考提供的代码生成签名URL（有效期7天）
     verb = "GET"
