@@ -25,7 +25,7 @@ class Admin::OperationTasksController < Admin::BaseController
       theme = operation_task_params[:theme]
       title = operation_task_params[:title]
 
-      platforms = %w[facebook twitter tiktok youtube instagram]
+      platforms = %w[facebook twitter tiktok instagram]
       group_id = SecureRandom.uuid
 
       description = operation_task_params[:description]
@@ -41,7 +41,15 @@ class Admin::OperationTasksController < Admin::BaseController
           group_id: group_id
         )
       end
-
+      OperationTask.create(
+          theme: theme,
+          title: description,
+          description: title,
+          oss_url: oss_url,
+          platform: "youtube",
+          status: :pending,
+          group_id: group_id
+        )
       redirect_to admin_operation_tasks_path, notice: '运营资源添加成功'
     else
       @operation_task = OperationTask.new(operation_task_params)
