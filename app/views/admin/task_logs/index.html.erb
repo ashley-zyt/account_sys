@@ -32,6 +32,10 @@
         <label class="admin-filter-label">状态</label>
         <%= f.select :status_eq, TaskLog.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">任务类型</label>
+        <%= f.select :task_type_eq, [["搬运任务", "move_task"], ["剪映任务", "jianying_task"], ["运营任务", "operation_task"]], { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
+      </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
         <%= link_to "重置", admin_task_logs_path, class: "admin-button-secondary" %>
