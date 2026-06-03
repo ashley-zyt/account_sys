@@ -87,6 +87,10 @@ class TaskLog < ApplicationRecord
 		end
 	end
 
+	ransacker :task_type do
+		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM move_tasks WHERE move_tasks.task_uuid = task_logs.task_uuid) THEN 'move_task' WHEN EXISTS (SELECT 1 FROM jianying_tasks WHERE jianying_tasks.task_uuid = task_logs.task_uuid) THEN 'jianying_task' WHEN EXISTS (SELECT 1 FROM operation_tasks WHERE operation_tasks.task_uuid = task_logs.task_uuid) THEN 'operation_task' ELSE 'unknown' END")
+	end
+
 	def self.ransackable_associations(auth_object = nil)
 		%w[move_task jianying_task operation_task]
 	end
@@ -102,6 +106,7 @@ class TaskLog < ApplicationRecord
 			run_at
 			created_at
 			updated_at
+			task_type
 		]
 	end
 end
