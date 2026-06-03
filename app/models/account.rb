@@ -30,6 +30,7 @@ class Account < ApplicationRecord
 	# 一个账号可产生多个发布任务，账号删除时任务保留（置空 account_id）
 	has_many :move_tasks, dependent: :nullify
 	has_many :jianying_tasks, dependent: :nullify
+	has_many :operation_tasks, dependent: :nullify
 	# 账号可参与多个会话
 	has_many :conversations, dependent: :destroy
 	# 账号可有多条发文数据记录
@@ -98,9 +99,17 @@ class Account < ApplicationRecord
 		update!(last_used_at: Time.current)
 	end
 
-	# 获取最后一次运行的日志
+	# 获取最后一次运行的日志（从任务日志表获取，包含所有任务类型）
 	def last_task_log
-		@last_task_log ||= TaskLog.where(task_uuid: move_tasks.select(:task_uuid)).order(run_at: :desc).first
+		@last_task_log ||= begin
+			task_uuids = move_tasks.select(:task_uuid).union(jianying_tasks.select(:task_uuid)).union(operation_tasks.select(:task_uuid))
+			TaskLog.where(task_uuid: task_uuids).order(run_at: :desc).first
+		end
+	end
+
+	# 获取最后使用时间（从任务日志表获取）
+	def last_used_at
+		last_task_log&.run_at || super
 	end
 
 	# 获取该账号最后一次成功运行任务的时间
