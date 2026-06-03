@@ -102,8 +102,13 @@ class Account < ApplicationRecord
 	# 获取最后一次运行的日志（从任务日志表获取，包含所有任务类型）
 	def last_task_log
 		@last_task_log ||= begin
-			task_uuids = move_tasks.select(:task_uuid).union(jianying_tasks.select(:task_uuid)).union(operation_tasks.select(:task_uuid))
-			TaskLog.where(task_uuid: task_uuids).order(run_at: :desc).first
+			# 获取所有关联任务的UUID
+			uuids = []
+			uuids += move_tasks.pluck(:task_uuid).compact
+			uuids += jianying_tasks.pluck(:task_uuid).compact
+			uuids += operation_tasks.pluck(:task_uuid).compact
+			return nil if uuids.empty?
+			TaskLog.where(task_uuid: uuids).order(run_at: :desc).first
 		end
 	end
 
