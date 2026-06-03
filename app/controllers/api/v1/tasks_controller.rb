@@ -105,10 +105,19 @@ module Api
 						error_msg: nil
 					)
 				else
-					task.update!(
-						status: :failed,
-						error_msg: params[:status_desp]
-					)
+					if task.is_a?(OperationTask)
+						task.update!(
+							status: :pending,
+							account_id: nil,
+							error_msg: nil,
+							start_at: nil
+						)
+					else
+						task.update!(
+							status: :failed,
+							error_msg: params[:status_desp]
+						)
+					end
 				end
 			end
 
