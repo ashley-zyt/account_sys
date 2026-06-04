@@ -176,13 +176,12 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "编辑", edit_admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                  <% link_target, link_params = case account.work_type
-                     when "视频搬运" then [admin_move_tasks_path, { account_id_eq: account.id }]
-                     when "capcut"   then [admin_jianying_tasks_path, { account_id_eq: account.id }]
-                     when "人工运营" then [admin_operation_tasks_path, { account_id_eq: account.id }]
-                     end %>
-                  <% if link_target %>
-                    <%= link_to "任务", link_target(q: link_params), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% if account.work_type == "视频搬运" %>
+                    <%= link_to "任务", admin_move_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% elsif account.work_type == "capcut" %>
+                    <%= link_to "任务", admin_jianying_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% elsif account.work_type == "人工运营" %>
+                    <%= link_to "任务", admin_operation_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
                   <% end %>
                 </div>
               </td>
