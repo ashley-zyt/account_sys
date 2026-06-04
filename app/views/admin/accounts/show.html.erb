@@ -137,52 +137,97 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          近期任务
+          近期任务日志
         </div>
         <div class="admin-card-subtitle">
-          该账号关联的最近 10 条任务
+          该账号最近 10 条任务执行日志
         </div>
+      </div>
+      <div class="admin-card-header-right">
+        <%= link_to "查看全部日志", admin_task_logs_path(q: { account_id_eq: @account.id }), class: "admin-button-secondary" %>
       </div>
     </div>
 
-    <% if @recent_tasks.any? %>
+    <% if @recent_task_logs.any? %>
       <div class="admin-table-wrapper admin-table-scroll">
         <table class="admin-table">
           <thead>
             <tr>
               <th>
-                任务
+                任务类型
               </th>
               <th>
-                平台
+                任务 UUID
+              </th>
+              <th>
+                浏览器
               </th>
               <th>
                 状态
               </th>
               <th>
-                创建时间
+                执行时间
+              </th>
+              <th>
+                错误信息
               </th>
             </tr>
           </thead>
           <tbody>
-            <% @recent_tasks.each do |task| %>
+            <% @recent_task_logs.each do |log| %>
               <tr>
                 <td>
-                  <%= link_to truncate(task.title.presence || task.video_url, length: 36), admin_move_task_path(task), class: "admin-link-quiet" %>
+                  <% task_type = log.task_type %>
+                  <% if task_type == "搬运任务" %>
+                    <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
+                      搬运任务
+                    </span>
+                  <% elsif task_type == "剪映任务" %>
+                    <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                      剪映任务
+                    </span>
+                  <% elsif task_type == "运营任务" %>
+                    <span class="admin-pill-status" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">
+                      运营任务
+                    </span>
+                  <% else %>
+                    <span class="admin-label-muted">
+                      <%= task_type %>
+                    </span>
+                  <% end %>
+                </td>
+                <td>
+                  <%= link_to truncate(log.task_uuid, length: 15), admin_task_log_path(log), class: "admin-link-quiet", title: log.task_uuid %>
+                </td>
+                <td>
+                  <% br = log.display_browser %>
+                  <% if br %>
+                    <%= link_to br.profile_name, admin_browser_path(br), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% else %>
+                    <span class="admin-label-muted">未绑定</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if log.status == "success" %>
+                    <span class="admin-pill-status admin-pill-status-success">
+                      <span class="admin-pill-status-dot"></span>
+                      成功
+                    </span>
+                  <% else %>
+                    <span class="admin-pill-status admin-pill-status-failed">
+                      <span class="admin-pill-status-dot"></span>
+                      失败
+                    </span>
+                  <% end %>
                 </td>
                 <td>
                   <span class="admin-label-muted">
-                    <%= task.platform %>
+                    <%= log.run_at&.strftime("%Y-%m-%d %H:%M") %>
                   </span>
                 </td>
                 <td>
-                  <span class="admin-label-muted">
-                    <%= task.status %>
-                  </span>
-                </td>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= task.created_at&.strftime("%m-%d %H:%M") %>
+                  <span class="admin-label-muted" title="<%= log.error_msg %>">
+                    <%= truncate(log.error_msg.to_s, length: 40) %>
                   </span>
                 </td>
               </tr>
@@ -192,7 +237,7 @@
       </div>
     <% else %>
       <div class="admin-empty-state">
-        暂无相关任务。
+        暂无相关日志。
       </div>
     <% end %>
   </div>

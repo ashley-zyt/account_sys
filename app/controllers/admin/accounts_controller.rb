@@ -26,7 +26,10 @@ class Admin::AccountsController < Admin::BaseController
 	end
 
 	def show
-		@recent_tasks = @account.move_tasks.order(created_at: :desc).limit(10)
+		# 使用 task_logs.account_id 快照查询，能兼容运营任务被释放资源的场景
+		@recent_task_logs = @account.task_logs
+		                           .order(run_at: :desc)
+		                           .limit(10)
 	end
 
 	def edit
