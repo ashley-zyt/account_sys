@@ -99,14 +99,25 @@ class Account < ApplicationRecord
 		update!(last_used_at: Time.current)
 	end
 
-	# 获取最后一次运行的日志（从任务日志表获取，包含所有任务类型）
+	# 根据工作模式返回对应的任务模型类
+	def task_model_for_work_type
+		case work_type
+		when "视频搬运"
+			MoveTask
+		when "capcut"
+			JianyingTask
+		when "人工运营"
+			OperationTask
+		end
+	end
+
+	# 获取最后一次运行的日志（从任务日志表获取，仅匹配当前工作模式对应的任务类型）
 	def last_task_log
 		@last_task_log ||= begin
-			# 获取所有关联任务的UUID
-			uuids = []
-			uuids += move_tasks.pluck(:task_uuid).compact
-			uuids += jianying_tasks.pluck(:task_uuid).compact
-			uuids += operation_tasks.pluck(:task_uuid).compact
+			task_model = task_model_for_work_type
+			return nil unless task_model
+
+			uuids = task_model.where(account_id: id).pluck(:task_uuid).compact
 			return nil if uuids.empty?
 			TaskLog.where(task_uuid: uuids).order(run_at: :desc).first
 		end
