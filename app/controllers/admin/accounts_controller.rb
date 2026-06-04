@@ -5,10 +5,20 @@ class Admin::AccountsController < Admin::BaseController
 	def index
 		@q = Account.ransack(params[:q])
 		@accounts = @q.result(distinct: true)
+		             .left_joins(:browser)
 		             .includes(:browser)
 		             .order(created_at: :desc)
-		             .page(params[:page])
-		             .per(10)
+
+		# 账号名搜索同时支持按浏览器名匹配
+		if (keyword = params.dig(:q, :account_name_cont)).present?
+			pattern = "%#{ActiveRecord::Base.sanitize_sql_like(keyword)}%"
+			@accounts = @accounts.where(
+				"accounts.account_name LIKE :pattern OR browsers.profile_name LIKE :pattern",
+				pattern: pattern
+			)
+		end
+
+		@accounts = @accounts.page(params[:page]).per(10)
 	end
 
 	def new
