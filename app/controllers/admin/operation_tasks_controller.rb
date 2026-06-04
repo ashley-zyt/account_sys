@@ -7,7 +7,7 @@ class Admin::OperationTasksController < Admin::BaseController
                          .includes(:account)
                          .order(created_at: :desc)
                          .page(params[:page])
-                         .per(10)
+                         .per(15)
     @themes = Theme.pluck(:name)
   end
 

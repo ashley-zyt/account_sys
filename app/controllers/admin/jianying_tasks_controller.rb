@@ -7,7 +7,7 @@ class Admin::JianyingTasksController < Admin::BaseController
 		                   .includes(:account, :browser)
 		                   .order(created_at: :desc)
 		                   .page(params[:page])
-		                   .per(10)
+		                   .per(15)
 	end
 
 	def show

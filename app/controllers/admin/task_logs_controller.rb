@@ -5,7 +5,7 @@ class Admin::TaskLogsController < Admin::BaseController
 		               .includes(move_task: [:account, :browser], jianying_task: [:account, :browser])
 		               .order(run_at: :desc)
 		               .page(params[:page])
-		               .per(10)
+		               .per(15)
 	end
 
 	def show
