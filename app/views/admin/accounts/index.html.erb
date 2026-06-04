@@ -155,11 +155,11 @@
               </td>
               <td>
                 <% last_log = account.last_task_log %>
-                <% if last_log && last_log.status == "failed" %>
+                <% if last_log && last_log.failed? %>
                   <span class="admin-label-muted" style="color: var(--danger);" title="<%= last_log.error_msg %>">
                     <%= truncate(last_log.error_msg, length: 20) %>
                   </span>
-                <% elsif last_log && last_log.status == "success" %>
+                <% elsif last_log && last_log.success? %>
                   <span class="admin-label-muted" style="color: var(--success);">
                     正常 (最后运行成功)
                   </span>

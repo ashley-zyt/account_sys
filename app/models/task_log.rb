@@ -91,6 +91,11 @@ class TaskLog < ApplicationRecord
 		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM move_tasks WHERE move_tasks.task_uuid = task_logs.task_uuid) THEN 'move_task' WHEN EXISTS (SELECT 1 FROM jianying_tasks WHERE jianying_tasks.task_uuid = task_logs.task_uuid) THEN 'jianying_task' WHEN EXISTS (SELECT 1 FROM operation_tasks WHERE operation_tasks.task_uuid = task_logs.task_uuid) THEN 'operation_task' ELSE 'unknown' END")
 	end
 
+	# 账号所属平台：通过关联任务拿到 account_id，再到 accounts 表中取出 platform
+	ransacker :account_platform, formatter: proc { |v| Account.platforms[v] } do
+		Arel.sql("COALESCE((SELECT a.platform FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1))")
+	end
+
 	def self.ransackable_associations(auth_object = nil)
 		%w[move_task jianying_task operation_task]
 	end
@@ -107,6 +112,7 @@ class TaskLog < ApplicationRecord
 			created_at
 			updated_at
 			task_type
+			account_platform
 		]
 	end
 end
