@@ -77,8 +77,12 @@ module Api
 				end
 
 				ActiveRecord::Base.transaction do
+					# 先快照执行时的账号/浏览器，避免后续运营任务释放资源后丢失关联
+					snapshot_account_id = task.account_id
+					snapshot_browser_id = task.browser_id
+
 					update_task_status!(task, status)
-					create_task_log!(task, status)
+					create_task_log!(task, status, snapshot_account_id, snapshot_browser_id)
 				end
 				return render json: {type: 'success', message: "更新成功" }
 			end
@@ -122,11 +126,13 @@ module Api
 				end
 			end
 
-			def create_task_log!(task, status)
+			def create_task_log!(task, status, snapshot_account_id = nil, snapshot_browser_id = nil)
 				task_status = status == 'success' ? "success" : "failed"
 
 				TaskLog.create!(
 					task_uuid: task.task_uuid,
+					account_id: snapshot_account_id,
+					browser_id: snapshot_browser_id,
 					response_data: params.to_s,
 					status: task_status,
 					error_msg: params[:status_desp],
@@ -140,7 +146,7 @@ module Api
 					params[:status_desp].include?("account banned or human verification required") ||
 					params[:status_desp].include?("account verification required after upload")
 				)
-					task.account&.update(status: 2)
+					Account.where(id: snapshot_account_id).update_all(status: 2)
 				end
 			end
 		end
