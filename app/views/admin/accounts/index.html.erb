@@ -26,8 +26,12 @@
   <div class="admin-filter-form">
     <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">账号名/浏览器名</label>
-        <%= f.search_field :account_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索账号名或浏览器名..." %>
+        <label class="admin-filter-label">账号名</label>
+        <%= f.search_field :account_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索账号名..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">浏览器名</label>
+        <%= f.search_field :browser_profile_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索浏览器名..." %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
