@@ -115,17 +115,7 @@ class Account < ApplicationRecord
 	# 优先使用 task_logs.account_id 快照查询（兼容运营任务被释放资源的场景），
 	# 若快照缺失，再回退到通过关联任务查找
 	def last_task_log
-		@last_task_log ||= begin
-			log = TaskLog.where(account_id: id).order(run_at: :desc).first
-			next log if log
-
-			task_model = task_model_for_work_type
-			next nil unless task_model
-
-			uuids = task_model.where(account_id: id).pluck(:task_uuid).compact
-			next nil if uuids.empty?
-			TaskLog.where(task_uuid: uuids).order(run_at: :desc).first
-		end
+		@last_task_log ||= compute_last_task_log
 	end
 
 	# 获取最后使用时间（从任务日志表获取）
@@ -164,6 +154,19 @@ class Account < ApplicationRecord
 	# 同步更新浏览器的状态
 	def sync_browser_status
 		browser&.update_status_by_accounts!
+	end
+
+	# 计算最后一次运行的日志（被 last_task_log 委托）
+	def compute_last_task_log
+		log = TaskLog.where(account_id: id).order(run_at: :desc).first
+		return log if log
+
+		task_model = task_model_for_work_type
+		return nil unless task_model
+
+		uuids = task_model.where(account_id: id).pluck(:task_uuid).compact
+		return nil if uuids.empty?
+		TaskLog.where(task_uuid: uuids).order(run_at: :desc).first
 	end
 
 	# --- Ransack 搜索白名单 ---
