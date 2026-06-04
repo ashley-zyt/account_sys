@@ -176,7 +176,14 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "编辑", edit_admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                  <%= link_to "任务", admin_move_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% tasks_path, tasks_param = case account.work_type
+                     when "视频搬运" then [admin_move_tasks_path, { account_id_eq: account.id }]
+                     when "capcut"   then [admin_jianying_tasks_path, { account_id_eq: account.id }]
+                     when "人工运营" then [admin_operation_tasks_path, { account_id_eq: account.id }]
+                     end %>
+                  <% if tasks_path %>
+                    <%= link_to "任务", tasks_path(q: tasks_param), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% end %>
                 </div>
               </td>
             </tr>
