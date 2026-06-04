@@ -22,20 +22,20 @@ module Api
 			end
 
 			def fetch_operation_task
-				# next_task = OperationTask.find(108)
-				next_task = OperationTask.where(status: :waiting_publish)
-				                        .where("account_id IS NOT NULL")
-				                        .order(created_at: :asc)
-				                        .first
+				next_task = OperationTask.find(179)
+				# next_task = OperationTask.where(status: :waiting_publish)
+				#                         .where("account_id IS NOT NULL")
+				#                         .order(created_at: :asc)
+				#                         .first
 
-				if next_task.nil?
-					return render json: {
-						type: 'error',
-						message: '暂无待发布的运营任务'
-					}
-				end
+				# if next_task.nil?
+				# 	return render json: {
+				# 		type: 'error',
+				# 		message: '暂无待发布的运营任务'
+				# 	}
+				# end
 
-				task_id = next_task.id
+				# task_id = next_task.id
 				next_task.update!(status: :executing, start_at: Time.current)
 
 				return render json: {
