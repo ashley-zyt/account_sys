@@ -5,6 +5,9 @@ set :output, "log/pending_task.log"
 #   runner 'TaskScheduler.pending_task'
 # end
 
-# every :day, at: '09:00' do
-#   runner 'TaskScheduler.assign_operation_resources'
-# end
+every :day, at: '11:55' do
+  runner 'TaskScheduler.assign_operation_resources'
+end
+every :day, at: '17:55' do
+  runner 'TaskScheduler.assign_operation_resources'
+end
