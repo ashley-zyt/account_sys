@@ -4,8 +4,8 @@ module Api
 			skip_before_action :verify_authenticity_token, only: [:report]
 
 			def fetch_next_executable_task
-				next_task = MoveTask.find(19081)
-				# next_task = MoveTask.where(status:"waiting_publish").where("account_id is not null").first
+				# next_task = MoveTask.find(19081)
+				next_task = MoveTask.where(status:"waiting_publish").where("account_id is not null").first
 				if next_task.nil?
 					Account.active.where(work_type:0).each do |account|
 						task = MoveTask.where(status:"pending").where(platform:account.platform,theme:account["theme"]).order("created_at asc").first
