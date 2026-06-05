@@ -108,7 +108,7 @@
                 <% end %>
               </td>
               <td>
-                <%= link_to truncate(log.id, length: 15), admin_task_log_path(log), class: "admin-link-quiet", title: log.task_uuid %>
+                <%= link_to log.id, admin_task_log_path(log), class: "admin-link-quiet", title: log.task_uuid %>
               </td>
               <td>
                 <% acc = log.display_account %>
