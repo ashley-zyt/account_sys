@@ -56,7 +56,7 @@
               任务类型
             </th>
             <th>
-              任务 UUID
+              任务ID
             </th>
             <th>
               账号
@@ -108,7 +108,7 @@
                 <% end %>
               </td>
               <td>
-                <%= link_to truncate(log.task_uuid, length: 15), admin_task_log_path(log), class: "admin-link-quiet", title: log.task_uuid %>
+                <%= link_to truncate(log.id, length: 15), admin_task_log_path(log), class: "admin-link-quiet", title: log.task_uuid %>
               </td>
               <td>
                 <% acc = log.display_account %>
