@@ -163,6 +163,9 @@
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "详情", admin_operation_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
                   <%= link_to "日志", admin_task_logs_path(q: { task_uuid_eq: task.task_uuid }), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if task.pending? %>
+                    <%= link_to "删除", admin_operation_task_path(task), method: :delete, data: { confirm: "确定要删除该 pending 任务吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
+                  <% end %>
                 </div>
               </td>
             </tr>

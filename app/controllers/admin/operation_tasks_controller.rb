@@ -1,5 +1,5 @@
 class Admin::OperationTasksController < Admin::BaseController
-  before_action :set_operation_task, only: [:show]
+  before_action :set_operation_task, only: [:show, :destroy]
 
   def index
     @q = OperationTask.ransack(params[:q])
@@ -54,6 +54,16 @@ class Admin::OperationTasksController < Admin::BaseController
       @operation_task = OperationTask.new(operation_task_params)
       render :new
     end
+  end
+
+  def destroy
+    unless @operation_task.pending?
+      redirect_to admin_operation_tasks_path, alert: '仅 pending 状态的运营任务可被删除'
+      return
+    end
+
+    @operation_task.destroy
+    redirect_to admin_operation_tasks_path, notice: '运营任务已删除'
   end
 
   private
