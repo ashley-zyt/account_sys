@@ -94,7 +94,7 @@
                 </span>
               </td>
               <td>
-                <%= link_to truncate(task.title.presence || task.oss_url, length: 40), admin_operation_task_path(task), class: "admin-link-quiet" %>
+                <%= link_to truncate(task.title.presence || task.oss_url, length: 30), admin_operation_task_path(task), class: "admin-link-quiet" %>
               </td>
               <td>
                 <span class="admin-label-muted">
