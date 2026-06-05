@@ -39,7 +39,8 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
-        <%= f.select :status_eq, OperationTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+        <% status_labels = { "pending" => "待分配", "waiting_publish" => "等待发布", "executing" => "执行中", "success" => "成功", "failed" => "失败" } %>
+        <%= f.select :status_eq, OperationTask.statuses.map { |k, v| [status_labels[k.to_s] || k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
