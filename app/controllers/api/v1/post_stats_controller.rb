@@ -165,28 +165,11 @@ module Api
           {
             id: browser.id,
             profile_name: browser.profile_name,
-            cloud_id: browser.cloud_id,
-            status: browser.status,
-            purpose: browser.purpose,
-            proxy_type: browser.proxy_type,
-            proxy_host: browser.proxy_host,
-            proxy_port: browser.proxy_port,
-            proxy_username: browser.proxy_username,
-            remark: browser.remark,
-            created_at: browser.created_at,
-            updated_at: browser.updated_at,
             active_accounts: active_accounts.map do |acc|
               {
                 id: acc.id,
-                account_name: acc.account_name,
                 platform: acc.platform,
-                theme: acc.theme,
-                work_type: acc.work_type,
-                status: acc.status,
-                operator: acc.operator,
-                source_url: acc.source_url,
-                last_used_at: acc.last_used_at,
-                remark: acc.remark
+                source_url: acc.source_url
               }
             end
           }
