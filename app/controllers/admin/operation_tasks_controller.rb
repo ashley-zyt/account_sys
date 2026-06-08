@@ -23,12 +23,12 @@ class Admin::OperationTasksController < Admin::BaseController
     if params[:video_file].present?
       oss_url = upload_to_oss(params[:video_file])
       theme = operation_task_params[:theme]
-      title = operation_task_params[:title]
+      # 标题/简介中的双引号和反斜杠需转义，避免下游脚本/JSON 解析出错
+      title = escape_quotes(operation_task_params[:title])
+      description = escape_quotes(operation_task_params[:description])
 
       platforms = %w[facebook twitter tiktok instagram]
       group_id = SecureRandom.uuid
-
-      description = operation_task_params[:description]
 
       platforms.each do |platform|
         OperationTask.create(
@@ -67,6 +67,13 @@ class Admin::OperationTasksController < Admin::BaseController
   end
 
   private
+
+  # 对标题/简介中的双引号与反斜杠做反斜杠转义
+  # 例如： he said "hi"  ->  he said \"hi\"
+  def escape_quotes(value)
+    return value if value.blank?
+    value.to_s.gsub('\\', '\\\\').gsub('"', '\\"')
+  end
 
   def set_operation_task
     @operation_task = OperationTask.find(params[:id])
