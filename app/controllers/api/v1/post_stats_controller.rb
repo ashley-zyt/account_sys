@@ -149,6 +149,57 @@ module Api
           }
         }
       end
+
+      # GET /api/v1/post_stats/browsers_with_active_accounts
+      # 获取绑定了至少一个"正常"账号的浏览器列表
+      # 返回每个浏览器的基础信息，以及其下所有"正常"账号的基础信息
+      def browsers_with_active_accounts
+        browsers = Browser
+                     .joins(:accounts)
+                     .where(accounts: { status: Account.statuses["正常"] })
+                     .distinct
+                     .order(created_at: :desc)
+
+        data = browsers.map do |browser|
+          active_accounts = browser.accounts.where(status: Account.statuses["正常"])
+          {
+            id: browser.id,
+            profile_name: browser.profile_name,
+            cloud_id: browser.cloud_id,
+            status: browser.status,
+            purpose: browser.purpose,
+            proxy_type: browser.proxy_type,
+            proxy_host: browser.proxy_host,
+            proxy_port: browser.proxy_port,
+            proxy_username: browser.proxy_username,
+            remark: browser.remark,
+            created_at: browser.created_at,
+            updated_at: browser.updated_at,
+            active_accounts: active_accounts.map do |acc|
+              {
+                id: acc.id,
+                account_name: acc.account_name,
+                platform: acc.platform,
+                theme: acc.theme,
+                work_type: acc.work_type,
+                status: acc.status,
+                operator: acc.operator,
+                source_url: acc.source_url,
+                last_used_at: acc.last_used_at,
+                remark: acc.remark
+              }
+            end
+          }
+        end
+
+        render json: {
+          code: 200,
+          msg: 'success',
+          data: data
+        }
+      rescue => e
+        render json: { code: 500, msg: "服务器错误: #{e.message}" }, status: :internal_server_error
+      end
     end
   end
 end

@@ -45,6 +45,7 @@ Rails.application.routes.draw do
       # 发文数据接口
       post "post_stats", to: "post_stats#create"
       post "post_stats/batch", to: "post_stats#batch_create"
+      get "post_stats/browsers_with_active_accounts", to: "post_stats#browsers_with_active_accounts"
       # 账号数据接口
       get "accounts", to: "accounts#index"
       get "accounts/:id", to: "accounts#show"
