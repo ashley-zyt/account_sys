@@ -43,39 +43,39 @@ module Api
         if existing
           existing.update!(params)
           return render json: { code: 200, msg: "url 已存在，已更新数据", existing_id: existing.id }, status: :ok
-        end
-
-        # 创建发文数据
-        post_stat = PostStat.new(
-          account_id: account.id,
-          post_date: params[:post_date],
-          title: params[:title],
-          url: params[:url],
-          likes_count: params[:likes_count] || 0,
-          shares_count: params[:shares_count] || 0,
-          comments_count: params[:comments_count] || 0,
-          views_count: params[:views_count] || 0,
-          data_updated_at: params[:data_updated_at].present? ? Time.parse(params[:data_updated_at]) : Time.current
-        )
-
-        if post_stat.save
-          render json: {
-            code: 200,
-            msg: '发文数据保存成功',
-            data: {
-              id: post_stat.id,
-              account_id: account.id,
-              post_date: post_stat.post_date,
-              title: post_stat.title,
-              url: post_stat.url,
-              likes_count: post_stat.likes_count,
-              shares_count: post_stat.shares_count,
-              comments_count: post_stat.comments_count,
-              views_count: post_stat.views_count
-            }
-          }
         else
-          render json: { code: 500, msg: "保存失败: #{post_stat.errors.full_messages.join(', ')}" }, status: :internal_server_error
+          # 创建发文数据
+          post_stat = PostStat.new(
+            account_id: account.id,
+            post_date: params[:post_date],
+            title: params[:title],
+            url: params[:url],
+            likes_count: params[:likes_count] || 0,
+            shares_count: params[:shares_count] || 0,
+            comments_count: params[:comments_count] || 0,
+            views_count: params[:views_count] || 0,
+            data_updated_at: params[:data_updated_at].present? ? Time.parse(params[:data_updated_at]) : Time.current
+          )
+
+          if post_stat.save
+            render json: {
+              code: 200,
+              msg: '发文数据保存成功',
+              data: {
+                id: post_stat.id,
+                account_id: account.id,
+                post_date: post_stat.post_date,
+                title: post_stat.title,
+                url: post_stat.url,
+                likes_count: post_stat.likes_count,
+                shares_count: post_stat.shares_count,
+                comments_count: post_stat.comments_count,
+                views_count: post_stat.views_count
+              }
+            }
+          else
+            render json: { code: 500, msg: "保存失败: #{post_stat.errors.full_messages.join(', ')}" }, status: :internal_server_error
+          end
         end
       rescue ActiveRecord::RecordInvalid => e
         render json: { code: 400, msg: "数据无效: #{e.message}" }, status: :bad_request
