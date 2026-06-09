@@ -41,7 +41,8 @@ module Api
         # 检查 url 是否已存在（不可重复）
         existing = PostStat.find_by(url: params[:url])
         if existing
-          return render json: { code: 409, msg: "url 已存在，不允许重复", existing_id: existing.id }, status: :conflict
+          existing.update!(params)
+          return render json: { code: 200, msg: "url 已存在，已更新数据", existing_id: existing.id }, status: :ok
         end
 
         # 创建发文数据

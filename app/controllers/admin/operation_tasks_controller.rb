@@ -69,10 +69,10 @@ class Admin::OperationTasksController < Admin::BaseController
   private
 
   # 对标题/简介中的双引号与反斜杠做反斜杠转义
-  # 例如： he said "hi"  ->  he said \"hi\"
+  # 使用 block 形式确保反斜杠本身不被 gsub 语义误解
   def escape_quotes(value)
     return value if value.blank?
-    value.to_s.gsub('\\', '\\\\').gsub('"', '\\"')
+    value.to_s.gsub('\\') { '\\\\' }.gsub('"') { '\\"' }
   end
 
   def set_operation_task
