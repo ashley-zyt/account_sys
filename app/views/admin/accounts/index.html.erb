@@ -30,10 +30,6 @@
         <%= f.search_field :account_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索账号名..." %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">浏览器名</label>
-        <%= f.search_field :browser_profile_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索浏览器名..." %>
-      </div>
-      <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
         <%= render 'admin/shared/searchable_theme_select', 
           name: 'q[theme_eq]', 
@@ -159,11 +155,11 @@
               </td>
               <td>
                 <% last_log = account.last_task_log %>
-                <% if last_log && last_log.failed? %>
+                <% if last_log && last_log.status == "failed" %>
                   <span class="admin-label-muted" style="color: var(--danger);" title="<%= last_log.error_msg %>">
                     <%= truncate(last_log.error_msg, length: 20) %>
                   </span>
-                <% elsif last_log && last_log.success? %>
+                <% elsif last_log && last_log.status == "success" %>
                   <span class="admin-label-muted" style="color: var(--success);">
                     正常 (最后运行成功)
                   </span>
@@ -176,6 +172,7 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "编辑", edit_admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "任务", admin_move_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
                 </div>
               </td>
             </tr>
