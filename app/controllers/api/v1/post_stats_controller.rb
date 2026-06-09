@@ -41,7 +41,14 @@ module Api
         # 检查 url 是否已存在（不可重复）
         existing = PostStat.find_by(url: params[:url])
         if existing
-          existing.update!(params)
+          existing.update!( account_id: account.id,
+            post_date: params[:post_date],
+            title: params[:title],
+            likes_count: params[:likes_count] || 0,
+            shares_count: params[:shares_count] || 0,
+            comments_count: params[:comments_count] || 0,
+            views_count: params[:views_count] || 0,
+            data_updated_at: Time.current)
           return render json: { code: 200, msg: "url 已存在，已更新数据", existing_id: existing.id }, status: :ok
         else
           # 创建发文数据
