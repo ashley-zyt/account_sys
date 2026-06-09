@@ -72,7 +72,7 @@
               </td>
               <td>
                 <span class="admin-label-muted">
-                  <%= stat.title || "-" %>
+                  <%= truncate(stat.title, length: 30) || "-" %>
                 </span>
               </td>
               <td>
