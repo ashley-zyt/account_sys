@@ -50,13 +50,13 @@
           <tr>
             <th>账号</th>
             <th>平台</th>
-            <th>发文日期 <%= link_to '⬆⬇', request.params.merge(sort: 'post_date', direction: @current_sort == 'post_date' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+            <th>发文日期 <%= link_to '↑↓', request.params.merge(sort: 'post_date', direction: @current_sort == 'post_date' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
             <th>标题</th>
             <th>链接</th>
-            <th>点赞数 <%= link_to '⬆⬇', request.params.merge(sort: 'likes_count', direction: @current_sort == 'likes_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
-            <th>转发数 <%= link_to '⬆⬇', request.params.merge(sort: 'shares_count', direction: @current_sort == 'shares_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
-            <th>评论数 <%= link_to '⬆⬇', request.params.merge(sort: 'comments_count', direction: @current_sort == 'comments_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
-            <th>浏览数 <%= link_to '⬆⬇', request.params.merge(sort: 'views_count', direction: @current_sort == 'views_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+            <th>点赞数 <%= link_to '↑↓', request.params.merge(sort: 'likes_count', direction: @current_sort == 'likes_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+            <th>转发数 <%= link_to '↑↓', request.params.merge(sort: 'shares_count', direction: @current_sort == 'shares_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+            <th>评论数 <%= link_to '↑↓', request.params.merge(sort: 'comments_count', direction: @current_sort == 'comments_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+            <th>浏览数 <%= link_to '↑↓', request.params.merge(sort: 'views_count', direction: @current_sort == 'views_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
             <th>数据更新时间</th>
             <th>运营人员</th>
           </tr>
