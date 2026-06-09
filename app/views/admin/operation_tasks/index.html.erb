@@ -26,8 +26,8 @@
   <div class="admin-filter-form">
     <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">标题/UUID</label>
-        <%= f.search_field :title_or_task_uuid_cont, class: "admin-input admin-filter-input", placeholder: "搜索标题或UUID..." %>
+        <label class="admin-filter-label">文案/UUID</label>
+        <%= f.search_field :title_or_task_uuid_cont, class: "admin-input admin-filter-input", placeholder: "搜索文案或UUID..." %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
@@ -58,7 +58,7 @@
               ID
             </th>
             <th>
-              任务标题
+              文案
             </th>
             <th>
               简介

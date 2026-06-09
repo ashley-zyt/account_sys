@@ -12,7 +12,7 @@
         新增运营视频
       </div>
       <div class="admin-card-subtitle">
-        填写主题、标题并上传视频文件，系统将为 facebook、twitter、tiktok、youtube、instagram 五个平台各创建一条待分配任务
+        填写主题、文案并上传视频文件，系统将为 facebook、twitter、tiktok、youtube、instagram 五个平台各创建一条待分配任务
       </div>
     </div>
   </div>
@@ -34,9 +34,9 @@
 
     <div class="admin-form-group">
       <label class="admin-form-label">
-        标题 <span style="color: #ef4444;">*</span>
+        文案 <span style="color: #ef4444;">*</span>
       </label>
-      <textarea name="operation_task[title]" id="title" class="admin-input" placeholder="请输入发布标题" rows="4" required></textarea>
+      <textarea name="operation_task[title]" id="title" class="admin-input" placeholder="请输入发布文案" rows="4" required></textarea>
     </div>
 
     <div class="admin-form-group">
@@ -355,7 +355,7 @@ document.addEventListener('turbo:load', function() {
     var videoFile = fileInput.files[0];
 
     if (!theme) { alert('请选择主题'); return; }
-    if (!title) { alert('请输入标题'); return; }
+    if (!title) { alert('请输入文案'); return; }
     if (!videoFile) { alert('请选择视频文件'); return; }
 
     submitBtn.disabled = true;

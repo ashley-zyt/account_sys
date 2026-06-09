@@ -25,8 +25,8 @@
   <div class="admin-filter-form">
     <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">标题/URL</label>
-        <%= f.search_field :title_or_video_url_cont, class: "admin-input admin-filter-input", placeholder: "搜索标题或URL..." %>
+        <label class="admin-filter-label">文案/URL</label>
+        <%= f.search_field :title_or_video_url_cont, class: "admin-input admin-filter-input", placeholder: "搜索文案或URL..." %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">平台</label>
