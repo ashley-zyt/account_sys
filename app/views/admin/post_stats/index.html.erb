@@ -57,6 +57,7 @@
             <th>评论数</th>
             <th>浏览数</th>
             <th>数据更新时间</th>
+            <th>运营人员</th>
           </tr>
         </thead>
         <tbody>
@@ -105,6 +106,11 @@
               <td>
                 <span class="admin-label-muted">
                   <%= stat.data_updated_at&.strftime("%Y-%m-%d %H:%M") || "-" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= <%= link_to stat.account&.operator, admin_account_path(stat.account), class: "admin-link-quiet" %> || "-" %>
                 </span>
               </td>
             </tr>
