@@ -110,7 +110,7 @@
               </td>
               <td>
                 <span class="admin-label-muted">
-                  <%= <%= link_to stat.account&.operator, admin_account_path(stat.account), class: "admin-link-quiet" %> || "-" %>
+                  <%= link_to stat.account&.operator_name, stat.account&.operator_name, admin_account_path(stat.account), class: "admin-link-quiet" || "-" %>
                 </span>
               </td>
             </tr>
