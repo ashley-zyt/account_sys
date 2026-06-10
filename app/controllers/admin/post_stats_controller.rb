@@ -11,8 +11,10 @@ class Admin::PostStatsController < Admin::BaseController
                    .page(params[:page])
                    .per(15)
     @accounts = Account.all
-    @work_types = Account.work_types.invert  # 获取工作模式选项
-    @platforms = Account.platforms.invert    # 获取平台选项
+    # 工作模式选项：[[显示文本, 数字值], ...]
+    @work_types = Account.work_types.map { |k, v| [k, v] }
+    # 平台选项：[[显示文本, 数字值], ...]
+    @platforms = Account.platforms.map { |k, v| [k, v] }
     
     @current_sort = sort_column
     @current_direction = sort_direction
