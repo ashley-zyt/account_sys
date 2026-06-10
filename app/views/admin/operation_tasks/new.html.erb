@@ -318,7 +318,7 @@
 </style>
 
 <script>
-document.addEventListener('turbo:load', function() {
+document.addEventListener('DOMContentLoaded', function() {
   var fileInput = document.getElementById('video_file');
   var fileInfo = document.getElementById('file_info');
   var fileName = document.getElementById('file_name');
@@ -331,6 +331,8 @@ document.addEventListener('turbo:load', function() {
   var progressFill = document.getElementById('progress_fill');
   var progressPercent = document.getElementById('progress_percent');
   var uploadInfo = document.getElementById('upload_info');
+
+  if (!form) return; // 如果没有表单元素，直接返回
 
   fileInput.addEventListener('change', function() {
     if (this.files && this.files.length > 0) {
