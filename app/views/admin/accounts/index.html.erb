@@ -172,7 +172,11 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "编辑", edit_admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                  <%= link_to "任务", admin_move_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% if account.work_type == "人工运营" %>
+                    <%= link_to "任务", admin_operation_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% else %>
+                    <%= link_to "任务", admin_move_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% end %>
                 </div>
               </td>
             </tr>
