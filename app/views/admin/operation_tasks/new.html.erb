@@ -363,19 +363,16 @@ document.addEventListener('turbo:load', function() {
     showModal();
     resetProgress();
 
-    // 第一步：获取 OSS 签名
-    fetch('/admin/operation_tasks/oss_signature')
+    // 第一步：获取 OSS 签名（携带文件名以便后端生成正确的 key）
+    fetch('/admin/operation_tasks/oss_signature?filename=' + encodeURIComponent(videoFile.name))
       .then(function(response) {
         if (!response.ok) throw new Error('获取签名失败');
         return response.json();
       })
       .then(function(signatureData) {
-        // 添加文件扩展名到 key
-        var extension = videoFile.name.split('.').pop();
-        var key = signatureData.key + '.' + extension;
-        
+        // 直接使用后端返回的 key（已包含正确的文件扩展名）
         // 第二步：直传文件到 OSS
-        return uploadToOss(videoFile, signatureData, key);
+        return uploadToOss(videoFile, signatureData);
       })
       .then(function(ossUrl) {
         // 第三步：创建运营任务
@@ -399,10 +396,10 @@ document.addEventListener('turbo:load', function() {
   });
 
   // 直传文件到 OSS
-  function uploadToOss(file, signatureData, key) {
+  function uploadToOss(file, signatureData) {
     return new Promise(function(resolve, reject) {
       var formData = new FormData();
-      formData.append('key', key);
+      formData.append('key', signatureData.key);
       formData.append('OSSAccessKeyId', signatureData.accessKeyId);
       formData.append('policy', signatureData.policy);
       formData.append('Signature', signatureData.signature);
@@ -420,7 +417,7 @@ document.addEventListener('turbo:load', function() {
 
       xhr.addEventListener('load', function() {
         if (xhr.status === 204 || xhr.status === 200) {
-          var ossUrl = signatureData.endpoint + '/' + encodeURIComponent(key);
+          var ossUrl = signatureData.endpoint + '/' + encodeURIComponent(signatureData.key);
           resolve(ossUrl);
         } else {
           reject(new Error('OSS 上传失败: ' + xhr.statusText));
