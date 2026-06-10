@@ -419,7 +419,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       xhr.addEventListener('load', function() {
         if (xhr.status === 204 || xhr.status === 200) {
-          var ossUrl = signatureData.endpoint + '/' + encodeURIComponent(signatureData.key);
+          var ossUrl = signatureData.endpoint + '/' + signatureData.key;
           resolve(ossUrl);
         } else {
           reject(new Error('OSS 上传失败: ' + xhr.statusText));
