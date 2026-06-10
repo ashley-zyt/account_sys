@@ -87,7 +87,8 @@ XML
     
     # 获取文件名（可选，前端传来的原始文件名）
     filename = params[:filename]
-    
+
+    # 22222
     # 生成文件名（UUID + 时间戳），直接放在 bucket 根目录
     if filename.present?
       ext = File.extname(filename)
