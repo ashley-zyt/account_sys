@@ -197,7 +197,7 @@ XML
     verb = "GET"
     content_md5 = ""
     content_type = ""
-    ts = (Time.now.to_i + 604800)  # 7天有效期
+    ts = (Time.now.to_i + 31536000)  # 1年有效期
     
     # 签名字符串中的 key 使用原始路径（不编码）
     cano_res = "/#{bucket_name}/#{key}"
@@ -271,7 +271,7 @@ XML
     verb = "GET"
     content_md5 = ""
     content_type = ""
-    ts = (Time.now.to_i + 604800)  # 7天有效期
+    ts = (Time.now.to_i + 31536000)  # 1年有效期
     
     # 文件名编码 - 签名字符串和URL中必须使用相同的编码方式
     encoded_filename = URI.encode_www_form_component(base_name)
