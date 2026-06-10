@@ -3,9 +3,11 @@ class Admin::OperationTasksController < Admin::BaseController
   
   # 配置 OSS CORS 规则（只需执行一次）
   def setup_cors
-    require 'aliyun/oss'
+    require 'net/http'
+    require 'uri'
+    require 'openssl'
+    require 'base64'
     
-    endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
     access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
     access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
     bucket_name = 'operation-viodes'
@@ -13,25 +15,52 @@ class Admin::OperationTasksController < Admin::BaseController
     raise "ALIYUN_ACCESS_KEY_ID 未配置" if access_key_id.blank?
     raise "ALIYUN_ACCESS_KEY_SECRET 未配置" if access_key_secret.blank?
     
-    client = Aliyun::OSS::Client.new(
-      endpoint: endpoint,
-      access_key_id: access_key_id,
-      access_key_secret: access_key_secret
-    )
+    endpoint = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com"
     
-    bucket = client.get_bucket(bucket_name)
+    # CORS 配置 XML
+    cors_xml = <<-XML
+    <?xml version="1.0" encoding="UTF-8"?>
+    <CORSConfiguration>
+      <CORSRule>
+        <AllowedOrigin>*</AllowedOrigin>
+        <AllowedMethod>GET</AllowedMethod>
+        <AllowedMethod>POST</AllowedMethod>
+        <AllowedMethod>HEAD</AllowedMethod>
+        <AllowedHeader>*</AllowedHeader>
+        <ExposeHeader>ETag</ExposeHeader>
+        <ExposeHeader>x-oss-request-id</ExposeHeader>
+        <MaxAgeSeconds>3600</MaxAgeSeconds>
+      </CORSRule>
+    </CORSConfiguration>
+    XML
     
-    # 配置 CORS 规则，允许所有来源（生产环境建议限制具体域名）
-    cors_rule = Aliyun::OSS::CORSRule.new
-    cors_rule.allowed_origins = ['*']
-    cors_rule.allowed_methods = ['GET', 'POST', 'HEAD']
-    cors_rule.allowed_headers = ['*']
-    cors_rule.expose_headers = ['ETag', 'x-oss-request-id']
-    cors_rule.max_age_seconds = 3600
+    # 生成签名
+    date = Time.now.utc.strftime('%a, %d %b %Y %H:%M:%S GMT')
+    content_md5 = Base64.strict_encode64(Digest::MD5.digest(cors_xml)).strip
     
-    bucket.set_cors([cors_rule])
+    string_to_sign = "PUT\n\n#{content_md5}\napplication/xml\n#{date}\n/#{bucket_name}/?cors"
+    signature = Base64.strict_encode64(OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)).strip
     
-    render json: { success: true, message: 'CORS 规则配置成功' }
+    # 发送请求
+    uri = URI.parse("#{endpoint}/?cors")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    
+    request = Net::HTTP::Put.new(uri.request_uri)
+    request['Date'] = date
+    request['Content-Type'] = 'application/xml'
+    request['Content-MD5'] = content_md5
+    request['Authorization'] = "OSS #{access_key_id}:#{signature}"
+    request.body = cors_xml
+    
+    response = http.request(request)
+    
+    if response.code == '200'
+      render json: { success: true, message: 'CORS 规则配置成功' }
+    else
+      render json: { success: false, error: "配置失败: #{response.code} - #{response.body}" }, status: :unprocessable_entity
+    end
   rescue => e
     render json: { success: false, error: e.message }, status: :unprocessable_entity
   end
