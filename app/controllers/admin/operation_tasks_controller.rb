@@ -1,5 +1,53 @@
 class Admin::OperationTasksController < Admin::BaseController
   before_action :set_operation_task, only: [:show, :destroy]
+  
+  # OSS 直传签名接口
+  def oss_signature
+    require 'base64'
+    require 'json'
+    require 'openssl'
+    
+    endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
+    access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+    access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+    bucket_name = 'operation-viodes'
+    
+    raise "ALIYUN_ACCESS_KEY_ID 未配置" if access_key_id.blank?
+    raise "ALIYUN_ACCESS_KEY_SECRET 未配置" if access_key_secret.blank?
+    
+    # 生成文件名（UUID + 时间戳）
+    key = "videos/#{SecureRandom.uuid}_#{Time.now.to_i}"
+    
+    # 过期时间：30天
+    expire_time = Time.now.to_i + 2592000
+    
+    # 构建 Policy
+    policy = {
+      expiration: Time.at(expire_time).utc.iso8601,
+      conditions: [
+        { bucket: bucket_name },
+        { key: key },
+        ['content-length-range', 0, 500 * 1024 * 1024] # 限制文件大小最大500MB
+      ]
+    }
+    
+    # Base64 编码 Policy
+    policy_base64 = Base64.strict_encode64(policy.to_json)
+    
+    # 生成签名
+    signature = OpenSSL::HMAC.digest('sha1', access_key_secret, policy_base64)
+    signature = Base64.strict_encode64(signature)
+    
+    render json: {
+      accessKeyId: access_key_id,
+      policy: policy_base64,
+      signature: signature,
+      bucket: bucket_name,
+      endpoint: "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com",
+      key: key,
+      expire: expire_time
+    }
+  end
 
   def index
     @q = OperationTask.ransack(params[:q])
@@ -20,10 +68,9 @@ class Admin::OperationTasksController < Admin::BaseController
   end
 
   def create
-    if params[:video_file].present?
-      oss_url = upload_to_oss(params[:video_file])
+    # 现在接收前端直传后的 OSS URL
+    if params[:oss_url].present?
       theme = operation_task_params[:theme]
-      # 标题/简介中的双引号和反斜杠需转义，避免下游脚本/JSON 解析出错
       title = escape_quotes(operation_task_params[:title])
       description = escape_quotes(operation_task_params[:description])
 
@@ -34,7 +81,7 @@ class Admin::OperationTasksController < Admin::BaseController
         OperationTask.create(
           theme: theme,
           title: title,
-          oss_url: oss_url,
+          oss_url: params[:oss_url],
           platform: platform,
           status: :pending,
           group_id: group_id
@@ -44,7 +91,7 @@ class Admin::OperationTasksController < Admin::BaseController
           theme: theme,
           title: description,
           description: title,
-          oss_url: oss_url,
+          oss_url: params[:oss_url],
           platform: "youtube",
           status: :pending,
           group_id: group_id

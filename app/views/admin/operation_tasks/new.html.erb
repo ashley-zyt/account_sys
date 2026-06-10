@@ -363,40 +363,102 @@ document.addEventListener('turbo:load', function() {
     showModal();
     resetProgress();
 
-    var formData = new FormData(form);
-    var xhr = new XMLHttpRequest();
-
-    xhr.open('POST', '/admin/operation_tasks', true);
-
-    xhr.upload.addEventListener('progress', function(ev) {
-      if (ev.lengthComputable) {
-        var percent = Math.round((ev.loaded / ev.total) * 100);
-        updateProgress(percent, '正在上传视频...');
-      }
-    });
-
-    xhr.addEventListener('load', function() {
-      if (xhr.status === 302 || xhr.status === 200) {
-        updateProgress(100, '上传完成！');
+    // 第一步：获取 OSS 签名
+    fetch('/admin/operation_tasks/oss_signature')
+      .then(function(response) {
+        if (!response.ok) throw new Error('获取签名失败');
+        return response.json();
+      })
+      .then(function(signatureData) {
+        // 添加文件扩展名到 key
+        var extension = videoFile.name.split('.').pop();
+        var key = signatureData.key + '.' + extension;
+        
+        // 第二步：直传文件到 OSS
+        return uploadToOss(videoFile, signatureData, key);
+      })
+      .then(function(ossUrl) {
+        // 第三步：创建运营任务
+        updateProgress(95, '正在创建任务...');
+        return createOperationTask(ossUrl);
+      })
+      .then(function() {
+        updateProgress(100, '完成！');
         statusIcon.className = 'status-icon success';
         progressFill.classList.add('success');
-        uploadInfo.textContent = '视频已成功上传，正在为5个平台创建任务...';
+        uploadInfo.textContent = '视频已成功上传，已为5个平台创建任务';
         uploadInfo.className = 'upload-info success';
         uploadInfo.style.display = 'block';
         setTimeout(function() {
           window.location.href = '/admin/operation_tasks';
         }, 1500);
-      } else {
-        showError('上传失败: ' + xhr.statusText);
-      }
-    });
-
-    xhr.addEventListener('error', function() {
-      showError('上传失败: 网络错误');
-    });
-
-    xhr.send(formData);
+      })
+      .catch(function(error) {
+        showError('上传失败: ' + error.message);
+      });
   });
+
+  // 直传文件到 OSS
+  function uploadToOss(file, signatureData, key) {
+    return new Promise(function(resolve, reject) {
+      var formData = new FormData();
+      formData.append('key', key);
+      formData.append('OSSAccessKeyId', signatureData.accessKeyId);
+      formData.append('policy', signatureData.policy);
+      formData.append('Signature', signatureData.signature);
+      formData.append('file', file);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', signatureData.endpoint, true);
+
+      xhr.upload.addEventListener('progress', function(ev) {
+        if (ev.lengthComputable) {
+          var percent = Math.round((ev.loaded / ev.total) * 90); // 前90%用于上传
+          updateProgress(percent, '正在上传视频到 OSS...');
+        }
+      });
+
+      xhr.addEventListener('load', function() {
+        if (xhr.status === 204 || xhr.status === 200) {
+          var ossUrl = signatureData.endpoint + '/' + encodeURIComponent(key);
+          resolve(ossUrl);
+        } else {
+          reject(new Error('OSS 上传失败: ' + xhr.statusText));
+        }
+      });
+
+      xhr.addEventListener('error', function() {
+        reject(new Error('网络错误'));
+      });
+
+      xhr.send(formData);
+    });
+  }
+
+  // 创建运营任务
+  function createOperationTask(ossUrl) {
+    return new Promise(function(resolve, reject) {
+      var formData = new FormData(form);
+      formData.append('oss_url', ossUrl);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/admin/operation_tasks', true);
+
+      xhr.addEventListener('load', function() {
+        if (xhr.status === 302 || xhr.status === 200) {
+          resolve();
+        } else {
+          reject(new Error('创建任务失败'));
+        }
+      });
+
+      xhr.addEventListener('error', function() {
+        reject(new Error('网络错误'));
+      });
+
+      xhr.send(formData);
+    });
+  }
 
   function showModal() {
     modal.style.display = 'flex';
@@ -405,7 +467,7 @@ document.addEventListener('turbo:load', function() {
 
   function resetProgress() {
     statusIcon.className = 'status-icon loading';
-    statusText.textContent = '正在上传视频...';
+    statusText.textContent = '正在准备上传...';
     progressFill.className = 'progress-fill';
     progressFill.style.width = '0%';
     progressPercent.textContent = '0%';
