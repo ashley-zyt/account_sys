@@ -91,6 +91,72 @@ class OperationTask < ApplicationRecord
 		["account"]
 	end
 
+	# 重新生成 OSS 签名 URL（有效期1年）
+	def regenerate_oss_url!
+		# 从现有的 oss_url 中提取文件名（key）
+		return false if oss_url.blank?
+		
+		# 解析 URL，提取 bucket 和文件名
+		uri = URI.parse(oss_url)
+		path = uri.path
+		
+		# 移除开头的 '/'
+		key = path.sub(/^\//, '')
+		
+		# 如果有查询参数，只保留路径部分
+		key = key.split('?').first if key.include?('?')
+		
+		# 生成新的签名 URL
+		new_url = OperationTask.generate_signed_url(key)
+		
+		# 更新记录
+		update!(oss_url: new_url)
+		true
+	end
+
+	# 批量重新生成所有任务的 OSS URL
+	def self.regenerate_all_oss_urls!
+		count = 0
+		OperationTask.all.each do |task|
+			if task.regenerate_oss_url!
+				count += 1
+			end
+		end
+		count
+	end
+
+	# 生成 OSS 签名 URL（有效期1年）
+	def self.generate_signed_url(key)
+		require 'base64'
+		require 'openssl'
+		
+		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+		bucket_name = 'operation-viodes'
+		
+		return nil if access_key_id.blank? || access_key_secret.blank?
+		
+		verb = "GET"
+		content_md5 = ""
+		content_type = ""
+		ts = (Time.now.to_i + 31536000)  # 1年有效期
+		
+		# 签名字符串中的 key 使用原始路径（不编码）
+		cano_res = "/#{bucket_name}/#{key}"
+		sign_string = "#{verb}\n#{content_md5}\n#{content_type}\n#{ts}\n#{cano_res}"
+		
+		# 生成签名
+		signature = OpenSSL::HMAC.digest("sha1", access_key_secret, sign_string).to_s
+		signature = Base64.strict_encode64(signature).strip
+		signature = URI.encode_www_form_component(signature)
+		
+		# URL 中的 key 需要编码
+		encoded_key = URI.encode_www_form_component(key)
+		
+		# 构建最终的签名 URL
+		"https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_key}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
+	end
+
 	private
 
 	def generate_task_uuid
