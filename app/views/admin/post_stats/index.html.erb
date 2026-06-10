@@ -19,6 +19,7 @@
       <span class="admin-tag">
         共 <%= @post_stats.total_count %> 条
       </span>
+      <%= link_to '导出 CSV', admin_post_stats_export_path(request.query_parameters), class: "admin-button-secondary", style: "margin-left: 8px;" %>
     </div>
   </div>
 

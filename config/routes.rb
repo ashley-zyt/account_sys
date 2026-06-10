@@ -34,7 +34,9 @@ Rails.application.routes.draw do
         get :edit_modal
       end
     end
-    resources :post_stats, only: [:index]
+    resources :post_stats, only: [:index] do
+      get :export, on: :collection
+    end
   end
 
   namespace :api do
