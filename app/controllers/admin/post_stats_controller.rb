@@ -22,6 +22,8 @@ class Admin::PostStatsController < Admin::BaseController
 
   # 导出当前筛选结果为 CSV
   def export
+    require 'csv'
+    
     @q = PostStat.ransack(params[:q])
     
     sort_column = params[:sort] || 'post_date'
