@@ -165,11 +165,14 @@ module Api
         browsers = Browser
                      .joins(:accounts)
                      .where(accounts: { status: Account.statuses["正常"] })
+                     .where.not(accounts: { platform: Account.platforms["facebook"] })
                      .distinct
                      .order(created_at: :desc)
 
         data = browsers.map do |browser|
-          active_accounts = browser.accounts.where(status: Account.statuses["正常"])
+          active_accounts = browser.accounts
+                              .where(status: Account.statuses["正常"])
+                              .where.not(platform: Account.platforms["facebook"])
           {
             id: browser.id,
             profile_name: browser.profile_name,
