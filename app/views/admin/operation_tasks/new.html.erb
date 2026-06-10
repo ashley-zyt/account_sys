@@ -376,10 +376,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // 第二步：直传文件到 OSS
         return uploadToOss(videoFile, signatureData);
       })
-      .then(function(ossUrl) {
-        // 第三步：创建运营任务
+      .then(function(ossKey) {
+        // 第三步：创建运营任务（传递 key，后端生成签名 URL）
         updateProgress(95, '正在创建任务...');
-        return createOperationTask(ossUrl);
+        return createOperationTask(ossKey);
       })
       .then(function() {
         updateProgress(100, '完成！');
@@ -419,8 +419,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
       xhr.addEventListener('load', function() {
         if (xhr.status === 204 || xhr.status === 200) {
-          var ossUrl = signatureData.endpoint + '/' + signatureData.key;
-          resolve(ossUrl);
+          // 返回 key，让后端生成签名 URL
+          resolve(signatureData.key);
         } else {
           reject(new Error('OSS 上传失败: ' + xhr.statusText));
         }
@@ -435,10 +435,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // 创建运营任务
-  function createOperationTask(ossUrl) {
+  function createOperationTask(ossKey) {
     return new Promise(function(resolve, reject) {
       var formData = new FormData(form);
-      formData.append('oss_url', ossUrl);
+      formData.append('oss_key', ossKey);
 
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/admin/operation_tasks', true);

@@ -147,11 +147,14 @@ XML
   end
 
   def create
-    # 现在接收前端直传后的 OSS URL
-    if params[:oss_url].present?
+    # 现在接收前端直传后的 OSS key，后端生成签名 URL
+    if params[:oss_key].present?
       theme = operation_task_params[:theme]
       title = escape_quotes(operation_task_params[:title])
       description = escape_quotes(operation_task_params[:description])
+      
+      # 生成带签名的 URL（有效期7天）
+      oss_url = generate_signed_url(params[:oss_key])
 
       platforms = %w[facebook twitter tiktok instagram]
       group_id = SecureRandom.uuid
@@ -160,7 +163,7 @@ XML
         OperationTask.create(
           theme: theme,
           title: title,
-          oss_url: params[:oss_url],
+          oss_url: oss_url,
           platform: platform,
           status: :pending,
           group_id: group_id
@@ -170,7 +173,7 @@ XML
           theme: theme,
           title: description,
           description: title,
-          oss_url: params[:oss_url],
+          oss_url: oss_url,
           platform: "youtube",
           status: :pending,
           group_id: group_id
@@ -180,6 +183,36 @@ XML
       @operation_task = OperationTask.new(operation_task_params)
       render :new
     end
+  end
+  
+  # 生成 OSS 签名 URL（有效期7天）
+  def generate_signed_url(key)
+    require 'base64'
+    require 'openssl'
+    
+    access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+    access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+    bucket_name = 'operation-viodes'
+    
+    verb = "GET"
+    content_md5 = ""
+    content_type = ""
+    ts = (Time.now.to_i + 604800)  # 7天有效期
+    
+    # 文件名编码
+    encoded_key = URI.encode_www_form_component(key)
+    
+    # 签名字符串
+    cano_res = "/#{bucket_name}/#{encoded_key}"
+    sign_string = "#{verb}\n#{content_md5}\n#{content_type}\n#{ts}\n#{cano_res}"
+    
+    # 生成签名
+    signature = OpenSSL::HMAC.digest("sha1", access_key_secret, sign_string).to_s
+    signature = Base64.strict_encode64(signature).strip
+    signature = URI.encode_www_form_component(signature)
+    
+    # 构建最终的签名 URL
+    "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_key}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
   end
 
   def destroy
