@@ -7,6 +7,7 @@ class Admin::OperationTasksController < Admin::BaseController
     require 'uri'
     require 'openssl'
     require 'base64'
+    require 'digest/md5'
     
     access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
     access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
@@ -19,27 +20,32 @@ class Admin::OperationTasksController < Admin::BaseController
     
     # CORS 配置 XML
     cors_xml = <<-XML
-    <?xml version="1.0" encoding="UTF-8"?>
-    <CORSConfiguration>
-      <CORSRule>
-        <AllowedOrigin>*</AllowedOrigin>
-        <AllowedMethod>GET</AllowedMethod>
-        <AllowedMethod>POST</AllowedMethod>
-        <AllowedMethod>HEAD</AllowedMethod>
-        <AllowedHeader>*</AllowedHeader>
-        <ExposeHeader>ETag</ExposeHeader>
-        <ExposeHeader>x-oss-request-id</ExposeHeader>
-        <MaxAgeSeconds>3600</MaxAgeSeconds>
-      </CORSRule>
-    </CORSConfiguration>
-    XML
+<?xml version="1.0" encoding="UTF-8"?>
+<CORSConfiguration>
+  <CORSRule>
+    <AllowedOrigin>*</AllowedOrigin>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>POST</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
+    <AllowedHeader>*</AllowedHeader>
+    <ExposeHeader>ETag</ExposeHeader>
+    <ExposeHeader>x-oss-request-id</ExposeHeader>
+    <MaxAgeSeconds>3600</MaxAgeSeconds>
+  </CORSRule>
+</CORSConfiguration>
+XML
     
     # 生成签名
     date = Time.now.utc.strftime('%a, %d %b %Y %H:%M:%S GMT')
     content_md5 = Base64.strict_encode64(Digest::MD5.digest(cors_xml)).strip
     
-    string_to_sign = "PUT\n\n#{content_md5}\napplication/xml\n#{date}\n/#{bucket_name}/?cors"
-    signature = Base64.strict_encode64(OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)).strip
+    # 签名字符串：PUT + MD5 + Content-Type + Date + Resource
+    string_to_sign = "PUT\n#{content_md5}\napplication/xml\n#{date}\n/#{bucket_name}/?cors"
+    
+    # 使用 HMAC-SHA1 签名
+    signature = Base64.strict_encode64(
+      OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)
+    ).strip
     
     # 发送请求
     uri = URI.parse("#{endpoint}/?cors")
