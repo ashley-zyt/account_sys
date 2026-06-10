@@ -9,6 +9,7 @@ Rails.application.routes.draw do
     resources :operation_tasks, only: [:index, :show, :new, :create, :destroy] do
       collection do
         get :oss_signature
+        get :setup_cors
       end
     end
     resources :browsers, only: [:index, :show, :new, :create, :edit, :update]

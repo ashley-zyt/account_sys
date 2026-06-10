@@ -1,6 +1,41 @@
 class Admin::OperationTasksController < Admin::BaseController
   before_action :set_operation_task, only: [:show, :destroy]
   
+  # 配置 OSS CORS 规则（只需执行一次）
+  def setup_cors
+    require 'aliyun/oss'
+    
+    endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
+    access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+    access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+    bucket_name = 'operation-viodes'
+    
+    raise "ALIYUN_ACCESS_KEY_ID 未配置" if access_key_id.blank?
+    raise "ALIYUN_ACCESS_KEY_SECRET 未配置" if access_key_secret.blank?
+    
+    client = Aliyun::OSS::Client.new(
+      endpoint: endpoint,
+      access_key_id: access_key_id,
+      access_key_secret: access_key_secret
+    )
+    
+    bucket = client.get_bucket(bucket_name)
+    
+    # 配置 CORS 规则，允许所有来源（生产环境建议限制具体域名）
+    cors_rule = Aliyun::OSS::CORSRule.new
+    cors_rule.allowed_origins = ['*']
+    cors_rule.allowed_methods = ['GET', 'POST', 'HEAD']
+    cors_rule.allowed_headers = ['*']
+    cors_rule.expose_headers = ['ETag', 'x-oss-request-id']
+    cors_rule.max_age_seconds = 3600
+    
+    bucket.set_cors([cors_rule])
+    
+    render json: { success: true, message: 'CORS 规则配置成功' }
+  rescue => e
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
+  end
+  
   # OSS 直传签名接口
   def oss_signature
     require 'base64'
