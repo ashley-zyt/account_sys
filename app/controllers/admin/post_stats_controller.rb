@@ -64,6 +64,9 @@ class Admin::PostStatsController < Admin::BaseController
       end
     end
     
+    # 添加 UTF-8 BOM，使 Excel 正确识别中文
+    csv_data = "\xEF\xBB\xBF" + csv_data
+    
     render plain: csv_data
   end
 end
