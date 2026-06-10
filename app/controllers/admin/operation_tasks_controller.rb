@@ -199,17 +199,17 @@ XML
     content_type = ""
     ts = (Time.now.to_i + 604800)  # 7天有效期
     
-    # 文件名编码
-    encoded_key = URI.encode_www_form_component(key)
-    
-    # 签名字符串
-    cano_res = "/#{bucket_name}/#{encoded_key}"
+    # 签名字符串中的 key 使用原始路径（不编码）
+    cano_res = "/#{bucket_name}/#{key}"
     sign_string = "#{verb}\n#{content_md5}\n#{content_type}\n#{ts}\n#{cano_res}"
     
     # 生成签名
     signature = OpenSSL::HMAC.digest("sha1", access_key_secret, sign_string).to_s
     signature = Base64.strict_encode64(signature).strip
     signature = URI.encode_www_form_component(signature)
+    
+    # URL 中的 key 需要编码
+    encoded_key = URI.encode_www_form_component(key)
     
     # 构建最终的签名 URL
     "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_key}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
