@@ -88,14 +88,13 @@ XML
     # 获取文件名（可选，前端传来的原始文件名）
     filename = params[:filename]
     
-    # 生成文件名（UUID + 时间戳）
+    # 生成文件名（UUID + 时间戳），直接放在 bucket 根目录
     if filename.present?
       ext = File.extname(filename)
-      base_name = "#{SecureRandom.uuid}_#{Time.now.to_i}#{ext}"
+      key = "#{SecureRandom.uuid}_#{Time.now.to_i}#{ext}"
     else
-      base_name = "#{SecureRandom.uuid}_#{Time.now.to_i}"
+      key = "#{SecureRandom.uuid}_#{Time.now.to_i}"
     end
-    key = "videos/#{base_name}"
     
     # 过期时间：30天
     expire_time = Time.now.to_i + 2592000
