@@ -164,7 +164,10 @@ module Api
       def browsers_with_active_accounts
         browsers = Browser
                      .joins(:accounts)
-                     .where(accounts: { status: Account.statuses["正常"] })
+                     .where(accounts: {
+                       status: Account.statuses["正常"],
+                       work_type: "人工运营"
+                     })
                      .where.not(accounts: { platform: Account.platforms["facebook"] })
                      .distinct
                      .order(created_at: :desc)
@@ -172,6 +175,7 @@ module Api
         data = browsers.map do |browser|
           active_accounts = browser.accounts
                               .where(status: Account.statuses["正常"])
+                              .where(work_type: "人工运营")
                               .where.not(platform: Account.platforms["facebook"])
           {
             id: browser.id,
