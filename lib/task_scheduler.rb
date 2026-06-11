@@ -49,10 +49,10 @@ class TaskScheduler
 		pending_browser_ids = []
 
 		# 从搬运任务中获取
-		# pending_browser_ids += MoveTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
+		pending_browser_ids += MoveTask.where(status: :pending).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 从运营任务中获取
-		pending_browser_ids += OperationTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
+		pending_browser_ids += OperationTask.where(status: :pending).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 获取浏览器名称
 		pending_browser_names = Browser.where(id: pending_browser_ids.uniq).pluck(:profile_name).uniq
@@ -81,6 +81,11 @@ class TaskScheduler
 			# 3. 找出重合的浏览器名称
 			matched_browser_names = pending_browser_names & locked_browser_names
 
+			# 4. 如果有匹配的浏览器，发送钉钉通知
+			if matched_browser_names.present?
+				send_locked_browsers_alert(matched_browser_names, pending_browser_names, locked_browser_names)
+			end
+
 			{
 				pending_browsers: pending_browser_names,
 				locked_browsers: locked_browser_names,
@@ -95,5 +100,34 @@ class TaskScheduler
 				error: e.message
 			}
 		end
+	end
+
+	# 发送钉钉告警消息
+	def self.send_locked_browsers_alert(matched_browsers, pending_browsers, locked_browsers)
+		require 'net/http'
+		require 'json'
+
+		webhook_url = ENV['DINGDING_WEBHOOK_URL']
+		return unless webhook_url.present?
+
+		# 格式化浏览器列表
+		matched_list = matched_browsers.map { |name| "• #{name}" }.join("\n")
+		pending_list = pending_browsers.map { |name| "• #{name}" }.join("\n")
+		locked_list = locked_browsers.map { |name| "• #{name}" }.join("\n")
+
+		message = "【养号】检测到被锁定的浏览器正在执行任务\n\n"
+		message += "🔒 被锁定的浏览器（共 #{matched_browsers.size} 个）：\n#{matched_list}\n\n"
+		message += "📋 待执行任务中的浏览器（共 #{pending_browsers.size} 个）：\n#{pending_list}\n\n"
+		message += "🔐 锁定接口返回的浏览器（共 #{locked_browsers.size} 个）：\n#{locked_list}\n\n"
+		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}"
+
+		webhook_url = ENV['DINGDING_WEBHOOK_URL']
+		return unless webhook_url.present?
+
+		postbody = {"msgtype": "text","text": {"content": message}}
+		headers = {
+			"Content-Type": "application/json;charset=utf-8"
+		}
+		res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
 	end
 end
