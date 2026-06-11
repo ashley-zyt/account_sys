@@ -49,10 +49,10 @@ class TaskScheduler
 		pending_browser_ids = []
 
 		# 从搬运任务中获取
-		# pending_browser_ids += MoveTask.where(status: :pending).where.not(browser_id: nil).pluck(:browser_id).uniq
+		# pending_browser_ids += MoveTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 从运营任务中获取
-		pending_browser_ids += OperationTask.where(status: :pending).where.not(browser_id: nil).pluck(:browser_id).uniq
+		pending_browser_ids += OperationTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 获取浏览器名称
 		pending_browser_names = Browser.where(id: pending_browser_ids.uniq).pluck(:profile_name).uniq
