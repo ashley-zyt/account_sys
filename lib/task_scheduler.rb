@@ -38,21 +38,20 @@ class TaskScheduler
 				Rails.logger.warn "人工运营账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用运营资源"
 			end
 		end
+		TaskScheduler.find_locked_browsers_in_pending_tasks
 	end
 
 	# 找出待执行任务中与锁定接口重合的指纹浏览器名称
 	def self.find_locked_browsers_in_pending_tasks
-		require 'net/http'
-		require 'json'
 
 		# 1. 获取待执行任务中的指纹浏览器名称
 		pending_browser_ids = []
 
 		# 从搬运任务中获取
-		pending_browser_ids += MoveTask.where(status: :pending).where.not(browser_id: nil).pluck(:browser_id).uniq
+		# pending_browser_ids += MoveTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 从运营任务中获取
-		pending_browser_ids += OperationTask.where(status: :pending).where.not(browser_id: nil).pluck(:browser_id).uniq
+		pending_browser_ids += OperationTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 获取浏览器名称
 		pending_browser_names = Browser.where(id: pending_browser_ids.uniq).pluck(:profile_name).uniq
