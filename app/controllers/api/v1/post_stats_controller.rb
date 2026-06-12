@@ -175,7 +175,7 @@ module Api
         data = browsers.map do |browser|
           active_accounts = browser.accounts
                               .where(status: Account.statuses["正常"])
-                              .where(work_type: "视频搬运")
+                              .where(work_type: "人工运营")
                               .where.not(platform: Account.platforms["facebook"])
           {
             id: browser.id,
