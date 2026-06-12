@@ -35,15 +35,17 @@
     <div class="admin-form-group">
       <label class="admin-form-label">
         文案 <span style="color: #ef4444;">*</span>
+        <span id="title_counter" class="char-counter">0 / 280</span>
       </label>
-      <textarea name="operation_task[title]" id="title" class="admin-input" placeholder="请输入发布文案" rows="4" required></textarea>
+      <textarea name="operation_task[title]" id="title" class="admin-input" placeholder="请输入发布文案" rows="4" maxlength="280" required></textarea>
     </div>
 
     <div class="admin-form-group">
       <label class="admin-form-label">
         简介
+        <span id="description_counter" class="char-counter">0 / 100</span>
       </label>
-      <textarea name="operation_task[description]" id="description" class="admin-input" placeholder="请输入视频简介（可选）" rows="4"></textarea>
+      <textarea name="operation_task[description]" id="description" class="admin-input" placeholder="请输入视频简介（可选）" rows="4" maxlength="100"></textarea>
     </div>
 
     <div class="admin-form-group">
@@ -315,6 +317,23 @@
     color: #ef4444;
     background: rgba(239, 68, 68, 0.1);
   }
+
+  /* 字符计数器样式 */
+  .char-counter {
+    float: right;
+    font-size: 12px;
+    color: #999;
+    font-weight: normal;
+    margin-left: 8px;
+  }
+
+  .char-counter.warning {
+    color: #f59e0b;
+  }
+
+  .char-counter.danger {
+    color: #ef4444;
+  }
 </style>
 
 <script>
@@ -328,6 +347,44 @@ document.addEventListener('DOMContentLoaded', function() {
   var modal = document.getElementById('upload_modal');
   var statusIcon = document.getElementById('status_icon');
   var statusText = document.getElementById('status_text');
+
+  // 字符计数器功能
+  var titleTextarea = document.getElementById('title');
+  var descriptionTextarea = document.getElementById('description');
+  var titleCounter = document.getElementById('title_counter');
+  var descriptionCounter = document.getElementById('description_counter');
+
+  var titleMax = 280;
+  var descriptionMax = 100;
+
+  function updateCounter(textarea, counter, max) {
+    var length = textarea.value.length;
+    counter.textContent = length + ' / ' + max;
+
+    // 根据剩余字符数量改变颜色
+    counter.classList.remove('warning', 'danger');
+    if (length >= max) {
+      counter.classList.add('danger');
+    } else if (length >= max * 0.9) {
+      counter.classList.add('warning');
+    }
+  }
+
+  if (titleTextarea && titleCounter) {
+    titleTextarea.addEventListener('input', function() {
+      updateCounter(titleTextarea, titleCounter, titleMax);
+    });
+    // 初始化计数器
+    updateCounter(titleTextarea, titleCounter, titleMax);
+  }
+
+  if (descriptionTextarea && descriptionCounter) {
+    descriptionTextarea.addEventListener('input', function() {
+      updateCounter(descriptionTextarea, descriptionCounter, descriptionMax);
+    });
+    // 初始化计数器
+    updateCounter(descriptionTextarea, descriptionCounter, descriptionMax);
+  }
   var progressFill = document.getElementById('progress_fill');
   var progressPercent = document.getElementById('progress_percent');
   var uploadInfo = document.getElementById('upload_info');
