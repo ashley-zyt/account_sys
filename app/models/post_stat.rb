@@ -36,6 +36,44 @@ class PostStat < ApplicationRecord
   scope :by_account, ->(account_id) { where(account_id: account_id) }
   scope :by_date_range, ->(start_date, end_date) { where(post_date: start_date..end_date) }
   scope :order_by_date, -> { order(post_date: :desc) }
+  scope :updated_today, -> { where(data_updated_at: Time.zone.today.beginning_of_day..Time.zone.today.end_of_day) }
+
+  # 统计每个账号今日更新的记录个数
+  def self.today_updates_by_account
+    today_start = Time.zone.today.beginning_of_day
+    today_end = Time.zone.today.end_of_day
+
+    PostStat
+      .where(data_updated_at: today_start..today_end)
+      .group(:account_id)
+      .select('account_id, COUNT(*) as update_count')
+      .map do |stat|
+        {
+          account_id: stat.account_id,
+          update_count: stat.update_count.to_i
+        }
+      end
+  end
+
+  # 统计每个账号今日更新的记录个数（包含账号详细信息）
+  def self.today_updates_with_account_info
+    today_start = Time.zone.today.beginning_of_day
+    today_end = Time.zone.today.end_of_day
+
+    PostStat
+      .joins(:account)
+      .where(data_updated_at: today_start..today_end)
+      .group('post_stats.account_id, accounts.account_name, accounts.platform')
+      .select('post_stats.account_id, accounts.account_name, accounts.platform, COUNT(*) as update_count')
+      .map do |stat|
+        {
+          account_id: stat.account_id,
+          account_name: stat.account_name,
+          platform: stat.platform,
+          update_count: stat.update_count.to_i
+        }
+      end
+  end
 
   def self.ransackable_attributes(auth_object = nil)
     %w[
