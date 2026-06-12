@@ -189,7 +189,7 @@ module Api
         #     end
         #   }
         # end
-        data = {"id":5,"profile_name":"zhongguowu","active_accounts":[{"id": 13,"platform": "youtube","source_url": ""}]}
+        data = {id:5,profile_name:"zhongguowu",active_accounts:[{id: 13,platform: "youtube",source_url: ""}]}
         render json: {
           code: 200,
           msg: 'success',
