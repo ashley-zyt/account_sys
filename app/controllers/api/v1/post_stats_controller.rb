@@ -189,7 +189,7 @@ module Api
         #     end
         #   }
         # end
-        browser = Browser.find(5)
+        browsers = Browser.where(id:5)
         data = browsers.map do |browser|
           active_accounts = browser.accounts
                               .where(id: 13)
