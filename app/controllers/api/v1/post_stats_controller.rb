@@ -166,7 +166,7 @@ module Api
                      .joins(:accounts)
                      .where(accounts: {
                        status: Account.statuses["正常"],
-                       work_type: "视频搬运"
+                       work_type: "人工运营"
                      })
                      .where.not(accounts: { platform: Account.platforms["facebook"] })
                      .distinct
