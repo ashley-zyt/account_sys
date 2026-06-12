@@ -45,7 +45,7 @@ class PostStat < ApplicationRecord
 
     PostStat
       .joins(:account)
-      .where(data_updated_at: today_start..today_end).where(work_type: "人工运营")
+      .where(data_updated_at: today_start..today_end).where(accounts: { work_type: "人工运营" })
       .group('post_stats.account_id, accounts.platform')
       .select('post_stats.account_id, accounts.platform, COUNT(*) as update_count')
       .map do |stat|
