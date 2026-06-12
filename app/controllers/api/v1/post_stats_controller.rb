@@ -166,7 +166,7 @@ module Api
                      .joins(:accounts)
                      .where(accounts: {
                        status: Account.statuses["正常"],
-                       work_type: "人工运营"
+                       work_type: "视频搬运"
                      })
                      .where.not(accounts: { platform: Account.platforms["facebook"] })
                      .distinct
@@ -175,7 +175,7 @@ module Api
         data = browsers.map do |browser|
           active_accounts = browser.accounts
                               .where(status: Account.statuses["正常"])
-                              .where(work_type: "人工运营")
+                              .where(work_type: "视频搬运")
                               .where.not(platform: Account.platforms["facebook"])
           {
             id: browser.id,
