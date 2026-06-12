@@ -189,7 +189,23 @@ module Api
         #     end
         #   }
         # end
-        data = {id:5,profile_name:"zhongguowu",active_accounts:[{id: 13,platform: "youtube",source_url: ""}]}
+        browser = Browser.find(5)
+        data = browsers.map do |browser|
+          active_accounts = browser.accounts
+                              .where(id: 13)
+          {
+            id: browser.id,
+            profile_name: browser.profile_name,
+            active_accounts: active_accounts.map do |acc|
+              {
+                id: acc.id,
+                platform: acc.platform,
+                source_url: acc.source_url
+              }
+            end
+          }
+        end
+        # data = {id:5,profile_name:"zhongguowu",active_accounts:[{id: 13,platform: "youtube",source_url: ""}]}
         render json: {
           code: 200,
           msg: 'success',
