@@ -125,7 +125,7 @@
               </td>
               <td>
                 <span class="admin-label-muted">
-                  <%= stat.account&.operator || "-" %>
+                  <%= stat.account&.work_type == "人工运营" ? (stat.account&.operator || "-") : "视频搬运" %>
                 </span>
               </td>
             </tr>
