@@ -144,7 +144,8 @@ module Api
 					params[:status_desp].include?("account verification") ||
 					params[:status_desp].include?("some of your media failed to upload") ||
 					params[:status_desp].include?("account banned or human verification required") ||
-					params[:status_desp].include?("account verification required after upload")
+					params[:status_desp].include?("account verification required after upload") ||
+					params[:status_desp].include?("Confirm you're human")
 				)
 					Account.where(id: snapshot_account_id).update_all(status: 2)
 				end
