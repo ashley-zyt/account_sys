@@ -165,9 +165,14 @@ class TaskScheduler
 		message += "🔐 被占用的指纹浏览器：\n#{browser_list}\n\n"
 		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}\n"
 		message += "⏰ 最近错误时间：#{last_error_time&.strftime("%Y-%m-%d %H:%M:%S") || "无"}"
-
-		postbody = { msgtype: "text", text: { content: message } }
+		Rails.logger.info message
 		headers = { "Content-Type" => "application/json;charset=utf-8" }
 		RestClient.post(webhook_url, postbody.to_json, headers)
+
+		postbody = {"msgtype": "text","text": {"content": message}}
+		headers = {
+			"Content-Type": "application/json;charset=utf-8"
+		}
+		res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
 	end
 end
