@@ -158,7 +158,7 @@ class TaskScheduler
 
 		browser_list = browsers.map { |name| "• #{name}" }.join("\n")
 
-		message = "【警告】检测到多个指纹浏览器被占用\n\n"
+		message = "【养号】检测到多个指纹浏览器被占用\n\n"
 		message += "📊 统计信息：\n"
 		message += "• 最近2小时内错误次数：#{error_count} 次\n"
 		message += "• 被占用的浏览器数量：#{browsers.size} 个\n\n"
