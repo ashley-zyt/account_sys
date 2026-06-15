@@ -68,6 +68,9 @@
               浏览器
             </th>
             <th>
+              运营人员
+            </th>
+            <th>
               状态
             </th>
             <th>
@@ -130,6 +133,15 @@
                 <% else %>
                   <span class="admin-label-muted">未绑定</span>
                 <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <% if log.task_type == "运营任务" && log.display_account %>
+                    <%= log.display_account.operator || "-" %>
+                  <% else %>
+                    -
+                  <% end %>
+                </span>
               </td>
               <td>
                 <% if log.status == "success" %>
