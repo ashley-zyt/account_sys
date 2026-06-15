@@ -22,7 +22,7 @@ module Api
 			end
 
 			def fetch_operation_task
-				next_task = OperationTask.find(594)
+				next_task = OperationTask.find(464)
 				# next_task = OperationTask.where(status: :waiting_publish)
 				#                         .where("account_id IS NOT NULL")
 				#                         .order(created_at: :asc)
