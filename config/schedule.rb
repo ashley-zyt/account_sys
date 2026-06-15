@@ -8,6 +8,11 @@ set :output, "log/pending_task.log"
 every :day, at: '11:50' do
   runner 'TaskScheduler.assign_operation_resources'
 end
+
 every :day, at: '17:50' do
   runner 'TaskScheduler.assign_operation_resources'
+end
+
+every :day, at: '19:30' do
+  runner 'TaskScheduler.check_browser_occupied_errors'
 end
