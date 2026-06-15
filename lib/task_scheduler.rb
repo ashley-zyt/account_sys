@@ -166,8 +166,6 @@ class TaskScheduler
 		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}\n"
 		message += "⏰ 最近错误时间：#{last_error_time&.strftime("%Y-%m-%d %H:%M:%S") || "无"}"
 		Rails.logger.info message
-		headers = { "Content-Type" => "application/json;charset=utf-8" }
-		RestClient.post(webhook_url, postbody.to_json, headers)
 
 		postbody = {"msgtype": "text","text": {"content": message}}
 		headers = {
