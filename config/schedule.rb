@@ -16,3 +16,7 @@ end
 every :day, at: '19:30' do
   runner 'TaskScheduler.check_browser_occupied_errors'
 end
+
+every :day, at: '19:45' do
+  runner 'TaskScheduler.assign_operation_resources'
+end
