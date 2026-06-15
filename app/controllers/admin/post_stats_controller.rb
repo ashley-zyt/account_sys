@@ -48,7 +48,7 @@ class Admin::PostStatsController < Admin::BaseController
       # 数据行
       post_stats.each do |stat|
         csv << [
-          stat.account&.account_name || '-',
+          stat.account&.theme || '-',
           stat.account&.platform || '-',
           stat.account&.work_type || '-',
           stat.account&.browser&.profile_name || '-',
