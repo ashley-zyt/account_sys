@@ -129,4 +129,45 @@ class TaskScheduler
 		}
 		res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
 	end
+
+	# 检查前两小时内"指纹浏览器已被占用"错误，并发送钉钉通知
+	def self.check_browser_occupied_errors
+		two_hours_ago = 2.hours.ago
+
+		# 查询前两小时内包含"指纹浏览器已被占用"的错误日志
+		error_logs = TaskLog.where("error_msg LIKE ? AND created_at >= ?", "%指纹浏览器已被占用%", two_hours_ago)
+		                    .where.not(browser_id: nil)
+
+		# 获取浏览器名称并去重
+		browser_ids = error_logs.pluck(:browser_id).compact.uniq
+		browsers = Browser.where(id: browser_ids).pluck(:profile_name).compact.uniq
+
+		return if browsers.empty?
+
+		# 发送钉钉通知
+		send_browser_occupied_alert(browsers, error_logs.count, error_logs.last&.created_at)
+	end
+
+	# 发送浏览器被占用告警消息
+	def self.send_browser_occupied_alert(browsers, error_count, last_error_time)
+		require 'net/http'
+		require 'json'
+
+		webhook_url = ENV['DINGDING_WEBHOOK_URL']
+		return unless webhook_url.present?
+
+		browser_list = browsers.map { |name| "• #{name}" }.join("\n")
+
+		message = "【警告】检测到多个指纹浏览器被占用\n\n"
+		message += "📊 统计信息：\n"
+		message += "• 最近2小时内错误次数：#{error_count} 次\n"
+		message += "• 被占用的浏览器数量：#{browsers.size} 个\n\n"
+		message += "🔐 被占用的指纹浏览器：\n#{browser_list}\n\n"
+		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}\n"
+		message += "⏰ 最近错误时间：#{last_error_time&.strftime("%Y-%m-%d %H:%M:%S") || "无"}"
+
+		postbody = { msgtype: "text", text: { content: message } }
+		headers = { "Content-Type" => "application/json;charset=utf-8" }
+		RestClient.post(webhook_url, postbody.to_json, headers)
+	end
 end
