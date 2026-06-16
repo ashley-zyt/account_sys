@@ -12,8 +12,3 @@ end
 every :day, at: '17:50' do
   runner 'TaskScheduler.assign_operation_resources'
 end
-
-
-every :day, at: '19:40' do
-  runner 'TaskScheduler.assign_operation_resources'
-end
