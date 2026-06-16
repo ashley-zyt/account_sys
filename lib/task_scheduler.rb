@@ -154,6 +154,7 @@ class TaskScheduler
 		require 'json'
 
 		webhook_url = ENV['DINGDING_WEBHOOK_URL']
+		Rails.logger.info "webhook_url: #{webhook_url}"
 		return unless webhook_url.present?
 
 		browser_list = browsers.map { |name| "• #{name}" }.join("\n")
