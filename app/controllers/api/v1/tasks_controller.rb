@@ -29,6 +29,7 @@ module Api
 				                        .first
 
 				if next_task.nil?
+					TaskScheduler.check_browser_occupied_errors
 					return render json: {
 						type: 'error',
 						message: '暂无待发布的运营任务'
