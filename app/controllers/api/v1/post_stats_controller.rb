@@ -162,34 +162,19 @@ module Api
       # 获取绑定了至少一个"正常"账号的浏览器列表
       # 返回每个浏览器的基础信息，以及其下所有"正常"账号的基础信息
       def browsers_with_active_accounts
-        # browsers = Browser
-        #              .joins(:accounts)
-        #              .where(accounts: {
-        #                status: Account.statuses["正常"]
-        #              })
-        #              .where.not(accounts: { platform: Account.platforms["facebook"] })
-        #              .distinct
-        #              .order(created_at: :desc)
+        browsers = Browser
+                     .joins(:accounts)
+                     .where(accounts: {
+                       status: Account.statuses["正常"]
+                     })
+                     .where.not(accounts: { platform: Account.platforms["facebook"] })
+                     .distinct
+                     .order(created_at: :desc)
 
-        # data = browsers.map do |browser|
-        #   active_accounts = browser.accounts
-        #                       .where(status: Account.statuses["正常"])
-        #                       .where.not(platform: Account.platforms["facebook"])
-        #   {
-        #     id: browser.id,
-        #     profile_name: browser.profile_name,
-        #     active_accounts: active_accounts.map do |acc|
-        #       {
-        #         id: acc.id,
-        #         platform: acc.platform,
-        #         source_url: acc.source_url
-        #       }
-        #     end
-        #   }
-        # end
-        browsers = Browser.where(id:82)
         data = browsers.map do |browser|
-          active_accounts = browser.accounts.where(id: 244)
+          active_accounts = browser.accounts
+                              .where(status: Account.statuses["正常"])
+                              .where.not(platform: Account.platforms["facebook"])
           {
             id: browser.id,
             profile_name: browser.profile_name,
@@ -202,6 +187,21 @@ module Api
             end
           }
         end
+        # browsers = Browser.where(id:82)
+        # data = browsers.map do |browser|
+        #   active_accounts = browser.accounts.where(id: 244)
+        #   {
+        #     id: browser.id,
+        #     profile_name: browser.profile_name,
+        #     active_accounts: active_accounts.map do |acc|
+        #       {
+        #         id: acc.id,
+        #         platform: acc.platform,
+        #         source_url: acc.source_url
+        #       }
+        #     end
+        #   }
+        # end
         render json: {
           code: 200,
           msg: 'success',
