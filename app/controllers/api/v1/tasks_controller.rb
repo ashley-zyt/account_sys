@@ -152,11 +152,11 @@ module Api
 				end
 
 				# 检查是否连续5次出现"哼哼猫未登陆成功"错误
-				check_hhcat_login_failure(snapshot_browser_id)
+				check_hhcat_login_failure
 			end
 
 			# 检查连续5次"哼哼猫未登陆成功"错误，触发应急处理
-			def check_hhcat_login_failure(browser_id)
+			def check_hhcat_login_failure
 				return unless params[:status_desp].present? && params[:status_desp].include?("哼哼猫未登陆成功")
 
 				# 查询最近5条包含"哼哼猫未登陆成功"的日志（5分钟内）
@@ -177,25 +177,15 @@ module Api
 					)
 
 					# 推送钉钉消息
-					send_dingding_alert(browser_id, recent_errors.count)
+					send_dingding_alert(recent_errors.count)
 				end
 			end
 
 			# 推送钉钉告警消息
-			def send_dingding_alert(browser_id, error_count)
-				browser = Browser.find_by(id: browser_id)
-				browser_name = browser ? browser.profile_name : "未知浏览器"
-
+			def send_dingding_alert(error_count)
 				message = "【养号】检测到连续 #{error_count} 次「哼哼猫未登陆成功」错误\n"
 				message += "已将所有待执行的搬运任务重置为未分配状态"
 
-				# 发送钉钉消息（需要配置钉钉机器人webhook）
-				send_to_dingding(message)
-			end
-
-			# 发送钉钉消息
-			def send_to_dingding(message)
-				# 钉钉机器人 webhook 地址（需要在环境变量中配置）
 				webhook_url = ENV['DINGDING_WEBHOOK_URL']
 				return unless webhook_url.present?
 
@@ -205,6 +195,7 @@ module Api
 				}
 				res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
 			end
+
 		end
 	end
 end
