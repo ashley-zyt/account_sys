@@ -61,7 +61,8 @@ class Account < ApplicationRecord
 	enum status: {
 		"正常": 0,
 		"未登录": 1,
-		"封禁/停用": 2
+		"封禁/停用": 2,
+		"浏览养护": 3
 	}
 
 	# 工作模式枚举（预留扩展）
