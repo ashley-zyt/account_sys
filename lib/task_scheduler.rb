@@ -117,7 +117,6 @@ class TaskScheduler
 		message = "【养号】检测到被锁定的浏览器正在执行任务\n\n"
 		message += "🔒 被锁定的浏览器（共 #{matched_browsers.size} 个）：\n#{matched_list}\n\n"
 		message += "📋 待执行任务中的浏览器（共 #{pending_browsers.size} 个）：\n#{pending_list}\n\n"
-		message += "🔐 锁定接口返回的浏览器（共 #{locked_browsers.size} 个）：\n#{locked_list}\n\n"
 		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}"
 
 		webhook_url = ENV['DINGDING_WEBHOOK_URL']
