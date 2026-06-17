@@ -1,0 +1,55 @@
+<div class="admin-form-container">
+  <h2>新增视频储备</h2>
+  
+  <%= form_for [:admin, @grok_video_resource] do |f| %>
+    <div class="admin-form-group">
+      <%= f.label :theme, '主题' %>
+      <%= f.select :theme, @themes, { include_blank: '请选择主题' }, class: 'admin-select' %>
+    </div>
+
+    <div class="admin-form-group">
+      <%= f.label :platform, '平台' %>
+      <%= f.select :platform, @platforms, { include_blank: '请选择平台' }, class: 'admin-select' %>
+    </div>
+
+    <div class="admin-form-group">
+      <%= f.label :grok_image_id, '关联图片' %>
+      <%= f.select :grok_image_id, @images.map { |img| ["#{img.theme} - #{img.id}", img.id] }, { include_blank: '请选择图片' }, class: 'admin-select' %>
+    </div>
+
+    <div class="admin-form-group">
+      <%= f.label :account_id, '发布账号' %>
+      <%= f.select :account_id, @accounts.map { |acc| ["#{acc.source_url} - #{acc.platform}", acc.id] }, { include_blank: '请选择账号' }, class: 'admin-select' %>
+    </div>
+
+    <div class="admin-form-group">
+      <%= f.label :title, '标题' %>
+      <%= f.text_field :title, class: 'admin-input', placeholder: '请输入标题' %>
+    </div>
+
+    <div class="admin-form-group">
+      <%= f.label :description, '描述' %>
+      <%= f.text_area :description, class: 'admin-textarea', placeholder: '请输入描述' %>
+    </div>
+
+    <div class="admin-form-group">
+      <%= f.label :prompt, 'Prompt' %>
+      <%= f.text_area :prompt, class: 'admin-textarea', placeholder: '请输入视频生成的prompt' %>
+    </div>
+
+    <div class="admin-form-group">
+      <%= f.label :video_url, '视频URL' %>
+      <%= f.text_field :video_url, class: 'admin-input', placeholder: '视频生成后填写' %>
+    </div>
+
+    <div class="admin-form-group">
+      <%= f.label :status, '状态' %>
+      <%= f.select :status, GrokVideoResource.statuses, { include_blank: '请选择状态' }, class: 'admin-select' %>
+    </div>
+
+    <div class="admin-form-actions">
+      <%= f.submit '保存', class: 'admin-button' %>
+      <%= link_to '取消', admin_grok_video_resources_path, class: 'admin-button-secondary' %>
+    </div>
+  <% end %>
+</div>

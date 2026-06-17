@@ -1,0 +1,20 @@
+<div class="admin-form-container">
+  <h2>新增图片储备</h2>
+  
+  <%= form_for [:admin, @grok_image_resource] do |f| %>
+    <div class="admin-form-group">
+      <%= f.label :theme, '主题' %>
+      <%= f.select :theme, @themes, { include_blank: '请选择主题' }, class: 'admin-select' %>
+    </div>
+
+    <div class="admin-form-group">
+      <%= f.label :image_url, '图片URL' %>
+      <%= f.text_field :image_url, class: 'admin-input', placeholder: '请输入图片URL' %>
+    </div>
+
+    <div class="admin-form-actions">
+      <%= f.submit '保存', class: 'admin-button' %>
+      <%= link_to '取消', admin_grok_image_resources_path, class: 'admin-button-secondary' %>
+    </div>
+  <% end %>
+</div>
