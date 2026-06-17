@@ -1,3 +1,34 @@
+# == Schema Information
+#
+# Table name: grok_video_resources
+#
+#  id                  :bigint           not null, primary key
+#  actual_publish_time :datetime
+#  description         :text(65535)
+#  error_msg           :text(65535)
+#  platform            :integer
+#  prompt              :text(65535)
+#  start_at            :datetime
+#  status              :integer          default("pending")
+#  task_uuid           :string(255)
+#  theme               :string(255)
+#  title               :text(65535)
+#  video_url           :string(255)
+#  created_at          :datetime         not null
+#  updated_at          :datetime         not null
+#  account_id          :bigint
+#  browser_id          :bigint
+#  grok_image_id       :bigint
+#
+# Indexes
+#
+#  index_grok_video_resources_on_account_id     (account_id)
+#  index_grok_video_resources_on_browser_id     (browser_id)
+#  index_grok_video_resources_on_grok_image_id  (grok_image_id)
+#  index_grok_video_resources_on_status         (status)
+#  index_grok_video_resources_on_task_uuid      (task_uuid) UNIQUE
+#  index_grok_video_resources_on_theme          (theme)
+#
 class GrokVideoResource < ApplicationRecord
   belongs_to :grok_image_resource, optional: true
   belongs_to :account, optional: true

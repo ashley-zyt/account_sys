@@ -5,6 +5,7 @@
 #  id            :bigint           not null, primary key
 #  name          :string(255)      not null
 #  oss_directory :string(255)
+#  prompts       :text(65535)
 #  remark        :text(65535)
 #  titles        :text(65535)
 #  created_at    :datetime         not null
