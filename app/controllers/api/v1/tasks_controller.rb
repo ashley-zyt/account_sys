@@ -169,9 +169,9 @@ module Api
 
 				# 如果最近5条都是"哼哼猫未登陆成功"且在5分钟内
 				if recent_errors.count >= 5
-					# 将所有待执行的搬运任务改为未分配状态
-					MoveTask.where(status: :pending).update_all(
-						status: :pending,
+					# 将所有待执行的搬运任务改为未分配状态（waiting_publish -> pending）
+					MoveTask.where(status: :waiting_publish).update_all(
+						status: 0,  # pending
 						account_id: nil,
 						browser_id: nil
 					)
