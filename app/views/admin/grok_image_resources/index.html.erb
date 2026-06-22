@@ -1,32 +1,79 @@
-<%= render 'admin/shared/search_form', q: @q %>
+<% content_for :page_title do %>
+  Grok 图片储备
+<% end %>
+<% content_for :page_subtitle do %>
+  用于生成 Grok 视频的前置图片资源
+<% end %>
 
-<div class="admin-table-container">
-  <table class="admin-table">
-    <thead>
-      <tr>
-        <th>主题</th>
-        <th>图片预览</th>
-        <th>创建时间</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @grok_image_resources.each do |resource| %>
-        <tr>
-          <td><%= resource.theme %></td>
-          <td><img src="<%= resource.image_url %>" width="100" height="100" alt="图片" /></td>
-          <td><%= resource.created_at.strftime('%Y-%m-%d %H:%M') %></td>
-          <td>
-            <%= link_to '删除', admin_grok_image_resource_path(resource), method: :delete, data: { confirm: '确定删除吗？' }, class: 'admin-button-danger' %>
-          </td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
-</div>
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        图片列表
+      </div>
+      <div class="admin-card-subtitle">
+        管理图片储备资源
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to '新增图片储备', new_admin_grok_image_resource_path, class: "admin-button-primary" %>
+    </div>
+  </div>
 
-<%= paginate @grok_image_resources %>
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">主题</label>
+        <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_grok_image_resources_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
 
-<div style="margin-top: 20px;">
-  <%= link_to '新增图片储备', new_admin_grok_image_resource_path, class: 'admin-button' %>
+  <% if @grok_image_resources.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>主题</th>
+            <th>图片预览</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @grok_image_resources.each do |resource| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted">
+                  <%= resource.theme %>
+                </span>
+              </td>
+              <td>
+                <img src="<%= resource.image_url %>" width="100" height="100" alt="图片" style="border-radius: 4px; object-fit: cover;" />
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= resource.created_at&.strftime('%Y-%m-%d %H:%M') %>
+                </span>
+              </td>
+              <td>
+                <%= link_to '删除', admin_grok_image_resource_path(resource), method: :delete, data: { confirm: '确定删除吗？' }, class: "admin-link-quiet", style: "color: #ef4444;" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @grok_image_resources %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无图片储备数据。
+    </div>
+  <% end %>
 </div>
