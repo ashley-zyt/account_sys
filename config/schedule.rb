@@ -9,6 +9,6 @@ every :day, at: '11:50' do
   runner 'TaskScheduler.assign_operation_resources'
 end
 
-every :day, at: '17:50' do
+every :day, at: '16:50' do
   runner 'TaskScheduler.assign_operation_resources'
 end
