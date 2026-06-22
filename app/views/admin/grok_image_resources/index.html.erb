@@ -61,7 +61,7 @@
                 </span>
               </td>
               <td>
-                <%= link_to '删除', admin_grok_image_resource_path(resource), method: :delete, data: { confirm: '确定删除吗？' }, class: "admin-link-quiet", style: "color: #ef4444;" %>
+                <%= link_to '删除', admin_grok_image_resource_path(resource), data: { turbo_method: :delete, turbo_confirm: '确定删除吗？' }, class: "admin-link-quiet", style: "color: #ef4444;" %>
               </td>
             </tr>
           <% end %>
