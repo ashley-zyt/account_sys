@@ -2,7 +2,7 @@ class Api::V1::GrokController < ApplicationController
   # 获取Grok图片资源（一次只获取一个）
   def images
     # 获取已使用的图片ID列表
-    used_image_ids = GrokVideoResource.where.not(grok_image_id: nil).pluck(:grok_image_id)
+    used_image_ids = GrokTask.where.not(grok_image_id: nil).pluck(:grok_image_id)
 
     # 获取未被使用的图片资源，按id升序排序，取第一个
     grok_image = GrokImageResource
