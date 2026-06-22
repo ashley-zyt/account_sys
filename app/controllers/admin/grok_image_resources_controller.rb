@@ -1,4 +1,74 @@
 class Admin::GrokImageResourcesController < Admin::BaseController
+  # 配置 OSS CORS 规则（只需执行一次）
+  def setup_cors
+    require 'net/http'
+    require 'uri'
+    require 'openssl'
+    require 'base64'
+    require 'digest/md5'
+
+    access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+    access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+    bucket_name = 'grok-images'
+
+    raise "ALIYUN_ACCESS_KEY_ID 未配置" if access_key_id.blank?
+    raise "ALIYUN_ACCESS_KEY_SECRET 未配置" if access_key_secret.blank?
+
+    endpoint = "https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com"
+
+    # CORS 配置 XML
+    cors_xml = <<-XML
+<?xml version="1.0" encoding="UTF-8"?>
+<CORSConfiguration>
+  <CORSRule>
+    <AllowedOrigin>*</AllowedOrigin>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>POST</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
+    <AllowedHeader>*</AllowedHeader>
+    <ExposeHeader>ETag</ExposeHeader>
+    <ExposeHeader>x-oss-request-id</ExposeHeader>
+    <MaxAgeSeconds>3600</MaxAgeSeconds>
+  </CORSRule>
+</CORSConfiguration>
+XML
+
+    # 生成签名
+    date = Time.now.utc.strftime('%a, %d %b %Y %H:%M:%S GMT')
+    content_md5 = Base64.strict_encode64(Digest::MD5.digest(cors_xml)).strip
+
+    # 签名字符串：PUT + MD5 + Content-Type + Date + Resource
+    string_to_sign = "PUT\n#{content_md5}\napplication/xml\n#{date}\n/#{bucket_name}/?cors"
+
+    # 使用 HMAC-SHA1 签名
+    signature = Base64.strict_encode64(
+      OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)
+    ).strip
+
+    # 发送请求
+    uri = URI.parse("#{endpoint}/?cors")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+    request = Net::HTTP::Put.new(uri.request_uri)
+    request['Date'] = date
+    request['Content-Type'] = 'application/xml'
+    request['Content-MD5'] = content_md5
+    request['Authorization'] = "OSS #{access_key_id}:#{signature}"
+    request.body = cors_xml
+
+    response = http.request(request)
+
+    if response.code == '200'
+      render json: { success: true, message: 'CORS 规则配置成功' }
+    else
+      render json: { success: false, error: "配置失败: #{response.code} - #{response.body}" }, status: :unprocessable_entity
+    end
+  rescue => e
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
+  end
+
   # OSS 直传签名接口（bucket: grok-images）
   def oss_signature
     require 'base64'

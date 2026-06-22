@@ -40,6 +40,7 @@ Rails.application.routes.draw do
     resources :grok_image_resources, only: [:index, :new, :create, :destroy] do
       collection do
         get :oss_signature
+        get :setup_cors
       end
     end
     resources :grok_tasks, only: [:index, :new, :create, :edit, :update, :destroy]
