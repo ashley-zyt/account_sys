@@ -34,21 +34,21 @@
 
     <div class="admin-form-group">
       <label class="admin-form-label">
-        图片文件 <span style="color: #ef4444;">*</span>
+        图片文件 <span style="color: #ef4444;">*</span>（支持多选）
       </label>
       <div class="file-upload-container">
         <label class="file-upload-label" id="upload_label" for="image_file">
           <div class="upload-icon">🖼️</div>
-          <div class="upload-text" id="upload_text">点击选择图片文件</div>
-          <div class="upload-hint">支持 JPG、PNG、WebP、GIF 等格式，最大 50MB</div>
+          <div class="upload-text" id="upload_text">点击选择图片文件（可多选）</div>
+          <div class="upload-hint">支持 JPG、PNG、WebP、GIF 等格式，单张最大 50MB</div>
         </label>
-        <input type="file" name="image_file" id="image_file" accept="image/*" class="file-input">
+        <input type="file" name="image_file" id="image_file" accept="image/*" multiple class="file-input">
         <div class="file-selected-info" id="file_info" style="display: none;">
           <span class="file-name" id="file_name"></span>
           <button type="button" class="clear-btn" id="clear_btn">×</button>
         </div>
         <div class="image-preview-container" id="image_preview_container" style="display: none;">
-          <img id="image_preview" src="" alt="预览" class="image-preview" />
+          <div class="image-preview-grid" id="image_preview_grid"></div>
         </div>
       </div>
     </div>
@@ -166,14 +166,56 @@
     border-radius: 8px;
     padding: 12px;
     background: rgba(30, 41, 59, 0.5);
-    text-align: center;
   }
 
-  .image-preview {
-    max-width: 100%;
-    max-height: 300px;
+  .image-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .image-preview-item {
+    position: relative;
+  }
+
+  .image-preview-item img {
+    width: 100%;
+    height: 120px;
     border-radius: 6px;
-    object-fit: contain;
+    object-fit: cover;
+    display: block;
+  }
+
+  .image-preview-item .preview-name {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .image-preview-item .preview-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.9);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .image-preview-item .preview-remove:hover {
+    background: #ef4444;
   }
 
   .admin-form-group {
@@ -336,34 +378,74 @@ document.addEventListener('DOMContentLoaded', function() {
   var progressPercent = document.getElementById('progress_percent');
   var uploadInfo = document.getElementById('upload_info');
 
-  var imagePreviewContainer = document.getElementById('image_preview_container');
-  var imagePreview = document.getElementById('image_preview');
+  var previewContainer = document.getElementById('image_preview_container');
+  var previewGrid = document.getElementById('image_preview_grid');
 
   if (!form) return;
 
-  // 选择文件时显示文件名 + 预览
+  // 维护当前选中的文件列表（允许单个移除）
+  var selectedFiles = [];
+
+  function renderPreviews() {
+    previewGrid.innerHTML = '';
+
+    if (selectedFiles.length === 0) {
+      previewContainer.style.display = 'none';
+      fileInfo.style.display = 'none';
+      fileInput.value = '';
+      return;
+    }
+
+    // 顶部文件信息条
+    fileName.textContent = selectedFiles.length + ' 张图片已选择 (' + formatSize(selectedFiles.reduce(function(s, f){ return s + f.size; }, 0)) + ')';
+    fileInfo.style.display = 'flex';
+    previewContainer.style.display = 'block';
+
+    selectedFiles.forEach(function(file, index) {
+      var item = document.createElement('div');
+      item.className = 'image-preview-item';
+
+      var img = document.createElement('img');
+      var reader = new FileReader();
+      reader.onload = function(e) { img.src = e.target.result; };
+      reader.readAsDataURL(file);
+      item.appendChild(img);
+
+      var nameDiv = document.createElement('div');
+      nameDiv.className = 'preview-name';
+      nameDiv.textContent = file.name;
+      item.appendChild(nameDiv);
+
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'preview-remove';
+      removeBtn.textContent = '×';
+      removeBtn.title = '移除该图片';
+      removeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        selectedFiles.splice(index, 1);
+        renderPreviews();
+      });
+      item.appendChild(removeBtn);
+
+      previewGrid.appendChild(item);
+    });
+  }
+
   fileInput.addEventListener('change', function() {
     if (this.files && this.files.length > 0) {
-      var file = this.files[0];
-      fileName.textContent = file.name + ' (' + formatSize(file.size) + ')';
-      fileInfo.style.display = 'flex';
-
-      // 图片预览
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        imagePreview.src = e.target.result;
-        imagePreviewContainer.style.display = 'block';
-      };
-      reader.readAsDataURL(file);
+      // 追加新选择的文件（避免重复）
+      Array.prototype.forEach.call(this.files, function(file) {
+        selectedFiles.push(file);
+      });
+      renderPreviews();
     }
   });
 
   clearBtn.addEventListener('click', function(e) {
     e.preventDefault();
-    fileInput.value = '';
-    fileInfo.style.display = 'none';
-    imagePreviewContainer.style.display = 'none';
-    imagePreview.src = '';
+    selectedFiles = [];
+    renderPreviews();
   });
 
   form.addEventListener('submit', function(e) {
@@ -371,49 +453,67 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var themeInput = document.querySelector('input[name="grok_image_resource[theme]"]');
     var theme = themeInput ? themeInput.value.trim() : '';
-    var imageFile = fileInput.files[0];
 
     if (!theme) { alert('请选择主题'); return; }
-    if (!imageFile) { alert('请选择图片文件'); return; }
+    if (selectedFiles.length === 0) { alert('请选择图片文件'); return; }
 
     submitBtn.disabled = true;
     submitBtn.textContent = '上传中...';
     showModal();
     resetProgress();
 
-    // 第一步：获取 OSS 签名（携带文件名以便后端生成正确的 key）
-    fetch('/admin/grok_image_resources/oss_signature?filename=' + encodeURIComponent(imageFile.name))
-      .then(function(response) {
-        if (!response.ok) throw new Error('获取签名失败');
-        return response.json();
-      })
-      .then(function(signatureData) {
-        // 第二步：直传文件到 OSS
-        return uploadToOss(imageFile, signatureData);
-      })
-      .then(function(ossKey) {
-        // 第三步：提交表单（传递 oss_key，后端生成签名 URL 存入 image_url）
+    var uploadedKeys = [];
+    var totalFiles = selectedFiles.length;
+
+    // 串行上传所有图片
+    function uploadNext(index) {
+      if (index >= totalFiles) {
+        // 全部上传完成，提交 oss_keys
         updateProgress(95, '正在保存图片储备...');
-        return createGrokImageResource(ossKey);
-      })
-      .then(function() {
-        updateProgress(100, '完成！');
-        statusIcon.className = 'status-icon success';
-        progressFill.classList.add('success');
-        uploadInfo.textContent = '图片已成功上传并保存';
-        uploadInfo.className = 'upload-info success';
-        uploadInfo.style.display = 'block';
-        setTimeout(function() {
-          window.location.href = '/admin/grok_image_resources';
-        }, 1500);
-      })
-      .catch(function(error) {
-        showError('上传失败: ' + error.message);
-      });
+        createGrokImageResources(uploadedKeys)
+          .then(function() {
+            updateProgress(100, '完成！');
+            statusIcon.className = 'status-icon success';
+            progressFill.classList.add('success');
+            uploadInfo.textContent = '成功上传 ' + uploadedKeys.length + ' 张图片';
+            uploadInfo.className = 'upload-info success';
+            uploadInfo.style.display = 'block';
+            setTimeout(function() {
+              window.location.href = '/admin/grok_image_resources';
+            }, 1500);
+          })
+          .catch(function(error) {
+            showError('保存失败: ' + error.message);
+          });
+        return;
+      }
+
+      var file = selectedFiles[index];
+      // 每张图占总进度的 90/total 份额
+      var basePercent = (index / totalFiles) * 90;
+
+      fetch('/admin/grok_image_resources/oss_signature?filename=' + encodeURIComponent(file.name))
+        .then(function(response) {
+          if (!response.ok) throw new Error('获取签名失败');
+          return response.json();
+        })
+        .then(function(signatureData) {
+          return uploadToOss(file, signatureData, basePercent, totalFiles, index);
+        })
+        .then(function(ossKey) {
+          uploadedKeys.push(ossKey);
+          uploadNext(index + 1);
+        })
+        .catch(function(error) {
+          showError('第 ' + (index + 1) + ' 张上传失败: ' + error.message);
+        });
+    }
+
+    uploadNext(0);
   });
 
-  // 直传文件到 OSS
-  function uploadToOss(file, signatureData) {
+  // 直传文件到 OSS（progressSpan: 当前文件占总进度的份额区间）
+  function uploadToOss(file, signatureData, basePercent, totalFiles, currentIndex) {
     return new Promise(function(resolve, reject) {
       var formData = new FormData();
       formData.append('key', signatureData.key);
@@ -425,10 +525,12 @@ document.addEventListener('DOMContentLoaded', function() {
       var xhr = new XMLHttpRequest();
       xhr.open('POST', signatureData.endpoint, true);
 
+      var span = 90 / totalFiles; // 每张图占的进度区间
+
       xhr.upload.addEventListener('progress', function(ev) {
         if (ev.lengthComputable) {
-          var percent = Math.round((ev.loaded / ev.total) * 90); // 前90%用于上传
-          updateProgress(percent, '正在上传图片到 OSS...');
+          var percent = Math.round(basePercent + (ev.loaded / ev.total) * span);
+          updateProgress(percent, '正在上传第 ' + (currentIndex + 1) + ' 张图片 (' + uploadedKeys.length + '/' + totalFiles + ' 完成)...');
         }
       });
 
@@ -448,11 +550,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // 提交表单，创建图片储备记录
-  function createGrokImageResource(ossKey) {
+  // 提交表单，创建图片储备记录（支持多张）
+  function createGrokImageResources(ossKeys) {
     return new Promise(function(resolve, reject) {
       var formData = new FormData(form);
-      formData.append('oss_key', ossKey);
+      // 后端通过 oss_keys[] 接收数组
+      ossKeys.forEach(function(key) {
+        formData.append('oss_keys[]', key);
+      });
+      // 移除单个 oss_key（如有），避免歧义
+      formData.delete('oss_key');
 
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/admin/grok_image_resources', true);

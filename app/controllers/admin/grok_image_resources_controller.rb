@@ -65,16 +65,30 @@ class Admin::GrokImageResourcesController < Admin::BaseController
   end
 
   def create
-    # 前端直传 OSS 后，提交 oss_key，后端生成签名 URL 存入 image_url
-    if params[:oss_key].present?
+    # 前端直传 OSS 后，提交 oss_keys（支持多张），后端为每个 key 生成签名 URL 存入 image_url
+    oss_keys = params[:oss_keys].presence
+    oss_keys = [oss_keys] if oss_keys.is_a?(String)
+
+    if oss_keys.present?
       theme = grok_image_resource_params[:theme]
-      image_url = generate_signed_url(params[:oss_key])
+      success_count = 0
+      first_resource = nil
 
-      @grok_image_resource = GrokImageResource.new(theme: theme, image_url: image_url)
+      oss_keys.compact_blank.each do |oss_key|
+        image_url = generate_signed_url(oss_key)
+        resource = GrokImageResource.new(theme: theme, image_url: image_url)
+        if resource.save
+          success_count += 1
+          first_resource ||= resource
+        end
+      end
 
-      if @grok_image_resource.save
-        redirect_to admin_grok_image_resources_path, notice: '图片储备添加成功'
+      if success_count > 0
+        redirect_to admin_grok_image_resources_path,
+                    notice: "成功添加 #{success_count} 张图片#{oss_keys.compact_blank.size > success_count ? "（部分失败）" : ''}"
       else
+        @grok_image_resource = GrokImageResource.new(theme: theme)
+        @grok_image_resource.errors.add(:base, '图片保存失败，请重试')
         @themes = Theme.pluck(:name)
         render :new, status: :unprocessable_entity
       end
