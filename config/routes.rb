@@ -37,7 +37,11 @@ Rails.application.routes.draw do
     resources :post_stats, only: [:index] do
       get :export, on: :collection
     end
-    resources :grok_image_resources, only: [:index, :new, :create, :destroy]
+    resources :grok_image_resources, only: [:index, :new, :create, :destroy] do
+      collection do
+        get :oss_signature
+      end
+    end
     resources :grok_tasks, only: [:index, :new, :create, :edit, :update, :destroy]
   end
 
