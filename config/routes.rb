@@ -68,6 +68,8 @@ Rails.application.routes.draw do
       # 运营任务接口
       get "operation_tasks/fetch", to: "tasks#fetch_operation_task"
       post "operation_tasks/report", to: "tasks#report"
+      # Grok接口
+      get "grok/images", to: "grok#images"
     end
   end
 
