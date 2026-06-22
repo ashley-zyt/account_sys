@@ -13,7 +13,7 @@
 #  index_grok_image_resources_on_theme  (theme)
 #
 class GrokImageResource < ApplicationRecord
-  has_one :grok_video_resource
+  has_one :grok_task
 
   validates :theme, :image_url, presence: true
 

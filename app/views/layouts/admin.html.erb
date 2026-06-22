@@ -160,6 +160,23 @@
             <% end %>
           </li>
           
+          <% grok_active = controller_path == "admin/grok_tasks" %>
+          <li class="admin-nav-item <%= "active" if grok_active %>">
+            <%= link_to admin_grok_tasks_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  🤖
+                </div>
+                <div class="admin-nav-label">
+                  Grok 资源队列
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Grok Tasks
+              </div>
+            <% end %>
+          </li>
+          
           <% logs_active = controller_path == "admin/task_logs" %>
           <li class="admin-nav-item <%= "active" if logs_active %>">
             <%= link_to admin_task_logs_path, class: "admin-nav-link" do %>
@@ -251,6 +268,23 @@
               </div>
               <div class="admin-nav-meta">
                 Themes
+              </div>
+            <% end %>
+          </li>
+
+          <% grok_image_active = controller_path == "admin/grok_image_resources" %>
+          <li class="admin-nav-item <%= "active" if grok_image_active %>">
+            <%= link_to admin_grok_image_resources_path, class: "admin-nav-link" do %>
+              <div class="admin-nav-link-main">
+                <div class="admin-nav-icon">
+                  🖼️
+                </div>
+                <div class="admin-nav-label">
+                  Grok 图片储备
+                </div>
+              </div>
+              <div class="admin-nav-meta">
+                Grok Images
               </div>
             <% end %>
           </li>

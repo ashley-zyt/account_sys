@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: grok_video_resources
+# Table name: grok_tasks
 #
 #  id                  :bigint           not null, primary key
 #  actual_publish_time :datetime
@@ -22,14 +22,14 @@
 #
 # Indexes
 #
-#  index_grok_video_resources_on_account_id     (account_id)
-#  index_grok_video_resources_on_browser_id     (browser_id)
-#  index_grok_video_resources_on_grok_image_id  (grok_image_id)
-#  index_grok_video_resources_on_status         (status)
-#  index_grok_video_resources_on_task_uuid      (task_uuid) UNIQUE
-#  index_grok_video_resources_on_theme          (theme)
+#  index_grok_tasks_on_account_id     (account_id)
+#  index_grok_tasks_on_browser_id     (browser_id)
+#  index_grok_tasks_on_grok_image_id  (grok_image_id)
+#  index_grok_tasks_on_status         (status)
+#  index_grok_tasks_on_task_uuid      (task_uuid) UNIQUE
+#  index_grok_tasks_on_theme          (theme)
 #
-class GrokVideoResource < ApplicationRecord
+class GrokTask < ApplicationRecord
   belongs_to :grok_image_resource, optional: true
   belongs_to :account, optional: true
   belongs_to :browser, optional: true

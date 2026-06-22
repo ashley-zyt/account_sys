@@ -1,0 +1,37 @@
+<%= render 'admin/shared/search_form', q: @q %>
+
+<div class="admin-table-container">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>主题</th>
+        <th>平台</th>
+        <th>状态</th>
+        <th>标题</th>
+        <th>创建时间</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @grok_tasks.each do |task| %>
+        <tr>
+          <td><%= task.theme %></td>
+          <td><%= task.platform %></td>
+          <td><%= task.status %></td>
+          <td><%= task.title.presence || '-' %></td>
+          <td><%= task.created_at.strftime('%Y-%m-%d %H:%M') %></td>
+          <td>
+            <%= link_to '编辑', edit_admin_grok_task_path(task), class: 'admin-button-secondary' %>
+            <%= link_to '删除', admin_grok_task_path(task), method: :delete, data: { confirm: '确定删除吗？' }, class: 'admin-button-danger' %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<%= paginate @grok_tasks %>
+
+<div style="margin-top: 20px;">
+  <%= link_to '新增 Grok 任务', new_admin_grok_task_path, class: 'admin-button' %>
+</div>

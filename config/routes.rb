@@ -38,7 +38,7 @@ Rails.application.routes.draw do
       get :export, on: :collection
     end
     resources :grok_image_resources, only: [:index, :new, :create, :destroy]
-    resources :grok_video_resources, only: [:index, :new, :create, :edit, :update, :destroy]
+    resources :grok_tasks, only: [:index, :new, :create, :edit, :update, :destroy]
   end
 
   namespace :api do

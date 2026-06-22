@@ -1,7 +1,7 @@
 <div class="admin-form-container">
-  <h2>编辑视频储备</h2>
-  
-  <%= form_for [:admin, @grok_video_resource] do |f| %>
+  <h2>编辑 Grok 任务</h2>
+
+  <%= form_for [:admin, @grok_task] do |f| %>
     <div class="admin-form-group">
       <%= f.label :theme, '主题' %>
       <%= f.select :theme, @themes, { include_blank: '请选择主题' }, class: 'admin-select' %>
@@ -44,7 +44,7 @@
 
     <div class="admin-form-group">
       <%= f.label :status, '状态' %>
-      <%= f.select :status, GrokVideoResource.statuses, { include_blank: '请选择状态' }, class: 'admin-select' %>
+      <%= f.select :status, GrokTask.statuses, { include_blank: '请选择状态' }, class: 'admin-select' %>
     </div>
 
     <div class="admin-form-group">
@@ -54,7 +54,7 @@
 
     <div class="admin-form-actions">
       <%= f.submit '保存', class: 'admin-button' %>
-      <%= link_to '取消', admin_grok_video_resources_path, class: 'admin-button-secondary' %>
+      <%= link_to '取消', admin_grok_tasks_path, class: 'admin-button-secondary' %>
     </div>
   <% end %>
 </div>
