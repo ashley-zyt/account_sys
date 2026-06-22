@@ -171,11 +171,55 @@ XML
 
   def destroy
     @grok_image_resource = GrokImageResource.find(params[:id])
+
+    # 从 image_url 提取 OSS key 并删除 OSS 文件
+    delete_oss_object(@grok_image_resource.image_url)
+
     @grok_image_resource.destroy
     redirect_to admin_grok_image_resources_path, notice: '图片储备删除成功'
   end
 
   private
+
+  # 从签名 URL 中提取 OSS key 并调用 OSS REST API 删除文件
+  def delete_oss_object(image_url)
+    return if image_url.blank?
+
+    require 'net/http'
+    require 'uri'
+    require 'openssl'
+    require 'base64'
+
+    access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+    access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+    bucket_name = 'grok-images'
+
+    # URL: https://bucket.oss-cn-hangzhou.aliyuncs.com/encoded_key?OSSAccessKeyId=...
+    uri = URI.parse(image_url)
+    encoded_key = uri.path.sub(%r{^/}, '')  # 去掉前导 /
+    key = URI.decode_www_form_component(encoded_key) rescue encoded_key
+
+    date = Time.now.utc.strftime('%a, %d %b %Y %H:%M:%S GMT')
+
+    # 签名字符串：DELETE + 空 + 空 + Date + Resource
+    string_to_sign = "DELETE\n\n\n#{date}\n/#{bucket_name}/#{key}"
+    signature = Base64.strict_encode64(
+      OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)
+    ).strip
+
+    oss_uri = URI.parse("https://#{bucket_name}.oss-cn-hangzhou.aliyuncs.com/#{encoded_key}")
+    http = Net::HTTP.new(oss_uri.host, oss_uri.port)
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+    request = Net::HTTP::Delete.new(oss_uri.request_uri)
+    request['Date'] = date
+    request['Authorization'] = "OSS #{access_key_id}:#{signature}"
+
+    http.request(request)
+  rescue => e
+    Rails.logger.error "OSS 删除失败: #{e.message}"
+  end
 
   def grok_image_resource_params
     params.require(:grok_image_resource).permit(:theme, :image_url)
