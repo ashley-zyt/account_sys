@@ -29,8 +29,10 @@
         <thead>
           <tr>
             <th>主题名称</th>
-            <th>OSS目录名</th>
+            
             <th>待选标题数量</th>
+            <th>待选Prompts数量</th>
+            <th>OSS目录名</th>
             <th>备注</th>
             <th>创建时间</th>
             <th>操作</th>
@@ -40,8 +42,10 @@
           <% @themes.each do |theme| %>
             <tr>
               <td><%= theme.name %></td>
-              <td><span class="admin-label-muted"><%= theme.oss_directory.presence || '未设置' %></span></td>
+              
               <td><span class="admin-label-muted"><%= theme.titles_array.size %></span></td>
+              <td><span class="admin-label-muted"><%= theme.prompts_array.size %></span></td>
+              <td><span class="admin-label-muted"><%= theme.oss_directory.presence || '未设置' %></span></td>
               <td><span class="admin-label-muted"><%= theme.remark.present? ? theme.remark.truncate(20) : '无' %></span></td>
               <td><span class="admin-label-muted"><%= theme.created_at.strftime("%Y-%m-%d") %></span></td>
               <td>
