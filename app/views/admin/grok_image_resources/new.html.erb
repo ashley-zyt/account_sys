@@ -37,11 +37,11 @@
         图片文件 <span style="color: #ef4444;">*</span>（支持多选）
       </label>
       <div class="file-upload-container">
-        <label class="file-upload-label" id="upload_label" for="image_file">
+        <div class="file-upload-label" id="upload_label">
           <div class="upload-icon">🖼️</div>
           <div class="upload-text" id="upload_text">点击选择图片文件（可多选）</div>
           <div class="upload-hint">支持 JPG、PNG、WebP、GIF 等格式，单张最大 50MB</div>
-        </label>
+        </div>
         <input type="file" name="image_file" id="image_file" accept="image/*" multiple class="file-input">
         <div class="file-selected-info" id="file_info" style="display: none;">
           <span class="file-name" id="file_name"></span>
@@ -380,8 +380,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var previewContainer = document.getElementById('image_preview_container');
   var previewGrid = document.getElementById('image_preview_grid');
+  var uploadLabel = document.getElementById('upload_label');
 
   if (!form) return;
+
+  // 点击上传区域手动触发文件选择（不依赖 label for + display:none 的组合，兼容性更好）
+  uploadLabel.addEventListener('click', function() {
+    fileInput.click();
+  });
 
   // 维护当前选中的文件列表（允许单个移除）
   var selectedFiles = [];
