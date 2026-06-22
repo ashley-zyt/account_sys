@@ -564,7 +564,8 @@ document.addEventListener('DOMContentLoaded', function() {
       ossKeys.forEach(function(key) {
         formData.append('oss_keys[]', key);
       });
-      // 移除单个 oss_key（如有），避免歧义
+      // 移除不需要的字段：file 不会再经后端处理，oss_key 避免歧义
+      formData.delete('image_file');
       formData.delete('oss_key');
 
       var xhr = new XMLHttpRequest();
