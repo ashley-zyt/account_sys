@@ -24,7 +24,13 @@ class Theme < ApplicationRecord
   def convert_empty_strings_to_null
     self.oss_directory = nil if oss_directory.blank?
     self.titles = nil if titles.blank?
+    self.prompts = nil if prompts.blank?
     self.remark = nil if remark.blank?
+  end
+
+  def prompts_array
+    return [] unless prompts.present?
+    prompts.split("\n").map(&:strip).reject(&:empty?)
   end
 
   def titles_array

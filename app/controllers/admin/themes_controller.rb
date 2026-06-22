@@ -57,6 +57,6 @@ class Admin::ThemesController < Admin::BaseController
   end
 
   def theme_params
-    params.require(:theme).permit(:name, :oss_directory, :titles, :remark)
+    params.require(:theme).permit(:name, :oss_directory, :titles, :prompts, :remark)
   end
 end
