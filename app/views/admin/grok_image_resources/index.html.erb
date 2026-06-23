@@ -40,6 +40,7 @@
           <tr>
             <th>主题</th>
             <th>图片预览</th>
+            <th>视频生成</th>
             <th>创建时间</th>
             <th>操作</th>
           </tr>
@@ -54,6 +55,20 @@
               </td>
               <td>
                 <img src="<%= resource.image_url %>" width="100" height="100" alt="图片" style="border-radius: 4px; object-fit: cover;" />
+              </td>
+              <td>
+                <% count = resource.video_count %>
+                <% if count > 0 %>
+                  <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; background: rgba(34, 197, 94, 0.18); border: 1px solid rgba(34, 197, 94, 0.45); border-radius: 999px; color: #86efac; font-size: 12px; white-space: nowrap;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
+                    已生成 <%= count %>
+                  </span>
+                <% else %>
+                  <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; background: rgba(100, 116, 139, 0.16); border: 1px solid rgba(100, 116, 139, 0.4); border-radius: 999px; color: #94a3b8; font-size: 12px; white-space: nowrap;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #64748b;"></span>
+                    未生成
+                  </span>
+                <% end %>
               </td>
               <td>
                 <span class="admin-label-muted">

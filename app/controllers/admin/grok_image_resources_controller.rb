@@ -126,7 +126,10 @@ XML
 
   def index
     @q = GrokImageResource.ransack(params[:q])
-    @grok_image_resources = @q.result.order(created_at: :desc).page(params[:page])
+    @grok_image_resources = @q.result
+                              .includes(:video_tasks)
+                              .order(created_at: :desc)
+                              .page(params[:page])
   end
 
   def new
