@@ -26,7 +26,8 @@ class Api::V1::GrokController < ApplicationController
     data = {
       id: grok_image.id,
       image_url: grok_image.image_url,
-      prompts: prompts
+      prompts: prompts,
+      theme: grok_image.theme,
     }
 
     render json: {
