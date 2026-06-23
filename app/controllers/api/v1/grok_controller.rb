@@ -38,15 +38,24 @@ class Api::V1::GrokController < ApplicationController
     render json: { code: 500, msg: "服务器错误: #{e.message}" }, status: :internal_server_error
   end
 
-  # 外部传入 bucket 名和视频文件名，先校验文件存在性，存在则返回 OSS 签名 URL
+  # 外部传入文件路径，截取文件名后校验在 grok-videos bucket 中是否存在，存在则返回 OSS 签名 URL
   def video_url
-    bucket_name = params[:bucket].to_s.strip
-    filename = params[:filename].to_s.strip
+    path = params[:path].to_s.strip
 
-    if bucket_name.blank? || filename.blank?
-      render json: { code: 400, msg: '缺少 bucket 或 filename 参数', data: nil }
+    if path.blank?
+      render json: { code: 400, msg: '缺少 path 参数', data: nil }
       return
     end
+
+    # 从路径中截取文件名（兼容 URL / Linux 路径 / Windows 路径）
+    filename = path.split('?').first.split(/[\/\\]/).last.to_s
+
+    if filename.blank?
+      render json: { code: 400, msg: '无法从路径中解析出文件名', data: nil }
+      return
+    end
+
+    bucket_name = 'grok-videos'
 
     access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
     access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
