@@ -13,9 +13,9 @@
 #  index_grok_image_resources_on_theme  (theme)
 #
 class GrokImageResource < ApplicationRecord
-  has_many :grok_tasks
+  has_many :grok_tasks, foreign_key: :grok_image_id
   # 仅统计有视频文件的关联任务
-  has_many :video_tasks, -> { where.not(video_url: [nil, '']) }, class_name: 'GrokTask'
+  has_many :video_tasks, -> { where.not(video_url: [nil, '']) }, class_name: 'GrokTask', foreign_key: :grok_image_id
 
   validates :theme, :image_url, presence: true
 
