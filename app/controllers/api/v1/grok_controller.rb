@@ -1,4 +1,7 @@
 class Api::V1::GrokController < ApplicationController
+  # 外部 API 调用，关闭 CSRF 校验
+  skip_forgery_protection
+
   # 获取Grok图片资源（一次只获取一个）
   def images
     # 获取已使用的图片ID列表
