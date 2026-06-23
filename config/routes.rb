@@ -70,6 +70,7 @@ Rails.application.routes.draw do
       post "operation_tasks/report", to: "tasks#report"
       # Grok接口
       get "grok/images", to: "grok#images"
+      get "grok/video_url", to: "grok#video_url"
     end
   end
 
