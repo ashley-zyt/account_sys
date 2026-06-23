@@ -38,6 +38,65 @@ class Api::V1::GrokController < ApplicationController
     render json: { code: 500, msg: "服务器错误: #{e.message}" }, status: :internal_server_error
   end
 
+  # 接收保存生成的视频信息，五个平台各创建一条 grok_task 记录
+  def save_video
+    theme = params[:theme].to_s.strip
+    video_url = params[:video_url].to_s.strip
+    prompt = params[:prompt].to_s.strip
+    grok_image_id = params[:grok_image_id].presence
+
+    if theme.blank? || video_url.blank? || prompt.blank?
+      render json: { code: 400, msg: '缺少必要参数 (theme, video_url, prompt)', data: nil }
+      return
+    end
+
+    # 校验图片资源是否存在
+    grok_image = GrokImageResource.find_by(id: grok_image_id)
+    if grok_image.blank?
+      render json: { code: 404, msg: "图片资源不存在: grok_image_id=#{grok_image_id}", data: nil }
+      return
+    end
+
+    # 校验主题配置存在且可取到候选标题
+    theme_config = Theme.find_by(name: theme)
+    candidate_titles = theme_config&.titles_array || []
+    if candidate_titles.empty?
+      render json: { code: 400, msg: "主题 #{theme} 没有配置候选标题，无法生成任务", data: nil }
+      return
+    end
+
+    # 五个平台各创建一条，title 从主题 titles 中随机挑选
+    platforms = GrokTask.platforms.keys # ["facebook", "twitter", "tiktok", "youtube", "instagram"]
+    created_tasks = []
+
+    ActiveRecord::Base.transaction do
+      platforms.each do |platform|
+        title = candidate_titles.sample
+        created_tasks << GrokTask.create!(
+          theme: theme,
+          video_url: video_url,
+          prompt: prompt,
+          grok_image_id: grok_image_id,
+          platform: platform,
+          title: title,
+          status: :pending
+        )
+      end
+    end
+
+    render json: {
+      code: 200,
+      msg: 'success',
+      data: {
+        created_count: created_tasks.size,
+        platforms: platforms,
+        task_ids: created_tasks.map(&:id)
+      }
+    }
+  rescue => e
+    render json: { code: 500, msg: "服务器错误: #{e.message}", data: nil }, status: :internal_server_error
+  end
+
   # 外部传入文件路径，截取文件名后校验在 grok-videos bucket 中是否存在，存在则返回 OSS 签名 URL
   def video_url
     path = params[:path].to_s.strip

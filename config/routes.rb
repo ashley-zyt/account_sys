@@ -71,6 +71,7 @@ Rails.application.routes.draw do
       # Grok接口
       get "grok/images", to: "grok#images"
       get "grok/video_url", to: "grok#video_url"
+      post "grok/save_video", to: "grok#save_video"
     end
   end
 
