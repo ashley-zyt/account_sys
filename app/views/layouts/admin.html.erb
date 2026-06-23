@@ -9,7 +9,7 @@
     <%= javascript_importmap_tags %>
   </head>
   <body class="admin">
-    <div class="admin-layout">
+    <div class="admin-layout" data-controller="sidebar">
       <aside class="admin-sidebar">
         <div class="admin-logo">
           <div class="admin-logo-badge">
@@ -25,276 +25,302 @@
               Admin Console
             </div>
           </div>
+          <button type="button"
+                  class="admin-sidebar-toggle"
+                  title="折叠/展开侧边栏"
+                  data-action="click->sidebar#toggleCollapse">
+            <span class="admin-sidebar-toggle-icon">☰</span>
+          </button>
         </div>
 
-        <div class="admin-sidebar-section-title">
-          概览
+        <div class="admin-sidebar-section" data-section-name="overview" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>概览</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% dashboard_active = controller_path == "admin/dashboard" %>
+            <li class="admin-nav-item <%= "active" if dashboard_active %>">
+              <%= link_to admin_root_path, class: "admin-nav-link", data: { tooltip: "仪表盘" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📊
+                  </div>
+                  <div class="admin-nav-label">
+                    仪表盘
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Dashboard
+                </div>
+              <% end %>
+            </li>
+          </ul>
         </div>
-        <ul class="admin-nav">
-          <% dashboard_active = controller_path == "admin/dashboard" %>
-          <li class="admin-nav-item <%= "active" if dashboard_active %>">
-            <%= link_to admin_root_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  📊
-                </div>
-                <div class="admin-nav-label">
-                  仪表盘
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Dashboard
-              </div>
-            <% end %>
-          </li>
-        </ul>
 
-        <div class="admin-sidebar-section-title">
-          账号管理
+        <div class="admin-sidebar-section" data-section-name="accounts" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>账号管理</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% browsers_active = controller_path == "admin/browsers" %>
+            <li class="admin-nav-item <%= "active" if browsers_active %>">
+              <%= link_to admin_browsers_path, class: "admin-nav-link", data: { tooltip: "浏览器池" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🌐
+                  </div>
+                  <div class="admin-nav-label">
+                    浏览器池
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Browsers
+                </div>
+              <% end %>
+            </li>
+            
+            <% accounts_active = controller_path == "admin/accounts" %>
+            <li class="admin-nav-item <%= "active" if accounts_active %>">
+              <%= link_to admin_accounts_path, class: "admin-nav-link", data: { tooltip: "账号管理" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    👤
+                  </div>
+                  <div class="admin-nav-label">
+                    账号管理
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Accounts
+                </div>
+              <% end %>
+            </li>
+            
+            <% post_stats_active = controller_path == "admin/post_stats" %>
+            <li class="admin-nav-item <%= "active" if post_stats_active %>">
+              <%= link_to admin_post_stats_path, class: "admin-nav-link", data: { tooltip: "发文数据统计" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📈
+                  </div>
+                  <div class="admin-nav-label">
+                    发文数据统计
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Post Stats
+                </div>
+              <% end %>
+            </li>
+          </ul>
         </div>
-        <ul class="admin-nav">
-          <% browsers_active = controller_path == "admin/browsers" %>
-          <li class="admin-nav-item <%= "active" if browsers_active %>">
-            <%= link_to admin_browsers_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  🌐
-                </div>
-                <div class="admin-nav-label">
-                  浏览器池
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Browsers
-              </div>
-            <% end %>
-          </li>
-          
-          <% accounts_active = controller_path == "admin/accounts" %>
-          <li class="admin-nav-item <%= "active" if accounts_active %>">
-            <%= link_to admin_accounts_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  👤
-                </div>
-                <div class="admin-nav-label">
-                  账号管理
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Accounts
-              </div>
-            <% end %>
-          </li>
-          
-          <% post_stats_active = controller_path == "admin/post_stats" %>
-          <li class="admin-nav-item <%= "active" if post_stats_active %>">
-            <%= link_to admin_post_stats_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  📈
-                </div>
-                <div class="admin-nav-label">
-                  发文数据统计
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Post Stats
-              </div>
-            <% end %>
-          </li>
-        </ul>
 
-        <div class="admin-sidebar-section-title">
-          任务管理
+        <div class="admin-sidebar-section" data-section-name="tasks" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>任务管理</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% tasks_active = controller_path == "admin/move_tasks" %>
+            <li class="admin-nav-item <%= "active" if tasks_active %>">
+              <%= link_to admin_move_tasks_path, class: "admin-nav-link", data: { tooltip: "搬运资源队列" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🎬
+                  </div>
+                  <div class="admin-nav-label">
+                    搬运资源队列
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Move Tasks
+                </div>
+              <% end %>
+            </li>
+
+            <% jianying_active = controller_path == "admin/jianying_tasks" %>
+            <li class="admin-nav-item <%= "active" if jianying_active %>">
+              <%= link_to admin_jianying_tasks_path, class: "admin-nav-link", data: { tooltip: "剪映资源队列" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    ✂️
+                  </div>
+                  <div class="admin-nav-label">
+                    剪映资源队列
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Jianying Tasks
+                </div>
+              <% end %>
+            </li>
+            
+            <% operation_active = controller_path == "admin/operation_tasks" %>
+            <li class="admin-nav-item <%= "active" if operation_active %>">
+              <%= link_to admin_operation_tasks_path, class: "admin-nav-link", data: { tooltip: "运营资源队列" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📦
+                  </div>
+                  <div class="admin-nav-label">
+                    运营资源队列
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Operation Tasks
+                </div>
+              <% end %>
+            </li>
+            
+            <% grok_active = controller_path == "admin/grok_tasks" %>
+            <li class="admin-nav-item <%= "active" if grok_active %>">
+              <%= link_to admin_grok_tasks_path, class: "admin-nav-link", data: { tooltip: "Grok 资源队列" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🤖
+                  </div>
+                  <div class="admin-nav-label">
+                    Grok 资源队列
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Grok Tasks
+                </div>
+              <% end %>
+            </li>
+            
+            <% logs_active = controller_path == "admin/task_logs" %>
+            <li class="admin-nav-item <%= "active" if logs_active %>">
+              <%= link_to admin_task_logs_path, class: "admin-nav-link", data: { tooltip: "任务日志" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📜
+                  </div>
+                  <div class="admin-nav-label">
+                    任务日志
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Logs
+                </div>
+              <% end %>
+            </li>
+          </ul>
         </div>
-        <ul class="admin-nav">
-          <% tasks_active = controller_path == "admin/move_tasks" %>
-          <li class="admin-nav-item <%= "active" if tasks_active %>">
-            <%= link_to admin_move_tasks_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  🎬
-                </div>
-                <div class="admin-nav-label">
-                  搬运资源队列
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Move Tasks
-              </div>
-            <% end %>
-          </li>
 
-          <% jianying_active = controller_path == "admin/jianying_tasks" %>
-          <li class="admin-nav-item <%= "active" if jianying_active %>">
-            <%= link_to admin_jianying_tasks_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  ✂️
+        <div class="admin-sidebar-section" data-section-name="kols" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>KOL管理</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% kols_active = controller_path == "admin/kols" %>
+            <li class="admin-nav-item <%= "active" if kols_active %>">
+              <%= link_to admin_kols_path, class: "admin-nav-link", data: { tooltip: "KOL列表" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    👥
+                  </div>
+                  <div class="admin-nav-label">
+                    KOL列表
+                  </div>
                 </div>
-                <div class="admin-nav-label">
-                  剪映资源队列
+                <div class="admin-nav-meta">
+                  KOL
                 </div>
-              </div>
-              <div class="admin-nav-meta">
-                Jianying Tasks
-              </div>
-            <% end %>
-          </li>
-          
-          <% operation_active = controller_path == "admin/operation_tasks" %>
-          <li class="admin-nav-item <%= "active" if operation_active %>">
-            <%= link_to admin_operation_tasks_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  📦
+              <% end %>
+            </li>
+            
+            <% conversations_active = controller_path == "admin/conversations" %>
+            <li class="admin-nav-item <%= "active" if conversations_active %>">
+              <%= link_to admin_conversations_path, class: "admin-nav-link", data: { tooltip: "会话中心" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    💬
+                  </div>
+                  <div class="admin-nav-label">
+                    会话中心
+                  </div>
                 </div>
-                <div class="admin-nav-label">
-                  运营资源队列
+                <div class="admin-nav-meta">
+                  Conversations
                 </div>
-              </div>
-              <div class="admin-nav-meta">
-                Operation Tasks
-              </div>
-            <% end %>
-          </li>
-          
-          <% grok_active = controller_path == "admin/grok_tasks" %>
-          <li class="admin-nav-item <%= "active" if grok_active %>">
-            <%= link_to admin_grok_tasks_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  🤖
+              <% end %>
+            </li>
+            
+            <% templates_active = controller_path == "admin/message_templates" %>
+            <li class="admin-nav-item <%= "active" if templates_active %>">
+              <%= link_to admin_message_templates_path, class: "admin-nav-link", data: { tooltip: "消息模板" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📝
+                  </div>
+                  <div class="admin-nav-label">
+                    消息模板
+                  </div>
                 </div>
-                <div class="admin-nav-label">
-                  Grok 资源队列
+                <div class="admin-nav-meta">
+                  Templates
                 </div>
-              </div>
-              <div class="admin-nav-meta">
-                Grok Tasks
-              </div>
-            <% end %>
-          </li>
-          
-          <% logs_active = controller_path == "admin/task_logs" %>
-          <li class="admin-nav-item <%= "active" if logs_active %>">
-            <%= link_to admin_task_logs_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  📜
-                </div>
-                <div class="admin-nav-label">
-                  任务日志
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Logs
-              </div>
-            <% end %>
-          </li>
-        </ul>
-
-        <div class="admin-sidebar-section-title">
-          KOL管理
+              <% end %>
+            </li>
+          </ul>
         </div>
-        <ul class="admin-nav">
-          <% kols_active = controller_path == "admin/kols" %>
-          <li class="admin-nav-item <%= "active" if kols_active %>">
-            <%= link_to admin_kols_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  👥
-                </div>
-                <div class="admin-nav-label">
-                  KOL列表
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                KOL
-              </div>
-            <% end %>
-          </li>
-          
-          <% conversations_active = controller_path == "admin/conversations" %>
-          <li class="admin-nav-item <%= "active" if conversations_active %>">
-            <%= link_to admin_conversations_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  💬
-                </div>
-                <div class="admin-nav-label">
-                  会话中心
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Conversations
-              </div>
-            <% end %>
-          </li>
-          
-          <% templates_active = controller_path == "admin/message_templates" %>
-          <li class="admin-nav-item <%= "active" if templates_active %>">
-            <%= link_to admin_message_templates_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  📝
-                </div>
-                <div class="admin-nav-label">
-                  消息模板
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Templates
-              </div>
-            <% end %>
-          </li>
-        </ul>
 
-        <div class="admin-sidebar-section-title">
-          基础配置
+        <div class="admin-sidebar-section" data-section-name="config" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>基础配置</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% themes_active = controller_path == "admin/themes" %>
+            <li class="admin-nav-item <%= "active" if themes_active %>">
+              <%= link_to admin_themes_path, class: "admin-nav-link", data: { tooltip: "主题管理" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🏷️
+                  </div>
+                  <div class="admin-nav-label">
+                    主题管理
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Themes
+                </div>
+              <% end %>
+            </li>
+
+            <% grok_image_active = controller_path == "admin/grok_image_resources" %>
+            <li class="admin-nav-item <%= "active" if grok_image_active %>">
+              <%= link_to admin_grok_image_resources_path, class: "admin-nav-link", data: { tooltip: "Grok 图片储备" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🖼️
+                  </div>
+                  <div class="admin-nav-label">
+                    Grok 图片储备
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Grok Images
+                </div>
+              <% end %>
+            </li>
+          </ul>
         </div>
-        <ul class="admin-nav">
-          <% themes_active = controller_path == "admin/themes" %>
-          <li class="admin-nav-item <%= "active" if themes_active %>">
-            <%= link_to admin_themes_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  🏷️
-                </div>
-                <div class="admin-nav-label">
-                  主题管理
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Themes
-              </div>
-            <% end %>
-          </li>
-
-          <% grok_image_active = controller_path == "admin/grok_image_resources" %>
-          <li class="admin-nav-item <%= "active" if grok_image_active %>">
-            <%= link_to admin_grok_image_resources_path, class: "admin-nav-link" do %>
-              <div class="admin-nav-link-main">
-                <div class="admin-nav-icon">
-                  🖼️
-                </div>
-                <div class="admin-nav-label">
-                  Grok 图片储备
-                </div>
-              </div>
-              <div class="admin-nav-meta">
-                Grok Images
-              </div>
-            <% end %>
-          </li>
-        </ul>
 
         <div class="admin-sidebar-footer">
-          <div>
-            已登录管理员:
+          <div class="admin-sidebar-footer-label">
+            已登录管理员
           </div>
-          <div>
+          <div class="admin-sidebar-footer-email">
             <%= current_admin&.email %>
           </div>
         </div>
