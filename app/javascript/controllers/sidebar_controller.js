@@ -63,7 +63,7 @@ export default class extends Controller {
   }
 
   restoreSections() {
-    let collapsed = []
+    let collapsed = null
     try {
       const raw = localStorage.getItem("sidebar.collapsedSections")
       if (raw) collapsed = JSON.parse(raw) || []
@@ -71,7 +71,9 @@ export default class extends Controller {
 
     this.sectionTargets.forEach((section) => {
       const name = section.dataset.sectionName
-      section.classList.toggle("collapsed", collapsed.includes(name))
+      // 无记录时默认折叠所有分组；有记录则按用户上次状态恢复
+      const isCollapsed = collapsed === null ? true : collapsed.includes(name)
+      section.classList.toggle("collapsed", isCollapsed)
     })
   }
 

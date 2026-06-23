@@ -230,10 +230,30 @@ body.admin {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.28), rgba(37, 99, 235, 0.08));
   color: #f9fafb;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.6);
+  position: relative;
+}
+
+/* 当前打开的菜单项：左侧高亮指示条 */
+.admin-nav-item.active .admin-nav-link::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, #60a5fa, #2563eb);
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
 }
 
 .admin-nav-item.active .admin-nav-icon {
   background: radial-gradient(circle at 30% 0, rgba(248, 250, 252, 0.45), rgba(30, 64, 175, 0.96));
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.55);
+}
+
+.admin-nav-item.active .admin-nav-label {
+  color: #f9fafb;
+  font-weight: 600;
 }
 
 .admin-nav-item.active .admin-nav-meta {
@@ -339,6 +359,16 @@ body.admin {
 
 .admin-layout.sidebar-collapsed .admin-nav-link:hover::after {
   opacity: 1;
+}
+
+/* 收窄态下隐藏左侧指示条，改用整体高亮区分 active */
+.admin-layout.sidebar-collapsed .admin-nav-item.active .admin-nav-link::before {
+  display: none;
+}
+
+.admin-layout.sidebar-collapsed .admin-nav-item.active .admin-nav-link {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.45), rgba(37, 99, 235, 0.15));
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.5) inset;
 }
 
 .admin-main {
