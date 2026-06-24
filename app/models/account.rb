@@ -63,7 +63,6 @@ class Account < ApplicationRecord
 		"未登录": 1,
 		"封禁/停用": 2,
 		"浏览养护": 3,
-		"Grok": 4
 	}
 
 	# 工作模式枚举（预留扩展）
@@ -74,7 +73,8 @@ class Account < ApplicationRecord
 		"视频搬运": 0,
 		"coze": 1,
 		"capcut": 2,
-		"人工运营": 3
+		"人工运营": 3,
+		"Grok": 4
 	}
 
 	# 运营人员枚举
