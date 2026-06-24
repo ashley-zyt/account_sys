@@ -104,7 +104,12 @@ class TaskLog < ApplicationRecord
 
 	# 账号所属平台：优先读取快照字段，回退到关联任务再到 accounts 表
 	ransacker :account_platform, formatter: proc { |v| Account.platforms[v] } do
-		Arel.sql("COALESCE((SELECT a.platform FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1), (SELECT a.platform FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1))")
+		Arel.sql("COALESCE((SELECT a.platform FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1), (SELECT a.platform FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM grok_tasks g JOIN accounts a ON a.id = g.account_id WHERE g.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1))")
+	end
+
+	# 工作模式筛选：优先读取快照字段，回退到关联任务再到 accounts 表
+	ransacker :account_work_type, formatter: proc { |v| Account.work_types[v] } do
+		Arel.sql("COALESCE((SELECT a.work_type FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1), (SELECT a.work_type FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM grok_tasks g JOIN accounts a ON a.id = g.account_id WHERE g.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1))")
 	end
 
 	def self.ransackable_associations(auth_object = nil)
@@ -126,6 +131,7 @@ class TaskLog < ApplicationRecord
 			updated_at
 			task_type
 			account_platform
+			account_work_type
 		]
 	end
 end

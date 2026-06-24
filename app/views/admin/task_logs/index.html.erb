@@ -37,6 +37,10 @@
         <%= f.select :task_type_eq, [["搬运任务", "move_task"], ["剪映任务", "jianying_task"], ["运营任务", "operation_task"], ["Grok任务", "grok_task"]], { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">工作模式</label>
+        <%= f.select :account_work_type_eq, @work_types.map { |k| [k.titleize, k] }, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">账号平台</label>
         <%= f.select :account_platform_eq, Account.platforms.keys.map { |k| [k.titleize, k] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
