@@ -2,21 +2,25 @@
 #
 # Table name: task_logs
 #
-#  id                              :bigint           not null, primary key
-#  error_msg(执行错误信息)         :text(65535)
-#  request_data(请求参数/发送内容) :text(65535)
-#  response_data(接口返回数据)     :text(65535)
-#  run_at(执行时间)                :datetime
-#  status(执行结果 success/failed) :integer          default("success")
-#  task_uuid(关联的任务UUID)       :string(255)
-#  created_at                      :datetime         not null
-#  updated_at                      :datetime         not null
+#  id                                                   :bigint           not null, primary key
+#  error_msg(执行错误信息)                              :text(65535)
+#  request_data(请求参数/发送内容)                      :text(65535)
+#  response_data(接口返回数据)                          :text(65535)
+#  run_at(执行时间)                                     :datetime
+#  status(执行结果 success/failed)                      :integer          default("success")
+#  task_uuid(关联的任务UUID)                            :string(255)
+#  created_at                                           :datetime         not null
+#  updated_at                                           :datetime         not null
+#  account_id(执行账号ID快照（任务释放后仍保留关联）)   :bigint
+#  browser_id(执行浏览器ID快照（任务释放后仍保留关联）) :string(255)
 #
 # Indexes
 #
-#  index_task_logs_on_run_at     (run_at)
-#  index_task_logs_on_status     (status)
-#  index_task_logs_on_task_uuid  (task_uuid)
+#  index_task_logs_on_account_id  (account_id)
+#  index_task_logs_on_browser_id  (browser_id)
+#  index_task_logs_on_run_at      (run_at)
+#  index_task_logs_on_status      (status)
+#  index_task_logs_on_task_uuid   (task_uuid)
 #
 class TaskLog < ApplicationRecord
 	belongs_to :move_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
