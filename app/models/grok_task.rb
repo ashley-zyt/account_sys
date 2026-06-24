@@ -34,6 +34,9 @@ class GrokTask < ApplicationRecord
   belongs_to :account, optional: true
   belongs_to :browser, optional: true
 
+  # 通过 task_uuid 反查执行日志（与 move_task 一致）
+  has_many :task_logs, foreign_key: :task_uuid, primary_key: :task_uuid, dependent: :nullify
+
   enum status: {
     pending: 0,
     waiting_publish: 1,

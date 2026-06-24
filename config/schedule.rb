@@ -9,6 +9,14 @@ every :day, at: '11:50' do
   runner 'TaskScheduler.assign_operation_resources'
 end
 
+every :day, at: '11:51' do
+  runner 'TaskScheduler.assign_grok_resources'
+end
+
 every :day, at: '16:50' do
   runner 'TaskScheduler.assign_operation_resources'
+end
+
+every :day, at: '16:51' do
+  runner 'TaskScheduler.assign_grok_resources'
 end

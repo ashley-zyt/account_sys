@@ -60,7 +60,11 @@ class Admin::PostStatsController < Admin::BaseController
           stat.comments_count || 0,
           stat.views_count || 0,
           stat.data_updated_at&.strftime('%Y-%m-%d %H:%M') || '-',
-          stat.account&.work_type == "人工运营" ? (stat.account&.operator || "-") : "视频搬运"
+          case stat.account&.work_type
+          when "人工运营" then stat.account&.operator || "-"
+          when "Grok" then "Grok"
+          else "视频搬运"
+          end
         ]
       end
     end

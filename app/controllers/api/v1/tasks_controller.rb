@@ -66,8 +66,8 @@ module Api
 				return render json: {type: 'error', message: "task_id不能为空" } if task_id.blank?
 				return render json: {type: 'error', message: "status不能为空" } if status.blank?
 
-				unless %w[move operation jianying].include?(task_type)
-					return render json: {type: 'error', message: "task_type必须为 move、operation 或 jianying" }
+				unless %w[move operation jianying grok].include?(task_type)
+					return render json: {type: 'error', message: "task_type必须为 move、operation、jianying 或 grok" }
 				end
 
 				task = find_task_by_type_and_id(task_type, task_id)
@@ -98,6 +98,8 @@ module Api
 					OperationTask.find_by(id: task_id)
 				when 'jianying'
 					JianyingTask.find_by(id: task_id)
+				when 'grok'
+					GrokTask.find_by(id: task_id)
 				else
 					nil
 				end
@@ -111,7 +113,7 @@ module Api
 						error_msg: nil
 					)
 				else
-					if task.is_a?(OperationTask)
+					if task.is_a?(OperationTask) || task.is_a?(GrokTask)
 						task.update!(
 							status: :pending,
 							account_id: nil,

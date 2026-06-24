@@ -21,6 +21,7 @@
 class TaskLog < ApplicationRecord
 	belongs_to :move_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
 	belongs_to :jianying_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
+	belongs_to :grok_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
 	belongs_to :operation_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
 
 	# 任务释放后仍然能定位到执行账号/浏览器
@@ -29,7 +30,7 @@ class TaskLog < ApplicationRecord
 
 	# 获取当前关联的具体任务对象
 	def task
-		move_task || jianying_task || operation_task
+		move_task || jianying_task || grok_task || operation_task
 	end
 
 	# 获取任务类型
@@ -38,6 +39,8 @@ class TaskLog < ApplicationRecord
 			"搬运任务"
 		elsif jianying_task.present?
 			"剪映任务"
+		elsif grok_task.present?
+			"Grok任务"
 		elsif operation_task.present?
 			"运营任务"
 		else
@@ -92,7 +95,7 @@ class TaskLog < ApplicationRecord
 	end
 
 	ransacker :task_type do
-		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM move_tasks WHERE move_tasks.task_uuid = task_logs.task_uuid) THEN 'move_task' WHEN EXISTS (SELECT 1 FROM jianying_tasks WHERE jianying_tasks.task_uuid = task_logs.task_uuid) THEN 'jianying_task' WHEN EXISTS (SELECT 1 FROM operation_tasks WHERE operation_tasks.task_uuid = task_logs.task_uuid) THEN 'operation_task' ELSE 'unknown' END")
+		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM move_tasks WHERE move_tasks.task_uuid = task_logs.task_uuid) THEN 'move_task' WHEN EXISTS (SELECT 1 FROM jianying_tasks WHERE jianying_tasks.task_uuid = task_logs.task_uuid) THEN 'jianying_task' WHEN EXISTS (SELECT 1 FROM grok_tasks WHERE grok_tasks.task_uuid = task_logs.task_uuid) THEN 'grok_task' WHEN EXISTS (SELECT 1 FROM operation_tasks WHERE operation_tasks.task_uuid = task_logs.task_uuid) THEN 'operation_task' ELSE 'unknown' END")
 	end
 
 	# 账号所属平台：优先读取快照字段，回退到关联任务再到 accounts 表
@@ -101,7 +104,7 @@ class TaskLog < ApplicationRecord
 	end
 
 	def self.ransackable_associations(auth_object = nil)
-		%w[move_task jianying_task operation_task log_account log_browser]
+		%w[move_task jianying_task grok_task operation_task log_account log_browser]
 	end
 
 	def self.ransackable_attributes(auth_object = nil)

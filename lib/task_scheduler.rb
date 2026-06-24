@@ -9,37 +9,70 @@ class TaskScheduler
 		end
 	end
 
-	def self.assign_operation_resources
-		today = Date.today
-		today_start = today.beginning_of_day
-		today_end = today.end_of_day
+		def self.assign_operation_resources
+			today = Date.today
+			today_start = today.beginning_of_day
+			today_end = today.end_of_day
 
-		Account.active.where(work_type: "人工运营").each do |account|
-			has_posted_today = OperationTask.exists?(
-				account_id: account.id,
-				status: :success,
-				actual_publish_time: today_start..today_end
-			)
+			Account.active.where(work_type: "人工运营").each do |account|
+				has_posted_today = OperationTask.exists?(
+					account_id: account.id,
+					status: :success,
+					actual_publish_time: today_start..today_end
+				)
 
-			next if has_posted_today
+				next if has_posted_today
 
-			pending_task = OperationTask.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
+				pending_task = OperationTask.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
 
-			if pending_task
-				ActiveRecord::Base.transaction do
-					pending_task.update!(
-						account_id: account.id,
-						browser_id: account.browser_id,
-						status: :waiting_publish
-					)
+				if pending_task
+					ActiveRecord::Base.transaction do
+						pending_task.update!(
+							account_id: account.id,
+							browser_id: account.browser_id,
+							status: :waiting_publish
+						)
+					end
+					Rails.logger.info "人工运营账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配运营资源成功"
+				else
+					Rails.logger.warn "人工运营账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用运营资源"
 				end
-				Rails.logger.info "人工运营账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配运营资源成功"
-			else
-				Rails.logger.warn "人工运营账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用运营资源"
 			end
+			TaskScheduler.find_locked_browsers_in_pending_tasks
 		end
-		TaskScheduler.find_locked_browsers_in_pending_tasks
-	end
+
+		# 为 Grok 模式账号分配待发布资源（与运营任务分配逻辑保持一致）
+		def self.assign_grok_resources
+			today = Date.today
+			today_start = today.beginning_of_day
+			today_end = today.end_of_day
+
+			Account.active.where(work_type: "Grok").each do |account|
+				has_posted_today = GrokTask.exists?(
+					account_id: account.id,
+					status: :success,
+					actual_publish_time: today_start..today_end
+				)
+
+				next if has_posted_today
+
+				pending_task = GrokTask.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
+
+				if pending_task
+					ActiveRecord::Base.transaction do
+						pending_task.update!(
+							account_id: account.id,
+							browser_id: account.browser_id,
+							status: :waiting_publish
+						)
+					end
+					Rails.logger.info "Grok账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配 Grok 资源成功"
+				else
+					Rails.logger.warn "Grok账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用 Grok 资源"
+				end
+			end
+			TaskScheduler.find_locked_browsers_in_pending_tasks
+		end
 
 	# 找出待执行任务中与锁定接口重合的指纹浏览器名称
 	def self.find_locked_browsers_in_pending_tasks
@@ -52,6 +85,9 @@ class TaskScheduler
 
 		# 从运营任务中获取
 		pending_browser_ids += OperationTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
+
+		# 从 Grok 任务中获取
+		pending_browser_ids += GrokTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 获取浏览器名称
 		pending_browser_names = Browser.where(id: pending_browser_ids.uniq).pluck(:profile_name).uniq

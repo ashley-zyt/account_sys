@@ -10,6 +10,7 @@ module Api
       # 查询参数:
       #   theme - 按主题筛选（可选）
       #   platform - 按平台筛选（可选）
+      #   work_type - 按工作模式筛选（可选）
       def index
         accounts = Account.active
 
@@ -21,6 +22,11 @@ module Api
         # 按平台筛选
         if params[:platform].present?
           accounts = accounts.where(platform: params[:platform])
+        end
+
+        # 按工作模式筛选
+        if params[:work_type].present?
+          accounts = accounts.where(work_type: params[:work_type])
         end
 
         # 按最后使用时间排序（最久未使用的优先）

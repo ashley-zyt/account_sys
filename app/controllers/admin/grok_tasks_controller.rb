@@ -8,7 +8,7 @@ class Admin::GrokTasksController < Admin::BaseController
     @grok_task = GrokTask.new
     @themes = Theme.pluck(:name)
     @images = GrokImageResource.all
-    @accounts = Account.where(status: '正常')
+    @accounts = Account.where(status: '正常', work_type: 'Grok')
     @platforms = GrokTask.platforms
   end
 
@@ -20,7 +20,7 @@ class Admin::GrokTasksController < Admin::BaseController
     else
       @themes = Theme.pluck(:name)
       @images = GrokImageResource.all
-      @accounts = Account.where(status: '正常')
+      @accounts = Account.where(status: '正常', work_type: 'Grok')
       @platforms = GrokTask.platforms
       render :new
     end
@@ -30,7 +30,7 @@ class Admin::GrokTasksController < Admin::BaseController
     @grok_task = GrokTask.find(params[:id])
     @themes = Theme.pluck(:name)
     @images = GrokImageResource.all
-    @accounts = Account.where(status: '正常')
+    @accounts = Account.where(status: '正常', work_type: 'Grok')
     @platforms = GrokTask.platforms
   end
 
@@ -42,7 +42,7 @@ class Admin::GrokTasksController < Admin::BaseController
     else
       @themes = Theme.pluck(:name)
       @images = GrokImageResource.all
-      @accounts = Account.where(status: '正常')
+      @accounts = Account.where(status: '正常', work_type: 'Grok')
       @platforms = GrokTask.platforms
       render :edit
     end
