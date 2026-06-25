@@ -89,7 +89,13 @@
                 <% end %>
               </td>
               <td>
-                <%= task.title.presence || '-' %>
+                <% if task.title.present? %>
+                  <span title="<%= task.title %>" style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">
+                    <%= task.title.length > 40 ? task.title.truncate(40) : task.title %>
+                  </span>
+                <% else %>
+                  -
+                <% end %>
               </td>
               <td>
                 <span class="admin-label-muted">
