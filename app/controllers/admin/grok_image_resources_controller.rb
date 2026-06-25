@@ -144,12 +144,13 @@ XML
 
     if oss_keys.present?
       theme = grok_image_resource_params[:theme]
+      image_name = grok_image_resource_params[:image_name]
       success_count = 0
       first_resource = nil
 
       oss_keys.compact_blank.each do |oss_key|
         image_url = generate_signed_url(oss_key)
-        resource = GrokImageResource.new(theme: theme, image_url: image_url)
+        resource = GrokImageResource.new(theme: theme, image_url: image_url, image_name: image_name)
         if resource.save
           success_count += 1
           first_resource ||= resource
@@ -225,7 +226,7 @@ XML
   end
 
   def grok_image_resource_params
-    params.require(:grok_image_resource).permit(:theme, :image_url)
+    params.require(:grok_image_resource).permit(:theme, :image_url, :image_name)
   end
 
   # 生成 OSS 签名 URL（bucket: grok-images，1年有效期）
