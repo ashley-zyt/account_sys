@@ -26,11 +26,21 @@ class Api::V1::GrokController < ApplicationController
     theme = Theme.find_by(name: grok_image.theme)
     prompts = theme&.prompts_array || []
 
+    remark = grok_image.remark.to_s
+    resolution = if remark.include?('720')
+                  '720'
+                elsif remark.include?('480')
+                  '480'
+                else
+                  '720'
+                end
+
     data = {
       id: grok_image.id,
       image_url: grok_image.image_url,
       prompts: prompts,
       theme: grok_image.theme,
+      resolution: resolution,
     }
 
     render json: {
