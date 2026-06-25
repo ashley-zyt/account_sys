@@ -26,7 +26,7 @@ class Api::V1::GrokController < ApplicationController
     theme = Theme.find_by(name: grok_image.theme)
     prompts = theme&.prompts_array || []
 
-    remark = grok_image.remark.to_s
+    remark = theme&.remark.to_s
     resolution = if remark.include?('720')
                   '720'
                 elsif remark.include?('480')
