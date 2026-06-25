@@ -3,6 +3,7 @@
 # Table name: grok_image_resources
 #
 #  id         :bigint           not null, primary key
+#  image_name :string(255)
 #  image_url  :string(255)
 #  theme      :string(255)
 #  created_at :datetime         not null
