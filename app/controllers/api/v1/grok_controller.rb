@@ -83,9 +83,14 @@ class Api::V1::GrokController < ApplicationController
     platforms = GrokTask.platforms.keys # ["facebook", "twitter", "tiktok", "youtube", "instagram"]
     created_tasks = []
 
+    image_name = grok_image&.image_name
+
     ActiveRecord::Base.transaction do
       platforms.each do |platform|
         title = candidate_titles.sample
+        if title.include?('****') && image_name.present?
+          title = title.gsub('****', image_name)
+        end
         created_tasks << GrokTask.create!(
           theme: theme,
           video_url: video_url,
