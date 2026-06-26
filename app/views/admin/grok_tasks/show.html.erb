@@ -118,7 +118,14 @@
         <%= @grok_task.prompt %>
       </div>
     </div>
-
+    <div style="margin-top: 10px;">
+      <div class="admin-field-label">
+        发布标题
+      </div>
+      <div class="admin-field-value">
+        <%= @grok_task.title %>
+      </div>
+    </div>
     <% if @grok_task.platform == 'youtube' && @grok_task.description.present? %>
     <div style="margin-top: 10px;">
       <div class="admin-field-label">
@@ -130,14 +137,7 @@
     </div>
     <% end %>
 
-    <div style="margin-top: 10px;">
-      <div class="admin-field-label">
-        发布标题
-      </div>
-      <div class="admin-field-value">
-        <%= @grok_task.title %>
-      </div>
-    </div>
+    
 
     <% if @grok_task.platform != 'youtube' && @grok_task.description.present? %>
     <div style="margin-top: 10px;">
