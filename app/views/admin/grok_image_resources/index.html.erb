@@ -118,6 +118,38 @@
 </div>
 
 <style>
+  /* 弹窗定位层 */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-content {
+    background: #1e293b;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+  }
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #334155;
+  }
+  .modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    color: #f1f5f9;
+  }
+  .modal-body {
+    padding: 24px 20px;
+  }
+
   .video-count-badge {
     display: inline-flex;
     align-items: center;
