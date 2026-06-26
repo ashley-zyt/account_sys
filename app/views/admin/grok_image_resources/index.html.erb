@@ -260,6 +260,44 @@
     font-size: 13px;
     margin-right: 4px;
   }
+
+  /* 视频网格布局 */
+  .vl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+
+  /* 复制按钮 */
+  .vl-copy-btn {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #93c5fd;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .vl-copy-btn:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.6);
+    color: #bfdbfe;
+  }
+  .vl-copy-btn.copied {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.35);
+    color: #86efac;
+  }
+
+  /* 底部操作区 */
+  .vl-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+    gap: 8px;
+  }
 </style>
 
 <script>
@@ -300,12 +338,13 @@ document.addEventListener('click', function(e) {
   try { videos = JSON.parse(raw) || []; } catch (err) { videos = []; }
 
   var theme = badge.getAttribute('data-theme') || '';
-  titleEl.textContent = '视频生成结果' + (theme ? ' - ' + theme : '');
+  var count = videos.length;
+  titleEl.textContent = '视频生成结果' + (theme ? ' - ' + theme : '') + ' (' + count + '个视频)';
 
   if (!videos || videos.length === 0) {
     body.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 24px;">暂无视频</div>';
   } else {
-    body.innerHTML = videos.map(function(v, i) {
+    body.innerHTML = '<div class="vl-grid">' + videos.map(function(v, i) {
       var tagsHtml = '';
       if (v.platforms && v.platforms.length > 0) {
         tagsHtml = '<div class="vl-platforms">' +
@@ -327,10 +366,11 @@ document.addEventListener('click', function(e) {
             tagsHtml +
             '<div class="vl-footer">' +
               '<a href="' + v.url + '" target="_blank">在新窗口打开 ↗</a>' +
+              '<button class="vl-copy-btn" data-url="' + v.url + '">复制链接</button>' +
             '</div>' +
           '</div>' +
         '</div>';
-    }).join('');
+    }).join('') + '</div>';
   }
   modal.style.display = 'flex';
 });
@@ -359,5 +399,32 @@ document.addEventListener('keydown', function(e) {
       modal.querySelectorAll('video').forEach(function(el) { el.pause(); });
     }
   }
+});
+
+// 复制视频链接
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.vl-copy-btn');
+  if (!btn) return;
+
+  var url = btn.getAttribute('data-url') || '';
+  var textArea = document.createElement('textarea');
+  textArea.value = url;
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.select();
+  try {
+    document.execCommand('copy');
+    btn.textContent = '已复制';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      btn.textContent = '复制链接';
+      btn.classList.remove('copied');
+    }, 2000);
+  } catch (err) {
+    btn.textContent = '复制失败';
+    setTimeout(function() { btn.textContent = '复制链接'; }, 2000);
+  }
+  document.body.removeChild(textArea);
 });
 </script>
