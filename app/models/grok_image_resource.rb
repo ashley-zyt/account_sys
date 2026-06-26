@@ -30,9 +30,22 @@ class GrokImageResource < ApplicationRecord
     distinct_video_urls.size
   end
 
-  # 去重后的 video_url 列表（关联任务已过滤 video_url 为空的情况）
+  # 去重后的 video_url 列表
   def distinct_video_urls
     @distinct_video_urls ||= video_tasks.map(&:video_url).compact_blank.uniq
+  end
+
+  # 用于前端弹窗展示的视频任务列表（按 video_url 去重，每项包含 url 和关联的平台 + 状态）
+  def video_task_list
+    @video_task_list ||= begin
+      grouped = video_tasks.group_by(&:video_url).compact_blank
+      grouped.map do |url, tasks|
+        {
+          url: url,
+          platforms: tasks.map { |t| { name: t.platform, status: t.status, task_id: t.id } }
+        }
+      end
+    end
   end
 
   def self.ransackable_attributes(auth_object = nil)

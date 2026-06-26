@@ -65,7 +65,7 @@
               <td>
                 <% count = resource.video_count %>
                 <% if count > 0 %>
-                  <% videos_data = resource.distinct_video_urls.map { |url| { url: url } }.to_json %>
+                  <% videos_data = resource.video_task_list.to_json %>
                   <a href="javascript:void(0)"
                      class="video-count-badge"
                      data-videos="<%= videos_data.gsub('"', '&quot;') %>"
@@ -105,12 +105,12 @@
 
 <!-- 视频生成结果弹窗 -->
 <div id="video_list_modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content" style="max-width: 680px; width: 92%;">
+  <div class="modal-content" style="max-width: 800px; width: 94%;">
     <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
       <h3 id="video_list_title">视频生成结果</h3>
       <button type="button" id="video_list_close" style="background: transparent; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; line-height: 1;">×</button>
     </div>
-    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+    <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
       <div id="video_list_body"></div>
     </div>
   </div>
@@ -138,40 +138,119 @@
     color: #bbf7d0;
   }
 
-  .video-result-item {
+  /* 视频预览项 */
+  .vl-item {
     border: 1px solid #334155;
     border-radius: 8px;
     overflow: hidden;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     background: rgba(30, 41, 59, 0.5);
   }
-  .video-result-item video {
+  .vl-item:last-child { margin-bottom: 0; }
+
+  .vl-item video {
     width: 100%;
     display: block;
-    max-height: 360px;
+    max-height: 380px;
     background: #000;
   }
-  .video-result-item .video-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    font-size: 12px;
-    color: #94a3b8;
-    gap: 8px;
+
+  .vl-item .vl-info {
+    padding: 10px 14px;
   }
-  .video-result-item .video-meta a {
+
+  /* 平台标签行 */
+  .vl-platforms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .vl-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .vl-tag-platform {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #93c5fd;
+  }
+
+  .vl-tag-status-pending,
+  .vl-tag-status-waiting_publish {
+    background: rgba(100, 116, 139, 0.15);
+    border: 1px solid rgba(100, 116, 139, 0.35);
+    color: #94a3b8;
+  }
+
+  .vl-tag-status-executing {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #93c5fd;
+  }
+
+  .vl-tag-status-success {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: #86efac;
+  }
+
+  .vl-tag-status-failed {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+  }
+
+  .vl-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+  }
+
+  .vl-footer a {
     color: #60a5fa;
     text-decoration: none;
-    word-break: break-all;
+    font-size: 12px;
+  }
+  .vl-footer a:hover { text-decoration: underline; }
+
+  /* 弹窗标题序号 */
+  .vl-index {
+    color: #64748b;
+    font-size: 13px;
+    margin-right: 4px;
   }
 </style>
 
 <script>
-// 用 turbo:load 替代 DOMContentLoaded，避免 Turbo 导航进入时点击无效
+// 平台中文名映射
+var PLATFORM_LABEL = {
+  facebook: 'Facebook',
+  twitter: 'Twitter',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+  instagram: 'Instagram'
+};
+
+// 状态中文名映射
+var STATUS_LABEL = {
+  pending: '待处理',
+  waiting_publish: '待发布',
+  executing: '执行中',
+  success: '已完成',
+  failed: '失败'
+};
+
 function initVideoListModal() {
   var modal = document.getElementById('video_list_modal');
-  if (!modal || modal.dataset.videoListBound === '1') return; // 幂等保护
+  if (!modal || modal.dataset.videoListBound === '1') return;
   modal.dataset.videoListBound = '1';
 
   var body = document.getElementById('video_list_body');
@@ -185,12 +264,29 @@ function initVideoListModal() {
       body.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 24px;">暂无视频</div>';
     } else {
       body.innerHTML = videos.map(function(v, i) {
+        // 平台标签
+        var tagsHtml = '';
+        if (v.platforms && v.platforms.length > 0) {
+          tagsHtml = '<div class="vl-platforms">' +
+            v.platforms.map(function(p) {
+              var pName = PLATFORM_LABEL[p.name] || p.name;
+              var sName = STATUS_LABEL[p.status] || p.status;
+              return '' +
+                '<span class="vl-tag vl-tag-platform">' + pName + '</span>' +
+                '<span class="vl-tag vl-tag-status-' + p.status + '">' + sName + '</span>';
+            }).join('') +
+          '</div>';
+        }
+
         return '' +
-          '<div class="video-result-item">' +
+          '<div class="vl-item">' +
             '<video src="' + v.url + '" controls preload="metadata"></video>' +
-            '<div class="video-meta">' +
-              '<span>视频 ' + (i + 1) + '</span>' +
-              '<a href="' + v.url + '" target="_blank">在新窗口打开 ↗</a>' +
+            '<div class="vl-info">' +
+              '<span class="vl-index">视频 ' + (i + 1) + '</span>' +
+              tagsHtml +
+              '<div class="vl-footer">' +
+                '<a href="' + v.url + '" target="_blank">在新窗口打开 ↗</a>' +
+              '</div>' +
             '</div>' +
           '</div>';
       }).join('');
@@ -200,7 +296,6 @@ function initVideoListModal() {
 
   function closeModal() {
     modal.style.display = 'none';
-    // 暂停所有视频，避免关闭后仍在后台播放
     body.querySelectorAll('video').forEach(function(el) { el.pause(); });
   }
 
@@ -215,7 +310,7 @@ function initVideoListModal() {
 
   closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', function(e) {
-    if (e.target === modal) closeModal(); // 点击遮罩关闭
+    if (e.target === modal) closeModal();
   });
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
