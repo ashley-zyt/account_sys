@@ -4,6 +4,10 @@ class Admin::GrokTasksController < Admin::BaseController
     @grok_tasks = @q.result.order(created_at: :desc).page(params[:page])
   end
 
+  def show
+    @grok_task = GrokTask.find(params[:id])
+  end
+
   def new
     @grok_task = GrokTask.new
     @themes = Theme.pluck(:name)

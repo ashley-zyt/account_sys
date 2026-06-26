@@ -43,7 +43,7 @@ Rails.application.routes.draw do
         get :setup_cors
       end
     end
-    resources :grok_tasks, only: [:index, :new, :create, :edit, :update, :destroy]
+    resources :grok_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]
   end
 
   namespace :api do
