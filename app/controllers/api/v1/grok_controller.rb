@@ -91,15 +91,24 @@ class Api::V1::GrokController < ApplicationController
         if title.include?('****') && image_name.present?
           title = title.gsub('****', image_name)
         end
-        created_tasks << GrokTask.create!(
+
+        task_attrs = {
           theme: theme,
           video_url: video_url,
           prompt: prompt,
           grok_image_id: grok_image_id,
           platform: platform,
-          title: title,
           status: :pending
-        )
+        }
+
+        if platform == 'youtube'
+          task_attrs[:title] = title[0, 100]
+          task_attrs[:description] = title[100..-1]
+        else
+          task_attrs[:title] = title
+        end
+
+        created_tasks << GrokTask.create!(task_attrs)
       end
     end
 
