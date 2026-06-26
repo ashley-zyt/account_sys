@@ -24,7 +24,7 @@ class Api::V1::GrokController < ApplicationController
 
     # 获取对应主题的prompts
     theme = Theme.find_by(name: grok_image.theme)
-    prompts = theme&.prompts_array || []
+    prompts = theme&.prompts_array.sample(5) || []
 
     remark = theme&.remark.to_s
     resolution = if remark.include?('720')
