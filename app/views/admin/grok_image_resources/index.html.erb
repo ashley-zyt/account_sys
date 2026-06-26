@@ -67,7 +67,7 @@
                 <% if count > 0 %>
                   <% videos_data = resource.video_task_list.to_json %>
                   <span class="video-count-badge"
-                        data-videos="<%= videos_data.gsub('"', '&quot;') %>"
+                        data-videos="<%= videos_data %>"
                         data-theme="<%= resource.theme %>"
                         role="button"
                         tabindex="0">
