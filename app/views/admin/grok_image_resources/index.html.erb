@@ -66,13 +66,14 @@
                 <% count = resource.video_count %>
                 <% if count > 0 %>
                   <% videos_data = resource.video_task_list.to_json %>
-                  <a href="javascript:void(0)"
-                     class="video-count-badge"
-                     data-videos="<%= videos_data.gsub('"', '&quot;') %>"
-                     data-theme="<%= resource.theme %>">
+                  <span class="video-count-badge"
+                        data-videos="<%= videos_data.gsub('"', '&quot;') %>"
+                        data-theme="<%= resource.theme %>"
+                        role="button"
+                        tabindex="0">
                     <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
                     已生成 <%= count %>
-                  </a>
+                  </span>
                 <% else %>
                   <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; background: rgba(100, 116, 139, 0.16); border: 1px solid rgba(100, 116, 139, 0.4); border-radius: 999px; color: #94a3b8; font-size: 12px; white-space: nowrap;">
                     <span style="width: 6px; height: 6px; border-radius: 50%; background: #64748b;"></span>
