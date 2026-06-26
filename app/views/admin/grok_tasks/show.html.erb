@@ -119,6 +119,17 @@
       </div>
     </div>
 
+    <% if @grok_task.platform == 'youtube' && @grok_task.description.present? %>
+    <div style="margin-top: 10px;">
+      <div class="admin-field-label">
+        描述
+      </div>
+      <div class="admin-field-value">
+        <%= @grok_task.description %>
+      </div>
+    </div>
+    <% end %>
+
     <div style="margin-top: 10px;">
       <div class="admin-field-label">
         发布标题
@@ -128,7 +139,7 @@
       </div>
     </div>
 
-    <% if @grok_task.description.present? %>
+    <% if @grok_task.platform != 'youtube' && @grok_task.description.present? %>
     <div style="margin-top: 10px;">
       <div class="admin-field-label">
         描述
