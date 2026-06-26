@@ -249,74 +249,83 @@ var STATUS_LABEL = {
   failed: '失败'
 };
 
-function initVideoListModal() {
-  var modal = document.getElementById('video_list_modal');
-  if (!modal || modal.dataset.videoListBound === '1') return;
-  modal.dataset.videoListBound = '1';
+// 使用事件委托，把 click 监听绑在 document 上。
+// 这样不管 Turbo 怎么刷新表格、换页，新渲染的 .video-count-badge 都能被捕获到，
+// 不需要逐个 badge 绑定事件，也不需要幂等保护。
+document.addEventListener('click', function(e) {
+  var badge = e.target.closest('.video-count-badge');
+  if (!badge) return;
 
+  e.preventDefault();
+
+  var modal = document.getElementById('video_list_modal');
   var body = document.getElementById('video_list_body');
   var titleEl = document.getElementById('video_list_title');
-  var closeBtn = document.getElementById('video_list_close');
+  if (!modal || !body || !titleEl) return;
 
-  function openModal(theme, videos) {
-    titleEl.textContent = '视频生成结果' + (theme ? ' - ' + theme : '');
+  var raw = badge.getAttribute('data-videos') || '';
+  var videos = [];
+  try { videos = JSON.parse(raw) || []; } catch (err) { videos = []; }
 
-    if (!videos || videos.length === 0) {
-      body.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 24px;">暂无视频</div>';
-    } else {
-      body.innerHTML = videos.map(function(v, i) {
-        // 平台标签
-        var tagsHtml = '';
-        if (v.platforms && v.platforms.length > 0) {
-          tagsHtml = '<div class="vl-platforms">' +
-            v.platforms.map(function(p) {
-              var pName = PLATFORM_LABEL[p.name] || p.name;
-              var sName = STATUS_LABEL[p.status] || p.status;
-              return '' +
-                '<span class="vl-tag vl-tag-platform">' + pName + '</span>' +
-                '<span class="vl-tag vl-tag-status-' + p.status + '">' + sName + '</span>';
-            }).join('') +
-          '</div>';
-        }
+  var theme = badge.getAttribute('data-theme') || '';
+  titleEl.textContent = '视频生成结果' + (theme ? ' - ' + theme : '');
 
-        return '' +
-          '<div class="vl-item">' +
-            '<video src="' + v.url + '" controls preload="metadata"></video>' +
-            '<div class="vl-info">' +
-              '<span class="vl-index">视频 ' + (i + 1) + '</span>' +
-              tagsHtml +
-              '<div class="vl-footer">' +
-                '<a href="' + v.url + '" target="_blank">在新窗口打开 ↗</a>' +
-              '</div>' +
+  if (!videos || videos.length === 0) {
+    body.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 24px;">暂无视频</div>';
+  } else {
+    body.innerHTML = videos.map(function(v, i) {
+      var tagsHtml = '';
+      if (v.platforms && v.platforms.length > 0) {
+        tagsHtml = '<div class="vl-platforms">' +
+          v.platforms.map(function(p) {
+            var pName = PLATFORM_LABEL[p.name] || p.name;
+            var sName = STATUS_LABEL[p.status] || p.status;
+            return '' +
+              '<span class="vl-tag vl-tag-platform">' + pName + '</span>' +
+              '<span class="vl-tag vl-tag-status-' + p.status + '">' + sName + '</span>';
+          }).join('') +
+        '</div>';
+      }
+
+      return '' +
+        '<div class="vl-item">' +
+          '<video src="' + v.url + '" controls preload="metadata"></video>' +
+          '<div class="vl-info">' +
+            '<span class="vl-index">视频 ' + (i + 1) + '</span>' +
+            tagsHtml +
+            '<div class="vl-footer">' +
+              '<a href="' + v.url + '" target="_blank">在新窗口打开 ↗</a>' +
             '</div>' +
-          '</div>';
-      }).join('');
+          '</div>' +
+        '</div>';
+    }).join('');
+  }
+  modal.style.display = 'flex';
+});
+
+// 关闭弹窗（事件委托，绑在 document 上，不受 Turbo 缓存影响）
+document.addEventListener('click', function(e) {
+  if (e.target.closest('#video_list_close')) {
+    var modal = document.getElementById('video_list_modal');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.querySelectorAll('video').forEach(function(el) { el.pause(); });
     }
-    modal.style.display = 'flex';
   }
-
-  function closeModal() {
-    modal.style.display = 'none';
-    body.querySelectorAll('video').forEach(function(el) { el.pause(); });
+  // 点击遮罩关闭
+  if (e.target.id === 'video_list_modal') {
+    e.target.style.display = 'none';
+    e.target.querySelectorAll('video').forEach(function(el) { el.pause(); });
   }
+});
 
-  document.querySelectorAll('.video-count-badge').forEach(function(badge) {
-    badge.addEventListener('click', function() {
-      var raw = badge.getAttribute('data-videos') || '';
-      var videos = [];
-      try { videos = JSON.parse(raw) || []; } catch (e) { videos = []; }
-      openModal(badge.getAttribute('data-theme'), videos);
-    });
-  });
-
-  closeBtn.addEventListener('click', closeModal);
-  modal.addEventListener('click', function(e) {
-    if (e.target === modal) closeModal();
-  });
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeModal();
-  });
-}
-
-document.addEventListener('turbo:load', initVideoListModal);
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var modal = document.getElementById('video_list_modal');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.querySelectorAll('video').forEach(function(el) { el.pause(); });
+    }
+  }
+});
 </script>
