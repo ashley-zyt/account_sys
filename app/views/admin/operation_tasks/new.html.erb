@@ -337,12 +337,19 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// 用 turbo:load 替代 DOMContentLoaded：
+// Turbo Drive 导航不会触发整页刷新，DOMContentLoaded 只在首次硬刷新时触发一次，
+// 导致从列表页点"新增"跳进来时，下面的监听器不会被绑定，文件选择框点不开、字符计数器也不生效。
+// turbo:load 在每次 Turbo 导航完成（以及首次硬刷新）后都会触发。
+function initOperationTaskUpload() {
+  var form = document.getElementById('upload_form');
+  if (!form || form.dataset.operationUploadBound === '1') return; // 幂等保护，防止重复绑定
+  form.dataset.operationUploadBound = '1';
+
   var fileInput = document.getElementById('video_file');
   var fileInfo = document.getElementById('file_info');
   var fileName = document.getElementById('file_name');
   var clearBtn = document.getElementById('clear_btn');
-  var form = document.getElementById('upload_form');
   var submitBtn = document.getElementById('submit_btn');
   var modal = document.getElementById('upload_modal');
   var statusIcon = document.getElementById('status_icon');
@@ -388,8 +395,6 @@ document.addEventListener('DOMContentLoaded', function() {
   var progressFill = document.getElementById('progress_fill');
   var progressPercent = document.getElementById('progress_percent');
   var uploadInfo = document.getElementById('upload_info');
-
-  if (!form) return; // 如果没有表单元素，直接返回
 
   fileInput.addEventListener('change', function() {
     if (this.files && this.files.length > 0) {
@@ -551,5 +556,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   }
-});
+}
+
+document.addEventListener('turbo:load', initOperationTaskUpload);
 </script>

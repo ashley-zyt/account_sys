@@ -371,12 +371,19 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// 用 turbo:load 替代 DOMContentLoaded：
+// Turbo Drive 导航不会触发整页刷新，DOMContentLoaded 只在首次硬刷新时触发一次，
+// 导致从列表页点"新增"跳进来时，下面的监听器不会被绑定，文件选择框点不开。
+// turbo:load 在每次 Turbo 导航完成（以及首次硬刷新）后都会触发。
+function initGrokImageUpload() {
+  var form = document.getElementById('upload_form');
+  if (!form || form.dataset.grokUploadBound === '1') return; // 幂等保护，防止重复绑定
+  form.dataset.grokUploadBound = '1';
+
   var fileInput = document.getElementById('image_file');
   var fileInfo = document.getElementById('file_info');
   var fileName = document.getElementById('file_name');
   var clearBtn = document.getElementById('clear_btn');
-  var form = document.getElementById('upload_form');
   var submitBtn = document.getElementById('submit_btn');
   var modal = document.getElementById('upload_modal');
   var statusIcon = document.getElementById('status_icon');
@@ -388,8 +395,6 @@ document.addEventListener('DOMContentLoaded', function() {
   var previewContainer = document.getElementById('image_preview_container');
   var previewGrid = document.getElementById('image_preview_grid');
   var uploadLabel = document.getElementById('upload_label');
-
-  if (!form) return;
 
   // 点击上传区域手动触发文件选择（不依赖 label for + display:none 的组合，兼容性更好）
   uploadLabel.addEventListener('click', function() {
@@ -629,5 +634,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   }
-});
+}
+
+document.addEventListener('turbo:load', initGrokImageUpload);
 </script>
