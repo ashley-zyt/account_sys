@@ -7,11 +7,24 @@ require "date"
 
 class CryptoScriptGenerator
   def initialize
+    # 修复：正确设置API Key
     access_key_id = ENV['DEEPSEEK_API_KEY']
+    
+    if access_key_id.nil? || access_key_id.empty?
+      puts "⚠️  DEEPSEEK_API_KEY environment variable not set!"
+      puts "Please set it with: export DEEPSEEK_API_KEY='your-key-here'"
+      puts "Or hardcode it below (not recommended for production)"
+      exit 1
+    end
+    
+    # 两种初始化方式，任选一种
     @client = OpenAI::Client.new(
       access_token: access_key_id,
       uri_base: "https://api.deepseek.com/v1"
     )
+    
+    # 或者使用这种更简单的初始化
+    # @client = OpenAI::Client.new(access_key_id)
   end
 
   def generate_today_script(manual_news = nil)
@@ -29,6 +42,10 @@ class CryptoScriptGenerator
     display_and_save(script, news)
     
     script
+  rescue => e
+    puts "❌ Error: #{e.message}"
+    puts e.backtrace.first(5)
+    nil
   end
 
   private
@@ -48,9 +65,12 @@ class CryptoScriptGenerator
         response = Net::HTTP.get(uri)
         feed = RSS::Parser.parse(response, false)
         
-        feed.items.first(3).each do |item|
+        feed.items.first(5).each do |item|
           all_news << "• #{item.title}"
-          all_news << "  #{item.description&.gsub(/<[^>]*>/, '')&.strip}" if item.description
+          if item.description
+            desc = item.description.gsub(/<[^>]*>/, '').strip
+            all_news << "  #{desc}" if desc.length > 0
+          end
         end
       rescue => e
         puts "⚠️  Failed to fetch #{url}: #{e.message}"
@@ -77,7 +97,10 @@ class CryptoScriptGenerator
       - Suitable for a 60-second video
       
       Script format: Just plain text, no markdown or bullet points.
+      Only output the script itself, nothing else.
     PROMPT
+
+    puts "🔄 Calling DeepSeek API..."
 
     response = @client.chat(
       parameters: {
@@ -91,7 +114,18 @@ class CryptoScriptGenerator
       }
     )
 
-    response.dig("choices", 0, "message", "content").strip
+    script = response.dig("choices", 0, "message", "content").strip
+    
+    if script.nil? || script.empty?
+      puts "⚠️  Empty response from API"
+      return "Script generation failed. Please try again."
+    end
+    
+    script
+  rescue => e
+    puts "❌ API Error: #{e.message}"
+    puts "Response: #{response.inspect}" if defined?(response)
+    "Error generating script: #{e.message}"
   end
 
   def display_and_save(script, news)
@@ -99,7 +133,7 @@ class CryptoScriptGenerator
     puts "📊 DAILY CRYPTO SCRIPT"
     puts "📅 #{Date.current.strftime('%B %d, %Y')}"
     puts "=" * 70
-    puts "\n📰 Source News:\n#{news[0..300]}...\n"
+    puts "\n📰 Source News Preview:\n#{news[0..200]}...\n" if news.length > 200
     puts "\n🎙️  SCRIPT:\n#{script}"
     puts "\n📊 Stats: #{script.split.length} words | #{script.length} characters"
     puts "=" * 70
@@ -118,6 +152,7 @@ class CryptoScriptGenerator
       Global crypto market cap reaches $2.8 trillion
       Major banks explore blockchain for cross-border payments
       Solana leads altcoin rally with 15% weekly gain
+      Crypto regulations evolve in major economies
     FALLBACK
   end
 end
