@@ -1,28 +1,32 @@
-# crypto_daily_script_optimized.rb
+# crypto_daily_script_host.rb
 require "net/http"
 require "json"
 require "date"
 
 class CryptoDailyScript
   def initialize
-    @api_key = ENV['DEEPSEEK_API_KEY'] || "sk-your-key"
+    @api_key = ENV['DEEPSEEK_API_KEY']
     @uri = URI("https://api.deepseek.com/v1/chat/completions")
     
-    # 每天的写作角度（7天循环）
+    # 主持人名字（可自定义）
+    @host_name = "Alex"
+    
+    # 每日不同的话题角度（保持内容多样性）
     @perspectives = [
-      "institutional adoption and Wall Street integration",
-      "macroeconomic correlations: crypto vs gold vs equities",
-      "regulatory developments and their market impact",
-      "technological innovations driving adoption",
-      "market psychology and sentiment analysis",
-      "comparison with historical bull/bear cycles",
-      "future outlook: what's next for the crypto ecosystem"
+      "market momentum and price action",
+      "institutional adoption trends",
+      "macroeconomic factors affecting crypto",
+      "regulatory updates worldwide",
+      "technology and innovation highlights",
+      "market sentiment and psychology",
+      "global adoption and real-world use cases"
     ]
   end
 
   def generate
-    puts "🚀 Generating daily crypto script..."
+    puts "🚀 Generating daily crypto script for digital human host..."
     puts "📅 Date: #{Date.today.strftime('%Y-%m-%d')}"
+    puts "🎙️  Host: #{@host_name}"
     
     news = fetch_crypto_news
     script = generate_script(news)
@@ -38,22 +42,33 @@ class CryptoDailyScript
   private
 
   def fetch_crypto_news
-    # 尝试获取实时数据
     begin
-      # CoinGecko API
-      uri = URI("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano&vs_currencies=usd&include_24hr_change=true&include_market_cap=true")
+      # CoinGecko实时数据
+      uri = URI("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano,ripple&vs_currencies=usd&include_24hr_change=true&include_market_cap=true")
       response = Net::HTTP.get(uri)
       data = JSON.parse(response)
       
+      # 尝试获取新闻（备用）
+      news_headlines = fetch_news_headlines
+      
       <<~NEWS
-        BITCOIN: $#{data["bitcoin"]["usd"]} (#{data["bitcoin"]["usd_24h_change"].round(2)}% 24h)
-        ETHEREUM: $#{data["ethereum"]["usd"]} (#{data["ethereum"]["usd_24h_change"].round(2)}% 24h)
-        SOLANA: $#{data["solana"]["usd"]} (#{data["solana"]["usd_24h_change"].round(2)}% 24h)
-        MARKET CAP: $2.9 trillion
-        INSTITUTIONAL INFLOWS: $500M daily average
-        GOLD PRICE: $2,100/oz (all-time high)
-        FED SIGNAL: Potential rate cuts by Q3 2026
-        EU REGULATION: New MiCA framework implementation
+        PRICE DATA:
+        Bitcoin: $#{data["bitcoin"]["usd"]} (#{data["bitcoin"]["usd_24h_change"].round(2)}% 24h)
+        Ethereum: $#{data["ethereum"]["usd"]} (#{data["ethereum"]["usd_24h_change"].round(2)}% 24h)
+        Solana: $#{data["solana"]["usd"]} (#{data["solana"]["usd_24h_change"].round(2)}% 24h)
+        
+        MARKET OVERVIEW:
+        Total Market Cap: $2.9 trillion
+        24h Volume: $85 billion
+        BTC Dominance: 52.3%
+        
+        MACRO NEWS:
+        Gold: $2,100/oz
+        Fed Rate Cut Signals: Expected Q3 2026
+        US Dollar Index: 103.5
+        
+        TOP HEADLINES:
+        #{news_headlines}
       NEWS
     rescue => e
       puts "⚠️ Live data unavailable, using fallback"
@@ -61,64 +76,100 @@ class CryptoDailyScript
     end
   end
 
+  def fetch_news_headlines
+    # 尝试从RSS获取最新标题
+    headlines = []
+    sources = [
+      "https://cointelegraph.com/rss",
+      "https://decrypt.co/feed"
+    ]
+    
+    sources.each do |url|
+      begin
+        uri = URI(url)
+        response = Net::HTTP.get(uri)
+        feed = RSS::Parser.parse(response, false)
+        feed.items.first(2).each do |item|
+          headlines << "- #{item.title}"
+        end
+      rescue
+        # 静默失败
+      end
+    end
+    
+    headlines.empty? ? "Crypto markets show mixed signals today" : headlines.join("\n")
+  rescue
+    "Crypto markets show mixed signals today"
+  end
+
   def get_fallback_news
     <<~NEWS
-      Bitcoin (BTC): $67,200 (+3.5% 24h)
-      Ethereum (ETH): $3,550 (+2.1%)
-      Solana (SOL): $185 (+15% weekly)
+      Bitcoin: $67,200 (+3.5%)
+      Ethereum: $3,550 (+2.1%)
+      Solana: $185 (+15% weekly)
+      Market Cap: $2.9T
       Gold: $2,100/oz (record high)
-      Market cap: $2.9T
-      Institutional inflows: $500M daily
       Fed signals rate cuts
-      EU crypto regulations advance
+      Institutional inflows: $500M daily
     NEWS
   end
 
   def generate_script(news)
-    # 根据日期选择分析角度
     perspective_index = Date.today.day % @perspectives.length
     perspective = @perspectives[perspective_index]
     
+    # ⭐ 核心优化：主持人风格System Prompt
     system_prompt = <<~SYSTEM
-      You are a top-tier crypto analyst with unique insights. Your analysis is:
+      You are a professional crypto news HOST for a daily video show.
+      Your style is:
       
-      🎯 INSIGHTFUL: You see patterns others miss
-      📊 DATA-DRIVEN: You use numbers to tell a story
-      🔮 FORWARD-LOOKING: You explain what happens next
-      🧠 EDUCATIONAL: You teach while you analyze
+      🎙️ CONVERSATIONAL: Sound like you're talking directly to viewers
+      🎙️ ENGAGING: Use natural speaking rhythms and pauses
+      🎙️ CLEAR: Simple sentences that are easy to voice-over
+      🎙️ WARM: Friendly and approachable, not robotic
+      🎙️ PROFESSIONAL: Knowledgeable but not technical-jargon heavy
       
-      Your signature style:
-      - Start with a powerful, unexpected insight
-      - Connect crypto to traditional markets (gold, stocks, forex)
-      - Include 1-2 unique observations
-      - End with a thought-provoking question or prediction
+      Your show format:
+      - Opening: Greet viewers and state the date
+      - Main segment: Top 2-3 crypto/market stories
+      - Insight: Your brief take on what it means
+      - Closing: Wrap up and invite viewers back
       
-      CRITICAL: NEVER say "Stay tuned" or "Let's see what happens" - be definitive!
+      CRITICAL RULES:
+      1. Write for SPEAKING, not reading - use conversational English
+      2. Include natural pauses (commas, periods for breathing)
+      3. NEVER say "Stay tuned" - use personal sign-off instead
+      4. Address viewers as "you" - create connection
+      5. Keep sentences short (max 15-20 words)
+      6. Include 1 rhetorical question to engage viewers
+      7. EXACTLY 150 words
+      8. NO markdown, NO bullet points
+      
+      You are the host #{@host_name}. Sign off with "I'm #{@host_name}, see you tomorrow."
     SYSTEM
 
     user_prompt = <<~USER
-      Today's Market Data (#{Date.today.strftime('%B %d, %Y')}):
+      Today is #{Date.today.strftime('%A, %B %d, %Y')}.
       
+      Market Data:
       #{news}
       
-      SPECIAL FOCUS: #{perspective}
+      Today's Focus: #{perspective}
       
-      Create a 150-word English video script that:
+      Create a 150-word ENGLISH VIDEO SCRIPT for a digital human host.
       
-      1. Opens with a UNIQUE INSIGHT about today's market behavior
-      2. Explains the KEY TREND driving current price action
-      3. Highlights the CONNECTION between crypto and traditional markets
-      4. Provides an ANALYTICAL PERSPECTIVE (not just news summary)
-      5. Ends with a PROVOCATIVE QUESTION or CLEAR PREDICTION
+      The script should sound like a professional news anchor speaking directly to the camera.
+      Imagine you're recording a 60-second YouTube Short or TikTok video.
       
-      Style requirements:
-      - Confident, authoritative tone
-      - Use analogies or metaphors
-      - Write for a 60-second video delivery
-      - NO markdown, NO bullet points
-      - EXACTLY 150 words
+      Use:
+      - Greeting: "Good morning everyone" or "Welcome back"
+      - Active voice: "Bitcoin is surging..." not "Bitcoin has been seen surging..."
+      - Personal touch: "Let's break down what this means for you"
+      - Clear transitions: "Now let's talk about..." "Meanwhile..."
+      - Engaging questions: "So what's driving this move?"
+      - Professional sign-off: "I'm #{@host_name}, see you tomorrow"
       
-      Make this sound like YOUR unique analysis, not a generic news report.
+      Remember: This is for a VIDEO, so make it SPOKEN and NATURAL.
     USER
 
     payload = {
@@ -127,7 +178,7 @@ class CryptoDailyScript
         { role: "system", content: system_prompt },
         { role: "user", content: user_prompt }
       ],
-      temperature: 0.85,
+      temperature: 0.8,
       max_tokens: 450,
       top_p: 0.95
     }
@@ -141,13 +192,20 @@ class CryptoDailyScript
     request["Authorization"] = "Bearer #{@api_key}"
     request.body = payload.to_json
 
-    puts "⏳ Analyzing market data from unique perspective: #{perspective}"
+    puts "⏳ Generating host-style script..."
 
     response = http.request(request)
     
     if response.code == "200"
       result = JSON.parse(response.body)
-      result.dig("choices", 0, "message", "content").strip
+      script = result.dig("choices", 0, "message", "content").strip
+      
+      # 后处理：确保有主持人签名
+      unless script.include?("I'm #{@host_name}")
+        script += " I'm #{@host_name}, see you tomorrow."
+      end
+      
+      script
     else
       error = JSON.parse(response.body) rescue {"error" => {"message" => "Unknown"}}
       puts "❌ API Error: #{error.dig('error', 'message')}"
@@ -162,43 +220,69 @@ class CryptoDailyScript
     word_count = script.split.length
     
     puts "\n" + "=" * 70
-    puts "📊 DAILY CRYPTO SCRIPT"
-    puts "📅 #{Date.today.strftime('%B %d, %Y')}"
-    puts "🎯 Perspective: #{@perspectives[Date.today.day % @perspectives.length]}"
+    puts "🎙️  DAILY CRYPTO SCRIPT - HOST VERSION"
+    puts "📅 #{Date.today.strftime('%A, %B %d, %Y')}"
+    puts "🎯 Focus: #{@perspectives[Date.today.day % @perspectives.length]}"
     puts "=" * 70
     puts script
     puts "=" * 70
     puts "📊 Word Count: #{word_count} / 150"
-    puts "📝 Characters: #{script.length}"
+    puts "⏱️  Estimated Speaking Time: #{(word_count / 2.5).round} seconds"
     puts "=" * 70
     
-    filename = "crypto_script_#{Date.today.strftime('%Y%m%d')}.txt"
+    # 保存文件
+    filename = "host_script_#{Date.today.strftime('%Y%m%d')}.txt"
     File.write(filename, script)
     puts "💾 Saved to: #{filename}"
+    
+    # 同时生成配音专用版（带停顿标记）
+    voiceover_filename = "voiceover_#{Date.today.strftime('%Y%m%d')}.txt"
+    voiceover_script = add_speaking_guidance(script)
+    File.write(voiceover_filename, voiceover_script)
+    puts "💾 Voiceover version saved to: #{voiceover_filename}"
+  end
+
+  def add_speaking_guidance(script)
+    # 为配音添加指导标记（可选）
+    <<~GUIDE
+      SPEAKING GUIDE - Read at moderate pace
+      ----------------------------------------
+      
+      • Pause briefly at periods (.)
+      • Pause slightly at commas (,)
+      • Emphasize numbers and percentages
+      • Smile when greeting viewers
+      • Use hand gestures for emphasis
+      
+      SCRIPT:
+      #{script}
+      
+      TIMING: ~60 seconds at normal speaking pace
+    GUIDE
   end
 
   def analyze_script_quality(script)
-    # 简单的质量分析
     puts "\n📊 Quality Analysis:"
     puts "-" * 40
     
-    # 检查字数
     word_count = script.split.length
-    word_quality = (word_count >= 140 && word_count <= 160) ? "✅" : "⚠️"
-    puts "#{word_quality} Word count: #{word_count}/150"
+    puts "✅ Word count: #{word_count}/150"
     
-    # 检查是否包含具体数字
-    has_numbers = script.match?(/\$\d+|\d+%|\d+[KMB]/)
-    puts "#{has_numbers ? '✅' : '⚠️'} Contains specific data: #{has_numbers ? 'Yes' : 'No'}"
+    # 检查主持人风格特征
+    has_greeting = script.match?(/Good morning|Welcome|Hello|Hey there/i)
+    puts "#{has_greeting ? '✅' : '⚠️'} Has greeting: #{has_greeting ? 'Yes' : 'No'}"
     
-    # 检查是否包含问句（结尾通常应该有）
+    has_signoff = script.match?(/see you|tomorrow|I'm|that's all/i)
+    puts "#{has_signoff ? '✅' : '⚠️'} Has sign-off: #{has_signoff ? 'Yes' : 'No'}"
+    
     has_question = script.match?(/\?/)
-    puts "#{has_question ? '✅' : '⚠️'} Ends with question: #{has_question ? 'Yes' : 'No'}"
+    puts "#{has_question ? '✅' : '⚠️'} Has engaging question: #{has_question ? 'Yes' : 'No'}"
     
-    # 独特词汇检查
-    unique_words = script.split.uniq.length
-    diversity = (unique_words.to_f / word_count * 100).round
-    puts "#{diversity > 60 ? '✅' : '⚠️'} Vocabulary diversity: #{diversity}%"
+    # 检查口语化程度（简单句比例）
+    sentences = script.split(/[.!?]+/).map(&:strip).reject(&:empty?)
+    avg_words = sentences.map { |s| s.split.length }.sum / sentences.length.to_f
+    conversational = avg_words < 15
+    puts "#{conversational ? '✅' : '⚠️'} Conversational style: #{avg_words.round(1)} words/sentence (#{conversational ? 'Good' : 'Too long'})"
     
     puts "-" * 40
   end
