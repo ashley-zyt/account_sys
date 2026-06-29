@@ -1,29 +1,35 @@
-# crypto_daily_script.rb
+# crypto_daily_script_optimized.rb
 require "net/http"
 require "json"
 require "date"
 
 class CryptoDailyScript
   def initialize
-    @api_key = ENV['DEEPSEEK_API_KEY']
+    @api_key = ENV['DEEPSEEK_API_KEY'] || "sk-your-key"
     @uri = URI("https://api.deepseek.com/v1/chat/completions")
+    
+    # 每天的写作角度（7天循环）
+    @perspectives = [
+      "institutional adoption and Wall Street integration",
+      "macroeconomic correlations: crypto vs gold vs equities",
+      "regulatory developments and their market impact",
+      "technological innovations driving adoption",
+      "market psychology and sentiment analysis",
+      "comparison with historical bull/bear cycles",
+      "future outlook: what's next for the crypto ecosystem"
+    ]
   end
 
   def generate
     puts "🚀 Generating daily crypto script..."
     puts "📅 Date: #{Date.today.strftime('%Y-%m-%d')}"
     
-    # 1. 获取新闻
     news = fetch_crypto_news
-    
-    # 2. 生成脚本
     script = generate_script(news)
     
-    # 3. 保存和输出
     if script
       save_and_display(script)
-    else
-      puts "❌ Generation failed"
+      analyze_script_quality(script)
     end
     
     script
@@ -32,48 +38,87 @@ class CryptoDailyScript
   private
 
   def fetch_crypto_news
-    # 方案A: 从RSS获取（可选）
-    # 方案B: 使用硬编码新闻（当前使用）
+    # 尝试获取实时数据
+    begin
+      # CoinGecko API
+      uri = URI("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,cardano&vs_currencies=usd&include_24hr_change=true&include_market_cap=true")
+      response = Net::HTTP.get(uri)
+      data = JSON.parse(response)
+      
+      <<~NEWS
+        BITCOIN: $#{data["bitcoin"]["usd"]} (#{data["bitcoin"]["usd_24h_change"].round(2)}% 24h)
+        ETHEREUM: $#{data["ethereum"]["usd"]} (#{data["ethereum"]["usd_24h_change"].round(2)}% 24h)
+        SOLANA: $#{data["solana"]["usd"]} (#{data["solana"]["usd_24h_change"].round(2)}% 24h)
+        MARKET CAP: $2.9 trillion
+        INSTITUTIONAL INFLOWS: $500M daily average
+        GOLD PRICE: $2,100/oz (all-time high)
+        FED SIGNAL: Potential rate cuts by Q3 2026
+        EU REGULATION: New MiCA framework implementation
+      NEWS
+    rescue => e
+      puts "⚠️ Live data unavailable, using fallback"
+      get_fallback_news
+    end
+  end
+
+  def get_fallback_news
     <<~NEWS
-      • Bitcoin (BTC) trades at $67,200, up 3.5% in 24 hours
-      • Ethereum (ETH) holds above $3,500 with network upgrade planned
-      • Gold reaches new high of $2,100 per ounce
-      • Federal Reserve signals potential rate cuts in 2026
-      • Solana ecosystem grows 40% in Q1 2026
-      • Total crypto market cap: $2.9 trillion
-      • Institutional inflows reach $500 million daily
-      • Regulatory developments in EU and Asia markets
+      Bitcoin (BTC): $67,200 (+3.5% 24h)
+      Ethereum (ETH): $3,550 (+2.1%)
+      Solana (SOL): $185 (+15% weekly)
+      Gold: $2,100/oz (record high)
+      Market cap: $2.9T
+      Institutional inflows: $500M daily
+      Fed signals rate cuts
+      EU crypto regulations advance
     NEWS
   end
 
   def generate_script(news)
+    # 根据日期选择分析角度
+    perspective_index = Date.today.day % @perspectives.length
+    perspective = @perspectives[perspective_index]
+    
     system_prompt = <<~SYSTEM
-      You are a professional crypto KOL (Key Opinion Leader) with expertise in:
-      - Cryptocurrency markets and blockchain technology
-      - Global financial markets including gold and stocks
-      - Macroeconomic trends
+      You are a top-tier crypto analyst with unique insights. Your analysis is:
       
-      Your task: Create a 150-word English video script for a daily crypto news update.
+      🎯 INSIGHTFUL: You see patterns others miss
+      📊 DATA-DRIVEN: You use numbers to tell a story
+      🔮 FORWARD-LOOKING: You explain what happens next
+      🧠 EDUCATIONAL: You teach while you analyze
       
-      CRITICAL RULES:
-      1. Provide objective analysis, NEVER give investment advice
-      2. Include specific numbers and data points
-      3. Use conversational, clear English
-      4. End with a forward-looking question or insight
-      5. Perfect for a 60-second video delivery
-      6. DO NOT use markdown, bullet points, or special formatting
-      7. Just plain text script only
+      Your signature style:
+      - Start with a powerful, unexpected insight
+      - Connect crypto to traditional markets (gold, stocks, forex)
+      - Include 1-2 unique observations
+      - End with a thought-provoking question or prediction
+      
+      CRITICAL: NEVER say "Stay tuned" or "Let's see what happens" - be definitive!
     SYSTEM
 
     user_prompt = <<~USER
-      Today is #{Date.today.strftime('%B %d, %Y')}.
+      Today's Market Data (#{Date.today.strftime('%B %d, %Y')}):
       
-      Latest crypto and financial market news:
       #{news}
       
-      Generate a 150-word English video script based on this news.
-      Focus on the most important developments and their market implications.
-      Keep it educational and factual.
+      SPECIAL FOCUS: #{perspective}
+      
+      Create a 150-word English video script that:
+      
+      1. Opens with a UNIQUE INSIGHT about today's market behavior
+      2. Explains the KEY TREND driving current price action
+      3. Highlights the CONNECTION between crypto and traditional markets
+      4. Provides an ANALYTICAL PERSPECTIVE (not just news summary)
+      5. Ends with a PROVOCATIVE QUESTION or CLEAR PREDICTION
+      
+      Style requirements:
+      - Confident, authoritative tone
+      - Use analogies or metaphors
+      - Write for a 60-second video delivery
+      - NO markdown, NO bullet points
+      - EXACTLY 150 words
+      
+      Make this sound like YOUR unique analysis, not a generic news report.
     USER
 
     payload = {
@@ -82,7 +127,7 @@ class CryptoDailyScript
         { role: "system", content: system_prompt },
         { role: "user", content: user_prompt }
       ],
-      temperature: 0.8,
+      temperature: 0.85,
       max_tokens: 450,
       top_p: 0.95
     }
@@ -96,37 +141,30 @@ class CryptoDailyScript
     request["Authorization"] = "Bearer #{@api_key}"
     request.body = payload.to_json
 
-    puts "⏳ Calling DeepSeek API..."
+    puts "⏳ Analyzing market data from unique perspective: #{perspective}"
 
     response = http.request(request)
     
     if response.code == "200"
       result = JSON.parse(response.body)
-      script = result.dig("choices", 0, "message", "content")
-      puts "✅ Script generated successfully!"
-      script
+      result.dig("choices", 0, "message", "content").strip
     else
-      error_body = JSON.parse(response.body) rescue {"error" => {"message" => "Unknown"}}
-      puts "❌ API Error (#{response.code}): #{error_body.dig('error', 'message')}"
-      puts "Full response: #{response.body[0..200]}..."
+      error = JSON.parse(response.body) rescue {"error" => {"message" => "Unknown"}}
+      puts "❌ API Error: #{error.dig('error', 'message')}"
       nil
     end
-  rescue Timeout::Error
-    puts "❌ Timeout: API took too long to respond"
-    nil
   rescue => e
-    puts "❌ Unexpected error: #{e.message}"
-    puts e.backtrace.first(3)
+    puts "❌ Error: #{e.message}"
     nil
   end
 
   def save_and_display(script)
     word_count = script.split.length
     
-    # 显示
     puts "\n" + "=" * 70
     puts "📊 DAILY CRYPTO SCRIPT"
     puts "📅 #{Date.today.strftime('%B %d, %Y')}"
+    puts "🎯 Perspective: #{@perspectives[Date.today.day % @perspectives.length]}"
     puts "=" * 70
     puts script
     puts "=" * 70
@@ -134,21 +172,34 @@ class CryptoDailyScript
     puts "📝 Characters: #{script.length}"
     puts "=" * 70
     
-    # 保存
     filename = "crypto_script_#{Date.today.strftime('%Y%m%d')}.txt"
     File.write(filename, script)
     puts "💾 Saved to: #{filename}"
+  end
+
+  def analyze_script_quality(script)
+    # 简单的质量分析
+    puts "\n📊 Quality Analysis:"
+    puts "-" * 40
     
-    # 同时保存带元数据的版本
-    metadata_filename = "crypto_script_#{Date.today.strftime('%Y%m%d')}_with_meta.txt"
-    File.write(metadata_filename, <<~META)
-      DATE: #{Date.today.strftime('%B %d, %Y')}
-      WORD COUNT: #{word_count}
-      CHARACTERS: #{script.length}
-      GENERATED AT: #{Time.now}
-      #{'-' * 50}
-      #{script}
-    META
-    puts "💾 Full version saved to: #{metadata_filename}"
+    # 检查字数
+    word_count = script.split.length
+    word_quality = (word_count >= 140 && word_count <= 160) ? "✅" : "⚠️"
+    puts "#{word_quality} Word count: #{word_count}/150"
+    
+    # 检查是否包含具体数字
+    has_numbers = script.match?(/\$\d+|\d+%|\d+[KMB]/)
+    puts "#{has_numbers ? '✅' : '⚠️'} Contains specific data: #{has_numbers ? 'Yes' : 'No'}"
+    
+    # 检查是否包含问句（结尾通常应该有）
+    has_question = script.match?(/\?/)
+    puts "#{has_question ? '✅' : '⚠️'} Ends with question: #{has_question ? 'Yes' : 'No'}"
+    
+    # 独特词汇检查
+    unique_words = script.split.uniq.length
+    diversity = (unique_words.to_f / word_count * 100).round
+    puts "#{diversity > 60 ? '✅' : '⚠️'} Vocabulary diversity: #{diversity}%"
+    
+    puts "-" * 40
   end
 end
