@@ -4,7 +4,7 @@ require "json"
 require "date"
 
 class CryptoDailyScript
-  def initialize(api_key)
+  def initialize
     @api_key = ENV['DEEPSEEK_API_KEY']
     @uri = URI("https://api.deepseek.com/v1/chat/completions")
   end
