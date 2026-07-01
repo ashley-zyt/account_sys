@@ -2,6 +2,11 @@
 # 每日定期获取绑定正常账号的浏览器列表，推送到外部接口采集发文数据
 class PostDatas
 
+  def self.ensure_utf8(str)
+    return str unless str.is_a?(String)
+    str.encode('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
+  end
+
   def self.fetch
     browsers = Browser
                  .joins(:accounts)
@@ -16,12 +21,12 @@ class PostDatas
                           .where.not(platform: Account.platforms['facebook'])
       {
         id: browser.id,
-        profile_name: browser.profile_name,
+        profile_name: self.ensure_utf8(browser.profile_name),
         active_accounts: active_accounts.map do |acc|
           {
             id: acc.id,
-            platform: acc.platform,
-            source_url: acc.source_url
+            platform: self.ensure_utf8(acc.platform),
+            source_url: self.ensure_utf8(acc.source_url)
           }
         end
       }
@@ -39,14 +44,14 @@ class PostDatas
         Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送成功"
       else
         fail_count += 1
-        Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送失败: #{response[:error]}"
+        Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送失败: #{self.ensure_utf8(response[:error])}"
       end
     end
 
     Rails.logger.info "[PostDatas] 采集完成: 成功 #{success_count} 个, 失败 #{fail_count} 个"
     { success_count: success_count, fail_count: fail_count, total: data.size }
   rescue => e
-    Rails.logger.error "[PostDatas] 执行异常: #{e.message}"
+    Rails.logger.error "[PostDatas] 执行异常: #{self.ensure_utf8(e.message)}"
     { success_count: 0, fail_count: 0, total: 0, error: e.message }
   end
 
@@ -62,13 +67,14 @@ class PostDatas
     request.body = browser_data.to_json
 
     response = http.request(request)
+    body = self.ensure_utf8(response.body)
 
     if response.code == '200'
-      { success: true, response: response.body }
+      { success: true, response: body }
     else
-      { success: false, error: "HTTP #{response.code}: #{response.body}" }
+      { success: false, error: "HTTP #{response.code}: #{body}" }
     end
   rescue => e
-    { success: false, error: e.message }
+    { success: false, error: self.ensure_utf8(e.message) }
   end
 end
