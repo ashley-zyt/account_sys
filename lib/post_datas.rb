@@ -8,6 +8,8 @@ class PostDatas
   end
 
   def self.fetch
+    SPECIAL_ACCOUNT_IDS = [213, 241, 253, 234, 233, 232, 231]
+
     browsers = Browser
                  .joins(:accounts)
                  .where(accounts: { status: Account.statuses['正常'] })
@@ -32,7 +34,37 @@ class PostDatas
       }
     end
 
-    Rails.logger.info "[PostDatas] 共 #{data.size} 个浏览器需要采集发文数据"
+    special_accounts = Account.where(id: SPECIAL_ACCOUNT_IDS).where.not(browser_id: nil)
+    special_accounts.group_by(&:browser_id).each do |browser_id, accounts|
+      browser = Browser.find_by(id: browser_id)
+      next unless browser
+
+      existing_item = data.find { |item| item[:id] == browser.id }
+      if existing_item
+        existing_item[:active_accounts] += accounts.map do |acc|
+          {
+            id: acc.id,
+            platform: self.ensure_utf8(acc.platform),
+            source_url: self.ensure_utf8(acc.source_url)
+          }
+        end
+        existing_item[:active_accounts].uniq! { |acc| acc[:id] }
+      else
+        data << {
+          id: browser.id,
+          profile_name: self.ensure_utf8(browser.profile_name),
+          active_accounts: accounts.map do |acc|
+            {
+              id: acc.id,
+              platform: self.ensure_utf8(acc.platform),
+              source_url: self.ensure_utf8(acc.source_url)
+            }
+          end
+        }
+      end
+    end
+
+    Rails.logger.info "[PostDatas] 共 #{data.size} 个浏览器需要采集发文数据（包含 #{special_accounts.size} 个特殊账号）"
 
     success_count = 0
     fail_count = 0
