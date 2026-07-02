@@ -93,6 +93,7 @@ class PostDatas
   end
 
   def self.push_to_external_with_retry(browser_data)
+    response = nil
     RETRY_COUNT.times do |attempt|
       response = push_to_external(browser_data)
       return response if response[:success]
