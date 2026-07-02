@@ -27,7 +27,7 @@
     <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
       <div class="admin-filter-group">
         <label class="admin-filter-label">账号</label>
-        <%= f.select :account_id_eq, @accounts.map { |a| [a.account_name, a.id] }, { include_blank: "所有账号" }, class: "admin-input admin-filter-input" %>
+        <%= f.search_field :account_account_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索账号..." %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">工作模式</label>

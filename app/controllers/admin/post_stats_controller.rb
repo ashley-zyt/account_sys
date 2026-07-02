@@ -10,7 +10,6 @@ class Admin::PostStatsController < Admin::BaseController
                    .order(sort_column => sort_direction)
                    .page(params[:page])
                    .per(15)
-    @accounts = Account.all
     # 工作模式选项：[[显示文本, 数字值], ...]
     @work_types = Account.work_types.map { |k, v| [k, v] }
     # 平台选项：[[显示文本, 数字值], ...]
