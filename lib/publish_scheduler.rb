@@ -25,6 +25,7 @@ class PublishScheduler
 
     tasks.each do |task|
       execute_task(task, 'operation')
+      sleep(30)
     end
   end
 
