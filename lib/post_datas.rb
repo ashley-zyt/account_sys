@@ -2,7 +2,9 @@
 # 每日定期获取绑定正常账号的浏览器列表，推送到外部接口采集发文数据
 class PostDatas
 
-
+  RETRY_COUNT = 2
+  RETRY_DELAY = 20
+  REQUEST_INTERVAL = 2
 
   def self.ensure_utf8(str)
     return str unless str.is_a?(String)
@@ -72,7 +74,7 @@ class PostDatas
     fail_count = 0
 
     data.each_with_index do |browser_data, index|
-      response = push_to_external(browser_data)
+      response = push_to_external_with_retry(browser_data)
       if response[:success]
         success_count += 1
         Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送成功 (第 #{index + 1} 个)"
@@ -80,6 +82,7 @@ class PostDatas
         fail_count += 1
         Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送失败: #{self.ensure_utf8(response[:error])} (第 #{index + 1} 个)"
       end
+      sleep(REQUEST_INTERVAL) unless index == data.size - 1
     end
 
     Rails.logger.info "[PostDatas] 采集完成: 成功 #{success_count} 个, 失败 #{fail_count} 个"
@@ -89,11 +92,23 @@ class PostDatas
     { success_count: 0, fail_count: 0, total: 0, error: e.message }
   end
 
-  # 推送单个浏览器数据到外部接口
+  def self.push_to_external_with_retry(browser_data)
+    RETRY_COUNT.times do |attempt|
+      response = push_to_external(browser_data)
+      return response if response[:success]
+
+      if attempt < RETRY_COUNT - 1
+        Rails.logger.warn "[PostDatas] 浏览器 #{browser_data[:profile_name]} 第 #{attempt + 1} 次尝试失败，#{RETRY_DELAY}秒后重试..."
+        sleep(RETRY_DELAY)
+      end
+    end
+    response
+  end
+
   def self.push_to_external(browser_data)
     uri = URI.parse("http://174.139.46.117:8080/accounts/fetch_posts")
     http = Net::HTTP.new(uri.host, uri.port)
-    http.read_timeout = 300
+    http.read_timeout = 600
     http.open_timeout = 300
 
     request = Net::HTTP::Post.new(uri.request_uri)
