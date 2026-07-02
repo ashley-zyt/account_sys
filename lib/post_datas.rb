@@ -71,14 +71,14 @@ class PostDatas
     success_count = 0
     fail_count = 0
 
-    data.each do |browser_data|
+    data.each_with_index do |browser_data, index|
       response = push_to_external(browser_data)
       if response[:success]
         success_count += 1
-        Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送成功"
+        Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送成功 (第 #{index + 1} 个)"
       else
         fail_count += 1
-        Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送失败: #{self.ensure_utf8(response[:error])}"
+        Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送失败: #{self.ensure_utf8(response[:error])} (第 #{index + 1} 个)"
       end
     end
 
