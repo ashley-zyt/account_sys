@@ -209,4 +209,83 @@ class TaskScheduler
 		}
 		res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
 	end
+
+	# 检查超时任务（超过8分钟未完成）并自动重置
+	def self.check_timeout_tasks
+		eight_minutes_ago = 8.minutes.ago
+
+		timeout_operation_tasks = OperationTask.where(status: :executing)
+		                                       .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
+
+		timeout_grok_tasks = GrokTask.where(status: :executing)
+		                             .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
+
+		timeout_move_tasks = MoveTask.where(status: :executing)
+		                             .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
+
+		timeout_count = timeout_operation_tasks.count + timeout_grok_tasks.count + timeout_move_tasks.count
+
+		return if timeout_count == 0
+
+		Rails.logger.warn "[TaskScheduler] 检测到 #{timeout_count} 个超时任务，正在重置..."
+
+		# 重置运营任务
+		timeout_operation_tasks.each do |task|
+			task.update!(
+				status: :pending,
+				account_id: nil,
+				browser_id: nil,
+				error_msg: "任务执行超时（超过8分钟）",
+				start_at: nil
+			)
+		end
+
+		# 重置 Grok 任务
+		timeout_grok_tasks.each do |task|
+			task.update!(
+				status: :pending,
+				account_id: nil,
+				browser_id: nil,
+				error_msg: "任务执行超时（超过8分钟）",
+				start_at: nil
+			)
+		end
+
+		# 重置搬运任务
+		timeout_move_tasks.each do |task|
+			task.update!(
+				status: :pending,
+				account_id: nil,
+				browser_id: nil,
+				error_msg: "任务执行超时（超过8分钟）",
+				start_at: nil
+			)
+		end
+
+		send_timeout_alert(timeout_count, timeout_operation_tasks.count, timeout_grok_tasks.count, timeout_move_tasks.count)
+	end
+
+	# 发送超时任务告警消息
+	def self.send_timeout_alert(total_count, operation_count, grok_count, move_count)
+		require 'net/http'
+		require 'json'
+
+		webhook_url = ENV['DINGDING_WEBHOOK_URL']
+		return unless webhook_url.present?
+
+		message = "【养号】检测到超时任务\n\n"
+		message += "📊 统计信息：\n"
+		message += "• 总超时任务数：#{total_count} 个\n"
+		message += "• 运营任务：#{operation_count} 个\n"
+		message += "• Grok任务：#{grok_count} 个\n"
+		message += "• 搬运任务：#{move_count} 个\n\n"
+		message += "⏰ 超时阈值：8分钟\n"
+		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}"
+
+		postbody = {"msgtype": "text","text": {"content": message}}
+		headers = {
+			"Content-Type": "application/json;charset=utf-8"
+		}
+		res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
+	end
 end
