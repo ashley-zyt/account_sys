@@ -2,7 +2,7 @@
 # 每日定期获取绑定正常账号的浏览器列表，推送到外部接口采集发文数据
 class PostDatas
 
-  SPECIAL_ACCOUNT_IDS = [213, 241, 253, 234, 233, 232, 231]
+
 
   def self.ensure_utf8(str)
     return str unless str.is_a?(String)
@@ -10,7 +10,7 @@ class PostDatas
   end
 
   def self.fetch
-    SPECIAL_ACCOUNT_IDS = [213, 241, 253, 234, 233, 232, 231]
+    special_account_ids = [213, 241, 253, 234, 233, 232, 231]
 
     browsers = Browser
                  .joins(:accounts)
@@ -36,7 +36,7 @@ class PostDatas
       }
     end
 
-    special_accounts = Account.where(id: SPECIAL_ACCOUNT_IDS).where.not(browser_id: nil)
+    special_accounts = Account.where(id: special_account_ids).where.not(browser_id: nil)
     special_accounts.group_by(&:browser_id).each do |browser_id, accounts|
       browser = Browser.find_by(id: browser_id)
       next unless browser
