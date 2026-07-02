@@ -2,6 +2,8 @@
 # 每日定期获取绑定正常账号的浏览器列表，推送到外部接口采集发文数据
 class PostDatas
 
+  SPECIAL_ACCOUNT_IDS = [213, 241, 253, 234, 233, 232, 231]
+
   def self.ensure_utf8(str)
     return str unless str.is_a?(String)
     str.encode('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
