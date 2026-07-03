@@ -11,7 +11,8 @@ class PublishScheduler
     instagram: 'http://174.139.46.117:8080/instagram/publish'
   }
 
-  TIMEOUT_SECONDS = 480
+  TIMEOUT_SECONDS = 600
+  TASK_INTERVAL = 40
 
   def self.run
     execute_operation_tasks
@@ -22,10 +23,11 @@ class PublishScheduler
     tasks = OperationTask.where(status: :waiting_publish)
                          .where("account_id IS NOT NULL")
                          .order(created_at: :asc)
+                         .limit(1)
 
     tasks.each do |task|
       execute_task(task, 'operation')
-      sleep(30)
+      sleep(TASK_INTERVAL)
     end
   end
 
@@ -33,9 +35,11 @@ class PublishScheduler
     tasks = GrokTask.where(status: :waiting_publish)
                     .where("account_id IS NOT NULL")
                     .order(created_at: :asc)
+                    .limit(1)
 
     tasks.each do |task|
       execute_task(task, 'grok')
+      sleep(TASK_INTERVAL)
     end
   end
 
@@ -56,6 +60,9 @@ class PublishScheduler
 
       handle_response(task, response)
 
+    rescue Net::ReadTimeout
+      Rails.logger.error "[PublishScheduler] 任务 #{task_type}:#{task.id} 单任务超出十分钟异常结束"
+      handle_error(task, "单任务超出十分钟异常结束")
     rescue => e
       Rails.logger.error "[PublishScheduler] 任务 #{task_type}:#{task.id} 执行异常: #{e.message}"
       handle_error(task, "执行异常: #{e.message}")
