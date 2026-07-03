@@ -216,8 +216,8 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
       "x-oss-signature-version=OSS4-HMAC-SHA256"
     ].join("&")
 
-    # 规范化请求（预签名 URL 无额外签名头，headers/signed_headers 均为空）
-    canonical_uri = percent_encode_path("/#{key}")
+    # 规范化请求（与 V2 一样，canonical_uri 必须以 /bucket/key 开头）
+    canonical_uri = percent_encode_path("/#{bucket}/#{key}")
     canonical_request = [
       "GET",
       canonical_uri,
