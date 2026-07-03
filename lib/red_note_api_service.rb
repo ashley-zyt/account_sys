@@ -135,6 +135,15 @@ class RedNoteApiService
       keywords.each { |kw| sync_task_status(kw) }
     end
 
+    # 定时随机创建任务：从未启动的关键词中随机取 1~4 条创建任务
+    def random_create_tasks
+      keywords = RedNoteKeyword.where(status: 0).to_a.sample(rand(1..4))
+      return if keywords.empty?
+
+      Rails.logger.info "[RedNoteApi] 随机创建任务：抽中 #{keywords.size} 条未启动关键词"
+      keywords.each { |kw| create_task(kw) }
+    end
+
     private
 
     def map_remote_status(remote_status)

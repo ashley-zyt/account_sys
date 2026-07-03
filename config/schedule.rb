@@ -48,6 +48,12 @@ every 30.minutes do
   runner 'RedNoteApiService.sync_all_pending'
 end
 
+# RedNote 随机创建任务（每3小时，从未启动中随机取1~4条）
+set :output, "log/red_note_random_tasks.log"
+every 3.hours do
+  runner 'RedNoteApiService.random_create_tasks'
+end
+
 
 # set :output, "log/check_timeout_tasks.log"
 # every 5.minutes do
