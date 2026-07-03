@@ -29,23 +29,38 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
 
     created = []
     failed = []
+    existing_codes = RedNoteKeyword.pluck(:keyword_code)
 
     lines.each do |line|
       keyword, keyword_code = parse_keyword_line(line)
-      next unless keyword && keyword_code
+      unless keyword && keyword_code
+        failed << { line: line, error: "格式错误，无法解析关键词和编码" }
+        next
+      end
+
+      if existing_codes.include?(keyword_code)
+        failed << { line: line, error: "编码 #{keyword_code} 已存在" }
+        next
+      end
 
       kw = RedNoteKeyword.new(theme: theme, keyword: keyword, keyword_code: keyword_code)
       if kw.save
         created << kw
+        existing_codes << keyword_code
       else
         failed << { line: line, error: kw.errors.full_messages.join(", ") }
       end
     end
 
     if created.any?
-      flash[:notice] = "成功添加 #{created.size} 个关键词" + (failed.any? ? "（#{failed.size} 个失败）" : "")
+      if failed.any?
+        flash[:notice] = "成功添加 #{created.size} 个关键词"
+        flash[:alert] = "#{failed.size} 个失败：#{failed.map { |f| f[:error] }.join('；')}"
+      else
+        flash[:notice] = "成功添加 #{created.size} 个关键词"
+      end
     else
-      flash[:alert] = "关键词添加失败：#{failed.first&.dig(:error) || '未知错误'}"
+      flash[:alert] = "添加失败：#{failed.first&.dig(:error) || '未知错误'}"
     end
 
     redirect_to admin_red_note_keywords_path
