@@ -183,10 +183,8 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
 
     bucket = "jianying-rd"
     endpoint = "https://#{bucket}.oss-cn-hangzhou.aliyuncs.com"
-    access_key_id = ENV["ALIYUN_ACCESS_KEY_ID"]
-    access_key_secret = ENV["ALIYUN_ACCESS_KEY_SECRET"]
-
-    return [] if access_key_id.blank? || access_key_secret.blank?
+    access_key_id = "gZL8z938T19mSUHf"
+    access_key_secret = "A9fSDa9cH5YAExpEUR4QSizkFQEcrS"
 
     names.map do |name|
       key = "#{keyword.keyword_code}/#{name}"
