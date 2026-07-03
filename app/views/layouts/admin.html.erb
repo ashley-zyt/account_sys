@@ -313,6 +313,23 @@
                 </div>
               <% end %>
             </li>
+
+            <% red_note_active = controller_path == "admin/red_note_keywords" %>
+            <li class="admin-nav-item <%= "active" if red_note_active %>">
+              <%= link_to admin_red_note_keywords_path, class: "admin-nav-link", data: { tooltip: "RedNote照片" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📷
+                  </div>
+                  <div class="admin-nav-label">
+                    RedNote照片
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  RedNote Photos
+                </div>
+              <% end %>
+            </li>
           </ul>
         </div>
 
