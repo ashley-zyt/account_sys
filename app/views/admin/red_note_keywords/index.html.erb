@@ -230,81 +230,138 @@
   </div>
 </div>
 
+<style>
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-content {
+    background: #1e293b;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 480px;
+  }
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #334155;
+  }
+  .modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    color: #f1f5f9;
+  }
+  .modal-body {
+    padding: 24px 20px;
+  }
+  .admin-form-group {
+    margin-bottom: 16px;
+  }
+  .admin-form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #94a3b8;
+  }
+  .admin-form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #334155;
+  }
+</style>
+
 <script>
 (function() {
-  if (document.getElementById('red_note_keywords_initialized')) return;
-  var marker = document.createElement('div');
-  marker.id = 'red_note_keywords_initialized';
-  marker.style.display = 'none';
-  document.body.appendChild(marker);
-
   function init() {
-    // 设置弹窗
     var settingsBtn = document.getElementById('settings_btn');
     var settingsModal = document.getElementById('settings_modal');
     if (settingsBtn && settingsModal) {
-      settingsBtn.addEventListener('click', function() {
+      var newSettingsBtn = settingsBtn.cloneNode(true);
+      settingsBtn.parentNode.replaceChild(newSettingsBtn, settingsBtn);
+      newSettingsBtn.addEventListener('click', function() {
         settingsModal.style.display = 'flex';
       });
-      document.getElementById('settings_close_btn').addEventListener('click', function() {
-        settingsModal.style.display = 'none';
-      });
-      document.getElementById('settings_cancel_btn').addEventListener('click', function() {
-        settingsModal.style.display = 'none';
-      });
+
+      var settingsCloseBtn = document.getElementById('settings_close_btn');
+      if (settingsCloseBtn) {
+        var newClose = settingsCloseBtn.cloneNode(true);
+        settingsCloseBtn.parentNode.replaceChild(newClose, settingsCloseBtn);
+        newClose.addEventListener('click', function() { settingsModal.style.display = 'none'; });
+      }
+      var settingsCancelBtn = document.getElementById('settings_cancel_btn');
+      if (settingsCancelBtn) {
+        var newCancel = settingsCancelBtn.cloneNode(true);
+        settingsCancelBtn.parentNode.replaceChild(newCancel, settingsCancelBtn);
+        newCancel.addEventListener('click', function() { settingsModal.style.display = 'none'; });
+      }
       settingsModal.addEventListener('click', function(e) {
         if (e.target === settingsModal) settingsModal.style.display = 'none';
       });
     }
 
-    // 批量添加弹窗
     var batchAddBtn = document.getElementById('batch_add_btn');
     var batchAddModal = document.getElementById('batch_add_modal');
     if (batchAddBtn && batchAddModal) {
-      batchAddBtn.addEventListener('click', function() {
+      var newBatchBtn = batchAddBtn.cloneNode(true);
+      batchAddBtn.parentNode.replaceChild(newBatchBtn, batchAddBtn);
+      newBatchBtn.addEventListener('click', function() {
         batchAddModal.style.display = 'flex';
       });
-      document.getElementById('modal_close_btn').addEventListener('click', function() {
-        batchAddModal.style.display = 'none';
-      });
-      document.getElementById('modal_cancel_btn').addEventListener('click', function() {
-        batchAddModal.style.display = 'none';
+      ['modal_close_btn', 'modal_cancel_btn'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+          var newEl = el.cloneNode(true);
+          el.parentNode.replaceChild(newEl, el);
+          newEl.addEventListener('click', function() { batchAddModal.style.display = 'none'; });
+        }
       });
       batchAddModal.addEventListener('click', function(e) {
         if (e.target === batchAddModal) batchAddModal.style.display = 'none';
       });
     }
 
-    // 查看详情弹窗
     var detailModal = document.getElementById('detail_modal');
     if (detailModal) {
-      document.getElementById('detail_close_btn').addEventListener('click', function() {
-        detailModal.style.display = 'none';
-      });
+      var detailCloseBtn = document.getElementById('detail_close_btn');
+      if (detailCloseBtn) {
+        var newDetailClose = detailCloseBtn.cloneNode(true);
+        detailCloseBtn.parentNode.replaceChild(newDetailClose, detailCloseBtn);
+        newDetailClose.addEventListener('click', function() { detailModal.style.display = 'none'; });
+      }
       detailModal.addEventListener('click', function(e) {
         if (e.target === detailModal) detailModal.style.display = 'none';
       });
     }
 
-    // 全选/取消全选
     var selectAll = document.getElementById('select_all');
     if (selectAll) {
-      selectAll.addEventListener('change', function() {
-        var checked = this.checked;
+      var newSelectAll = selectAll.cloneNode(true);
+      selectAll.parentNode.replaceChild(newSelectAll, selectAll);
+      newSelectAll.addEventListener('change', function() {
         document.querySelectorAll('.keyword-checkbox:not([disabled])').forEach(function(cb) {
-          cb.checked = checked;
+          cb.checked = newSelectAll.checked;
         });
       });
     }
 
-    // 查看详情按钮
     document.querySelectorAll('.view-detail-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
+      var newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      newBtn.addEventListener('click', function() {
         var id = this.getAttribute('data-id');
         var body = document.getElementById('detail_body');
-        detailModal.style.display = 'flex';
-        body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;">加载中...</div>';
-
+        if (detailModal) detailModal.style.display = 'flex';
+        if (body) body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;">加载中...</div>';
         fetch('/admin/red_note_keywords/' + id)
           .then(function(r) { return r.text(); })
           .then(function(html) {
@@ -312,45 +369,43 @@
             temp.innerHTML = html;
             var infoEl = temp.querySelector('.keyword-detail-info');
             var resultEl = temp.querySelector('.keyword-result-data');
-            if (infoEl) {
-              body.innerHTML = infoEl.outerHTML + (resultEl ? resultEl.outerHTML : '');
-            } else {
-              body.innerHTML = html;
+            if (body) {
+              body.innerHTML = (infoEl ? infoEl.outerHTML : '') + (resultEl ? resultEl.outerHTML : '');
             }
           })
           .catch(function() {
-            body.innerHTML = '<div style="text-align:center;color:#fca5a5;padding:24px;">加载失败</div>';
+            if (body) body.innerHTML = '<div style="text-align:center;color:#fca5a5;padding:24px;">加载失败</div>';
           });
       });
     });
 
-    // ESC 关闭弹窗
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        var modals = document.querySelectorAll('.modal-overlay');
-        modals.forEach(function(m) { m.style.display = 'none'; });
-      }
-    });
-
-    // 批量创建任务确认
     var batchForm = document.getElementById('batch_task_form');
     if (batchForm) {
-      batchForm.addEventListener('submit', function(e) {
-        var checked = document.querySelectorAll('.keyword-checkbox:checked');
-        if (checked.length === 0) {
+      var newBatchForm = batchForm.cloneNode(true);
+      batchForm.parentNode.replaceChild(newBatchForm, batchForm);
+      newBatchForm.addEventListener('submit', function(e) {
+        if (newBatchForm.querySelectorAll('.keyword-checkbox:checked').length === 0) {
           e.preventDefault();
           alert('请先选择需要创建任务的关键词');
         }
       });
     }
+
+    if (!document.getElementById('_red_note_esc_bound')) {
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.modal-overlay').forEach(function(m) { m.style.display = 'none'; });
+        }
+      });
+      var escMarker = document.createElement('div');
+      escMarker.id = '_red_note_esc_bound';
+      escMarker.style.display = 'none';
+      document.body.appendChild(escMarker);
+    }
   }
 
   document.addEventListener('turbo:load', init);
-  // 首次加载（非 Turbo 导航）时也要初始化
-  if (document.readyState === 'complete') {
-    init();
-  } else {
-    window.addEventListener('load', init);
-  }
+  document.addEventListener('turbo:render', init);
+  init();
 })();
 </script>
