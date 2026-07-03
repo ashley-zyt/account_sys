@@ -69,84 +69,84 @@
     </div>
   </div>
 
-  <!-- 采集图片 -->
-  <% if @red_note_keyword.image_names.present? %>
+  <!-- 图片文件 -->
   <%
-    images = JSON.parse(@red_note_keyword.image_names) rescue []
+    image_names = JSON.parse(@red_note_keyword.image_names) rescue []
+    has_images = image_names.is_a?(Array) && image_names.any?
   %>
-  <% if images.any? %>
   <div style="padding: 20px 0; border-bottom: 1px solid #334155;">
-    <div style="font-size: 14px; color: #e2e8f0; font-weight: 600; margin-bottom: 12px;">
-      采集图片 <span style="color: #64748b; font-weight: 400; font-size: 12px;">（共 <%= images.size %> 张）</span>
-    </div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
-      <% images.each_with_index do |name, idx| %>
-        <div style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 6px;">
-          <span style="color: #64748b; font-size: 11px; min-width: 24px;"><%= idx + 1 %>.</span>
-          <code style="font-size: 12px; color: #86efac; word-break: break-all;"><%= name %></code>
-        </div>
-      <% end %>
-    </div>
-  </div>
-  <% end %>
-  <% end %>
-
-  <!-- 图片列表（API images 字段，含 OSS 链接） -->
-  <%
-    result = JSON.parse(@red_note_keyword.result_data) rescue {}
-    api_images = result.is_a?(Hash) ? (result["images"] || []) : []
-  %>
-  <% if api_images.any? %>
-  <div style="padding: 20px 0; border-bottom: 1px solid #334155;">
-    <div style="font-size: 14px; color: #e2e8f0; font-weight: 600; margin-bottom: 12px;">
-      图片文件 <span style="color: #64748b; font-weight: 400; font-size: 12px;">（共 <%= api_images.size %> 张，含 OSS 链接）</span>
-    </div>
-    <div class="admin-table-wrapper admin-table-scroll">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>文件路径</th>
-            <th>OSS Key</th>
-            <th>大小</th>
-            <th>已上传</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% api_images.each_with_index do |img, idx| %>
-            <tr>
-              <td><span class="admin-label-muted"><%= idx + 1 %></span></td>
-              <td style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <code style="font-size: 11px; color: #94a3b8;"><%= img["local_path"] || "-" %></code>
-              </td>
-              <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <code style="font-size: 11px; color: #cbd5e1;"><%= img["oss_key"] || "-" %></code>
-              </td>
-              <td>
-                <% size_kb = (img["file_size"] || 0) / 1024.0 %>
-                <span class="admin-label-muted"><%= "%.1f" % size_kb %> KB</span>
-              </td>
-              <td>
-                <%= status_badge(img["is_uploaded"] ? 3 : 0) %>
-              </td>
-              <td>
-                <% if img["oss_url"].present? %>
-                  <a href="<%= img["oss_url"] %>" target="_blank" style="color: #60a5fa; font-size: 11px; text-decoration: none;">预览 ↗</a>
-                  <button class="vl-copy-btn" data-url="<%= img["oss_url"] %>" style="font-size: 11px; margin-left: 8px;">复制</button>
-                <% else %>
-                  <span class="admin-label-muted">-</span>
-                <% end %>
-              </td>
-            </tr>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <span style="font-size: 14px; color: #e2e8f0; font-weight: 600;">图片文件</span>
+        <span style="color: #64748b; font-weight: 400; font-size: 12px; margin-left: 8px;">
+          <% if has_images %>
+            （共 <%= image_names.size %> 张）
+          <% else %>
+            （暂无图片）
           <% end %>
-        </tbody>
-      </table>
+        </span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <% if @red_note_keyword.status == 3 && !has_images %>
+          <%= button_to "同步状态", sync_task_admin_red_note_keyword_path(@red_note_keyword),
+                method: :post, class: "admin-button-secondary", style: "font-size: 12px;",
+                form: { style: "display: inline;" } %>
+        <% end %>
+        <% if @red_note_keyword.status == 1 || @red_note_keyword.status == 2 %>
+          <%= button_to "同步状态", sync_task_admin_red_note_keyword_path(@red_note_keyword),
+                method: :post, class: "admin-button-secondary", style: "font-size: 12px;",
+                form: { style: "display: inline;" } %>
+        <% end %>
+      </div>
     </div>
+
+    <% if has_images %>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">
+        <% image_names.each_with_index do |name, idx| %>
+          <%
+            url_data = @oss_image_urls.find { |u| u[:name] == name }
+            img_url = url_data ? url_data[:url] : nil
+          %>
+          <div style="border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: rgba(15,23,42,0.5); transition: border-color 0.2s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#334155'">
+            <% if img_url %>
+              <a href="<%= img_url %>" target="_blank" style="display: block; background: #000; height: 160px; overflow: hidden;">
+                <img src="<%= img_url %>"
+                     alt="<%= name %>" loading="lazy"
+                     style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                     onerror="this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:160px;color:#64748b;font-size:12px;\'>加载失败</div>'">
+              </a>
+            <% else %>
+              <div style="display: flex; align-items: center; justify-content: center; height: 160px; color: #64748b; font-size: 12px; background: #000;">
+                OSS 未配置
+              </div>
+            <% end %>
+            <div style="padding: 8px 10px; display: flex; align-items: center; justify-content: space-between;">
+              <code style="font-size: 11px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 6px;" title="<%= name %>"><%= name %></code>
+              <% if img_url %>
+                <button class="rn-copy-btn" data-url="<%= img_url %>" style="flex-shrink: 0;" title="复制链接">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% elsif @red_note_keyword.status == 3 %>
+      <div style="text-align: center; padding: 32px 16px; color: #64748b;">
+        <div style="font-size: 36px; margin-bottom: 8px;">🖼️</div>
+        <div style="font-size: 13px;">任务执行完成但暂无图片数据，请尝试同步</div>
+      </div>
+    <% else %>
+      <div style="text-align: center; padding: 32px 16px; color: #64748b;">
+        <div style="font-size: 13px;">暂无图片数据</div>
+      </div>
+    <% end %>
   </div>
-  <% end %>
 
   <!-- 原始响应数据 -->
+  <%
+    result = JSON.parse(@red_note_keyword.result_data) rescue {}
+  %>
   <% if @red_note_keyword.result_data.present? %>
   <div style="padding: 20px 0;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -162,18 +162,20 @@
   .info-item { display: flex; flex-direction: column; gap: 2px; }
   .info-label { color: #64748b; font-size: 12px; }
   .info-value { color: #e2e8f0; font-size: 14px; }
-  .vl-copy-btn {
-    background: rgba(59, 130, 246, 0.15);
-    border: 1px solid rgba(59, 130, 246, 0.35);
-    color: #93c5fd;
+  .rn-copy-btn {
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: #60a5fa;
     border-radius: 4px;
-    padding: 2px 8px;
-    font-size: 11px;
+    padding: 3px 6px;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.15s;
   }
-  .vl-copy-btn:hover {
-    background: rgba(59, 130, 246, 0.3);
-    color: #bfdbfe;
+  .rn-copy-btn:hover {
+    background: rgba(59, 130, 246, 0.25);
+    color: #93c5fd;
   }
 </style>
 
@@ -190,7 +192,7 @@ document.getElementById('toggle_raw_btn')?.addEventListener('click', function() 
 });
 
 document.addEventListener('click', function(e) {
-  var btn = e.target.closest('.vl-copy-btn');
+  var btn = e.target.closest('.rn-copy-btn');
   if (!btn) return;
   var url = btn.getAttribute('data-url') || '';
   var ta = document.createElement('textarea');
@@ -201,12 +203,9 @@ document.addEventListener('click', function(e) {
   ta.select();
   try {
     document.execCommand('copy');
-    btn.textContent = '已复制';
-    setTimeout(function() { btn.textContent = '复制'; }, 2000);
-  } catch(err) {
-    btn.textContent = '复制失败';
-    setTimeout(function() { btn.textContent = '复制'; }, 2000);
-  }
+    btn.querySelector('svg')?.setAttribute('stroke', '#22c55e');
+    setTimeout(function() { btn.querySelector('svg')?.setAttribute('stroke', 'currentColor'); }, 1500);
+  } catch(err) {}
   document.body.removeChild(ta);
 });
 </script>

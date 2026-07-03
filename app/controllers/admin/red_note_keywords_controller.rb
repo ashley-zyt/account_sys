@@ -72,6 +72,7 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
 
   def show
     @red_note_keyword = RedNoteKeyword.find(params[:id])
+    @oss_image_urls = build_oss_image_urls(@red_note_keyword)
     render layout: false if request.xhr?
   end
 
@@ -173,6 +174,46 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
 
   def setting_params
     params.require(:red_note_setting).permit(:search_max_results, :top_n_by_likes)
+  end
+
+  # 根据 image_names 构建 OSS 签名 URL 列表
+  def build_oss_image_urls(keyword)
+    names = JSON.parse(keyword.image_names) rescue []
+    return [] unless names.is_a?(Array) && names.any?
+
+    bucket = "jianying-rd"
+    endpoint = "https://#{bucket}.oss-cn-hangzhou.aliyuncs.com"
+    access_key_id = ENV["ALIYUN_ACCESS_KEY_ID"]
+    access_key_secret = ENV["ALIYUN_ACCESS_KEY_SECRET"]
+
+    return [] if access_key_id.blank? || access_key_secret.blank?
+
+    names.map do |name|
+      key = "#{keyword.keyword_code}/#{name}"
+      signed = oss_sign_url(access_key_id, access_key_secret, bucket, key, 3600)
+      { name: name, key: key, url: signed }
+    end
+  rescue => e
+    Rails.logger.error "[RedNoteKeywords] 生成 OSS URL 失败: #{e.message}"
+    []
+  end
+
+  # 生成 OSS 签名 URL（GET 请求、指定过期秒数）
+  def oss_sign_url(access_key_id, access_key_secret, bucket, key, expires)
+    require "base64"
+    require "openssl"
+
+    ts = Time.now.to_i + expires
+    cano_res = "/#{bucket}/#{key}"
+    sign_string = "GET\n\n\n#{ts}\n#{cano_res}"
+
+    signature = Base64.strict_encode64(
+      OpenSSL::HMAC.digest("sha1", access_key_secret, sign_string)
+    ).strip
+    signature = URI.encode_www_form_component(signature)
+    encoded_key = URI.encode_www_form_component(key)
+
+    "https://#{bucket}.oss-cn-hangzhou.aliyuncs.com/#{encoded_key}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
   end
 
   # 解析关键词行，支持 "关键词 编码"（空格分割）或 "关键词/编码"（斜杠分割）
