@@ -25,7 +25,10 @@
     <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
       <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
-        <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
+        <%= f.select :theme_eq,
+              options_for_select(@themes, @q.theme_eq),
+              { include_blank: "全部主题" },
+              { class: "admin-input admin-filter-input" } %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
