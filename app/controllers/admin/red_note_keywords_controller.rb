@@ -6,6 +6,7 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
     @red_note_keywords = @q.result
                             .order(created_at: :desc)
                             .page(params[:page])
+    @setting = RedNoteSetting.current
   end
 
   def new
@@ -98,16 +99,12 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
   # POST /admin/red_note_keywords/:id/create_task
   def create_task
     @red_note_keyword = RedNoteKeyword.find(params[:id])
-    if @red_note_keyword.status == 1 # 待执行
-      success = RedNoteApiService.fetch_token && RedNoteApiService.create_task(@red_note_keyword)
-    else
-      success = RedNoteApiService.create_task(@red_note_keyword)
-    end
+    success = RedNoteApiService.create_task(@red_note_keyword)
 
     if success
       redirect_to admin_red_note_keywords_path, notice: "任务创建成功"
     else
-      redirect_to admin_red_note_keywords_path, alert: "任务创建失败，请检查远程服务"
+      redirect_to admin_red_note_keywords_path, alert: "任务创建失败，请查看日志或检查远程服务"
     end
   end
 
@@ -131,6 +128,23 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
     redirect_to admin_red_note_keywords_path, notice: "状态同步完成"
   end
 
+  # GET /admin/red_note_keywords/settings
+  def settings
+    @setting = RedNoteSetting.current
+    render layout: false if request.xhr?
+  end
+
+  # PATCH /admin/red_note_keywords/settings
+  def update_settings
+    @setting = RedNoteSetting.current
+    if @setting.update(setting_params)
+      redirect_to admin_red_note_keywords_path, notice: "设置已更新"
+    else
+      flash[:alert] = @setting.errors.full_messages.join("；")
+      redirect_to admin_red_note_keywords_path
+    end
+  end
+
   private
 
   def set_themes
@@ -139,6 +153,10 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
 
   def red_note_keyword_params
     params.require(:red_note_keyword).permit(:theme, :keyword, :keyword_code)
+  end
+
+  def setting_params
+    params.require(:red_note_setting).permit(:search_max_results, :top_n_by_likes)
   end
 
   # 解析关键词行，支持 "关键词 编码"（空格分割）或 "关键词/编码"（斜杠分割）
