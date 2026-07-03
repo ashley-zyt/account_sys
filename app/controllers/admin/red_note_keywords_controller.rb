@@ -199,7 +199,6 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
   end
 
   # 生成 OSS V4 预签名 URL（GET 请求，HMAC-SHA256）
-  # 参考: https://help.aliyun.com/document_detail/31951.html
   def oss_sign_url(access_key_id, access_key_secret, bucket, key, expires)
     require "openssl"
 
@@ -208,46 +207,48 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
     date_stamp = now.strftime("%Y%m%d")
     timestamp = now.strftime("%Y%m%dT%H%M%SZ")
 
-    # 1. 构建规范化查询字符串（按参数名排序）
+    # 规范化查询字符串（参数名排序）
     credential = "#{access_key_id}/#{date_stamp}/#{region}/oss/aliyun_v4_request"
-    canonical_query = "x-oss-credential=#{percent_encode(credential)}" \
-      "&x-oss-date=#{timestamp}" \
-      "&x-oss-expires=#{expires}" \
-      "&x-oss-signature-version=OSS4-HMAC-SHA256"
+    canonical_query = [
+      "x-oss-credential=#{percent_encode(credential)}",
+      "x-oss-date=#{timestamp}",
+      "x-oss-expires=#{expires}",
+      "x-oss-signature-version=OSS4-HMAC-SHA256"
+    ].join("&")
 
-    # 2. 构建规范化请求
-    path = "/#{key}".gsub(/[^\/a-zA-Z0-9_.\-~]/, "")
+    # 规范化请求（预签名 URL 无额外签名头，headers/signed_headers 均为空）
+    canonical_uri = percent_encode_path("/#{key}")
     canonical_request = [
       "GET",
-      path,
+      canonical_uri,
       canonical_query,
-      "host:#{bucket}.oss-#{region}.aliyuncs.com",
       "",
-      "host",
+      "",
       "UNSIGNED-PAYLOAD"
     ].join("\n")
 
-    # 3. 计算规范化请求哈希
-    hashed_canonical_request = Digest::SHA256.hexdigest(canonical_request)
+    # 计算规范化请求哈希
+    hashed = Digest::SHA256.hexdigest(canonical_request)
 
-    # 4. 构建待签字符串
+    # 待签字符串
     scope = "#{date_stamp}/#{region}/oss/aliyun_v4_request"
     string_to_sign = [
       "OSS4-HMAC-SHA256",
       timestamp,
       scope,
-      hashed_canonical_request
+      hashed
     ].join("\n")
 
-    # 5. 派生签名密钥
-    k_date = OpenSSL::HMAC.digest("sha256", "aliyun_v4#{access_key_secret}", date_stamp)
-    k_region = OpenSSL::HMAC.digest("sha256", k_date, region)
+    # 派生签名密钥
+    k_date    = OpenSSL::HMAC.digest("sha256", "aliyun_v4#{access_key_secret}", date_stamp)
+    k_region  = OpenSSL::HMAC.digest("sha256", k_date, region)
     k_service = OpenSSL::HMAC.digest("sha256", k_region, "oss")
     k_signing = OpenSSL::HMAC.digest("sha256", k_service, "aliyun_v4_request")
     signature = OpenSSL::HMAC.hexdigest("sha256", k_signing, string_to_sign)
 
-    # 6. 拼装最终 URL
-    "https://#{bucket}.oss-#{region}.aliyuncs.com/#{path.sub(/^\//, "")}?" \
+    # 拼装 URL
+    encoded_key = key.split("/").map { |seg| percent_encode(seg) }.join("/")
+    "https://#{bucket}.oss-#{region}.aliyuncs.com/#{encoded_key}?" \
       "x-oss-credential=#{percent_encode(credential)}" \
       "&x-oss-date=#{timestamp}" \
       "&x-oss-expires=#{expires}" \
@@ -255,9 +256,14 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
       "&x-oss-signature-version=OSS4-HMAC-SHA256"
   end
 
-  # URL 百分比编码，保留 / 和 ~ 不编码（用于参数值，/ 需编码为 %2F）
+  # URL 百分比编码（保留 /）
   def percent_encode(str)
     URI.encode_www_form_component(str).gsub("+", "%20")
+  end
+
+  # 百分比编码路径段，保留 / 分隔符
+  def percent_encode_path(path)
+    path.split("/").map { |seg| percent_encode(seg) }.join("/")
   end
 
   # 解析关键词行，支持 "关键词 编码"（空格分割）或 "关键词/编码"（斜杠分割）
