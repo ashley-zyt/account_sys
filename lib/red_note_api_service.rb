@@ -17,8 +17,9 @@ class RedNoteApiService
       http.open_timeout = 10
       http.read_timeout = 10
 
-      request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
-      request.body = { username: AUTH_USERNAME, password: AUTH_PASSWORD }.to_json
+      request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json; charset=utf-8")
+      body = { username: AUTH_USERNAME, password: AUTH_PASSWORD }.to_json
+      request.body = body.dup.force_encoding("ASCII-8BIT")
 
       response = http.request(request)
       Rails.logger.info "[RedNoteApi] 登录响应 code=#{response.code} body=#{response.body.truncate(200)}"
@@ -48,22 +49,24 @@ class RedNoteApiService
         return false
       end
 
+      body_hash = {
+        keyword_code: keyword.keyword_code,
+        search_phrase: keyword.keyword,
+        content_type: "图文",
+        search_max_results: RedNoteSetting.current.search_max_results,
+        top_n_by_likes: RedNoteSetting.current.top_n_by_likes
+      }
+
       uri = URI("#{BASE_URL}/tasks")
       http = Net::HTTP.new(uri.host, uri.port)
       http.open_timeout = 10
       http.read_timeout = 30
 
       request = Net::HTTP::Post.new(uri.path,
-        "Content-Type" => "application/json",
+        "Content-Type" => "application/json; charset=utf-8",
         "Authorization" => "Bearer #{token}"
       )
-      request.body = {
-        keyword_code: keyword.keyword_code,
-        search_phrase: keyword.keyword,
-        content_type: "图文",
-        search_max_results: RedNoteSetting.current.search_max_results,
-        top_n_by_likes: RedNoteSetting.current.top_n_by_likes
-      }.to_json
+      request.body = body_hash.to_json.dup.force_encoding("ASCII-8BIT")
 
       Rails.logger.info "[RedNoteApi] 发送创建任务请求: #{request.body}"
 
