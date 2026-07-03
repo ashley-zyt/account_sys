@@ -15,38 +15,60 @@ class PublishScheduler
   TASK_INTERVAL = 40
 
   def self.run
-    execute_operation_tasks
-    execute_grok_tasks
+    execute_next_task
   end
 
-  def self.execute_operation_tasks
-    tasks = OperationTask.where(status: :waiting_publish)
+  def self.execute_next_task
+    tasks = fetch_all_tasks
+    return if tasks.empty?
+
+    last_browser_id = get_last_browser_id
+
+    task = select_next_task(tasks, last_browser_id)
+    return unless task
+
+    task_type = task.is_a?(OperationTask) ? 'operation' : 'grok'
+    execute_task(task, task_type)
+    save_last_browser_id(task.browser_id)
+    sleep(TASK_INTERVAL)
+  end
+
+  def self.fetch_all_tasks
+    operation_tasks = OperationTask.where(status: :waiting_publish)
+                                   .where("account_id IS NOT NULL")
+                                   .includes(:browser)
+
+    grok_tasks = GrokTask.where(status: :waiting_publish)
                          .where("account_id IS NOT NULL")
-                         .order(created_at: :asc)
-                         .limit(1)
+                         .includes(:browser)
 
-    tasks.each do |task|
-      execute_task(task, 'operation')
-      sleep(TASK_INTERVAL)
+    operation_tasks.to_a + grok_tasks.to_a
+  end
+
+  def self.select_next_task(tasks, last_browser_id)
+    tasks_without_last_browser = tasks.reject { |t| t.browser_id == last_browser_id }
+
+    if tasks_without_last_browser.any?
+      tasks_without_last_browser.min_by { |t| t.created_at }
+    else
+      tasks.min_by { |t| t.created_at }
     end
   end
 
-  def self.execute_grok_tasks
-    tasks = GrokTask.where(status: :waiting_publish)
-                    .where("account_id IS NOT NULL")
-                    .order(created_at: :asc)
-                    .limit(1)
+  def self.get_last_browser_id
+    last_task_log = TaskLog.where("browser_id IS NOT NULL")
+                          .order(id: :desc)
+                          .first
+    last_task_log&.browser_id
+  end
 
-    tasks.each do |task|
-      execute_task(task, 'grok')
-      sleep(TASK_INTERVAL)
-    end
+  def self.save_last_browser_id(browser_id)
   end
 
   def self.execute_task(task, task_type)
     return if task.account.nil? || task.browser.nil?
 
-    Rails.logger.info "[PublishScheduler] 开始执行任务 #{task_type}:#{task.id} - #{task.title}"
+    Rails.logger.info "[PublishScheduler] 开始执行任务 #{task_type}:#{task.id} - #{task.title} (浏览器: #{task.browser.profile_name})"
 
     begin
       task.update!(status: :executing, start_at: Time.current)
