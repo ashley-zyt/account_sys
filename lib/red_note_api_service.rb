@@ -1,6 +1,6 @@
-require "net/http"
 require "uri"
 require "json"
+require "httparty"
 
 # RedNote (小红书) 远程 API 服务
 # 负责 JWT 认证、创建采集任务、同步任务状态
@@ -12,19 +12,16 @@ class RedNoteApiService
   class << self
     # 获取 JWT Token
     def fetch_token
-      uri = URI("#{BASE_URL}/auth/login")
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.open_timeout = 10
-      http.read_timeout = 10
+      response = HTTParty.post(
+        "#{BASE_URL}/auth/login",
+        headers: { "Content-Type" => "application/json" },
+        body: { username: AUTH_USERNAME, password: AUTH_PASSWORD }.to_json,
+        timeout: 10
+      )
 
-      request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
-      body = { username: AUTH_USERNAME, password: AUTH_PASSWORD }.to_json
-      Rails.logger.info body
-      request.body = body.dup.force_encoding("ASCII-8BIT")
-      response = http.request(request)
-      Rails.logger.info "[RedNoteApi] 登录响应 code=#{response.code} body=#{response.body.truncate(200)}"
+      Rails.logger.info "[RedNoteApi] 登录响应 code=#{response.code} body=#{response.body.to_s.truncate(200)}"
 
-      return nil unless response.code == "200"
+      return nil unless response.code == 200
 
       data = JSON.parse(response.body)
       token = data.dig("data", "token")
@@ -57,23 +54,21 @@ class RedNoteApiService
         top_n_by_likes: RedNoteSetting.current.top_n_by_likes
       }
 
-      uri = URI("#{BASE_URL}/tasks")
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.open_timeout = 10
-      http.read_timeout = 30
+      Rails.logger.info "[RedNoteApi] 发送创建任务请求: #{body_hash.to_json}"
 
-      request = Net::HTTP::Post.new(uri.path,
-        "Content-Type" => "application/json; charset=utf-8",
-        "Authorization" => "Bearer #{token}"
+      response = HTTParty.post(
+        "#{BASE_URL}/tasks",
+        headers: {
+          "Content-Type" => "application/json",
+          "Authorization" => "Bearer #{token}"
+        },
+        body: body_hash.to_json,
+        timeout: 30
       )
-      request.body = body_hash.to_json.dup.force_encoding("ASCII-8BIT")
 
-      Rails.logger.info "[RedNoteApi] 发送创建任务请求: #{request.body}"
+      Rails.logger.info "[RedNoteApi] 创建任务响应 code=#{response.code} body=#{response.body.to_s.truncate(500)}"
 
-      response = http.request(request)
-      Rails.logger.info "[RedNoteApi] 创建任务响应 code=#{response.code} body=#{response.body.truncate(500)}"
-
-      unless response.code == "200" || response.code == "201"
+      unless response.code == 200 || response.code == 201
         Rails.logger.error "[RedNoteApi] 创建任务失败: HTTP #{response.code} body=#{response.body}"
         return false
       end
@@ -105,19 +100,16 @@ class RedNoteApiService
         return false
       end
 
-      uri = URI("#{BASE_URL}/tasks?keyword_code=#{URI.encode_www_form_component(keyword.keyword_code)}")
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.open_timeout = 10
-      http.read_timeout = 30
-
-      request = Net::HTTP::Get.new(uri.request_uri,
-        "Authorization" => "Bearer #{token}"
+      url = "#{BASE_URL}/tasks?keyword_code=#{URI.encode_www_form_component(keyword.keyword_code)}"
+      response = HTTParty.get(
+        url,
+        headers: { "Authorization" => "Bearer #{token}" },
+        timeout: 30
       )
 
-      response = http.request(request)
       Rails.logger.info "[RedNoteApi] 同步状态响应 code=#{response.code} keyword_code=#{keyword.keyword_code}"
 
-      return false unless response.code == "200"
+      return false unless response.code == 200
 
       data = JSON.parse(response.body)
       task_data = data.is_a?(Array) ? data.first : data.dig("data")
