@@ -50,6 +50,8 @@ Rails.application.routes.draw do
       collection do
         post :batch_create_task
         post :sync_status
+        get  :settings
+        patch :update_settings
       end
     end
     resources :grok_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]

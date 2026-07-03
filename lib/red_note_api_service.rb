@@ -17,70 +17,107 @@ class RedNoteApiService
       http.open_timeout = 10
       http.read_timeout = 10
 
-      request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
-      request.body = { username: AUTH_USERNAME, password: AUTH_PASSWORD }.to_json
+      request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json; charset=utf-8")
+      body = { username: AUTH_USERNAME, password: AUTH_PASSWORD }.to_json
+      Rails.logger.info "[RedNoteApi] 登录响应 code=#{response.code} body=#{response.body.truncate(200)}"
+      request.body = body.dup.force_encoding("ASCII-8BIT")
 
       response = http.request(request)
+      Rails.logger.info "[RedNoteApi] 登录响应 code=#{response.code} body=#{response.body.truncate(200)}"
+
       return nil unless response.code == "200"
 
       data = JSON.parse(response.body)
-      data.dig("data", "token")
+      token = data.dig("data", "token")
+      Rails.logger.info "[RedNoteApi] 获取 Token #{token ? '成功' : '失败：响应中无 token'}"
+      token
     rescue => e
-      Rails.logger.error "[RedNoteApi] 获取 Token 失败: #{e.message}"
+      Rails.logger.error "[RedNoteApi] 获取 Token 异常: #{e.message}"
       nil
     end
 
     # 创建采集任务
-    # keyword 参数为 RedNoteKeyword 实例
+    # POST /api/v1/tasks
+    #   keyword_code      (必填) 关键词编码
+    #   search_phrase     (必填) 搜索短语
+    #   content_type      图文 / 视频 / '' (不限)
+    #   search_max_results 搜索前N条 (优先级高于全局设置)
+    #   top_n_by_likes     按点赞取前N条下载 (优先级高于全局设置)
     def create_task(keyword)
       token = fetch_token
-      return false unless token
+      unless token
+        Rails.logger.error "[RedNoteApi] 创建任务失败: 无 Token (keyword_code=#{keyword.keyword_code})"
+        return false
+      end
+
+      body_hash = {
+        keyword_code: keyword.keyword_code,
+        search_phrase: keyword.keyword,
+        content_type: "图文",
+        search_max_results: RedNoteSetting.current.search_max_results,
+        top_n_by_likes: RedNoteSetting.current.top_n_by_likes
+      }
 
       uri = URI("#{BASE_URL}/tasks")
       http = Net::HTTP.new(uri.host, uri.port)
       http.open_timeout = 10
-      http.read_timeout = 10
+      http.read_timeout = 30
 
       request = Net::HTTP::Post.new(uri.path,
-        "Content-Type" => "application/json",
+        "Content-Type" => "application/json; charset=utf-8",
         "Authorization" => "Bearer #{token}"
       )
-      request.body = {
-        keyword: keyword.keyword,
-        keyword_code: keyword.keyword_code,
-        theme: keyword.theme
-      }.to_json
+      request.body = body_hash.to_json.dup.force_encoding("ASCII-8BIT")
+
+      Rails.logger.info "[RedNoteApi] 发送创建任务请求: #{request.body}"
 
       response = http.request(request)
-      return false unless response.code == "200" || response.code == "201"
+      Rails.logger.info "[RedNoteApi] 创建任务响应 code=#{response.code} body=#{response.body.truncate(500)}"
+
+      unless response.code == "200" || response.code == "201"
+        Rails.logger.error "[RedNoteApi] 创建任务失败: HTTP #{response.code} body=#{response.body}"
+        return false
+      end
 
       data = JSON.parse(response.body)
       task_id = data.dig("data", "task_id") || data.dig("data", "id")
-      keyword.update(task_id: task_id, status: 1) if task_id # 待执行
+
+      unless task_id
+        Rails.logger.error "[RedNoteApi] 创建任务失败: 响应中无 task_id, data=#{data.inspect}"
+        return false
+      end
+
+      keyword.update(task_id: task_id, status: 1)
+      Rails.logger.info "[RedNoteApi] 创建任务成功: keyword_code=#{keyword.keyword_code} task_id=#{task_id}"
       true
     rescue => e
-      Rails.logger.error "[RedNoteApi] 创建任务失败 (keyword_code=#{keyword.keyword_code}): #{e.message}"
+      Rails.logger.error "[RedNoteApi] 创建任务异常 (keyword_code=#{keyword.keyword_code}): #{e.message}"
       false
     end
 
     # 同步单个关键词的任务状态
     def sync_task_status(keyword)
       return unless keyword.task_id.present?
-      return if keyword.status == 3 # 已完成的不再同步
+      return if keyword.status == 3
 
       token = fetch_token
-      return false unless token
+      unless token
+        Rails.logger.error "[RedNoteApi] 同步状态失败: 无 Token"
+        return false
+      end
 
       uri = URI("#{BASE_URL}/tasks?keyword_code=#{URI.encode_www_form_component(keyword.keyword_code)}")
       http = Net::HTTP.new(uri.host, uri.port)
       http.open_timeout = 10
-      http.read_timeout = 10
+      http.read_timeout = 30
 
       request = Net::HTTP::Get.new(uri.request_uri,
         "Authorization" => "Bearer #{token}"
       )
 
       response = http.request(request)
+      Rails.logger.info "[RedNoteApi] 同步状态响应 code=#{response.code} keyword_code=#{keyword.keyword_code}"
+
       return false unless response.code == "200"
 
       data = JSON.parse(response.body)
@@ -88,7 +125,6 @@ class RedNoteApiService
 
       return unless task_data.present?
 
-      # 映射远程状态到本地状态
       remote_status = task_data["status"] || task_data["state"]
       local_status = map_remote_status(remote_status)
       keyword.update(
@@ -98,31 +134,30 @@ class RedNoteApiService
       )
       true
     rescue => e
-      Rails.logger.error "[RedNoteApi] 同步任务状态失败 (keyword_code=#{keyword.keyword_code}): #{e.message}"
+      Rails.logger.error "[RedNoteApi] 同步状态异常 (keyword_code=#{keyword.keyword_code}): #{e.message}"
       false
     end
 
     # 批量同步所有待执行和执行中的关键词
     def sync_all_pending
-      keywords = RedNoteKeyword.where(status: [1, 2]) # 待执行、执行中
+      keywords = RedNoteKeyword.where(status: [1, 2])
       keywords.each { |kw| sync_task_status(kw) }
     end
 
     private
 
-    # 将远程 API 返回的状态映射到本地状态码
     def map_remote_status(remote_status)
       case remote_status.to_s.downcase
       when "pending", "waiting", "queued"
-        1 # 待执行
+        1
       when "running", "processing", "executing"
-        2 # 执行中
+        2
       when "completed", "success", "done", "finished"
-        3 # 执行完成
+        3
       when "failed", "error"
-        4 # 任务失败
+        4
       else
-        1 # 未知状态默认为待执行
+        1
       end
     end
   end
