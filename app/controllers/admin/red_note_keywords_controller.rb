@@ -198,22 +198,66 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
     []
   end
 
-  # 生成 OSS 签名 URL（GET 请求、指定过期秒数）
+  # 生成 OSS V4 预签名 URL（GET 请求，HMAC-SHA256）
+  # 参考: https://help.aliyun.com/document_detail/31951.html
   def oss_sign_url(access_key_id, access_key_secret, bucket, key, expires)
-    require "base64"
     require "openssl"
 
-    ts = Time.now.to_i + expires
-    cano_res = "/#{bucket}/#{key}"
-    sign_string = "GET\n\n\n#{ts}\n#{cano_res}"
+    region = "cn-hangzhou"
+    now = Time.now.utc
+    date_stamp = now.strftime("%Y%m%d")
+    timestamp = now.strftime("%Y%m%dT%H%M%SZ")
 
-    signature = Base64.strict_encode64(
-      OpenSSL::HMAC.digest("sha1", access_key_secret, sign_string)
-    ).strip
-    signature = URI.encode_www_form_component(signature)
-    encoded_key = URI.encode_www_form_component(key)
+    # 1. 构建规范化查询字符串（按参数名排序）
+    credential = "#{access_key_id}/#{date_stamp}/#{region}/oss/aliyun_v4_request"
+    canonical_query = "x-oss-credential=#{percent_encode(credential)}" \
+      "&x-oss-date=#{timestamp}" \
+      "&x-oss-expires=#{expires}" \
+      "&x-oss-signature-version=OSS4-HMAC-SHA256"
 
-    "https://#{bucket}.oss-cn-hangzhou.aliyuncs.com/#{encoded_key}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
+    # 2. 构建规范化请求
+    path = "/#{key}".gsub(/[^\/a-zA-Z0-9_.\-~]/, "")
+    canonical_request = [
+      "GET",
+      path,
+      canonical_query,
+      "host:#{bucket}.oss-#{region}.aliyuncs.com",
+      "",
+      "host",
+      "UNSIGNED-PAYLOAD"
+    ].join("\n")
+
+    # 3. 计算规范化请求哈希
+    hashed_canonical_request = Digest::SHA256.hexdigest(canonical_request)
+
+    # 4. 构建待签字符串
+    scope = "#{date_stamp}/#{region}/oss/aliyun_v4_request"
+    string_to_sign = [
+      "OSS4-HMAC-SHA256",
+      timestamp,
+      scope,
+      hashed_canonical_request
+    ].join("\n")
+
+    # 5. 派生签名密钥
+    k_date = OpenSSL::HMAC.digest("sha256", "aliyun_v4#{access_key_secret}", date_stamp)
+    k_region = OpenSSL::HMAC.digest("sha256", k_date, region)
+    k_service = OpenSSL::HMAC.digest("sha256", k_region, "oss")
+    k_signing = OpenSSL::HMAC.digest("sha256", k_service, "aliyun_v4_request")
+    signature = OpenSSL::HMAC.hexdigest("sha256", k_signing, string_to_sign)
+
+    # 6. 拼装最终 URL
+    "https://#{bucket}.oss-#{region}.aliyuncs.com/#{path.sub(/^\//, "")}?" \
+      "x-oss-credential=#{percent_encode(credential)}" \
+      "&x-oss-date=#{timestamp}" \
+      "&x-oss-expires=#{expires}" \
+      "&x-oss-signature=#{signature}" \
+      "&x-oss-signature-version=OSS4-HMAC-SHA256"
+  end
+
+  # URL 百分比编码，保留 / 和 ~ 不编码（用于参数值，/ 需编码为 %2F）
+  def percent_encode(str)
+    URI.encode_www_form_component(str).gsub("+", "%20")
   end
 
   # 解析关键词行，支持 "关键词 编码"（空格分割）或 "关键词/编码"（斜杠分割）
