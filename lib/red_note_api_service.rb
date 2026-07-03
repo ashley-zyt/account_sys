@@ -17,7 +17,7 @@ class RedNoteApiService
       http.open_timeout = 10
       http.read_timeout = 10
 
-      request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json; charset=utf-8")
+      request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
       body = { username: AUTH_USERNAME, password: AUTH_PASSWORD }.to_json
       # request.body = body.dup.force_encoding("ASCII-8BIT")
       request.body = body
