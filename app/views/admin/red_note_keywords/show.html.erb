@@ -21,7 +21,7 @@
               method: :post, class: "admin-button-primary",
               form: { style: "display: inline;" } %>
       <% elsif @red_note_keyword.status == 1 || @red_note_keyword.status == 2 %>
-        <%= button_to "同步状态", sync_task_admin_red_note_keyword_path(@red_note_keyword),
+        <%= button_to "同步图片", sync_task_admin_red_note_keyword_path(@red_note_keyword),
               method: :post, class: "admin-button-primary",
               form: { style: "display: inline;" } %>
       <% end %>
@@ -88,12 +88,12 @@
       </div>
       <div style="display: flex; gap: 8px;">
         <% if @red_note_keyword.status == 3 && !has_images %>
-          <%= button_to "同步状态", sync_task_admin_red_note_keyword_path(@red_note_keyword),
+          <%= button_to "同步图片", sync_task_admin_red_note_keyword_path(@red_note_keyword),
                 method: :post, class: "admin-button-secondary", style: "font-size: 12px;",
                 form: { style: "display: inline;" } %>
         <% end %>
         <% if @red_note_keyword.status == 1 || @red_note_keyword.status == 2 %>
-          <%= button_to "同步状态", sync_task_admin_red_note_keyword_path(@red_note_keyword),
+          <%= button_to "同步图片", sync_task_admin_red_note_keyword_path(@red_note_keyword),
                 method: :post, class: "admin-button-secondary", style: "font-size: 12px;",
                 form: { style: "display: inline;" } %>
         <% end %>

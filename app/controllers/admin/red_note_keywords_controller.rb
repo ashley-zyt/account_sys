@@ -119,9 +119,9 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
     success = RedNoteApiService.sync_task_status(@red_note_keyword)
 
     if success
-      redirect_to admin_red_note_keywords_path, notice: "任务同步成功"
+      redirect_to admin_red_note_keyword_path(@red_note_keyword), notice: "图片同步成功"
     else
-      redirect_to admin_red_note_keywords_path, alert: "任务同步失败，请查看日志或检查远程服务"
+      redirect_to admin_red_note_keyword_path(@red_note_keyword), alert: "图片同步失败，请查看日志或检查远程服务"
     end
   end
 
