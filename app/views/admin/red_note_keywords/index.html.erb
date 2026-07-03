@@ -46,7 +46,6 @@
   </div>
 
   <% if @red_note_keywords.any? %>
-    <%= form_tag batch_create_task_admin_red_note_keywords_path, method: :post, id: "batch_task_form" do %>
       <div class="admin-table-wrapper admin-table-scroll">
         <table class="admin-table">
           <thead>
@@ -66,7 +65,9 @@
             <% @red_note_keywords.each do |kw| %>
               <tr>
                 <td>
-                  <input type="checkbox" name="keyword_ids[]" value="<%= kw.id %>" class="keyword-checkbox" <%= "disabled" unless kw.status == 0 %>>
+                  <input type="checkbox" name="keyword_ids[]" value="<%= kw.id %>"
+                         class="keyword-checkbox" form="batch_task_form"
+                         <%= "disabled" unless kw.status == 0 %>>
                 </td>
                 <td>
                   <span class="admin-label-muted"><%= kw.theme %></span>
@@ -118,14 +119,15 @@
         </table>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
-        <button type="submit" class="admin-button-primary" style="font-size: 12px;" id="batch_create_task_btn">
-          批量创建任务
-        </button>
+        <%= form_tag batch_create_task_admin_red_note_keywords_path, method: :post, id: "batch_task_form", style: "display: inline;" do %>
+          <button type="submit" class="admin-button-primary" style="font-size: 12px;" id="batch_create_task_btn">
+            批量创建任务
+          </button>
+        <% end %>
         <div class="admin-pagination">
           <%= paginate @red_note_keywords %>
         </div>
       </div>
-    <% end %>
   <% else %>
     <div class="admin-empty-state">
       暂无关键词数据。
@@ -384,7 +386,8 @@
       var newBatchForm = batchForm.cloneNode(true);
       batchForm.parentNode.replaceChild(newBatchForm, batchForm);
       newBatchForm.addEventListener('submit', function(e) {
-        if (newBatchForm.querySelectorAll('.keyword-checkbox:checked').length === 0) {
+        var checked = document.querySelectorAll('.keyword-checkbox:checked');
+        if (checked.length === 0) {
           e.preventDefault();
           alert('请先选择需要创建任务的关键词');
         }
