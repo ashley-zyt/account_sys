@@ -97,7 +97,7 @@
                             style: "font-size: 11px; padding: 3px 10px;",
                             form: { style: "display: inline;" } %>
                     <% elsif kw.status == 1 || kw.status == 2 %>
-                      <%= button_to "同步", create_task_admin_red_note_keyword_path(kw),
+                      <%= button_to "同步", sync_task_admin_red_note_keyword_path(kw),
                             method: :post,
                             class: "admin-button-secondary",
                             style: "font-size: 11px; padding: 3px 10px;",

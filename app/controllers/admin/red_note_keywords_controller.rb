@@ -108,6 +108,18 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
     end
   end
 
+  # POST /admin/red_note_keywords/:id/sync_task
+  def sync_task
+    @red_note_keyword = RedNoteKeyword.find(params[:id])
+    success = RedNoteApiService.sync_task_status(@red_note_keyword)
+
+    if success
+      redirect_to admin_red_note_keywords_path, notice: "任务同步成功"
+    else
+      redirect_to admin_red_note_keywords_path, alert: "任务同步失败，请查看日志或检查远程服务"
+    end
+  end
+
   # POST /admin/red_note_keywords/batch_create_task
   def batch_create_task
     keyword_ids = params[:keyword_ids]
