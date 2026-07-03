@@ -43,6 +43,15 @@ Rails.application.routes.draw do
         get :setup_cors
       end
     end
+    resources :red_note_keywords, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      member do
+        post :create_task
+      end
+      collection do
+        post :batch_create_task
+        post :sync_status
+      end
+    end
     resources :grok_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]
   end
 

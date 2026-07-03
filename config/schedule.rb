@@ -42,6 +42,12 @@ every :day, at: '17:00' do
   runner 'PublishScheduler.run'
 end
 
+# RedNote 关键词任务状态同步（每30分钟）
+set :output, "log/red_note_sync.log"
+every 30.minutes do
+  runner 'RedNoteApiService.sync_all_pending'
+end
+
 
 # set :output, "log/check_timeout_tasks.log"
 # every 5.minutes do
