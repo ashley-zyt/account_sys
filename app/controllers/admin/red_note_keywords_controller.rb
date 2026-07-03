@@ -92,6 +92,10 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
 
   def destroy
     @red_note_keyword = RedNoteKeyword.find(params[:id])
+    unless @red_note_keyword.status == 0
+      redirect_to admin_red_note_keywords_path, alert: "仅未启动的任务可以删除"
+      return
+    end
     @red_note_keyword.destroy
     redirect_to admin_red_note_keywords_path, notice: "关键词删除成功"
   end

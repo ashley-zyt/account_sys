@@ -110,7 +110,7 @@
                     <%= link_to "删除", admin_red_note_keyword_path(kw),
                           data: { turbo_method: :delete, turbo_confirm: "确定删除该关键词吗？" },
                           class: "admin-link-quiet",
-                          style: "color: #ef4444; font-size: 11px;" %>
+                          style: "color: #ef4444; font-size: 11px;" if kw.status == 0 %>
                   </div>
                 </td>
               </tr>
