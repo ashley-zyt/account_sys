@@ -15,22 +15,24 @@ class PublishScheduler
   TASK_INTERVAL = 40
 
   def self.run
-    execute_next_task
+    loop do
+      break unless execute_next_task
+    end
   end
 
   def self.execute_next_task
     tasks = fetch_all_tasks
-    return if tasks.empty?
+    return false if tasks.empty?
 
     last_browser_id = get_last_browser_id
 
     task = select_next_task(tasks, last_browser_id)
-    return unless task
+    return false unless task
 
     task_type = task.is_a?(OperationTask) ? 'operation' : 'grok'
     execute_task(task, task_type)
-    save_last_browser_id(task.browser_id)
     sleep(TASK_INTERVAL)
+    true
   end
 
   def self.fetch_all_tasks
