@@ -1,0 +1,53 @@
+<%= render 'admin/shared/header' %>
+
+<div class="admin-content">
+  <div class="admin-content-header">
+    <h1>操作记录</h1>
+  </div>
+
+  <div class="admin-filter">
+    <%= search_form_for @q, html: { class: 'admin-filter-form' } do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">操作人邮箱</label>
+        <%= f.select :admin_id_eq, @admins.map { |id, name| [name, id] }, { include_blank: '所有操作人' }, class: 'admin-input admin-filter-input' %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">操作类型</label>
+        <%= f.select :action_eq, [['新增', 'create'], ['编辑', 'update'], ['删除', 'destroy']], { include_blank: '所有类型' }, class: 'admin-input admin-filter-input' %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">操作时间</label>
+        <%= f.date_range :created_at %>
+      </div>
+      <%= f.submit '筛选', class: 'admin-button' %>
+      <%= link_to '重置', admin_operation_logs_path, class: 'admin-button-secondary' %>
+    <% end %>
+  </div>
+
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>操作人</th>
+        <th>操作类型</th>
+        <th>目标</th>
+        <th>描述</th>
+        <th>IP地址</th>
+        <th>操作时间</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @operation_logs.each do |log| %>
+        <tr>
+          <td><%= log.admin_name || '-' %></td>
+          <td><%= log.action_label %></td>
+          <td><%= log.target_label %></td>
+          <td><%= log.description || '-' %></td>
+          <td><%= log.ip_address || '-' %></td>
+          <td><%= log.created_at.strftime('%Y-%m-%d %H:%M:%S') %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <%= paginate @operation_logs %>
+</div>

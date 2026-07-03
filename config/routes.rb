@@ -55,6 +55,7 @@ Rails.application.routes.draw do
       end
     end
     resources :grok_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]
+    resources :operation_logs, only: [:index]
   end
 
   namespace :api do
