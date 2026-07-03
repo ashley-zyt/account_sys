@@ -73,12 +73,14 @@
                   <span class="admin-label-muted"><%= kw.theme %></span>
                 </td>
                 <td>
-                  <span class="admin-label-muted"><%= kw.keyword %></span>
+                  <%= link_to kw.keyword, admin_red_note_keyword_path(kw), class: "admin-label-muted", style: "text-decoration: none; cursor: pointer;" %>
                 </td>
                 <td>
-                  <code style="font-size: 12px; color: #93c5fd; background: rgba(59,130,246,0.1); padding: 2px 6px; border-radius: 3px;">
-                    <%= kw.keyword_code %>
-                  </code>
+                  <%= link_to admin_red_note_keyword_path(kw), style: "text-decoration: none;" do %>
+                    <code style="font-size: 12px; color: #93c5fd; background: rgba(59,130,246,0.1); padding: 2px 6px; border-radius: 3px; cursor: pointer;">
+                      <%= kw.keyword_code %>
+                    </code>
+                  <% end %>
                 </td>
                 <td>
                   <%= status_badge(kw.status) %>
@@ -103,10 +105,9 @@
                             style: "font-size: 11px; padding: 3px 10px;",
                             form: { style: "display: inline;" } %>
                     <% end %>
-                    <button type="button"
-                            class="admin-link-quiet view-detail-btn"
-                            style="font-size: 11px; color: #60a5fa; background: none; border: none; cursor: pointer;"
-                            data-id="<%= kw.id %>">查看</button>
+                    <%= link_to "详情", admin_red_note_keyword_path(kw),
+                          class: "admin-link-quiet",
+                          style: "font-size: 11px; color: #60a5fa;" %>
                     <%= link_to "删除", admin_red_note_keyword_path(kw),
                           data: { turbo_method: :delete, turbo_confirm: "确定删除该关键词吗？" },
                           class: "admin-link-quiet",
@@ -219,19 +220,6 @@
   </div>
 </div>
 
-<!-- 查看详情弹窗 -->
-<div id="detail_modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content" style="max-width: 640px; width: 94%;">
-    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
-      <h3 id="detail_title">关键词详情</h3>
-      <button type="button" id="detail_close_btn" style="background: transparent; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; line-height: 1;">×</button>
-    </div>
-    <div class="modal-body" id="detail_body" style="max-height: 65vh; overflow-y: auto;">
-      加载中...
-    </div>
-  </div>
-</div>
-
 <style>
   .modal-overlay {
     position: fixed;
@@ -332,19 +320,6 @@
       });
     }
 
-    var detailModal = document.getElementById('detail_modal');
-    if (detailModal) {
-      var detailCloseBtn = document.getElementById('detail_close_btn');
-      if (detailCloseBtn) {
-        var newDetailClose = detailCloseBtn.cloneNode(true);
-        detailCloseBtn.parentNode.replaceChild(newDetailClose, detailCloseBtn);
-        newDetailClose.addEventListener('click', function() { detailModal.style.display = 'none'; });
-      }
-      detailModal.addEventListener('click', function(e) {
-        if (e.target === detailModal) detailModal.style.display = 'none';
-      });
-    }
-
     var selectAll = document.getElementById('select_all');
     if (selectAll) {
       var newSelectAll = selectAll.cloneNode(true);
@@ -355,31 +330,6 @@
         });
       });
     }
-
-    document.querySelectorAll('.view-detail-btn').forEach(function(btn) {
-      var newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-      newBtn.addEventListener('click', function() {
-        var id = this.getAttribute('data-id');
-        var body = document.getElementById('detail_body');
-        if (detailModal) detailModal.style.display = 'flex';
-        if (body) body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;">加载中...</div>';
-        fetch('/admin/red_note_keywords/' + id)
-          .then(function(r) { return r.text(); })
-          .then(function(html) {
-            var temp = document.createElement('div');
-            temp.innerHTML = html;
-            var infoEl = temp.querySelector('.keyword-detail-info');
-            var resultEl = temp.querySelector('.keyword-result-data');
-            if (body) {
-              body.innerHTML = (infoEl ? infoEl.outerHTML : '') + (resultEl ? resultEl.outerHTML : '');
-            }
-          })
-          .catch(function() {
-            if (body) body.innerHTML = '<div style="text-align:center;color:#fca5a5;padding:24px;">加载失败</div>';
-          });
-      });
-    });
 
     var batchForm = document.getElementById('batch_task_form');
     if (batchForm) {
