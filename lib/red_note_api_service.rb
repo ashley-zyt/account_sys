@@ -92,7 +92,8 @@ class RedNoteApiService
     # 同步单个关键词的任务状态
     def sync_task_status(keyword)
       return unless keyword.task_id.present?
-      return if keyword.status == 3
+      # 执行完成且有图片数据的不再同步
+      return if keyword.status == 3 && keyword.image_names.present?
 
       token = fetch_token
       unless token
@@ -121,7 +122,7 @@ class RedNoteApiService
 
       update_attrs = {
         status: local_status,
-        result_data: task_data.to_json,
+        result_data: strip_oss_url(task_data).to_json,
         task_id: task_data["id"] || task_data["task_id"] || keyword.task_id
       }
 
@@ -168,6 +169,21 @@ class RedNoteApiService
         4
       else
         1
+      end
+    end
+
+    # 递归删除 Hash 中所有 oss_url 键，减少存储空间
+    def strip_oss_url(obj)
+      case obj
+      when Hash
+        obj.each_with_object({}) do |(k, v), h|
+          next if k == "oss_url"
+          h[k] = strip_oss_url(v)
+        end
+      when Array
+        obj.map { |v| strip_oss_url(v) }
+      else
+        obj
       end
     end
   end
