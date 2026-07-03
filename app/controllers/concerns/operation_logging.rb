@@ -2,7 +2,7 @@ module OperationLogging
   extend ActiveSupport::Concern
 
   included do
-    after_action :log_operation, only: [:create, :update, :destroy]
+    after_action :log_operation
   end
 
   def log_operation
