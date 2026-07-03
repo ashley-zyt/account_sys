@@ -19,6 +19,7 @@ class RedNoteApiService
 
       request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json; charset=utf-8")
       body = { username: AUTH_USERNAME, password: AUTH_PASSWORD }.to_json
+      Rails.logger.info "[RedNoteApi] 登录响应 code=#{response.code} body=#{response.body.truncate(200)}"
       request.body = body.dup.force_encoding("ASCII-8BIT")
 
       response = http.request(request)
