@@ -29,6 +29,21 @@
       </td>
     </tr>
     <% end %>
+    <% if @red_note_keyword.image_names.present? %>
+    <tr>
+      <td style="padding: 8px 12px; color: #94a3b8; font-size: 13px; vertical-align: top;">采集图片</td>
+      <td style="padding: 8px 12px;">
+        <% images = JSON.parse(@red_note_keyword.image_names) rescue [] %>
+        <% if images.any? %>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            <% images.each do |name| %>
+              <code style="font-size: 11px; color: #86efac; background: rgba(34,197,94,0.12); padding: 2px 8px; border-radius: 4px;"><%= name %></code>
+            <% end %>
+          </div>
+        <% end %>
+      </td>
+    </tr>
+    <% end %>
     <tr>
       <td style="padding: 8px 12px; color: #94a3b8; font-size: 13px;">创建时间</td>
       <td style="padding: 8px 12px; color: #e2e8f0; font-size: 13px;"><%= @red_note_keyword.created_at&.strftime('%Y-%m-%d %H:%M:%S') %></td>

@@ -118,11 +118,21 @@ class RedNoteApiService
 
       remote_status = task_data["status"] || task_data["state"]
       local_status = map_remote_status(remote_status)
-      keyword.update(
+
+      update_attrs = {
         status: local_status,
         result_data: task_data.to_json,
         task_id: task_data["id"] || task_data["task_id"] || keyword.task_id
-      )
+      }
+
+      # 仅当 image_names 非空时才更新
+      raw_image_names = task_data["image_names"]
+      if raw_image_names.present?
+        parsed = raw_image_names.is_a?(Array) ? raw_image_names : JSON.parse(raw_image_names) rescue nil
+        update_attrs[:image_names] = parsed.to_json if parsed.is_a?(Array) && parsed.any?
+      end
+
+      keyword.update(update_attrs)
       true
     rescue => e
       Rails.logger.error "[RedNoteApi] 同步状态异常 (keyword_code=#{keyword.keyword_code}): #{e.message}"
