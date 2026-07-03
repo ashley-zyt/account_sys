@@ -35,6 +35,12 @@ class RedNoteApiService
     end
 
     # 创建采集任务
+    # POST /api/v1/tasks
+    #   keyword_code      (必填) 关键词编码
+    #   search_phrase     (必填) 搜索短语
+    #   content_type      图文 / 视频 / '' (不限)
+    #   search_max_results 搜索前N条 (优先级高于全局设置)
+    #   top_n_by_likes     按点赞取前N条下载 (优先级高于全局设置)
     def create_task(keyword)
       token = fetch_token
       unless token
@@ -52,9 +58,9 @@ class RedNoteApiService
         "Authorization" => "Bearer #{token}"
       )
       request.body = {
-        keyword: keyword.keyword,
         keyword_code: keyword.keyword_code,
-        theme: keyword.theme,
+        search_phrase: keyword.keyword,
+        content_type: "图文",
         search_max_results: RedNoteSetting.current.search_max_results,
         top_n_by_likes: RedNoteSetting.current.top_n_by_likes
       }.to_json
