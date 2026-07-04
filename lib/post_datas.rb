@@ -107,7 +107,7 @@ class PostDatas
   end
 
   def self.push_to_external(browser_data)
-    uri = URI.parse("http://174.139.46.117:8080/accounts/fetch_posts")
+    uri = URI.parse("http://174.139.46.15:8080/accounts/fetch_posts")
     http = Net::HTTP.new(uri.host, uri.port)
     http.read_timeout = 600
     http.open_timeout = 300
