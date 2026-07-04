@@ -98,8 +98,8 @@ class TaskScheduler
 		begin
 			uri = URI('http://174.139.46.15:8080/api/browser/locked')
 			http = Net::HTTP.new(uri.host, uri.port)
-			http.open_timeout = 10
-			http.read_timeout = 10
+			http.open_timeout = 100
+			http.read_timeout = 100
 
 			response = http.get(uri.path)
 			locked_data = JSON.parse(response.body)
