@@ -32,7 +32,8 @@ class PostDatas
           {
             id: acc.id,
             platform: self.ensure_utf8(acc.platform),
-            source_url: self.ensure_utf8(acc.source_url)
+            source_url: self.ensure_utf8(acc.source_url),
+            work_type: self.ensure_utf8(acc.work_type)
           }
         end
       }
@@ -49,7 +50,8 @@ class PostDatas
           {
             id: acc.id,
             platform: self.ensure_utf8(acc.platform),
-            source_url: self.ensure_utf8(acc.source_url)
+            source_url: self.ensure_utf8(acc.source_url),
+            work_type: self.ensure_utf8(acc.work_type)
           }
         end
         existing_item[:active_accounts].uniq! { |acc| acc[:id] }
@@ -61,7 +63,8 @@ class PostDatas
             {
               id: acc.id,
               platform: self.ensure_utf8(acc.platform),
-              source_url: self.ensure_utf8(acc.source_url)
+              source_url: self.ensure_utf8(acc.source_url),
+              work_type: self.ensure_utf8(acc.work_type)
             }
           end
         }
@@ -73,15 +76,46 @@ class PostDatas
     success_count = 0
     fail_count = 0
 
+    VIDEO_MOVE_URL = "http://174.139.46.117:8080"
+    OTHER_URL = "http://174.139.46.15:8080"
+
     data.each_with_index do |browser_data, index|
-      response = push_to_external_with_retry(browser_data)
-      if response[:success]
-        success_count += 1
-        Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送成功 (第 #{index + 1} 个)"
-      else
-        fail_count += 1
-        Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 推送失败: #{self.ensure_utf8(response[:error])} (第 #{index + 1} 个)"
+      move_accounts = browser_data[:active_accounts].select { |acc| acc[:work_type] == "视频搬运" }
+      other_accounts = browser_data[:active_accounts].reject { |acc| acc[:work_type] == "视频搬运" }
+
+      unless move_accounts.empty?
+        move_payload = {
+          id: browser_data[:id],
+          profile_name: browser_data[:profile_name],
+          active_accounts: move_accounts
+        }
+        response = push_to_external_with_retry(move_payload, VIDEO_MOVE_URL)
+        if response[:success]
+          success_count += 1
+          Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送成功 (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
+        else
+          fail_count += 1
+          Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送失败: #{self.ensure_utf8(response[:error])} (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
+        end
+        sleep(REQUEST_INTERVAL)
       end
+
+      unless other_accounts.empty?
+        other_payload = {
+          id: browser_data[:id],
+          profile_name: browser_data[:profile_name],
+          active_accounts: other_accounts
+        }
+        response = push_to_external_with_retry(other_payload, OTHER_URL)
+        if response[:success]
+          success_count += 1
+          Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送成功 (第 #{index + 1} 个, 目标: #{OTHER_URL})"
+        else
+          fail_count += 1
+          Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送失败: #{self.ensure_utf8(response[:error])} (第 #{index + 1} 个, 目标: #{OTHER_URL})"
+        end
+      end
+
       sleep(REQUEST_INTERVAL) unless index == data.size - 1
     end
 
@@ -92,10 +126,10 @@ class PostDatas
     { success_count: 0, fail_count: 0, total: 0, error: e.message }
   end
 
-  def self.push_to_external_with_retry(browser_data)
+  def self.push_to_external_with_retry(browser_data, base_url)
     response = nil
     RETRY_COUNT.times do |attempt|
-      response = push_to_external(browser_data)
+      response = push_to_external(browser_data, base_url)
       return response if response[:success]
 
       if attempt < RETRY_COUNT - 1
@@ -106,8 +140,8 @@ class PostDatas
     response
   end
 
-  def self.push_to_external(browser_data)
-    uri = URI.parse("http://174.139.46.15:8080/accounts/fetch_posts")
+  def self.push_to_external(browser_data, base_url)
+    uri = URI.parse("#{base_url}/accounts/fetch_posts")
     http = Net::HTTP.new(uri.host, uri.port)
     http.read_timeout = 600
     http.open_timeout = 300
