@@ -22,11 +22,42 @@ class Admin::JianyingTasksController < Admin::BaseController
 
 	def destroy
 		if @jianying_task.pending?
+			delete_oss_video(@jianying_task.oss_url)
 			@jianying_task.destroy
 			redirect_to admin_jianying_tasks_path, notice: "任务删除成功"
 		else
 			redirect_to admin_jianying_tasks_path, alert: "仅待分配状态的任务可以删除"
 		end
+	end
+
+	# 通过 OSS REST API 删除视频文件（V1 签名）
+	def delete_oss_video(object_key)
+		return if object_key.blank?
+		require "net/http"
+		require "openssl"
+		require "base64"
+
+		bucket = OSS_BUCKET
+		object_key = object_key.sub(%r{^/}, "")
+		date = Time.now.utc.strftime("%a, %d %b %Y %H:%M:%S GMT")
+		string_to_sign = "DELETE\n\n\n#{date}\n/#{bucket}/#{object_key}"
+		signature = Base64.strict_encode64(
+			OpenSSL::HMAC.digest("sha1", OSS_ACCESS_KEY_SECRET, string_to_sign)
+		).strip
+
+		uri = URI("https://#{bucket}.oss-#{OSS_REGION}.aliyuncs.com/#{percent_encode_path(object_key)}")
+		http = Net::HTTP.new(uri.host, uri.port)
+		http.use_ssl = true
+		http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+		req = Net::HTTP::Delete.new(uri.request_uri)
+		req["Date"] = date
+		req["Authorization"] = "OSS #{OSS_ACCESS_KEY_ID}:#{signature}"
+
+		resp = http.request(req)
+		Rails.logger.info "[JianyingTask] OSS 删除视频 #{object_key}: #{resp.code} #{resp.body}"
+	rescue => e
+		Rails.logger.error "[JianyingTask] OSS 删除视频失败 (#{object_key}): #{e.message}"
 	end
 
 	private
