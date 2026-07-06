@@ -64,7 +64,7 @@ class Admin::JianyingTasksController < Admin::BaseController
 			"x-oss-signature-version=OSS4-HMAC-SHA256"
 		].join("&")
 
-		canonical_uri = percent_encode_path("/#{key}")
+		canonical_uri = percent_encode_path("/#{OSS_BUCKET}/#{key}")
 		canonical_request = ["GET", canonical_uri, canonical_query, "", "", "UNSIGNED-PAYLOAD"].join("\n")
 		hashed = Digest::SHA256.hexdigest(canonical_request)
 
