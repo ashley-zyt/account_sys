@@ -5,7 +5,7 @@ Rails.application.routes.draw do
     root to: "dashboard#index"
     resources :accounts, only: [:index, :show, :new, :create, :edit, :update]
     resources :move_tasks, only: [:index, :show]
-    resources :jianying_tasks, only: [:index, :show]
+    resources :jianying_tasks, only: [:index, :show, :destroy]
     resources :operation_tasks, only: [:index, :show, :new, :create, :destroy] do
       collection do
         get :oss_signature
