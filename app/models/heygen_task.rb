@@ -1,3 +1,35 @@
+# == Schema Information
+#
+# Table name: heygen_tasks
+#
+#  id                                                                :bigint           not null, primary key
+#  actual_publish_time(实际发布时间)                                 :datetime
+#  description(描述)                                                 :text(65535)
+#  error_msg(任务结果)                                               :text(65535)
+#  platform(平台)                                                    :integer
+#  start_at(任务开始时间)                                            :datetime
+#  status(任务状态 pending/waiting_publish/executing/success/failed) :integer          default("pending")
+#  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
+#  theme(主题)                                                       :string(255)
+#  title(标题)                                                       :text(65535)
+#  video_text(逐字稿)                                                :text(65535)
+#  video_url(视频OSSurl)                                             :text(65535)
+#  created_at                                                        :datetime         not null
+#  updated_at                                                        :datetime         not null
+#  account_id(账号ID)                                                :bigint
+#  browser_id(浏览器ID)                                              :bigint
+#  templete_id(视频模板ID)                                           :string(255)
+#
+# Indexes
+#
+#  index_heygen_tasks_on_account_id   (account_id)
+#  index_heygen_tasks_on_browser_id   (browser_id)
+#  index_heygen_tasks_on_platform     (platform)
+#  index_heygen_tasks_on_status       (status)
+#  index_heygen_tasks_on_task_uuid    (task_uuid) UNIQUE
+#  index_heygen_tasks_on_templete_id  (templete_id)
+#  index_heygen_tasks_on_theme        (theme)
+#
 class HeygenTask < ApplicationRecord
   belongs_to :account, optional: true
   belongs_to :browser, optional: true
