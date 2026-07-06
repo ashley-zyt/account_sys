@@ -27,6 +27,7 @@ class TaskLog < ApplicationRecord
 	belongs_to :jianying_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
 	belongs_to :grok_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
 	belongs_to :operation_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
+	belongs_to :heygen_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
 
 	# 任务释放后仍然能定位到执行账号/浏览器
 	belongs_to :log_account, class_name: 'Account', foreign_key: :account_id, optional: true
@@ -34,7 +35,7 @@ class TaskLog < ApplicationRecord
 
 	# 获取当前关联的具体任务对象
 	def task
-		move_task || jianying_task || grok_task || operation_task
+		move_task || jianying_task || grok_task || operation_task || heygen_task
 	end
 
 	# 获取任务类型
@@ -47,6 +48,8 @@ class TaskLog < ApplicationRecord
 			"Grok任务"
 		elsif operation_task.present?
 			"运营任务"
+		elsif heygen_task.present?
+			"Heygen任务"
 		else
 			"未知"
 		end
@@ -99,21 +102,21 @@ class TaskLog < ApplicationRecord
 	end
 
 	ransacker :task_type do
-		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM move_tasks WHERE move_tasks.task_uuid = task_logs.task_uuid) THEN 'move_task' WHEN EXISTS (SELECT 1 FROM jianying_tasks WHERE jianying_tasks.task_uuid = task_logs.task_uuid) THEN 'jianying_task' WHEN EXISTS (SELECT 1 FROM grok_tasks WHERE grok_tasks.task_uuid = task_logs.task_uuid) THEN 'grok_task' WHEN EXISTS (SELECT 1 FROM operation_tasks WHERE operation_tasks.task_uuid = task_logs.task_uuid) THEN 'operation_task' ELSE 'unknown' END")
+		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM move_tasks WHERE move_tasks.task_uuid = task_logs.task_uuid) THEN 'move_task' WHEN EXISTS (SELECT 1 FROM jianying_tasks WHERE jianying_tasks.task_uuid = task_logs.task_uuid) THEN 'jianying_task' WHEN EXISTS (SELECT 1 FROM grok_tasks WHERE grok_tasks.task_uuid = task_logs.task_uuid) THEN 'grok_task' WHEN EXISTS (SELECT 1 FROM operation_tasks WHERE operation_tasks.task_uuid = task_logs.task_uuid) THEN 'operation_task' WHEN EXISTS (SELECT 1 FROM heygen_tasks WHERE heygen_tasks.task_uuid = task_logs.task_uuid) THEN 'heygen_task' ELSE 'unknown' END")
 	end
 
 	# 账号所属平台：优先读取快照字段，回退到关联任务再到 accounts 表
 	ransacker :account_platform, formatter: proc { |v| Account.platforms[v] } do
-		Arel.sql("COALESCE((SELECT a.platform FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1), (SELECT a.platform FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM grok_tasks g JOIN accounts a ON a.id = g.account_id WHERE g.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1))")
+		Arel.sql("COALESCE((SELECT a.platform FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1), (SELECT a.platform FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM grok_tasks g JOIN accounts a ON a.id = g.account_id WHERE g.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM heygen_tasks h JOIN accounts a ON a.id = h.account_id WHERE h.task_uuid = task_logs.task_uuid LIMIT 1))")
 	end
 
 	# 工作模式筛选：优先读取快照字段，回退到关联任务再到 accounts 表
 	ransacker :account_work_type, formatter: proc { |v| Account.work_types[v] } do
-		Arel.sql("COALESCE((SELECT a.work_type FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1), (SELECT a.work_type FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM grok_tasks g JOIN accounts a ON a.id = g.account_id WHERE g.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1))")
+		Arel.sql("COALESCE((SELECT a.work_type FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1), (SELECT a.work_type FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM grok_tasks g JOIN accounts a ON a.id = g.account_id WHERE g.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM heygen_tasks h JOIN accounts a ON a.id = h.account_id WHERE h.task_uuid = task_logs.task_uuid LIMIT 1))")
 	end
 
 	def self.ransackable_associations(auth_object = nil)
-		%w[move_task jianying_task grok_task operation_task log_account log_browser]
+		%w[move_task jianying_task grok_task operation_task heygen_task log_account log_browser]
 	end
 
 	def self.ransackable_attributes(auth_object = nil)

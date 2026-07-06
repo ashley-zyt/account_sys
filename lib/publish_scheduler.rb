@@ -29,7 +29,15 @@ class PublishScheduler
     task = select_next_task(tasks, last_browser_id)
     return false unless task
 
-    task_type = task.is_a?(OperationTask) ? 'operation' : 'grok'
+    task_type = if task.is_a?(OperationTask)
+                  'operation'
+                elsif task.is_a?(GrokTask)
+                  'grok'
+                elsif task.is_a?(HeygenTask)
+                  'heygen'
+                else
+                  'operation'
+                end
     execute_task(task, task_type)
     sleep(TASK_INTERVAL)
     true
@@ -44,7 +52,11 @@ class PublishScheduler
                          .where("account_id IS NOT NULL")
                          .includes(:browser)
 
-    operation_tasks.to_a + grok_tasks.to_a
+    heygen_tasks = HeygenTask.where(status: :waiting_publish)
+                             .where("account_id IS NOT NULL")
+                             .includes(:browser)
+
+    operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a
   end
 
   def self.select_next_task(tasks, last_browser_id)

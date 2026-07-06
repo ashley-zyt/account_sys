@@ -32,6 +32,7 @@ class Account < ApplicationRecord
 	has_many :jianying_tasks, dependent: :nullify
 	has_many :operation_tasks, dependent: :nullify
 	has_many :grok_tasks, dependent: :nullify
+	has_many :heygen_tasks, dependent: :nullify
 	# 通过 task_logs.account_id 快照反查该账号的所有执行日志（兼容运营任务被释放资源的场景）
 	has_many :task_logs, foreign_key: :account_id, dependent: :nullify
 	# 账号可参与多个会话
@@ -75,7 +76,8 @@ class Account < ApplicationRecord
 		"coze": 1,
 		"capcut": 2,
 		"人工运营": 3,
-		"Grok": 4
+		"Grok": 4,
+		"Heygen": 5
 	}
 
 	# 运营人员枚举
@@ -115,6 +117,8 @@ class Account < ApplicationRecord
 			OperationTask
 		when "Grok"
 			GrokTask
+		when "Heygen"
+			HeygenTask
 		end
 	end
 
@@ -132,12 +136,13 @@ class Account < ApplicationRecord
 
 	# 获取该账号最后一次成功运行任务的时间
 	def last_successful_run_at
-		# 结合搬运任务和剪映任务的成功日志进行查询
 		move_uuids = move_tasks.select(:task_uuid)
 		jianying_uuids = jianying_tasks.select(:task_uuid)
+		grok_uuids = grok_tasks.select(:task_uuid)
+		heygen_uuids = heygen_tasks.select(:task_uuid)
 		
 		TaskLog.success
-		       .where("task_uuid IN (?) OR task_uuid IN (?)", move_uuids, jianying_uuids)
+		       .where("task_uuid IN (?) OR task_uuid IN (?) OR task_uuid IN (?) OR task_uuid IN (?)", move_uuids, jianying_uuids, grok_uuids, heygen_uuids)
 		       .order(run_at: :desc)
 		       .pick(:run_at)
 	end

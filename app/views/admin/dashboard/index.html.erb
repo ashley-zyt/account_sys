@@ -201,6 +201,53 @@
     </div>
   </div>
 
+  <%# Heygen 账号统计 %>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          Heygen 账号
+        </div>
+        <div class="admin-card-subtitle">
+
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <%= link_to admin_accounts_path(q: { work_type_eq: 5 }), class: "admin-tag admin-tag-accent" do %>
+          总计 <%= @heygen_account_total %> 个
+        <% end %>
+      </div>
+    </div>
+
+    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
+      <table class="admin-table" style="font-size: 12px;">
+        <thead>
+          <tr style="background: rgba(15, 23, 42, 0.3);">
+            <th style="padding: 8px;">平台</th>
+            <th style="padding: 8px; text-align: center;">总计</th>
+            <th style="padding: 8px; text-align: center;">正常</th>
+            <th style="padding: 8px; text-align: center;">未登录</th>
+            <th style="padding: 8px; text-align: center;">封禁</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% Account.platforms.keys.each do |platform| %>
+            <% stats = @heygen_account_stats[platform] || { total: 0, active: 0, unlogged: 0, banned: 0 } %>
+            <tr>
+              <td style="padding: 8px;">
+                <%= link_to platform.capitalize, admin_accounts_path(q: { work_type_eq: 5, platform_eq: Account.platforms[platform] }), class: "admin-link-quiet" %>
+              </td>
+              <td style="padding: 8px; text-align: center;"><%= stats[:total] %></td>
+              <td style="padding: 8px; text-align: center; color: var(--success);"><%= stats[:active] %></td>
+              <td style="padding: 8px; text-align: center; color: var(--warning);"><%= stats[:unlogged] %></td>
+              <td style="padding: 8px; text-align: center; color: var(--danger);"><%= stats[:banned] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="admin-card">
     <div class="admin-card-header" style="margin-bottom: 12px;">
       <div>
@@ -358,6 +405,69 @@
           <% else %>
             <tr>
               <td colspan="<%= JianyingTask.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无待处理任务</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="admin-grid-two-equal">
+  <%# Heygen 资源状况 %>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          Heygen 任务储备
+        </div>
+        <div class="admin-card-subtitle">
+          各主题下 pending Heygen 任务
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <%= link_to admin_heygen_tasks_path(q: { status_eq: 0 }), class: "admin-tag admin-tag-accent" do %>
+          待处理: <%= HeygenTask.pending.count %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
+      <table class="admin-table" style="font-size: 11px;">
+        <thead>
+          <tr style="background: rgba(15, 23, 42, 0.3);">
+            <th style="padding: 6px 8px;">内容主题</th>
+            <% HeygenTask.platforms.keys.each do |p| %>
+              <th style="padding: 6px 4px; text-align: center; text-transform: capitalize;"><%= p.to_s[0..2] %></th>
+            <% end %>
+            <th style="padding: 6px 8px; text-align: center; background: rgba(236, 72, 153, 0.1);">总计</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @heygen_theme_platform_stats.any? %>
+            <% @heygen_theme_platform_stats.each do |theme, platforms| %>
+              <tr>
+                <td style="padding: 6px 8px;">
+                  <%= link_to theme, admin_heygen_tasks_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet", style: "font-weight: 500;" %>
+                </td>
+                <% HeygenTask.platforms.keys.each do |p| %>
+                  <% count = platforms[p].to_i %>
+                  <td style="padding: 6px 4px; text-align: center; color: <%= count > 0 ? (count < 5 ? 'var(--danger)' : 'var(--text-primary)') : 'var(--text-muted)' %>; font-weight: <%= count > 0 && count < 5 ? '600' : 'normal' %>;">
+                    <% if count > 0 %>
+                      <%= link_to count, admin_heygen_tasks_path(q: { theme_cont: theme, platform_eq: HeygenTask.platforms[p], status_eq: 0 }), class: "admin-link-quiet", style: "color: inherit;" %>
+                    <% else %>
+                      0
+                    <% end %>
+                  </td>
+                <% end %>
+                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: #ec4899; background: rgba(236, 72, 153, 0.05);">
+                  <%= platforms[:total] %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="<%= HeygenTask.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无待处理任务</td>
             </tr>
           <% end %>
         </tbody>

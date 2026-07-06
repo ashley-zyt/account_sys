@@ -34,6 +34,13 @@ class Admin::DashboardController < Admin::BaseController
 			hash[theme][:total] += count
 		end
 
+		# Heygen 任务储备状况
+		@heygen_theme_platform_stats = HeygenTask.pending.group(:theme, :platform).count.each_with_object({}) do |((theme, platform), count), hash|
+			hash[theme] ||= { total: 0 }
+			hash[theme][platform] = count
+			hash[theme][:total] += count
+		end
+
 		# 视频搬运账号统计 (work_type = 0)
 		@auto_account_stats = Account.where(work_type: 0).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
 			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
@@ -72,6 +79,19 @@ class Admin::DashboardController < Admin::BaseController
 		end
 		@grok_account_total = Account.where(work_type: 4).count
 		@grok_account_active = Account.where(work_type: 4).active.count
+
+		# Heygen 账号统计 (work_type = 5)
+		@heygen_account_stats = Account.where(work_type: 5).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
+			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
+			hash[platform][:total] += count
+			case status
+			when "正常" then hash[platform][:active] += count
+			when "未登录" then hash[platform][:unlogged] += count
+			when "封禁/停用" then hash[platform][:banned] += count
+			end
+		end
+		@heygen_account_total = Account.where(work_type: 5).count
+		@heygen_account_active = Account.where(work_type: 5).active.count
 
 		@browsers_total = Browser.count
 		@browsers_normal = Browser.where(status: 0).count

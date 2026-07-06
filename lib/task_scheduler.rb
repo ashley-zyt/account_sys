@@ -9,13 +9,23 @@ class TaskScheduler
 		end
 	end
 
-		def self.assign_operation_resources
-			today = Date.today
-			today_start = today.beginning_of_day
-			today_end = today.end_of_day
+	def self.assign_resources
+		today = Date.today
+		today_start = today.beginning_of_day
+		today_end = today.end_of_day
 
-			Account.active.where(work_type: "人工运营").each do |account|
-				has_posted_today = OperationTask.exists?(
+		resource_configs = [
+			{ work_type: "人工运营", task_model: OperationTask, type_name: "运营" },
+			{ work_type: "Grok", task_model: GrokTask, type_name: "Grok" },
+			{ work_type: "Heygen", task_model: HeygenTask, type_name: "Heygen" }
+		]
+
+		resource_configs.each do |config|
+			Account.active.where(work_type: config[:work_type]).each do |account|
+				task_model = config[:task_model]
+				type_name = config[:type_name]
+
+				has_posted_today = task_model.exists?(
 					account_id: account.id,
 					status: :success,
 					actual_publish_time: today_start..today_end
@@ -23,7 +33,7 @@ class TaskScheduler
 
 				next if has_posted_today
 
-				pending_task = OperationTask.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
+				pending_task = task_model.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
 
 				if pending_task
 					ActiveRecord::Base.transaction do
@@ -33,46 +43,27 @@ class TaskScheduler
 							status: :waiting_publish
 						)
 					end
-					Rails.logger.info "人工运营账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配运营资源成功"
+					Rails.logger.info "#{type_name}账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配 #{type_name} 资源成功"
 				else
-					Rails.logger.warn "人工运营账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用运营资源"
+					Rails.logger.warn "#{type_name}账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用 #{type_name} 资源"
 				end
 			end
-			TaskScheduler.find_locked_browsers_in_pending_tasks
 		end
 
-		# 为 Grok 模式账号分配待发布资源（与运营任务分配逻辑保持一致）
-		def self.assign_grok_resources
-			today = Date.today
-			today_start = today.beginning_of_day
-			today_end = today.end_of_day
+		TaskScheduler.find_locked_browsers_in_pending_tasks
+	end
 
-			Account.active.where(work_type: "Grok").each do |account|
-				has_posted_today = GrokTask.exists?(
-					account_id: account.id,
-					status: :success,
-					actual_publish_time: today_start..today_end
-				)
+	def self.assign_operation_resources
+		assign_resources
+	end
 
-				next if has_posted_today
+	def self.assign_grok_resources
+		assign_resources
+	end
 
-				pending_task = GrokTask.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
-
-				if pending_task
-					ActiveRecord::Base.transaction do
-						pending_task.update!(
-							account_id: account.id,
-							browser_id: account.browser_id,
-							status: :waiting_publish
-						)
-					end
-					Rails.logger.info "Grok账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配 Grok 资源成功"
-				else
-					Rails.logger.warn "Grok账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用 Grok 资源"
-				end
-			end
-			TaskScheduler.find_locked_browsers_in_pending_tasks
-		end
+	def self.assign_heygen_resources
+		assign_resources
+	end
 
 	# 找出待执行任务中与锁定接口重合的指纹浏览器名称
 	def self.find_locked_browsers_in_pending_tasks
@@ -88,6 +79,9 @@ class TaskScheduler
 
 		# 从 Grok 任务中获取
 		pending_browser_ids += GrokTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
+
+		# 从 Heygen 任务中获取
+		pending_browser_ids += HeygenTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 获取浏览器名称
 		pending_browser_names = Browser.where(id: pending_browser_ids.uniq).pluck(:profile_name).uniq
@@ -223,7 +217,10 @@ class TaskScheduler
 		timeout_move_tasks = MoveTask.where(status: :executing)
 		                             .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
 
-		timeout_count = timeout_operation_tasks.count + timeout_grok_tasks.count + timeout_move_tasks.count
+		timeout_heygen_tasks = HeygenTask.where(status: :executing)
+		                                 .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
+
+		timeout_count = timeout_operation_tasks.count + timeout_grok_tasks.count + timeout_move_tasks.count + timeout_heygen_tasks.count
 
 		return if timeout_count == 0
 
@@ -262,11 +259,22 @@ class TaskScheduler
 			)
 		end
 
-		send_timeout_alert(timeout_count, timeout_operation_tasks.count, timeout_grok_tasks.count, timeout_move_tasks.count)
+		# 重置 Heygen 任务
+		timeout_heygen_tasks.each do |task|
+			task.update!(
+				status: :pending,
+				account_id: nil,
+				browser_id: nil,
+				error_msg: "任务执行超时（超过8分钟）",
+				start_at: nil
+			)
+		end
+
+		send_timeout_alert(timeout_count, timeout_operation_tasks.count, timeout_grok_tasks.count, timeout_move_tasks.count, timeout_heygen_tasks.count)
 	end
 
 	# 发送超时任务告警消息
-	def self.send_timeout_alert(total_count, operation_count, grok_count, move_count)
+	def self.send_timeout_alert(total_count, operation_count, grok_count, move_count, heygen_count = 0)
 		require 'net/http'
 		require 'json'
 
@@ -278,7 +286,8 @@ class TaskScheduler
 		message += "• 总超时任务数：#{total_count} 个\n"
 		message += "• 运营任务：#{operation_count} 个\n"
 		message += "• Grok任务：#{grok_count} 个\n"
-		message += "• 搬运任务：#{move_count} 个\n\n"
+		message += "• 搬运任务：#{move_count} 个\n"
+		message += "• Heygen任务：#{heygen_count} 个\n\n"
 		message += "⏰ 超时阈值：8分钟\n"
 		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}"
 

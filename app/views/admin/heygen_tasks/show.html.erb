@@ -1,0 +1,251 @@
+<% content_for :page_title do %>
+  Heygen 任务详情
+<% end %>
+<% content_for :page_subtitle do %>
+  任务 <%= @heygen_task.id %> 的执行情况
+<% end %>
+
+<div class="admin-grid">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          基本信息
+        </div>
+        <div class="admin-card-subtitle">
+          视频及主题配置
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          任务 UUID
+        </div>
+        <div class="admin-field-value">
+          <%= @heygen_task.task_uuid %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          平台
+        </div>
+        <div class="admin-field-value">
+          <%= @heygen_task.platform %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          主题
+        </div>
+        <div class="admin-field-value">
+          <%= @heygen_task.theme %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          状态
+        </div>
+        <div class="admin-field-value">
+          <% case @heygen_task.status %>
+          <% when "pending" %>
+            <span class="admin-pill-status admin-pill-status-pending">
+              <span class="admin-pill-status-dot"></span>
+              待分配
+            </span>
+          <% when "waiting_publish", "executing" %>
+            <span class="admin-pill-status admin-pill-status-pending">
+              <span class="admin-pill-status-dot"></span>
+              队列中
+            </span>
+          <% when "success" %>
+            <span class="admin-pill-status admin-pill-status-success">
+              <span class="admin-pill-status-dot"></span>
+              成功
+            </span>
+          <% when "failed" %>
+            <span class="admin-pill-status admin-pill-status-failed">
+              <span class="admin-pill-status-dot"></span>
+              失败
+            </span>
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          视频模板ID
+        </div>
+        <div class="admin-field-value">
+          <%= @heygen_task.templete_id || '-' %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          创建时间
+        </div>
+        <div class="admin-field-value">
+          <%= @heygen_task.created_at&.strftime("%Y-%m-%d %H:%M") %>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      视频与文案
+    </div>
+    <div class="admin-section-subtitle">
+      Heygen 生成的视频地址与发布文案
+    </div>
+
+    <div>
+      <div class="admin-field-label">
+        视频地址
+      </div>
+      <div class="admin-field-value" style="word-break: break-all;">
+        <%= link_to @heygen_task.video_url, @heygen_task.video_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" if @heygen_task.video_url.present? %>
+      </div>
+    </div>
+
+    <div style="margin-top: 10px;">
+      <div class="admin-field-label">
+        逐字稿
+      </div>
+      <div class="admin-field-value">
+        <%= @heygen_task.video_text || '-' %>
+      </div>
+    </div>
+    <div style="margin-top: 10px;">
+      <div class="admin-field-label">
+        发布标题
+      </div>
+      <div class="admin-field-value">
+        <%= @heygen_task.title || '-' %>
+      </div>
+    </div>
+    <div style="margin-top: 10px;">
+      <div class="admin-field-label">
+        描述
+      </div>
+      <div class="admin-field-value">
+        <%= @heygen_task.description || '-' %>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          执行信息
+        </div>
+        <div class="admin-card-subtitle">
+          账号、浏览器及时间线
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          执行账号
+        </div>
+        <div class="admin-field-value">
+          <% if @heygen_task.account %>
+            <%= link_to @heygen_task.account.account_name, admin_account_path(@heygen_task.account), class: "admin-link-quiet" %>
+          <% else %>
+            未分配
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          浏览器
+        </div>
+        <div class="admin-field-value">
+          <% if @heygen_task.browser_id %>
+            <%= @heygen_task.browser_id %> - <%= @heygen_task.browser&.profile_name %>
+          <% else %>
+            未绑定
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          开始时间
+        </div>
+        <div class="admin-field-value">
+          <%= @heygen_task.start_at&.strftime("%Y-%m-%d %H:%M") || "未开始" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          实际发布时间
+        </div>
+        <div class="admin-field-value">
+          <%= @heygen_task.actual_publish_time&.strftime("%Y-%m-%d %H:%M") || "暂无" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      错误信息
+    </div>
+    <div class="admin-section-subtitle">
+      失败原因或异常详情
+    </div>
+
+    <% if @heygen_task.error_msg.present? %>
+      <div class="admin-empty-state" style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.5);">
+        <pre style="margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 11px;"><%= @heygen_task.error_msg %></pre>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        暂无错误信息。
+      </div>
+    <% end %>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      任务日志
+    </div>
+    <div class="admin-section-subtitle">
+      该任务的执行日志记录
+    </div>
+
+    <% if @heygen_task.task_logs.any? %>
+      <div class="admin-table-wrapper">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>状态</th>
+              <th>错误信息</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @heygen_task.task_logs.order(run_at: :desc).limit(20).each do |log| %>
+              <tr>
+                <td style="white-space: nowrap;">
+                  <%= log.run_at&.strftime("%Y-%m-%d %H:%M") %>
+                </td>
+                <td>
+                  <%= log.status %>
+                </td>
+                <td style="max-width: 300px; word-break: break-all;">
+                  <%= log.error_msg&.truncate(80) || '-' %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        暂无执行日志。
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div style="margin-top: 16px;">
+  <%= link_to '返回列表', admin_heygen_tasks_path, class: "admin-button-secondary" %>
+</div>

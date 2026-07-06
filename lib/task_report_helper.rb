@@ -100,7 +100,7 @@ module TaskReportHelper
           error_msg: nil
         )
       else
-        if task.is_a?(OperationTask) || task.is_a?(GrokTask)
+        if task.is_a?(OperationTask) || task.is_a?(GrokTask) || task.is_a?(HeygenTask)
           task.update!(
             status: :pending,
             account_id: nil,

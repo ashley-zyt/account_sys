@@ -13,11 +13,7 @@ end
 # 分配资源 人工运营和Grok两种
 set :output, "log/taskscheduler_assignoperationresources.log"
 every :day, at: '11:50' do
-  runner 'TaskScheduler.assign_operation_resources'
-end
-set :output, "log/taskscheduler_assigngrokresources.log"
-every :day, at: '11:52' do
-  runner 'TaskScheduler.assign_grok_resources'
+  runner 'TaskScheduler.assign_resources'
 end
 
 # 每日12点开始自动发布人工运营和Grok的资源
@@ -29,11 +25,7 @@ end
 # 分配资源 人工运营和Grok两种
 set :output, "log/taskscheduler_assignoperationresources.log"
 every :day, at: '16:50' do
-  runner 'TaskScheduler.assign_operation_resources'
-end
-set :output, "log/taskscheduler_assigngrokresources.log"
-every :day, at: '16:51' do
-  runner 'TaskScheduler.assign_grok_resources'
+  runner 'TaskScheduler.assign_resources'
 end
 
 # 每日下午五点开始重试中午发布错误的人工运营和Grok资源
