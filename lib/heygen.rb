@@ -16,7 +16,7 @@ class Heygen
 
       Rails.logger.info "[Heygen] 生成内容成功"
 
-      create_video(content, crypto_data)
+      # create_video(content, crypto_data)
     end
 
     def fetch_crypto_data
