@@ -85,6 +85,10 @@ Rails.application.routes.draw do
       get "grok/images", to: "grok#images"
       get "grok/video_url", to: "grok#video_url"
       post "grok/save_video", to: "grok#save_video"
+      # 认证接口
+      post "auth/login", to: "auth#login"
+      # RedNote接口
+      post "red_note/keywords", to: "red_note#keywords"
     end
   end
 
