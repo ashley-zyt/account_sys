@@ -117,7 +117,6 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "详情", admin_jianying_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                  <%= link_to "日志", admin_task_logs_path(q: { task_uuid_eq: task.task_uuid }), class: "admin-link-quiet", style: "color: var(--accent);" %>
                   <% if task.pending? %>
                     <%= link_to "删除", admin_jianying_task_path(task),
                           data: { turbo_method: :delete, turbo_confirm: "确定删除该任务吗？" },
