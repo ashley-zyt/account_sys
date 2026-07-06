@@ -4,11 +4,11 @@
 class PublishScheduler
 
   PLATFORM_ENDPOINTS = {
-    facebook: 'http://174.139.46.117:8080/facebook/publish',
-    twitter: 'http://174.139.46.117:8080/twitter/publish',
-    youtube: 'http://174.139.46.117:8080/youtube/publish',
-    tiktok: 'http://174.139.46.117:8080/tiktok/publish',
-    instagram: 'http://174.139.46.117:8080/instagram/publish'
+    facebook: 'http://174.139.46.15:8080/facebook/publish',
+    twitter: 'http://174.139.46.15:8080/twitter/publish',
+    youtube: 'http://174.139.46.15:8080/youtube/publish',
+    tiktok: 'http://174.139.46.15:8080/tiktok/publish',
+    instagram: 'http://174.139.46.15:8080/instagram/publish'
   }
 
   TIMEOUT_SECONDS = 600

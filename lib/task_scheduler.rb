@@ -96,7 +96,7 @@ class TaskScheduler
 
 		# 2. 调用锁定接口获取锁定的浏览器列表
 		begin
-			uri = URI('http://174.139.46.117:8080/api/browser/locked')
+			uri = URI('http://174.139.46.15:8080/api/browser/locked')
 			http = Net::HTTP.new(uri.host, uri.port)
 			http.open_timeout = 100
 			http.read_timeout = 100
