@@ -6,6 +6,9 @@ class PostDatas
   RETRY_DELAY = 20
   REQUEST_INTERVAL = 2
 
+  VIDEO_MOVE_URL = "http://174.139.46.117:8080"
+  OTHER_URL = "http://174.139.46.15:8080"
+
   def self.ensure_utf8(str)
     return str unless str.is_a?(String)
     str.encode('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
@@ -75,9 +78,6 @@ class PostDatas
 
     success_count = 0
     fail_count = 0
-
-    VIDEO_MOVE_URL = "http://174.139.46.117:8080"
-    OTHER_URL = "http://174.139.46.15:8080"
 
     data.each_with_index do |browser_data, index|
       move_accounts = browser_data[:active_accounts].select { |acc| acc[:work_type] == "视频搬运" }
