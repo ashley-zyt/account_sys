@@ -4,17 +4,17 @@
 #
 #  id                                                                :bigint           not null, primary key
 #  actual_publish_time(实际发布时间)                                 :datetime
+#  associated_images(关联图片（JSON数组）)                           :text(65535)
 #  error_msg(错误信息/失败原因)                                      :text(65535)
-#  oss_url(剪映生成的视频OSS地址)                                   :text(65535)
+#  keyword(关键词)                                                   :string(255)
+#  keyword_code(关键词编码)                                          :string(255)
+#  oss_url(剪映生成的视频OSS地址)                                    :text(65535)
 #  platform(目标发布平台)                                            :integer
 #  start_at(任务开始时间)                                            :datetime
 #  status(任务状态 pending/waiting_publish/executing/success/failed) :integer          default("pending")
 #  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
 #  theme(内容主题)                                                   :string(255)
 #  title(发布标题)                                                   :text(65535)
-#  keyword(关键词)                                                   :string(255)
-#  keyword_code(关键词编码)                                          :string(255)
-#  associated_images(关联图片JSON数组)                               :text(65535)
 #  created_at                                                        :datetime         not null
 #  updated_at                                                        :datetime         not null
 #  account_id(发布账号ID)                                            :bigint
@@ -23,14 +23,14 @@
 #
 # Indexes
 #
-#  index_jianying_tasks_on_account_id  (account_id)
-#  index_jianying_tasks_on_browser_id  (browser_id)
-#  index_jianying_tasks_on_group_id    (group_id)
-#  index_jianying_tasks_on_keyword_code (keyword_code)
-#  index_jianying_tasks_on_platform    (platform)
-#  index_jianying_tasks_on_status      (status)
-#  index_jianying_tasks_on_task_uuid   (task_uuid) UNIQUE
-#  index_jianying_tasks_on_theme       (theme)
+#  index_jianying_tasks_on_account_id    (account_id)
+#  index_jianying_tasks_on_browser_id    (browser_id)
+#  index_jianying_tasks_on_group_id      (group_id)
+#  index_jianying_tasks_on_keyword_code  (keyword_code)
+#  index_jianying_tasks_on_platform      (platform)
+#  index_jianying_tasks_on_status        (status)
+#  index_jianying_tasks_on_task_uuid     (task_uuid) UNIQUE
+#  index_jianying_tasks_on_theme         (theme)
 #
 class JianyingTask < ApplicationRecord
 	belongs_to :browser, optional: true
