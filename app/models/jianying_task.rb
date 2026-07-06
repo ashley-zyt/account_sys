@@ -140,9 +140,9 @@ class JianyingTask < ApplicationRecord
 		# 尝试替换 **** 为从 prompts 中提取的文本
 		english = extract_english_from_prompts(theme, keyword_text)
 		if english.present? && template.include?("****")
-			template.sub("****", english)
+			template.gsub("****", english)
 		elsif template.include?("****")
-			template.sub("****", keyword_text)
+			template.gsub("****", keyword_text)
 		else
 			template
 		end
