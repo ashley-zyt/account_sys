@@ -12,6 +12,9 @@
 #  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
 #  theme(内容主题)                                                   :string(255)
 #  title(发布标题)                                                   :text(65535)
+#  keyword(关键词)                                                   :string(255)
+#  keyword_code(关键词编码)                                          :string(255)
+#  associated_images(关联图片JSON数组)                               :text(65535)
 #  created_at                                                        :datetime         not null
 #  updated_at                                                        :datetime         not null
 #  account_id(发布账号ID)                                            :bigint
@@ -23,6 +26,7 @@
 #  index_jianying_tasks_on_account_id  (account_id)
 #  index_jianying_tasks_on_browser_id  (browser_id)
 #  index_jianying_tasks_on_group_id    (group_id)
+#  index_jianying_tasks_on_keyword_code (keyword_code)
 #  index_jianying_tasks_on_platform    (platform)
 #  index_jianying_tasks_on_status      (status)
 #  index_jianying_tasks_on_task_uuid   (task_uuid) UNIQUE
@@ -40,13 +44,16 @@ class JianyingTask < ApplicationRecord
 		failed: 4            # 失败
 	}
 
-	# 平台枚举（与 Account.platform 一致）
+	# 平台枚举
 	enum platform: {
 		facebook: 1,
 		twitter: 2,
 		tiktok: 3,
-		youtube: 4
+		youtube: 4,
+		instagram: 5
 	}
+
+	ALL_PLATFORMS = %w[facebook twitter tiktok youtube instagram].freeze
 
 	validates :task_uuid, presence: true, uniqueness: true
 	validates :oss_url, presence: true
@@ -85,13 +92,84 @@ class JianyingTask < ApplicationRecord
 
 	# Ransack 搜索允许的字段
 	def self.ransackable_attributes(auth_object = nil)
-		%w[id task_uuid oss_url theme title status error_msg start_at actual_publish_time account_id browser_id platform group_id created_at updated_at]
+		%w[id task_uuid oss_url theme title keyword keyword_code status error_msg start_at actual_publish_time account_id browser_id platform group_id created_at updated_at]
 	end
 
 	def self.ransackable_associations(auth_object = nil)
 		%w[account browser]
 	end
 
+	# 根据 API 接收的数据批量创建任务（每项数据生成 5 条，对应 5 个平台）
+	# item = { keyword:, keyword_code:, theme:, associated_images:, oss_key: }
+	def self.batch_create_from_api(items)
+		created = 0
+		items.each do |item|
+			group_id = SecureRandom.uuid
+			ALL_PLATFORMS.each do |platform|
+				task = new(
+					keyword: item[:keyword],
+					keyword_code: item[:keyword_code],
+					theme: item[:theme],
+					associated_images: item[:associated_images].is_a?(Array) ? item[:associated_images].to_json : item[:associated_images],
+					oss_url: item[:oss_key],
+					platform: platform,
+					status: :pending,
+					group_id: group_id,
+					title: generate_title(item[:theme], item[:keyword])
+				)
+				created += 1 if task.save
+			end
+		end
+		created
+	end
+
+	# 根据主题和关键词生成标题
+	# 1. 从 Theme 表中找到对应主题
+	# 2. 从主题的 titles 中随机选一行作为标题模板
+	# 3. 从主题的 prompts 中匹配当前关键词的行，提取括号里的英文字符串
+	# 4. 用提取的英文字符串替换标题模板中的 ****
+	def self.generate_title(theme_name, keyword_text)
+		theme = Theme.find_by(name: theme_name)
+		return default_title(theme_name) unless theme
+
+		titles = theme.titles_array
+		return default_title(theme_name) if titles.empty?
+
+		template = titles.sample
+
+		# 尝试替换 **** 为从 prompts 中提取的文本
+		english = extract_english_from_prompts(theme, keyword_text)
+		if english.present? && template.include?("****")
+			template.sub("****", english)
+		elsif template.include?("****")
+			template.sub("****", keyword_text)
+		else
+			template
+		end
+	end
+
+	# 从主题 prompts 中匹配关键词行，提取第一个括号内的英文字符串
+	# prompts 格式示例：
+	#   #北海#涠洲岛海景竖图素材 (seaside landscape vertical)
+	#   #上海#外滩璀璨夜景竖图素材 (Bund night scenery)
+	def self.extract_english_from_prompts(theme, keyword_text)
+		return nil unless theme.prompts.present?
+
+		theme.prompts_array.each do |line|
+			next unless line.include?(keyword_text) || keyword_text.include?(line.split("(").first.to_s.strip)
+
+			if line =~ /\(([^)]+)\)/
+				return $1.strip
+			end
+		end
+		nil
+	end
+
+	def self.default_title(theme_name)
+		"#{theme_name} - Amazing Video"
+	end
+
+	# 已废弃：从 OSS 加载视频资源
 	def self.load_oss_source_task
 		endpoint = 'https://oss-cn-hangzhou.aliyuncs.com'
 		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']

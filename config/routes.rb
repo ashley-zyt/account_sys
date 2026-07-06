@@ -89,6 +89,8 @@ Rails.application.routes.draw do
       post "auth/login", to: "auth#login"
       # RedNote接口
       post "red_note/keywords", to: "red_note#keywords"
+      # 剪映任务批量接收
+      post "jianying_tasks/batch", to: "jianying_tasks#batch"
     end
   end
 
