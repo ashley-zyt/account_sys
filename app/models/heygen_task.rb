@@ -69,6 +69,10 @@ class HeygenTask < ApplicationRecord
     order(created_at: :desc)
   }
 
+  scope :executing_with_video, -> {
+    executing.where.not(templete_id: nil)
+  }
+
   def reset_to_pending!
     update!(
       account_id: nil,
@@ -79,7 +83,7 @@ class HeygenTask < ApplicationRecord
   end
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id theme video_url status templete_id video_text account_id browser_id error_msg start_at actual_publish_time task_uuid platform title description created_at updated_at]
+    %w[id theme video_url status templete_id video_text account_id browser_id error_msg start_at actual_publish_time task_uuid platform title description created_at updated_at video_status]
   end
 
   def self.ransackable_associations(auth_object = nil)
