@@ -306,18 +306,12 @@ class Heygen
               title: title,
             )
           end
-        end
-        task.update!(video_url: caption_url, platform: 'youtube',title:description,description: title)
-        video.update!(video_status:"已完成")
+          task.update!(video_url: caption_url, platform: 'youtube',title:description,description: title)
+          video.update!(video_status:"已完成")
         end
       end
-      
-
-    rescue HTTParty::Error, JSON::ParserError => e
-      Rails.logger.error "[Heygen] 获取视频信息失败: #{e.message}"
-      nil
     end
-
+  
 
     def format_number(number)
       return '0' unless number.present?
