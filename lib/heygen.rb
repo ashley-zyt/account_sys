@@ -4,19 +4,18 @@ require 'json'
 class Heygen
   class << self
     def run_crypto_video_pipeline
-      Rails.logger.info "[Heygen] 开始执行加密货币视频生成流程"
-
       crypto_data = fetch_crypto_data
       return unless crypto_data.present?
 
-      Rails.logger.info "[Heygen] 获取到加密货币数据"
+      Rails.logger.info "[Heygen] 已获取到加密货币数据"
 
       content = generate_content(crypto_data)
       return unless content.present?
-
+      Rails.logger.info "[Heygen] 生成内容: #{content}"
+      
       Rails.logger.info "[Heygen] 生成内容成功"
 
-      # create_video(content, crypto_data)
+      create_video(content, crypto_data)
     end
 
     def fetch_crypto_data
@@ -175,6 +174,8 @@ class Heygen
     end
 
     def create_video(content, crypto_data)
+      # 获取模板变量
+      # curl -X GET "https://api.heygen.com/v2/template/template_id" -H "X-Api-Key: key"
       Rails.logger.info "[Heygen] 开始创建视频"
 
       crypto_video = CryptoVideo.create!(
@@ -185,7 +186,7 @@ class Heygen
         video_status: '生成中'
       )
 
-      video_id = generate_video(content[:video_text], content[:title])
+      video_id = generate_video(content[:video_text])
       return nil unless video_id.present?
 
       crypto_video.update!(video_id: video_id)
@@ -209,41 +210,36 @@ class Heygen
       nil
     end
 
-    def generate_video(video_text, title)
+    def generate_video(video_text)
       api_key = ENV['HEYGEN_API_KEY']
       return nil unless api_key.present?
 
+      template_id = get_template_id
+
       body = {
-        script: {
-          title: title,
-          scenes: [
-            {
-              text: video_text,
-              duration: calculate_duration(video_text)
+        title: "Global Crypto Brief",
+        caption: true,
+        dimension: {
+          width: 1080,
+          height: 1920
+        },
+        keep_text_vertically_centered: true,
+        variables: {
+          script: {
+            name: 'script',
+            type: 'text',
+            properties: {
+              content: video_text
             }
-          ]
-        },
-        background: {
-          type: 'color',
-          value: '#0f172a'
-        },
-        avatar: {
-          type: 'human',
-          gender: 'male',
-          language: 'en'
-        },
-        voice: {
-          type: 'text_to_speech',
-          language: 'en',
-          voice_name: 'en-US-JennyNeural'
+          }
         }
       }
 
       response = HTTParty.post(
-        'https://api.heygen.com/v1/video/generate',
+        "https://api.heygen.com/v2/template/#{template_id}/generate",
         headers: {
           'Content-Type' => 'application/json',
-          'Authorization' => "Bearer #{api_key}"
+          'X-Api-Key' => api_key
         },
         body: body.to_json,
         timeout: 60
@@ -257,13 +253,17 @@ class Heygen
       nil
     end
 
+    def get_template_id
+      '64d574f45d3e43688afb8dcd6cbc99e4'
+    end
+
     def check_video_status(video_id)
       api_key = ENV['HEYGEN_API_KEY']
       return nil unless api_key.present?
 
       response = HTTParty.get(
         "https://api.heygen.com/v1/video/status?video_id=#{video_id}",
-        headers: { 'Authorization' => "Bearer #{api_key}" },
+        headers: { 'X-Api-Key' => api_key },
         timeout: 30
       )
 
@@ -281,7 +281,7 @@ class Heygen
 
       response = HTTParty.get(
         "https://api.heygen.com/v1/video/get?video_id=#{video_id}",
-        headers: { 'Authorization' => "Bearer #{api_key}" },
+        headers: { 'X-Api-Key' => api_key },
         timeout: 30
       )
 
