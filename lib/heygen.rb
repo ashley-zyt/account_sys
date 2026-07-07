@@ -117,7 +117,7 @@ class Heygen
         请输出JSON格式，包含以下字段：
         - video_text: 英文口播逐字稿，约150字，开头必须是"Hello and welcome to Global Crypto Brief."，口语化，适合短视频口播，包含一两句趋势研判
         - title: 社媒标题，不超过100字母，吸引眼球，包含关键词，符合海外社媒风格
-        - description: 社媒文案，不超过150字母，精简提炼，包含趋势研判，吸引关注获取流量
+        - description: 社媒文案，不超过80字母，精简提炼，包含趋势研判，吸引关注获取流量
         - hashtags: 热词数组，5-8个相关话题，带#号，吸引流量
         - theme: 内容主题，用于分类
 
