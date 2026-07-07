@@ -198,7 +198,7 @@ class Heygen
       video_id = generate_video(content[:video_text], template_id)
       return nil unless video_id.present?
 
-      crypto_video.update!(video_id: video_id)
+      
 
       heygen_task = HeygenTask.create!(
         theme: content[:theme],
@@ -206,10 +206,10 @@ class Heygen
         title: content[:title],
         description: content[:description],
         templete_id: video_id,
-        status: :executing,
+        status: :pending,
         start_at: Time.current
       )
-
+      crypto_video.update!(video_id: video_id,heygen_task_id:heygen_task.id)
       Rails.logger.info "[Heygen] 创建视频成功: crypto_video_id=#{crypto_video.id} heygen_task_id=#{heygen_task.id} video_id=#{video_id}"
 
       { crypto_video: crypto_video, heygen_task: heygen_task }
