@@ -26,7 +26,6 @@
 #  index_heygen_tasks_on_browser_id   (browser_id)
 #  index_heygen_tasks_on_platform     (platform)
 #  index_heygen_tasks_on_status       (status)
-#  index_heygen_tasks_on_task_uuid    (task_uuid) UNIQUE
 #  index_heygen_tasks_on_templete_id  (templete_id)
 #  index_heygen_tasks_on_theme        (theme)
 #
