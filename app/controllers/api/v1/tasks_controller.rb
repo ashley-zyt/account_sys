@@ -4,20 +4,20 @@ module Api
 			skip_before_action :verify_authenticity_token, only: [:report]
 
 			def fetch_next_executable_task
-				# next_task = MoveTask.find(19081)
 				next_task = MoveTask.where(status:"waiting_publish").where("account_id is not null").first
-				if next_task.nil?
-					Account.active.where(work_type:0).each do |account|
-						task = MoveTask.where(status:"pending").where(platform:account.platform,theme:account["theme"]).order("created_at asc").first
-						if !task.nil?
-							task.update(account_id: account.id,browser_id: account.browser_id,status:"waiting_publish")
-						end
-					end
-				end
+				next_task = MoveTask.find(22630)
+				# if next_task.nil?
+				# 	Account.active.where(work_type:0).each do |account|
+				# 		task = MoveTask.where(status:"pending").where(platform:account.platform,theme:account["theme"]).order("created_at asc").first
+				# 		if !task.nil?
+				# 			task.update(account_id: account.id,browser_id: account.browser_id,status:"waiting_publish")
+				# 		end
+				# 	end
+				# end
 				return render json: {id: nil,video_url: nil,social_account_id: nil,adspower_user_name: nil,account_type: nil,title: nil} if next_task.nil?
 				id = next_task.id
-				next_task.update(status:"executing")
-				next_task = MoveTask.find_by(id:id)
+				# next_task.update(status:"executing")
+				# next_task = MoveTask.find_by(id:id)
 				return render json: {id: next_task.id,video_url: next_task.video_url,social_account_id: next_task.source_account_url,adspower_user_name: next_task.browser.profile_name,account_type: next_task.platform,title: next_task.title}
 			end
 
