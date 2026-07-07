@@ -281,7 +281,7 @@ class Heygen
       api_key = ENV['HEYGEN_API_KEY']
       return nil unless api_key.present?
       crypto_videos = CryptoVideo.where(video_status:"生成中")
-      crypto_video.each do |video|
+      crypto_videos.each do |video|
         response = HTTParty.get(
           "https://api.heygen.com/v3/videos/#{video.video_id}",
           headers: { 'X-Api-Key' => api_key },
