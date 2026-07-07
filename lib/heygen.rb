@@ -247,7 +247,16 @@ class Heygen
 
       return nil unless response.success?
 
-      response.parsed_response['video_id']
+      parsed_response = response.parsed_response
+      video_id = parsed_response.dig('data', 'video_id')
+
+      if video_id.present?
+        Rails.logger.info "[Heygen] 视频生成接口调用成功: video_id=#{video_id}"
+        video_id
+      else
+        Rails.logger.error "[Heygen] 视频生成接口调用失败: video_id 获取不到，响应: #{parsed_response}"
+        nil
+      end
     rescue HTTParty::Error, JSON::ParserError => e
       Rails.logger.error "[Heygen] 调用视频生成接口失败: #{e.message}"
       nil
@@ -257,91 +266,24 @@ class Heygen
       '64d574f45d3e43688afb8dcd6cbc99e4'
     end
 
-    def check_video_status(video_id)
+    def fetch_video_info(video_id)
       api_key = ENV['HEYGEN_API_KEY']
       return nil unless api_key.present?
 
       response = HTTParty.get(
-        "https://api.heygen.com/v1/video/status?video_id=#{video_id}",
+        "https://api.heygen.com/v3/videos/#{video_id}",
         headers: { 'X-Api-Key' => api_key },
         timeout: 30
       )
 
       return nil unless response.success?
 
-      response.parsed_response
+      response.parsed_response['data']
     rescue HTTParty::Error, JSON::ParserError => e
-      Rails.logger.error "[Heygen] 检查视频状态失败: #{e.message}"
+      Rails.logger.error "[Heygen] 获取视频信息失败: #{e.message}"
       nil
     end
 
-    def get_video_url(video_id)
-      api_key = ENV['HEYGEN_API_KEY']
-      return nil unless api_key.present?
-
-      response = HTTParty.get(
-        "https://api.heygen.com/v1/video/get?video_id=#{video_id}",
-        headers: { 'X-Api-Key' => api_key },
-        timeout: 30
-      )
-
-      return nil unless response.success?
-
-      response.parsed_response['video_url']
-    rescue HTTParty::Error, JSON::ParserError => e
-      Rails.logger.error "[Heygen] 获取视频链接失败: #{e.message}"
-      nil
-    end
-
-    def process_pending_videos
-      Rails.logger.info "[Heygen] 处理待完成的视频任务"
-
-      pending_tasks = HeygenTask.executing.where.not(templete_id: nil)
-      pending_tasks.each do |task|
-        begin
-          status = check_video_status(task.templete_id)
-          next unless status.present?
-
-          current_status = status['status']
-          task.update!(video_status: current_status)
-
-          crypto_video = CryptoVideo.find_by(video_id: task.templete_id)
-          crypto_video&.update!(video_status: current_status, result: status.to_json)
-
-          case current_status
-          when 'completed'
-            video_url = get_video_url(task.templete_id)
-            if video_url.present?
-              task.update!(
-                video_url: video_url,
-                status: :success,
-                actual_publish_time: Time.current,
-                video_status: '已完成'
-              )
-              crypto_video&.update!(video_status: '已完成') if crypto_video
-              Rails.logger.info "[Heygen] 视频处理完成: task_id=#{task.id} video_url=#{video_url}"
-            else
-              task.update!(status: :failed, error_msg: '视频生成完成但获取链接失败')
-              Rails.logger.error "[Heygen] 视频获取链接失败: task_id=#{task.id}"
-            end
-          when 'failed'
-            task.update!(status: :failed, error_msg: status['reason'] || '视频生成失败')
-            Rails.logger.error "[Heygen] 视频生成失败: task_id=#{task.id} reason=#{status['reason']}"
-          else
-            Rails.logger.info "[Heygen] 视频生成中: task_id=#{task.id} status=#{current_status}"
-          end
-        rescue => e
-          Rails.logger.error "[Heygen] 处理任务 #{task.id} 失败: #{e.message}"
-        end
-      end
-
-      Rails.logger.info "[Heygen] 待完成视频任务处理完毕"
-    end
-
-    def calculate_duration(text)
-      word_count = text.split.size
-      (word_count * 0.5).to_i + 5
-    end
 
     def format_number(number)
       return '0' unless number.present?
