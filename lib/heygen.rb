@@ -198,8 +198,7 @@ class Heygen
         description: content[:description],
         templete_id: video_id,
         status: :executing,
-        start_at: Time.current,
-        video_status: '生成中'
+        start_at: Time.current
       )
 
       Rails.logger.info "[Heygen] 创建视频成功: crypto_video_id=#{crypto_video.id} heygen_task_id=#{heygen_task.id} video_id=#{video_id}"
