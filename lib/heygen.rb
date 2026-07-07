@@ -9,13 +9,24 @@ class Heygen
 
       Rails.logger.info "[Heygen] 已获取到加密货币数据"
 
-      content = generate_content(crypto_data)
-      return unless content.present?
-      Rails.logger.info "[Heygen] 生成内容: #{content}"
-      
-      Rails.logger.info "[Heygen] 生成内容成功"
+      template_ids = get_template_ids
+      return if template_ids.empty?
 
-      create_video(content, crypto_data)
+      Rails.logger.info "[Heygen] 共获取到 #{template_ids.size} 个模板: #{template_ids.map { |t| "#{t[:theme_name]}=#{t[:template_id]}" }.join(', ')}"
+
+      template_ids.each do |template_info|
+        theme_name = template_info[:theme_name]
+        template_id = template_info[:template_id]
+
+        Rails.logger.info "[Heygen] 开始处理主题: #{theme_name}, 模板: #{template_id}"
+
+        content = generate_content(crypto_data, theme_name)
+        next unless content.present?
+
+        Rails.logger.info "[Heygen] 主题 #{theme_name} 生成内容成功"
+
+        create_video(content, crypto_data, template_id)
+      end
     end
 
     def fetch_crypto_data
@@ -68,10 +79,10 @@ class Heygen
       headers
     end
 
-    def generate_content(crypto_data)
-      Rails.logger.info "[Heygen] 开始生成内容"
+    def generate_content(crypto_data, theme_name)
+      Rails.logger.info "[Heygen] 开始生成内容: theme=#{theme_name}"
 
-      prompt = build_prompt(crypto_data)
+      prompt = build_prompt(crypto_data, theme_name)
       response = call_deepseek_api(prompt)
       return nil unless response.present?
 
@@ -83,7 +94,7 @@ class Heygen
         title: build_full_title(parsed),
         description: parsed['description'],
         hashtags: parsed['hashtags'] || [],
-        theme: parsed['theme'] || '加密货币',
+        theme: theme_name,
         prompt: prompt
       }
     rescue => e
@@ -91,7 +102,7 @@ class Heygen
       nil
     end
 
-    def build_prompt(crypto_data)
+    def build_prompt(crypto_data, theme_name)
       global = crypto_data[:global_crypto]
       defi = crypto_data[:global_defi]
       trending = crypto_data[:trending]
@@ -100,7 +111,7 @@ class Heygen
       top_trending = trending_coins.first(3).map { |c| "#{c['item']['name']} (#{c['item']['symbol']})" }.join(', ')
 
       <<~PROMPT
-        这是今日的 CoinGecko 数据，请生成今日 Global Crypto Brief（英文口播稿、社媒标题、文案、热词）
+        这是今日的 CoinGecko 数据，请生成今日 #{theme_name}（英文口播稿、社媒标题、文案、热词）
 
         全球市场概览：
         - 总市值：$#{format_number(global.dig('data', 'total_market_cap', 'usd'))}
@@ -115,7 +126,7 @@ class Heygen
         热门搜索：#{top_trending}
 
         请输出JSON格式，包含以下字段：
-        - video_text: 英文口播逐字稿，约150字，开头必须是"Hello and welcome to Global Crypto Brief."，口语化，适合短视频口播，包含一两句趋势研判
+        - video_text: 英文口播逐字稿，约150字，开头必须是"Hello and welcome to #{theme_name}."，口语化，适合短视频口播，包含一两句趋势研判
         - title: 社媒标题，不超过100字母，吸引眼球，包含关键词，符合海外社媒风格
         - description: 社媒文案，不超过80字母，精简提炼，包含趋势研判，吸引关注获取流量
         - hashtags: 热词数组，5-8个相关话题，带#号，吸引流量
@@ -173,10 +184,8 @@ class Heygen
       hashtags.present? ? "#{title} #{hashtags}" : title
     end
 
-    def create_video(content, crypto_data)
-      # 获取模板变量
-      # curl -X GET "https://api.heygen.com/v2/template/template_id" -H "X-Api-Key: key"
-      Rails.logger.info "[Heygen] 开始创建视频"
+    def create_video(content, crypto_data, template_id)
+      Rails.logger.info "[Heygen] 开始创建视频: template_id=#{template_id}"
 
       crypto_video = CryptoVideo.create!(
         global_crypto: crypto_data[:global_crypto].to_json,
@@ -186,7 +195,7 @@ class Heygen
         video_status: '生成中'
       )
 
-      video_id = generate_video(content[:video_text])
+      video_id = generate_video(content[:video_text], template_id)
       return nil unless video_id.present?
 
       crypto_video.update!(video_id: video_id)
@@ -209,14 +218,13 @@ class Heygen
       nil
     end
 
-    def generate_video(video_text)
+    def generate_video(video_text, template_id)
       api_key = ENV['HEYGEN_API_KEY']
       return nil unless api_key.present?
-
-      template_id = get_template_id
+      return nil unless template_id.present?
 
       body = {
-        title: "Global Crypto Brief",
+        title: "Agic Video",
         caption: true,
         dimension: {
           width: 1080,
@@ -250,7 +258,7 @@ class Heygen
       video_id = parsed_response.dig('data', 'video_id')
 
       if video_id.present?
-        Rails.logger.info "[Heygen] 视频生成接口调用成功: video_id=#{video_id}"
+        Rails.logger.info "[Heygen] 视频生成接口调用成功: template_id=#{template_id} video_id=#{video_id}"
         video_id
       else
         Rails.logger.error "[Heygen] 视频生成接口调用失败: video_id 获取不到，响应: #{parsed_response}"
@@ -261,8 +269,12 @@ class Heygen
       nil
     end
 
-    def get_template_id
-      '64d574f45d3e43688afb8dcd6cbc99e4'
+    def get_template_ids
+      heygen_themes = Account.where(work_type: 'Heygen', status: '正常').distinct.pluck(:theme).compact
+      return [] if heygen_themes.empty?
+
+      themes = Theme.where(name: heygen_themes).where.not(remark: nil)
+      themes.map { |t| { theme_name: t.name, template_id: t.remark } }
     end
 
     def fetch_video_info(video_id)
