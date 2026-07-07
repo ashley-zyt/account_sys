@@ -51,7 +51,7 @@ class HeygenTask < ApplicationRecord
     instagram: 5
   }
 
-  validates :task_uuid, presence: true, uniqueness: true
+  validates :task_uuid, presence: true
   validates :theme, presence: true
 
   before_validation :generate_task_uuid, on: :create

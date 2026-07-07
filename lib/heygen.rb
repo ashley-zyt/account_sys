@@ -298,7 +298,7 @@ class Heygen
             HeygenTask.create(
               theme: task['theme'],
               video_url: caption_url,
-              status: "pending",
+              status: 0,
               templete_id: task['templete_id'],
               video_text: task['video_text'],
               task_uuid: task['task_uuid'],
