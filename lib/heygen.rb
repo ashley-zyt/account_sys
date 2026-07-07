@@ -1,4 +1,4 @@
-require 'httparty'
+﻿require 'httparty'
 require 'json'
 
 class Heygen
@@ -277,19 +277,42 @@ class Heygen
       themes.map { |t| { theme_name: t.name, template_id: t.remark } }
     end
 
-    def fetch_video_info(video_id)
+    def fetch_video_info
       api_key = ENV['HEYGEN_API_KEY']
       return nil unless api_key.present?
+      crypto_videos = CryptoVideo.where(video_status:"生成中")
+      crypto_video.each do |video|
+        response = HTTParty.get(
+          "https://api.heygen.com/v3/videos/#{video.video_id}",
+          headers: { 'X-Api-Key' => api_key },
+          timeout: 30
+        )
+        caption_url = response.parsed_response['data']['captioned_video_url'] rescue nil
+        if caption_url
+          task = HeygenTask.find_by(id: video.heygen_task_id)
+          next unless task.present?
+          title,description = task['title'], task['description']
+          
+          platforms = %w[facebook twitter tiktok instagram]
+          platforms.each do |platform|
+            HeygenTask.create(
+              theme: task['theme'],
+              video_url: caption_url,
+              status: "pending",
+              templete_id: task['templete_id'],
+              video_text: task['video_text'],
+              task_uuid: task['task_uuid'],
+              platform: platform,
+              title: title,
+            )
+          end
+        end
+        task.update!(video_url: caption_url, platform: 'youtube',title:description,description: title)
+        video.update!(video_status:"已完成")
+        end
+      end
+      
 
-      response = HTTParty.get(
-        "https://api.heygen.com/v3/videos/#{video_id}",
-        headers: { 'X-Api-Key' => api_key },
-        timeout: 30
-      )
-
-      return nil unless response.success?
-
-      response.parsed_response['data']
     rescue HTTParty::Error, JSON::ParserError => e
       Rails.logger.error "[Heygen] 获取视频信息失败: #{e.message}"
       nil
