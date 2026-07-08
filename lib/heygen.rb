@@ -368,20 +368,37 @@ class Heygen
           next unless task.present?
           title,description = task['title'], task['description']
           
-          platforms = %w[facebook twitter tiktok instagram]
-          platforms.each do |platform|
-            HeygenTask.create(
-              theme: task['theme'],
-              video_url: caption_url,
-              status: 0,
-              templete_id: task['templete_id'],
-              video_text: task['video_text'],
-              task_uuid: task['task_uuid'],
-              platform: platform,
-              title: title,
-            )
+          platforms = Account.where(theme:task["theme"]).pluck("platform").uniq
+          if platforms.include?"youtube"
+            platforms.delete("youtube")
+            platforms.each do |platform|
+              HeygenTask.create(
+                theme: task['theme'],
+                video_url: caption_url,
+                status: 0,
+                templete_id: task['templete_id'],
+                video_text: task['video_text'],
+                task_uuid: task['task_uuid'],
+                platform: platform,
+                title: title,
+              )
+            end
+            task.update!(video_url: caption_url, platform: 'youtube',title:description,description: title)
+          else
+            platforms.each do |platform|
+              HeygenTask.create(
+                theme: task['theme'],
+                video_url: caption_url,
+                status: 0,
+                templete_id: task['templete_id'],
+                video_text: task['video_text'],
+                task_uuid: task['task_uuid'],
+                platform: platform,
+                title: title,
+              )
+            end
+            task.destroy
           end
-          task.update!(video_url: caption_url, platform: 'youtube',title:description,description: title)
           video.update!(video_status:"已完成")
         end
       end
