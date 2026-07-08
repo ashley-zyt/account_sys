@@ -10,20 +10,20 @@ set :output, "log/postdatas_fetch.log"
 every :day, at: '03:00' do
   runner 'PostDatas.fetch'
 end
-# 分配资源 人工运营和Grok两种
-set :output, "log/taskscheduler_assignoperationresources.log"
+# 分配资源（人工运营、Grok、Heygen）
+set :output, "log/taskscheduler_assignresources.log"
 every :day, at: '11:50' do
   runner 'TaskScheduler.assign_resources'
 end
 
-# 每日12点开始自动发布人工运营和Grok的资源
+# 每日12点开始自动发布
 set :output, "log/publishscheduler_run.log"
 every :day, at: '12:00' do
   runner 'PublishScheduler.run'
 end
 
-# 分配资源 人工运营和Grok两种
-set :output, "log/taskscheduler_assignoperationresources.log"
+# 下午重试前分配资源
+set :output, "log/taskscheduler_assignresources.log"
 every :day, at: '16:50' do
   runner 'TaskScheduler.assign_resources'
 end
@@ -45,6 +45,18 @@ set :output, "log/red_note_random_tasks.log"
 every 3.hours do
   runner 'RedNoteApiService.random_create_tasks'
 end
+
+# # 加密货币视频生成流程（每天上午10点）
+# set :output, "log/crypto_video_pipeline.log"
+# every :day, at: '10:00' do
+#   runner 'Heygen.run_crypto_video_pipeline'
+# end
+
+# # 检查Heygen视频生成状态（每10分钟）
+# set :output, "log/heygen_video_status.log"
+# every 10.minutes do
+#   runner 'Heygen.process_pending_videos'
+# end
 
 
 # set :output, "log/check_timeout_tasks.log"

@@ -38,6 +38,14 @@ class PublishScheduler
                 else
                   'operation'
                 end
+
+    ActiveRecord::Base.transaction do
+      task.lock!
+      return false unless task.status == 'waiting_publish'
+
+      task.update!(status: :executing, start_at: Time.current)
+    end
+
     execute_task(task, task_type)
     sleep(TASK_INTERVAL)
     true
@@ -85,8 +93,6 @@ class PublishScheduler
     Rails.logger.info "[PublishScheduler] 开始执行任务 #{task_type}:#{task.id} - #{task.title} (浏览器: #{task.browser.profile_name})"
 
     begin
-      task.update!(status: :executing, start_at: Time.current)
-
       endpoint = PLATFORM_ENDPOINTS[task.platform.to_sym]
       return unless endpoint
 
