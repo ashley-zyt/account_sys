@@ -34,7 +34,7 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">任务类型</label>
-        <%= f.select :task_type_eq, [["搬运任务", "move_task"], ["剪映任务", "jianying_task"], ["运营任务", "operation_task"], ["Grok任务", "grok_task"]], { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
+        <%= f.select :task_type_eq, [["搬运任务", "move_task"], ["剪映任务", "jianying_task"], ["运营任务", "operation_task"], ["Grok任务", "grok_task"], ["Heygen任务", "heygen_task"]], { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">工作模式</label>
@@ -111,6 +111,10 @@
                 <% elsif task_type == "Grok任务" %>
                   <span class="admin-pill-status" style="background: rgba(249, 115, 22, 0.1); color: #f97316;">
                     Grok任务
+                  </span>
+                <% elsif task_type == "Heygen任务" %>
+                  <span class="admin-pill-status" style="background: rgba(14, 165, 233, 0.1); color: #0ea5e9;">
+                    Heygen任务
                   </span>
                 <% else %>
                   <span class="admin-label-muted">
@@ -192,6 +196,8 @@
                     <%= link_to "查看运营任务", admin_operation_task_path(t), class: "admin-link-quiet", style: "color: #a855f7;" %>
                   <% elsif t.is_a?(GrokTask) %>
                     <%= link_to "查看 Grok 任务", admin_grok_task_path(t), class: "admin-link-quiet", style: "color: #f97316;" %>
+                  <% elsif t.is_a?(HeygenTask) %>
+                    <%= link_to "查看 Heygen 任务", admin_heygen_task_path(t), class: "admin-link-quiet", style: "color: #0ea5e9;" %>
                   <% end %>
                 <% else %>
                   <span class="admin-label-muted">任务不存在</span>
