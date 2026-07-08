@@ -74,7 +74,7 @@ class Account < ApplicationRecord
 	enum work_type: {
 		"视频搬运": 0,
 		"coze": 1,
-		"capcut": 2,
+		"剪映": 2,
 		"人工运营": 3,
 		"Grok": 4,
 		"Heygen": 5
@@ -111,7 +111,7 @@ class Account < ApplicationRecord
 		case work_type
 		when "视频搬运"
 			MoveTask
-		when "capcut"
+		when "剪映"
 			JianyingTask
 		when "人工运营"
 			OperationTask
