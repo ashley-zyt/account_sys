@@ -176,6 +176,10 @@
                     <%= link_to "任务", admin_operation_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
                   <% elsif account.work_type == "Grok" %>
                     <%= link_to "任务", admin_grok_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% elsif account.work_type == "剪映" %>
+                    <%= link_to "任务", admin_jianying_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% elsif account.work_type == "Heygen" %>
+                    <%= link_to "任务", admin_heygen_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
                   <% else %>
                     <%= link_to "任务", admin_move_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
                   <% end %>
