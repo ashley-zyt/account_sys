@@ -35,7 +35,10 @@ class Heygen
       data = {
         global_crypto: fetch_global_crypto,
         global_defi: fetch_global_defi,
-        trending: fetch_trending
+        trending: fetch_trending,
+        top_coins: fetch_top_coins,
+        nft_data: fetch_nft_data,
+        market_sentiment: fetch_market_sentiment
       }
 
       Rails.logger.info "[Heygen] 获取加密货币数据完成"
@@ -69,6 +72,33 @@ class Heygen
       response.parsed_response
     rescue HTTParty::Error, JSON::ParserError => e
       Rails.logger.error "[Heygen] 获取热门搜索失败: #{e.message}"
+      []
+    end
+
+    def fetch_top_coins
+      url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h'
+      response = HTTParty.get(url, headers: coingecko_headers, timeout: 30)
+      response.parsed_response
+    rescue HTTParty::Error, JSON::ParserError => e
+      Rails.logger.error "[Heygen] 获取主流币种数据失败: #{e.message}"
+      []
+    end
+
+    def fetch_nft_data
+      url = 'https://api.coingecko.com/api/v3/nfts/list?order=h24_volume_usd_desc&per_page=5'
+      response = HTTParty.get(url, headers: coingecko_headers, timeout: 30)
+      response.parsed_response
+    rescue HTTParty::Error, JSON::ParserError => e
+      Rails.logger.error "[Heygen] 获取 NFT 数据失败: #{e.message}"
+      []
+    end
+
+    def fetch_market_sentiment
+      url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&sparkline=false&price_change_percentage=24h,7d,30d'
+      response = HTTParty.get(url, headers: coingecko_headers, timeout: 30)
+      response.parsed_response
+    rescue HTTParty::Error, JSON::ParserError => e
+      Rails.logger.error "[Heygen] 获取市场情绪数据失败: #{e.message}"
       []
     end
 
@@ -106,12 +136,48 @@ class Heygen
       global = crypto_data[:global_crypto]
       defi = crypto_data[:global_defi]
       trending = crypto_data[:trending]
+      top_coins = crypto_data[:top_coins] || []
+      nft_data = crypto_data[:nft_data] || []
+      market_sentiment = crypto_data[:market_sentiment] || []
 
       trending_coins = trending['coins'] || []
       top_trending = trending_coins.first(3).map { |c| "#{c['item']['name']} (#{c['item']['symbol']})" }.join(', ')
 
+      top_coins_info = top_coins.first(5).map do |coin|
+        change = coin['price_change_percentage_24h']
+        direction = change.to_f >= 0 ? '📈' : '📉'
+        "#{direction} #{coin['name']} (#{coin['symbol']}): $#{format_number(coin['current_price'])} (#{change.to_f.round(2)}%)"
+      end.join("\n")
+
+      nft_info = nft_data.first(3).map do |nft|
+        "🎨 #{nft['name']}: #{nft['h24_volume_usd'] ? "$#{format_number(nft['h24_volume_usd'])}" : '数据未更新'}"
+      end.join("\n")
+
+      btc_sentiment = market_sentiment.find { |c| c['id'] == 'bitcoin' }
+      eth_sentiment = market_sentiment.find { |c| c['id'] == 'ethereum' }
+      sentiment_info = []
+      sentiment_info << "📊 BTC 24h: #{btc_sentiment['price_change_percentage_24h'].to_f.round(2)}%, 7d: #{btc_sentiment['price_change_percentage_7d'].to_f.round(2)}%" if btc_sentiment
+      sentiment_info << "📊 ETH 24h: #{eth_sentiment['price_change_percentage_24h'].to_f.round(2)}%, 7d: #{eth_sentiment['price_change_percentage_7d'].to_f.round(2)}%" if eth_sentiment
+
+      content_angles = [
+        "市场热点追踪",
+        "主流币种分析",
+        "DeFi 生态动态",
+        "NFT 市场观察",
+        "投资趋势研判",
+        "加密货币新闻速览"
+      ]
+      content_angle = content_angles.sample
+
+      opening_lines = [
+        "Hello and welcome to Global Crypto Brief."
+      ]
+      opening_line = opening_lines.sample
+
       <<~PROMPT
         这是今日的 CoinGecko 数据，请生成今日 #{theme_name}（英文口播稿、社媒标题、文案、热词）
+
+        内容角度：#{content_angle}
 
         全球市场概览：
         - 总市值：$#{format_number(global.dig('data', 'total_market_cap', 'usd'))}
@@ -123,11 +189,20 @@ class Heygen
         - DeFi 总锁仓量：$#{format_number(defi.dig('defi_market_cap', 'usd'))}
         - DeFi 交易量：$#{format_number(defi.dig('trading_volume_24h', 'usd'))}
 
+        主流币种行情：
+        #{top_coins_info}
+
+        市场情绪指标：
+        #{sentiment_info.join("\n")}
+
+        NFT 热门项目：
+        #{nft_info}
+
         热门搜索：#{top_trending}
 
         请输出JSON格式，包含以下字段：
-        - video_text: 英文口播逐字稿，约150字，开头必须是"Hello and welcome to #{theme_name}."，口语化，适合短视频口播，包含一两句趋势研判
-        - title: 社媒标题，不超过100字母，吸引眼球，包含关键词，符合海外社媒风格
+        - video_text: 英文口播逐字稿，约150字，开头必须是"#{opening_line}"，口语化，适合短视频口播，根据#{content_angle}角度深度分析，包含趋势研判和投资建议
+        - title: 社媒标题，不超过100字母，吸引眼球，包含关键词，符合海外社媒风格，使用 emoji 增强吸引力
         - description: 社媒文案，不超过80字母，精简提炼，包含趋势研判，吸引关注获取流量
         - hashtags: 热词数组，5-8个相关话题，带#号，吸引流量
         - theme: 内容主题，用于分类
