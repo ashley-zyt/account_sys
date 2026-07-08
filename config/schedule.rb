@@ -10,6 +10,17 @@ set :output, "log/postdatas_fetch.log"
 every :day, at: '03:00' do
   runner 'PostDatas.fetch'
 end
+# 做数字货币视频
+set :output, "log/heygen_crypto_video_pipeline.log"
+every :day, at: '11:10' do
+  runner 'Heygen.run_crypto_video_pipeline'
+end
+# 获取数字货币视频生成结果
+set :output, "log/heygen_fetch_video_info.log"
+every :day, at: '11:30' do
+  runner 'Heygen.fetch_video_info'
+end
+
 # 分配资源（人工运营、Grok、Heygen）
 set :output, "log/taskscheduler_assignresources.log"
 every :day, at: '11:50' do
