@@ -1,7 +1,7 @@
 class Admin::HeygenTasksController < Admin::BaseController
   def index
     @q = HeygenTask.ransack(params[:q])
-    @heygen_tasks = @q.result.order(created_at: :desc).page(params[:page])
+    @heygen_tasks = @q.result.includes(:account, :browser).order(created_at: :desc).page(params[:page])
   end
 
   def show

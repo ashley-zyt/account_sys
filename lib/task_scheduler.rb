@@ -53,18 +53,6 @@ class TaskScheduler
 		TaskScheduler.find_locked_browsers_in_pending_tasks
 	end
 
-	def self.assign_operation_resources
-		assign_resources
-	end
-
-	def self.assign_grok_resources
-		assign_resources
-	end
-
-	def self.assign_heygen_resources
-		assign_resources
-	end
-
 	# 找出待执行任务中与锁定接口重合的指纹浏览器名称
 	def self.find_locked_browsers_in_pending_tasks
 
