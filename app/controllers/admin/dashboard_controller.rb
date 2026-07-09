@@ -91,7 +91,8 @@ class Admin::DashboardController < Admin::BaseController
 		abnormal_accounts = []
 		current_account_id = nil
 		consecutive_failures = 0
-		last_success_time = nil
+		last_failure_time = nil
+		last_error_msg = nil
 
 		failed_logs.each do |log|
 			if log.account_id != current_account_id
