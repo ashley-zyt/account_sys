@@ -2,19 +2,34 @@
 #
 # Table name: warmup_tasks
 #
-#  id                :bigint           not null, primary key
-#  account_id        :bigint
-#  browser_id        :bigint
-#  platform          :integer
-#  operations        :text(65535)
-#  status            :integer          default("pending")
-#  error_msg         :text(65535)
-#  executed_at       :datetime
-#  created_at        :datetime         not null
-#  updated_at        :datetime         not null
-#  task_uuid         :string(255)
-#  duration_minutes  :integer
-#  machine           :string(255)
+#  id               :bigint           not null, primary key
+#  duration_minutes :integer
+#  error_msg        :text(65535)
+#  executed_at      :datetime
+#  machine          :string(255)
+#  operations       :text(65535)
+#  platform         :integer          not null
+#  status           :integer          default("pending")
+#  task_uuid        :string(255)
+#  created_at       :datetime         not null
+#  updated_at       :datetime         not null
+#  account_id       :bigint           not null
+#  browser_id       :bigint
+#
+# Indexes
+#
+#  index_warmup_tasks_on_account_id             (account_id)
+#  index_warmup_tasks_on_account_id_and_status  (account_id,status)
+#  index_warmup_tasks_on_browser_id             (browser_id)
+#  index_warmup_tasks_on_executed_at            (executed_at)
+#  index_warmup_tasks_on_machine                (machine)
+#  index_warmup_tasks_on_platform               (platform)
+#  index_warmup_tasks_on_task_uuid              (task_uuid)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#  fk_rails_...  (browser_id => browsers.id)
 #
 
 class WarmupTask < ApplicationRecord

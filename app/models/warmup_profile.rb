@@ -2,16 +2,27 @@
 #
 # Table name: warmup_profiles
 #
-#  id                :bigint           not null, primary key
-#  account_id        :bigint           not null, unique
-#  last_warmup_at    :datetime
-#  warmup_enabled    :boolean          default(true)
-#  warmup_frequency  :string           default("weekly")
-#  warmup_status     :string
-#  warmup_batch      :integer          default(0)
-#  machine           :string
-#  created_at        :datetime         not null
-#  updated_at        :datetime         not null
+#  id               :bigint           not null, primary key
+#  last_warmup_at   :datetime
+#  machine          :string(255)
+#  warmup_batch     :integer          default(0)
+#  warmup_enabled   :boolean          default(TRUE)
+#  warmup_frequency :string(255)      default("weekly")
+#  warmup_status    :string(255)
+#  created_at       :datetime         not null
+#  updated_at       :datetime         not null
+#  account_id       :bigint           not null
+#
+# Indexes
+#
+#  index_warmup_profiles_on_account_id      (account_id)
+#  index_warmup_profiles_on_machine         (machine)
+#  index_warmup_profiles_on_warmup_batch    (warmup_batch)
+#  index_warmup_profiles_on_warmup_enabled  (warmup_enabled)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
 #
 
 class WarmupProfile < ApplicationRecord
