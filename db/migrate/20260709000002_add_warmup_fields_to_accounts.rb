@@ -1,4 +1,4 @@
-class AddWarmupFieldsToAccounts < ActiveRecord::Migration[7.0]
+class AddWarmupFieldsToAccounts < ActiveRecord::Migration[6.1]
   def change
     add_column :accounts, :last_warmup_at, :datetime
     add_column :accounts, :warmup_enabled, :boolean, default: true

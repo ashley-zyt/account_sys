@@ -1,4 +1,4 @@
-class CreateWarmupProfilesForExistingAccounts < ActiveRecord::Migration[7.0]
+class CreateWarmupProfilesForExistingAccounts < ActiveRecord::Migration[6.1]
   def up
     Account.find_each do |account|
       next if account.warmup_profile.present?

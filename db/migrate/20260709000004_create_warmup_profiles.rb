@@ -1,4 +1,4 @@
-class CreateWarmupProfiles < ActiveRecord::Migration[7.0]
+class CreateWarmupProfiles < ActiveRecord::Migration[6.1]
   def change
     create_table :warmup_profiles do |t|
       t.references :account, null: false, foreign_key: true, unique: true

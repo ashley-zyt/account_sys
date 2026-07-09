@@ -1,4 +1,4 @@
-class RemoveWarmupFieldsFromAccounts < ActiveRecord::Migration[7.0]
+class RemoveWarmupFieldsFromAccounts < ActiveRecord::Migration[6.1]
   def change
     remove_column :accounts, :last_warmup_at, :datetime
     remove_column :accounts, :warmup_enabled, :boolean
