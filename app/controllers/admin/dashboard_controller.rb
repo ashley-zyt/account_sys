@@ -86,7 +86,7 @@ class Admin::DashboardController < Admin::BaseController
 		failed_logs = TaskLog.failed
 			.joins(:log_account)
 			.where("account_id IS NOT NULL")
-			.where(log_accounts: { status: "正常" })
+			.where(accounts: { status: "正常" })
 			.order(account_id: :asc, run_at: :desc)
 
 		abnormal_accounts = []
