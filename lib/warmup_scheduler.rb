@@ -67,20 +67,12 @@ class WarmupScheduler
     current_batch = get_current_batch(machine)
     Rails.logger.info "[WarmupScheduler] 当前批次: #{current_batch}"
 
-    base_scope = Account.active.where("browser_id IS NOT NULL")
-
-    case machine
-    when :move
-      base_scope.where(work_type: "视频搬运")
-    when :other
-      base_scope.where.not(work_type: "视频搬运")
-    else
-      base_scope
-    end
-
-    base_scope.where(warmup_batch: current_batch)
-              .order(last_warmup_at: :asc, created_at: :asc)
-              .limit(MAX_ACCOUNTS_PER_NIGHT)
+    Account.active
+           .joins(:warmup_profile)
+           .where("browser_id IS NOT NULL")
+           .where(warmup_profiles: { machine: machine.to_s, warmup_batch: current_batch, warmup_enabled: true })
+           .order("warmup_profiles.last_warmup_at ASC NULLS FIRST, accounts.created_at ASC")
+           .limit(MAX_ACCOUNTS_PER_NIGHT)
   end
 
   def self.get_current_batch(machine)
@@ -142,17 +134,20 @@ class WarmupScheduler
       if response['type'] == 'success'
         Rails.logger.info "[WarmupScheduler] 养号成功: #{account.account_name}"
         warmup_task.update!(status: :success, executed_at: Time.current)
-        account.update!(last_warmup_at: Time.current, warmup_status: 'success')
+        profile = account.warmup_profile || account.create_warmup_profile
+        profile.update!(last_warmup_at: Time.current, warmup_status: 'success')
       else
         error_msg = response['error_info'] || '养号失败'
         Rails.logger.error "[WarmupScheduler] 养号失败: #{account.account_name} - #{error_msg}"
         warmup_task.update!(status: :failed, error_msg: error_msg, executed_at: Time.current)
-        account.update!(warmup_status: 'failed')
+        profile = account.warmup_profile || account.create_warmup_profile
+        profile.update!(warmup_status: 'failed')
       end
     rescue => e
       Rails.logger.error "[WarmupScheduler] 养号异常: #{account.account_name} - #{e.message}"
       warmup_task.update!(status: :failed, error_msg: e.message, executed_at: Time.current)
-      account.update!(warmup_status: 'failed')
+      profile = account.warmup_profile || account.create_warmup_profile
+      profile.update!(warmup_status: 'failed')
     end
   end
 
