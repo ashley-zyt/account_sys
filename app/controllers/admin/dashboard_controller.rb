@@ -84,9 +84,10 @@ class Admin::DashboardController < Admin::BaseController
 
 	def fetch_abnormal_accounts(min_consecutive_failures)
 		failed_logs = TaskLog.failed
+			.joins(:log_account)
 			.where("account_id IS NOT NULL")
+			.where(log_accounts: { status: "正常" })
 			.order(account_id: :asc, run_at: :desc)
-			.includes(:log_account)
 
 		abnormal_accounts = []
 		current_account_id = nil
