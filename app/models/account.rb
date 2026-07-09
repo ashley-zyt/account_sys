@@ -33,6 +33,8 @@ class Account < ApplicationRecord
 	has_many :operation_tasks, dependent: :nullify
 	has_many :grok_tasks, dependent: :nullify
 	has_many :heygen_tasks, dependent: :nullify
+	has_many :warmup_tasks, dependent: :nullify
+	has_one :warmup_profile, dependent: :destroy
 	# 通过 task_logs.account_id 快照反查该账号的所有执行日志（兼容运营任务被释放资源的场景）
 	has_many :task_logs, foreign_key: :account_id, dependent: :nullify
 	# 账号可参与多个会话
@@ -42,6 +44,7 @@ class Account < ApplicationRecord
 
 	# 回调：当账号状态变更时，同步更新浏览器的“无效”状态
 	after_save :sync_browser_status, if: :saved_change_to_status?
+	after_create :create_warmup_profile
 
 	# 基础校验
 	validates :account_name, presence: true
@@ -161,11 +164,53 @@ class Account < ApplicationRecord
 		end
 	end
 
+	def warmup_due?
+		warmup_profile&.warmup_due? || false
+	end
+
+	def self.warmup_batch_size
+		15
+	end
+
+	def self.warmup_accounts_for_machine(machine)
+		base_scope = active.where("browser_id IS NOT NULL")
+
+		case machine
+		when :move
+			base_scope.where(work_type: "视频搬运")
+		when :other
+			base_scope.where.not(work_type: "视频搬运")
+		else
+			base_scope
+		end
+	end
+
+	def self.distribute_warmup_batches(machine, batch_size = warmup_batch_size)
+		accounts = warmup_accounts_for_machine(machine)
+		total_batches = (accounts.count.to_f / batch_size).ceil
+		total_batches = [total_batches, 1].max
+
+		accounts.each_with_index do |account, index|
+			profile = account.warmup_profile || account.create_warmup_profile
+			profile.update!(warmup_batch: (index % total_batches) + 1)
+		end
+
+		total_batches
+	end
+
 	private
 
 	# 同步更新浏览器的状态
 	def sync_browser_status
 		browser&.update_status_by_accounts!
+	end
+
+	# 创建养号配置
+	def create_warmup_profile
+		WarmupProfile.create!(
+			account: self,
+			machine: work_type == '视频搬运' ? 'move' : 'other'
+		)
 	end
 
 	# 计算最后一次运行的日志（被 last_task_log 委托）

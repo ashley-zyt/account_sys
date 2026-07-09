@@ -1,0 +1,122 @@
+<% content_for :page_title do %>
+  养号任务详情
+<% end %>
+<% content_for :page_subtitle do %>
+  任务ID: <%= @warmup_task.id %>
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        养号任务详情
+      </div>
+      <div class="admin-card-subtitle">
+        任务UUID: <%= @warmup_task.task_uuid %>
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "返回列表", admin_warmup_tasks_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <div class="admin-detail-grid">
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">账号</span>
+      <span class="admin-detail-value">
+        <%= link_to @warmup_task.account&.account_name, admin_account_path(@warmup_task.account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+      </span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">平台</span>
+      <span class="admin-detail-value"><%= @warmup_task.platform.to_s.titleize %></span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">浏览器</span>
+      <span class="admin-detail-value">
+        <% if @warmup_task.browser %>
+          <%= link_to @warmup_task.browser.profile_name, admin_browser_path(@warmup_task.browser), class: "admin-link-quiet" %>
+        <% else %>
+          <span class="admin-label-muted">未绑定</span>
+        <% end %>
+      </span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">状态</span>
+      <span class="admin-detail-value">
+        <% if @warmup_task.success? %>
+          <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">成功</span>
+        <% elsif @warmup_task.failed? %>
+          <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">失败</span>
+        <% elsif @warmup_task.executing? %>
+          <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">执行中</span>
+        <% else %>
+          <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af;">待执行</span>
+        <% end %>
+      </span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">执行时间</span>
+      <span class="admin-detail-value"><%= @warmup_task.executed_at&.strftime("%Y-%m-%d %H:%M:%S") || '-' %></span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">耗时</span>
+      <span class="admin-detail-value"><%= @warmup_task.duration_minutes ? "#{@warmup_task.duration_minutes} 分钟" : '-' %></span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">机器</span>
+      <span class="admin-detail-value"><%= @warmup_task.machine == 'move' ? '视频搬运机器' : '其他模式机器' %></span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">错误信息</span>
+      <span class="admin-detail-value"><%= @warmup_task.error_msg || '-' %></span>
+    </div>
+  </div>
+
+  <% if @warmup_task.operations.present? %>
+    <div class="admin-section">
+      <div class="admin-section-title">操作序列</div>
+      <div class="admin-table-wrapper">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>操作类型</th>
+              <th>详情</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% JSON.parse(@warmup_task.operations).each_with_index do |op, index| %>
+              <tr>
+                <td><%= index + 1 %></td>
+                <td>
+                  <% case op['type'] %>
+                  <% when 'browse' %>浏览帖子
+                  <% when 'like' %>点赞
+                  <% when 'follow' %>关注
+                  <% when 'comment' %>评论
+                  <% when 'share' %>分享
+                  <% else %><%= op['type'] %>
+                  <% end %>
+                </td>
+                <td>
+                  <% if op['duration'] %>
+                    时长: <%= op['duration'] %>秒
+                  <% elsif op['content'] %>
+                    内容: <%= op['content'] %>
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="admin-form-actions" style="margin-top: 20px;">
+    <%= link_to "删除", admin_warmup_task_path(@warmup_task), data: { turbo_method: :delete, turbo_confirm: "确定要删除该任务吗？" }, class: "admin-button-danger" %>
+  </div>
+</div>

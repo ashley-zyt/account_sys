@@ -1,0 +1,47 @@
+<% content_for :page_title do %>
+  创建养号任务
+<% end %>
+<% content_for :page_subtitle do %>
+  手动创建单个养号任务
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        创建养号任务
+      </div>
+      <div class="admin-card-subtitle">
+        手动触发单个账号的养号操作
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "返回列表", admin_warmup_tasks_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <div class="admin-form">
+    <%= form_for [:admin, @warmup_task] do |f| %>
+      <div class="admin-form-group">
+        <label class="admin-form-label">账号</label>
+        <%= f.select :account_id, @accounts.map { |a| [a.account_name, a.id] }, { include_blank: "请选择账号" }, class: "admin-input" %>
+        <% if @warmup_task.errors[:account_id].any? %>
+          <div class="admin-form-error"><%= @warmup_task.errors[:account_id].first %></div>
+        <% end %>
+      </div>
+
+      <div class="admin-form-group">
+        <label class="admin-form-label">平台</label>
+        <%= f.select :platform, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "请选择平台" }, class: "admin-input" %>
+        <% if @warmup_task.errors[:platform].any? %>
+          <div class="admin-form-error"><%= @warmup_task.errors[:platform].first %></div>
+        <% end %>
+      </div>
+
+      <div class="admin-form-actions">
+        <%= f.submit "创建任务", class: "admin-button-primary" %>
+        <%= link_to "取消", admin_warmup_tasks_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
