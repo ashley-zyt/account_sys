@@ -82,68 +82,32 @@ class Admin::DashboardController < Admin::BaseController
 
 	private
 
-	def fetch_abnormal_accounts(min_consecutive_failures)
-		failed_logs = TaskLog.failed
+	def fetch_abnormal_accounts(_min_consecutive_failures)
+		error_counts = TaskLog.failed
 			.joins(:log_account)
 			.where("account_id IS NOT NULL")
 			.where("run_at >= ?", 1.week.ago)
 			.where(accounts: { status: "正常" })
-			.order(account_id: :asc, run_at: :desc)
+			.group(:account_id)
+			.order("COUNT(*) DESC")
+			.limit(10)
+			.count
 
-		abnormal_accounts = []
-		current_account_id = nil
-		consecutive_failures = 0
-		last_failure_time = nil
-		last_error_msg = nil
+		error_counts.map do |account_id, count|
+			account = Account.find_by(id: account_id)
+			next unless account
 
-		failed_logs.each do |log|
-			if log.account_id != current_account_id
-				if current_account_id && consecutive_failures >= min_consecutive_failures
-					last_log = TaskLog.where(account_id: current_account_id)
-						.order(run_at: :desc)
-						.first
-
-					if last_log&.status == 'failed'
-						account = Account.find_by(id: current_account_id)
-						if account
-							abnormal_accounts << {
-								account: account,
-								consecutive_failures: consecutive_failures,
-								last_failure_time: last_failure_time,
-								last_error: last_error_msg
-							}
-						end
-					end
-				end
-				current_account_id = log.account_id
-				consecutive_failures = 1
-				last_failure_time = log.run_at
-				last_error_msg = log.error_msg
-			else
-				consecutive_failures += 1
-				last_failure_time = log.run_at
-				last_error_msg = log.error_msg
-			end
-		end
-
-		if current_account_id && consecutive_failures >= min_consecutive_failures
-			last_log = TaskLog.where(account_id: current_account_id)
+			last_error_log = TaskLog.failed
+				.where(account_id: account_id)
 				.order(run_at: :desc)
 				.first
 
-			if last_log&.status == 'failed'
-				account = Account.find_by(id: current_account_id)
-				if account
-					abnormal_accounts << {
-						account: account,
-						consecutive_failures: consecutive_failures,
-						last_failure_time: last_failure_time,
-						last_error: last_error_msg
-					}
-				end
-			end
-		end
-
-		abnormal_accounts.sort_by { |a| a[:consecutive_failures] }.reverse.take(10)
+			{
+				account: account,
+				error_count: count,
+				last_failure_time: last_error_log&.run_at,
+				last_error: last_error_log&.error_msg
+			}
+		end.compact
 	end
 end

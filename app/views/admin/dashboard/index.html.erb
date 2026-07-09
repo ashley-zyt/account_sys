@@ -294,15 +294,15 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          异常账号概览
+          近1周报错次数排行榜
         </div>
         <div class="admin-card-subtitle">
-          连续发布报错的账号（最近3次及以上失败）
+          正常状态账号的错误统计排行（按报错次数降序）
         </div>
       </div>
       <div class="admin-card-header-right">
         <span class="admin-tag admin-tag-danger">
-          共 <%= @abnormal_accounts.size %> 个异常账号
+          Top <%= @abnormal_accounts.size %>
         </span>
       </div>
     </div>
@@ -311,20 +311,25 @@
       <table class="admin-table">
         <thead>
           <tr>
+            <th>排名</th>
             <th>账号名</th>
             <th>平台</th>
             <th>工作模式</th>
-            <th>连续报错次数</th>
+            <th>近1周报错次数</th>
             <th>最近报错时间</th>
             <th>最近报错信息</th>
-            <th>账号状态</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <% if @abnormal_accounts.any? %>
-            <% @abnormal_accounts.each do |item| %>
+            <% @abnormal_accounts.each_with_index do |item, index| %>
               <tr>
+                <td>
+                  <span class="admin-pill-status" style="<%= index < 3 ? 'background: rgba(234, 179, 8, 0.1); color: #eab308; font-weight: 700;' : 'background: rgba(156, 163, 175, 0.1); color: #6b7280;' %>">
+                    <%= index + 1 %>
+                  </span>
+                </td>
                 <td>
                   <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
                 </td>
@@ -336,7 +341,7 @@
                 </td>
                 <td>
                   <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;">
-                    <%= item[:consecutive_failures] %> 次
+                    <%= item[:error_count] %> 次
                   </span>
                 </td>
                 <td>
@@ -346,15 +351,6 @@
                   <span class="admin-label-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= item[:last_error] %>">
                     <%= item[:last_error] || '-' %>
                   </span>
-                </td>
-                <td>
-                  <% if item[:account].status == "正常" %>
-                    <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">正常</span>
-                  <% elsif item[:account].status == "未登录" %>
-                    <span class="admin-pill-status" style="background: rgba(234, 179, 8, 0.1); color: #eab308;">未登录</span>
-                  <% elsif item[:account].status == "封禁/停用" %>
-                    <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">封禁/停用</span>
-                  <% end %>
                 </td>
                 <td>
                   <div style="display: flex; gap: 8px;">
@@ -368,7 +364,7 @@
             <tr>
               <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
                 <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
-                暂无连续报错的账号，系统运行正常
+                近1周暂无报错的账号，系统运行正常
               </td>
             </tr>
           <% end %>
