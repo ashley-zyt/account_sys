@@ -5,11 +5,9 @@ class Admin::DashboardController < Admin::BaseController
 		@accounts_unlogged = Account.where(status: 1).count
 		@accounts_banned = Account.where(status: 2).count
 		
-		# 今日活跃账号 (通过日志反查)
 		today_logs = TaskLog.where("created_at >= ?", Time.zone.now.beginning_of_day).includes(:move_task, :jianying_task)
 		@accounts_active_today = today_logs.map { |log| log.task&.account_id }.compact.uniq.count
 
-		# 按平台统计
 		@platform_stats = Account.group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
 			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
 			hash[platform][:total] += count
@@ -20,28 +18,6 @@ class Admin::DashboardController < Admin::BaseController
 			end
 		end
 
-		# 储备任务状况（按主题和平台统计 pending 状态的任务数量）
-		@theme_platform_stats = MoveTask.pending.group(:theme, :platform).count.each_with_object({}) do |((theme, platform), count), hash|
-			hash[theme] ||= { total: 0 }
-			hash[theme][platform] = count
-			hash[theme][:total] += count
-		end
-
-		# 剪映任务储备状况
-		@jianying_theme_platform_stats = JianyingTask.pending.group(:theme, :platform).count.each_with_object({}) do |((theme, platform), count), hash|
-			hash[theme] ||= { total: 0 }
-			hash[theme][platform] = count
-			hash[theme][:total] += count
-		end
-
-		# Heygen 任务储备状况
-		@heygen_theme_platform_stats = HeygenTask.pending.group(:theme, :platform).count.each_with_object({}) do |((theme, platform), count), hash|
-			hash[theme] ||= { total: 0 }
-			hash[theme][platform] = count
-			hash[theme][:total] += count
-		end
-
-		# 视频搬运账号统计 (work_type = 0)
 		@auto_account_stats = Account.where(work_type: 0).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
 			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
 			hash[platform][:total] += count
@@ -54,7 +30,6 @@ class Admin::DashboardController < Admin::BaseController
 		@auto_account_total = Account.where(work_type: 0).count
 		@auto_account_active = Account.where(work_type: 0).active.count
 
-		# 人工运营账号统计 (work_type = 3)
 		@manual_account_stats = Account.where(work_type: 3).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
 			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
 			hash[platform][:total] += count
@@ -67,7 +42,6 @@ class Admin::DashboardController < Admin::BaseController
 		@manual_account_total = Account.where(work_type: 3).count
 		@manual_account_active = Account.where(work_type: 3).active.count
 
-		# Grok 账号统计 (work_type = 4)
 		@grok_account_stats = Account.where(work_type: 4).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
 			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
 			hash[platform][:total] += count
@@ -80,7 +54,6 @@ class Admin::DashboardController < Admin::BaseController
 		@grok_account_total = Account.where(work_type: 4).count
 		@grok_account_active = Account.where(work_type: 4).active.count
 
-		# Heygen 账号统计 (work_type = 5)
 		@heygen_account_stats = Account.where(work_type: 5).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
 			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
 			hash[platform][:total] += count
@@ -98,18 +71,64 @@ class Admin::DashboardController < Admin::BaseController
 		@browsers_network_error = Browser.where(status: 1).count
 		@browsers_invalid = Browser.where(status: 2).count
 
-		@move_tasks_total = MoveTask.count
-		@move_tasks_pending = MoveTask.pending.count
-		@move_tasks_waiting = MoveTask.waiting_publish.count
-		@move_tasks_executing = MoveTask.executing.count
-		@move_tasks_success = MoveTask.success.count
-		@move_tasks_failed = MoveTask.failed.count
-
 		@today_logs_count = TaskLog.where("created_at >= ?", Time.zone.now.beginning_of_day).count
 		@today_errors_count = TaskLog.where("created_at >= ?", Time.zone.now.beginning_of_day).failed.count
 
 		@total_logs_count = TaskLog.count
 		@total_errors_count = TaskLog.failed.count
 
+		@abnormal_accounts = fetch_abnormal_accounts(3)
+	end
+
+	private
+
+	def fetch_abnormal_accounts(min_consecutive_failures)
+		failed_logs = TaskLog.failed
+			.where("account_id IS NOT NULL")
+			.order(account_id: :asc, run_at: :desc)
+			.includes(:log_account)
+
+		abnormal_accounts = []
+		current_account_id = nil
+		consecutive_failures = 0
+		last_success_time = nil
+
+		failed_logs.each do |log|
+			if log.account_id != current_account_id
+				if current_account_id && consecutive_failures >= min_consecutive_failures
+					account = Account.find_by(id: current_account_id)
+					if account
+						abnormal_accounts << {
+							account: account,
+							consecutive_failures: consecutive_failures,
+							last_failure_time: last_failure_time,
+							last_error: last_error_msg
+						}
+					end
+				end
+				current_account_id = log.account_id
+				consecutive_failures = 1
+				last_failure_time = log.run_at
+				last_error_msg = log.error_msg
+			else
+				consecutive_failures += 1
+				last_failure_time = log.run_at
+				last_error_msg = log.error_msg
+			end
+		end
+
+		if current_account_id && consecutive_failures >= min_consecutive_failures
+			account = Account.find_by(id: current_account_id)
+			if account
+				abnormal_accounts << {
+					account: account,
+					consecutive_failures: consecutive_failures,
+					last_failure_time: last_failure_time,
+					last_error: last_error_msg
+				}
+			end
+		end
+
+		abnormal_accounts.sort_by { |a| a[:consecutive_failures] }.reverse.take(10)
 	end
 end
