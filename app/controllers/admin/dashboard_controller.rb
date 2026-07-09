@@ -89,7 +89,7 @@ class Admin::DashboardController < Admin::BaseController
 			.where("run_at >= ?", 1.week.ago)
 			.where(accounts: { status: "正常" })
 			.group(:account_id)
-			.order("COUNT(*) DESC")
+			.order(Arel.sql("COUNT(*) DESC"))
 			.limit(10)
 			.count
 
