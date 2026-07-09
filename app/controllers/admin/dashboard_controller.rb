@@ -86,6 +86,7 @@ class Admin::DashboardController < Admin::BaseController
 		failed_logs = TaskLog.failed
 			.joins(:log_account)
 			.where("account_id IS NOT NULL")
+			.where("run_at >= ?", 1.week.ago)
 			.where(accounts: { status: "正常" })
 			.order(account_id: :asc, run_at: :desc)
 
