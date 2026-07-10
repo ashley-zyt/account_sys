@@ -89,16 +89,16 @@
       <div class="admin-field-label">
         发布文案
       </div>
-      <div class="admin-field-value" style="white-space: pre-wrap; word-break: break-word;">
-        <%= @operation_task.title %>
+      <div class="admin-field-value" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; word-break: break-all;">
+        <%= (@operation_task.title || '').gsub("\r", "\\r").gsub("\n", "\\n").html_safe %>
       </div>
     </div>
     <div style="margin-top: 10px;">
       <div class="admin-field-label">
         描述
       </div>
-      <div class="admin-field-value" style="white-space: pre-wrap; word-break: break-word;">
-        <%= @operation_task.description %>
+      <div class="admin-field-value" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; word-break: break-all;">
+        <%= (@operation_task.description || '').gsub("\r", "\\r").gsub("\n", "\\n").html_safe %>
       </div>
     </div>
   </div>
