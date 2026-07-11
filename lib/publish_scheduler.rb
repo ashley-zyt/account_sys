@@ -15,6 +15,10 @@ class PublishScheduler
   TASK_INTERVAL = 40
 
   def self.run
+    logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'publishscheduler_run.log'))
+    logger.formatter = Rails.logger.formatter
+    Rails.logger = logger
+
     loop do
       break unless execute_next_task
     end

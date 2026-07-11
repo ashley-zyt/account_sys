@@ -28,6 +28,9 @@ class WarmupScheduler
   @@start_time = nil
 
   def self.run(machine = nil)
+    logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'warmup_scheduler.log'))
+    logger.formatter = Rails.logger.formatter
+    Rails.logger = logger
     machine = detect_machine if machine.nil?
     Rails.logger.info "[WarmupScheduler] 开始养号任务，机器: #{machine}"
 

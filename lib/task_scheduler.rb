@@ -10,6 +10,10 @@ class TaskScheduler
 	end
 
 	def self.assign_resources
+		logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'taskscheduler_assignresources.log'))
+		logger.formatter = Rails.logger.formatter
+		Rails.logger = logger
+
 		today = Date.today
 		today_start = today.beginning_of_day
 		today_end = today.end_of_day

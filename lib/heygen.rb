@@ -1,9 +1,13 @@
-﻿require 'httparty'
+require 'httparty'
 require 'json'
 
 class Heygen
   class << self
     def run_crypto_video_pipeline
+      logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'heygen_crypto_video_pipeline.log'))
+      logger.formatter = Rails.logger.formatter
+      Rails.logger = logger
+
       crypto_data = fetch_crypto_data
       return unless crypto_data.present?
 
@@ -353,6 +357,10 @@ class Heygen
     end
 
     def fetch_video_info
+      logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'heygen_fetch_video_info.log'))
+      logger.formatter = Rails.logger.formatter
+      Rails.logger = logger
+
       api_key = ENV['HEYGEN_API_KEY']
       return nil unless api_key.present?
       crypto_videos = CryptoVideo.where(video_status:"生成中")

@@ -10,6 +10,10 @@ class PostDatas
   OTHER_URL = "http://174.139.46.15:8080"
 
   def self.fetch
+    logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_fetch.log'))
+    logger.formatter = Rails.logger.formatter
+    Rails.logger = logger
+
     special_account_ids = [213, 241, 253, 234, 233, 232, 231]
 
     browsers = Browser
