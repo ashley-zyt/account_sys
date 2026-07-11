@@ -75,40 +75,45 @@ class PostDatas
     fail_count = 0
 
     data.each_with_index do |browser_data, index|
-      move_accounts = browser_data[:active_accounts].select { |acc| acc[:work_type] == "视频搬运" }
-      other_accounts = browser_data[:active_accounts].reject { |acc| acc[:work_type] == "视频搬运" }
+      begin
+        move_accounts = browser_data[:active_accounts].select { |acc| acc[:work_type] == "视频搬运" }
+        other_accounts = browser_data[:active_accounts].reject { |acc| acc[:work_type] == "视频搬运" }
 
-      unless move_accounts.empty?
-        move_payload = {
-          id: browser_data[:id],
-          profile_name: browser_data[:profile_name],
-          active_accounts: move_accounts
-        }
-        response = push_to_external_with_retry(move_payload, VIDEO_MOVE_URL)
-        if response[:success]
-          success_count += 1
-          Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送成功 (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
-        else
-          fail_count += 1
-          Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
+        unless move_accounts.empty?
+          move_payload = {
+            id: browser_data[:id],
+            profile_name: browser_data[:profile_name],
+            active_accounts: move_accounts
+          }
+          response = push_to_external_with_retry(move_payload, VIDEO_MOVE_URL)
+          if response[:success]
+            success_count += 1
+            Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送成功 (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
+          else
+            fail_count += 1
+            Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
+          end
+          sleep(REQUEST_INTERVAL)
         end
-        sleep(REQUEST_INTERVAL)
-      end
 
-      unless other_accounts.empty?
-        other_payload = {
-          id: browser_data[:id],
-          profile_name: browser_data[:profile_name],
-          active_accounts: other_accounts
-        }
-        response = push_to_external_with_retry(other_payload, OTHER_URL)
-        if response[:success]
-          success_count += 1
-          Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送成功 (第 #{index + 1} 个, 目标: #{OTHER_URL})"
-        else
-          fail_count += 1
-          Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{OTHER_URL})"
+        unless other_accounts.empty?
+          other_payload = {
+            id: browser_data[:id],
+            profile_name: browser_data[:profile_name],
+            active_accounts: other_accounts
+          }
+          response = push_to_external_with_retry(other_payload, OTHER_URL)
+          if response[:success]
+            success_count += 1
+            Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送成功 (第 #{index + 1} 个, 目标: #{OTHER_URL})"
+          else
+            fail_count += 1
+            Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{OTHER_URL})"
+          end
         end
+      rescue => e
+        fail_count += 1
+        Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 执行异常: #{e.message}"
       end
 
       sleep(REQUEST_INTERVAL) unless index == data.size - 1
