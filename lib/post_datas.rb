@@ -143,7 +143,7 @@ class PostDatas
 
     request = Net::HTTP::Post.new(uri.request_uri)
     request['Content-Type'] = 'application/json'
-    request.body = browser_data.to_json
+    request.body = browser_data.to_json.force_encoding('UTF-8')
 
     response = http.request(request)
     body = response.body
