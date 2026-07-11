@@ -39,7 +39,11 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">发文日期</label>
-        <%= f.date_field :post_date_eq, class: "admin-input admin-filter-input", placeholder: "选择日期" %>
+        <div style="display: flex; gap: 8px;">
+          <%= f.date_field :post_date_gteq, class: "admin-input admin-filter-input", placeholder: "开始日期" %>
+          <span style="margin-top: 8px;">~</span>
+          <%= f.date_field :post_date_lteq, class: "admin-input admin-filter-input", placeholder: "结束日期" %>
+        </div>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">标题</label>
