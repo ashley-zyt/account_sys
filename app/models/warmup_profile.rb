@@ -31,19 +31,7 @@ class WarmupProfile < ApplicationRecord
   validates :account_id, uniqueness: true
 
   def warmup_due?
-    return false unless warmup_enabled
-    return true if last_warmup_at.nil?
-
-    case warmup_frequency
-    when 'daily'
-      last_warmup_at < Time.current - 1.day
-    when 'weekly'
-      last_warmup_at < Time.current - 1.week
-    when 'biweekly'
-      last_warmup_at < Time.current - 2.weeks
-    else
-      last_warmup_at < Time.current - 1.week
-    end
+    warmup_enabled
   end
 
   def self.ransackable_attributes(auth_object = nil)

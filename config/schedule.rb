@@ -57,20 +57,18 @@ every 3.hours do
   runner 'RedNoteApiService.random_create_tasks'
 end
 
-# # 加密货币视频生成流程（每天上午10点）
-# set :output, "log/crypto_video_pipeline.log"
-# every :day, at: '10:00' do
-#   runner 'Heygen.run_crypto_video_pipeline'
+
+# ==================== 养号任务配置 ====================
+# 约束条件：
+# - 每个账号养号：10-15分钟
+# - 可用时间窗口：凌晨23:00-02:30（3小时）
+# - 每批次可处理：约15个账号
+# - 机器隔离：视频搬运在一台，其他模式在另一台
+# - 策略：每天处理一批，轮流循环所有账号
+# - 机器自动检测：通过环境变量 WARMUP_MACHINE 或主机名自动识别
+
+# set :output, "log/warmup_scheduler.log"
+# every :day, at: '23:00' do
+#   runner 'WarmupScheduler.run'
 # end
 
-# # 检查Heygen视频生成状态（每10分钟）
-# set :output, "log/heygen_video_status.log"
-# every 10.minutes do
-#   runner 'Heygen.process_pending_videos'
-# end
-
-
-# set :output, "log/check_timeout_tasks.log"
-# every 5.minutes do
-#   runner 'TaskScheduler.check_timeout_tasks'
-# end

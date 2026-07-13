@@ -44,6 +44,7 @@ class Account < ApplicationRecord
 
 	# 回调：当账号状态变更时，同步更新浏览器的“无效”状态
 	after_save :sync_browser_status, if: :saved_change_to_status?
+	after_save :sync_warmup_enabled, if: :saved_change_to_status?
 	after_create :create_warmup_profile
 
 	# 基础校验
@@ -211,6 +212,19 @@ class Account < ApplicationRecord
 			account: self,
 			machine: work_type == '视频搬运' ? 'move' : 'other'
 		)
+	end
+
+	# 同步养号启用状态：账号状态变为封禁/停用时自动禁用养号，恢复正常时自动启用养号
+	def sync_warmup_enabled
+		profile = warmup_profile
+		return unless profile
+
+		case status
+		when "正常"
+			profile.update!(warmup_enabled: true) if !profile.warmup_enabled
+		when "封禁/停用", "未登录"
+			profile.update!(warmup_enabled: false) if profile.warmup_enabled
+		end
 	end
 
 	# 计算最后一次运行的日志（被 last_task_log 委托）
