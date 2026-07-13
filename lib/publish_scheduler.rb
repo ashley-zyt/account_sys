@@ -14,18 +14,31 @@ class PublishScheduler
   TIMEOUT_SECONDS = 600
   TASK_INTERVAL = 40
 
-  def self.run
+  def self.run(platform: nil)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'publishscheduler_run.log'))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
 
+    # 首轮发布
     loop do
-      break unless execute_next_task
+      break unless execute_next_task(platform: platform)
+    end
+
+    # 首轮发布完成，重新分配资源并重试
+    if platform.present?
+      Rails.logger.info "[PublishScheduler] 平台 #{platform} 首轮发布完成，开始重试流程"
+      TaskScheduler.assign_resources(platform: platform)
+
+      # 重试发布
+      loop do
+        break unless execute_next_task(platform: platform)
+      end
+      Rails.logger.info "[PublishScheduler] 平台 #{platform} 重试流程完成"
     end
   end
 
-  def self.execute_next_task
-    tasks = fetch_all_tasks
+  def self.execute_next_task(platform: nil)
+    tasks = fetch_all_tasks(platform: platform)
     return false if tasks.empty?
 
     last_browser_id = get_last_browser_id
@@ -55,7 +68,7 @@ class PublishScheduler
     true
   end
 
-  def self.fetch_all_tasks
+  def self.fetch_all_tasks(platform: nil)
     operation_tasks = OperationTask.where(status: :waiting_publish)
                                    .where("account_id IS NOT NULL")
                                    .includes(:browser)
@@ -68,7 +81,9 @@ class PublishScheduler
                              .where("account_id IS NOT NULL")
                              .includes(:browser)
 
-    operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a
+    tasks = operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a
+    tasks = tasks.select { |t| t.platform == platform } if platform.present?
+    tasks
   end
 
   def self.select_next_task(tasks, last_browser_id)

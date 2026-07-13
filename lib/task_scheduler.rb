@@ -9,7 +9,7 @@ class TaskScheduler
 		end
 	end
 
-	def self.assign_resources
+	def self.assign_resources(platform: nil)
 		logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'taskscheduler_assignresources.log'))
 		logger.formatter = Rails.logger.formatter
 		Rails.logger = logger
@@ -25,7 +25,10 @@ class TaskScheduler
 		]
 
 		resource_configs.each do |config|
-			Account.active.where(work_type: config[:work_type]).each do |account|
+			accounts = Account.active.where(work_type: config[:work_type])
+			accounts = accounts.where(platform: platform) if platform.present?
+
+			accounts.each do |account|
 				task_model = config[:task_model]
 				type_name = config[:type_name]
 
