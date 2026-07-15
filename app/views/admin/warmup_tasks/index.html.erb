@@ -1,0 +1,147 @@
+<% content_for :page_title do %>
+  养号任务
+<% end %>
+<% content_for :page_subtitle do %>
+  账号养号任务执行日志
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        养号任务
+      </div>
+      <div class="admin-card-subtitle">
+        按时间倒序展示养号任务执行日志
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">
+        共 <%= @warmup_tasks.total_count %> 条
+      </span>
+      <%= link_to "创建任务", new_admin_warmup_task_path, class: "admin-button-primary" %>
+      <%= link_to "养号统计", stats_admin_warmup_tasks_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">账号</label>
+        <%= f.search_field :account_account_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索账号名..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <%= f.select :platform_eq, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status_eq, WarmupTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">机器</label>
+        <%= f.select :machine_eq, [["视频搬运机器", "move"], ["其他模式机器", "other"]], { include_blank: "所有机器" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_warmup_tasks_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @warmup_tasks.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>任务ID</th>
+            <th>账号</th>
+            <th>平台</th>
+            <th>浏览器</th>
+            <th>操作内容</th>
+            <th>状态</th>
+            <th>执行时间</th>
+            <th>耗时(分钟)</th>
+            <th>机器</th>
+            <th>错误信息</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @warmup_tasks.each do |task| %>
+            <tr>
+              <td>
+                <%= link_to task.id, admin_warmup_task_path(task), class: "admin-link-quiet", title: task.task_uuid %>
+              </td>
+              <td>
+                <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.platform.to_s.titleize %></span>
+              </td>
+              <td>
+                <% if task.browser %>
+                  <%= link_to task.browser.profile_name, admin_browser_path(task.browser), class: "admin-link-quiet" %>
+                <% else %>
+                  <span class="admin-label-muted">未绑定</span>
+                <% end %>
+              </td>
+              <td>
+                <% if task.operations.present? %>
+                  <% ops = JSON.parse(task.operations) rescue [] %>
+                  <% ops.each do |op| %>
+                    <div style="font-size: 12px;">
+                      <%= op['type'] == 'browse' ? "浏览(#{op['duration']}s)" : op['type'] == 'comment' ? "评论" : op['type'] == 'like' ? "点赞" : op['type'] == 'follow' ? "关注" : op['type'] == 'share' ? "分享" : op['type'] %>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td>
+                <% if task.success? %>
+                  <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">成功</span>
+                <% elsif task.failed? %>
+                  <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">失败</span>
+                <% elsif task.executing? %>
+                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">执行中</span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af;">待执行</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.executed_at&.strftime("%m-%d %H:%M") || '-' %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.duration_minutes || '-' %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.machine == 'move' ? '视频搬运机器' : '其他模式机器' %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= task.error_msg %>"><%= task.error_msg || '-' %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.created_at&.strftime("%m-%d %H:%M") %></span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "详情", admin_warmup_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "删除", admin_warmup_task_path(task), data: { turbo_method: :delete, turbo_confirm: "确定要删除该任务吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @warmup_tasks %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无养号任务数据。
+    </div>
+  <% end %>
+</div>

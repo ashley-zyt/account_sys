@@ -9,12 +9,11 @@ class PostDatas
   VIDEO_MOVE_URL = "http://174.139.46.117:8080"
   OTHER_URL = "http://174.139.46.15:8080"
 
-  def self.ensure_utf8(str)
-    return str unless str.is_a?(String)
-    str.encode('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
-  end
-
   def self.fetch
+    logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_fetch.log'))
+    logger.formatter = Rails.logger.formatter
+    Rails.logger = logger
+
     special_account_ids = [213, 241, 253, 234, 233, 232, 231]
 
     browsers = Browser
@@ -30,13 +29,13 @@ class PostDatas
                           .where.not(platform: Account.platforms['facebook'])
       {
         id: browser.id,
-        profile_name: self.ensure_utf8(browser.profile_name),
+        profile_name: browser.profile_name,
         active_accounts: active_accounts.map do |acc|
           {
             id: acc.id,
-            platform: self.ensure_utf8(acc.platform),
-            source_url: self.ensure_utf8(acc.source_url),
-            work_type: self.ensure_utf8(acc.work_type)
+            platform: acc.platform,
+            source_url: acc.source_url,
+            work_type: acc.work_type
           }
         end
       }
@@ -52,22 +51,22 @@ class PostDatas
         existing_item[:active_accounts] += accounts.map do |acc|
           {
             id: acc.id,
-            platform: self.ensure_utf8(acc.platform),
-            source_url: self.ensure_utf8(acc.source_url),
-            work_type: self.ensure_utf8(acc.work_type)
+            platform: acc.platform,
+            source_url: acc.source_url,
+            work_type: acc.work_type
           }
         end
         existing_item[:active_accounts].uniq! { |acc| acc[:id] }
       else
         data << {
           id: browser.id,
-          profile_name: self.ensure_utf8(browser.profile_name),
+          profile_name: self.browser.profile_name,
           active_accounts: accounts.map do |acc|
             {
               id: acc.id,
-              platform: self.ensure_utf8(acc.platform),
-              source_url: self.ensure_utf8(acc.source_url),
-              work_type: self.ensure_utf8(acc.work_type)
+              platform: acc.platform,
+              source_url: acc.source_url,
+              work_type: acc.work_type
             }
           end
         }
@@ -80,40 +79,45 @@ class PostDatas
     fail_count = 0
 
     data.each_with_index do |browser_data, index|
-      move_accounts = browser_data[:active_accounts].select { |acc| acc[:work_type] == "视频搬运" }
-      other_accounts = browser_data[:active_accounts].reject { |acc| acc[:work_type] == "视频搬运" }
+      begin
+        move_accounts = browser_data[:active_accounts].select { |acc| acc[:work_type] == "视频搬运" }
+        other_accounts = browser_data[:active_accounts].reject { |acc| acc[:work_type] == "视频搬运" }
 
-      unless move_accounts.empty?
-        move_payload = {
-          id: browser_data[:id],
-          profile_name: browser_data[:profile_name],
-          active_accounts: move_accounts
-        }
-        response = push_to_external_with_retry(move_payload, VIDEO_MOVE_URL)
-        if response[:success]
-          success_count += 1
-          Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送成功 (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
-        else
-          fail_count += 1
-          Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送失败: #{self.ensure_utf8(response[:error])} (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
+        unless move_accounts.empty?
+          move_payload = {
+            id: browser_data[:id],
+            profile_name: browser_data[:profile_name],
+            active_accounts: move_accounts
+          }
+          response = push_to_external_with_retry(move_payload, VIDEO_MOVE_URL)
+          if response[:success]
+            success_count += 1
+            Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送成功 (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
+          else
+            fail_count += 1
+            Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
+          end
+          sleep(REQUEST_INTERVAL)
         end
-        sleep(REQUEST_INTERVAL)
-      end
 
-      unless other_accounts.empty?
-        other_payload = {
-          id: browser_data[:id],
-          profile_name: browser_data[:profile_name],
-          active_accounts: other_accounts
-        }
-        response = push_to_external_with_retry(other_payload, OTHER_URL)
-        if response[:success]
-          success_count += 1
-          Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送成功 (第 #{index + 1} 个, 目标: #{OTHER_URL})"
-        else
-          fail_count += 1
-          Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送失败: #{self.ensure_utf8(response[:error])} (第 #{index + 1} 个, 目标: #{OTHER_URL})"
+        unless other_accounts.empty?
+          other_payload = {
+            id: browser_data[:id],
+            profile_name: browser_data[:profile_name],
+            active_accounts: other_accounts
+          }
+          response = push_to_external_with_retry(other_payload, OTHER_URL)
+          if response[:success]
+            success_count += 1
+            Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送成功 (第 #{index + 1} 个, 目标: #{OTHER_URL})"
+          else
+            fail_count += 1
+            Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{OTHER_URL})"
+          end
         end
+      rescue => e
+        fail_count += 1
+        Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 执行异常: #{e.message}"
       end
 
       sleep(REQUEST_INTERVAL) unless index == data.size - 1
@@ -122,7 +126,7 @@ class PostDatas
     Rails.logger.info "[PostDatas] 采集完成: 成功 #{success_count} 个, 失败 #{fail_count} 个"
     { success_count: success_count, fail_count: fail_count, total: data.size }
   rescue => e
-    Rails.logger.error "[PostDatas] 执行异常: #{self.ensure_utf8(e.message)}"
+    Rails.logger.error "[PostDatas] 执行异常: #{e.message}"
     { success_count: 0, fail_count: 0, total: 0, error: e.message }
   end
 
@@ -148,10 +152,10 @@ class PostDatas
 
     request = Net::HTTP::Post.new(uri.request_uri)
     request['Content-Type'] = 'application/json'
-    request.body = browser_data.to_json
+    request.body = browser_data.to_json.force_encoding('UTF-8')
 
     response = http.request(request)
-    body = self.ensure_utf8(response.body)
+    body = response.body
 
     if response.code == '200'
       { success: true, response: body }
@@ -159,6 +163,6 @@ class PostDatas
       { success: false, error: "HTTP #{response.code}: #{body}" }
     end
   rescue => e
-    { success: false, error: self.ensure_utf8(e.message) }
+    { success: false, error: e.message }
   end
 end

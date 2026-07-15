@@ -56,6 +56,7 @@ class OperationTask < ApplicationRecord
 	# 非 pending 状态必须有账号
 	validates :account_id, presence: true, unless: :pending?
 
+	before_validation :normalize_newlines, on: [:create, :update]
 	before_validation :generate_task_uuid, on: :create
 
 	# 作用域：获取可执行任务
@@ -161,5 +162,17 @@ class OperationTask < ApplicationRecord
 
 	def generate_task_uuid
 		self.task_uuid ||= "OP-#{SecureRandom.uuid}"
+	end
+
+	def normalize_newlines
+		self.title = normalize_text(title) if title.present?
+		self.description = normalize_text(description) if description.present?
+	end
+
+	def normalize_text(text)
+		text
+			.gsub("\r\n", "\n")
+			.gsub("\r", "\n")
+			.gsub(/\n+/, "\n")
 	end
 end

@@ -142,12 +142,20 @@ class RedNoteApiService
 
     # 批量同步所有待执行和执行中的关键词
     def sync_all_pending
+      logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'red_note_sync.log'))
+      logger.formatter = Rails.logger.formatter
+      Rails.logger = logger
+
       keywords = RedNoteKeyword.where(status: [1, 2])
       keywords.each { |kw| sync_task_status(kw) }
     end
 
     # 定时随机创建任务：从未启动的关键词中随机取 1~4 条创建任务
     def random_create_tasks
+      logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'red_note_random_tasks.log'))
+      logger.formatter = Rails.logger.formatter
+      Rails.logger = logger
+
       keywords = RedNoteKeyword.where(status: 0).to_a.sample(rand(1..4))
       return if keywords.empty?
 

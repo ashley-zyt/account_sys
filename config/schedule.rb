@@ -10,28 +10,81 @@ set :output, "log/postdatas_fetch.log"
 every :day, at: '03:00' do
   runner 'PostDatas.fetch'
 end
-# 分配资源 人工运营和Grok两种
-set :output, "log/taskscheduler_assignoperationresources.log"
+# 做数字货币视频
+set :output, "log/heygen_crypto_video_pipeline.log"
+every :day, at: '07:10' do
+  runner 'Heygen.run_crypto_video_pipeline'
+end
+# 获取数字货币视频生成结果
+set :output, "log/heygen_fetch_video_info.log"
+every :day, at: '07:40' do
+  runner 'Heygen.fetch_video_info'
+end
+
+# ==================== 平台分批发布配置 ====================
+# Instagram: 8:00 发布，7:50 分配资源
+set :output, "log/taskscheduler_assignresources_instagram.log"
+every :day, at: '7:50' do
+  runner "TaskScheduler.assign_resources(platform: 'instagram')"
+end
+
+set :output, "log/publishscheduler_run_instagram.log"
+every :day, at: '8:00' do
+  runner "PublishScheduler.run(platform: 'instagram')"
+end
+
+# Twitter: 12:00 发布，11:50 分配资源
+set :output, "log/taskscheduler_assignresources_twitter.log"
 every :day, at: '11:50' do
-  runner 'TaskScheduler.assign_resources'
+  runner "TaskScheduler.assign_resources(platform: 'twitter')"
 end
 
-# 每日12点开始自动发布人工运营和Grok的资源
-set :output, "log/publishscheduler_run.log"
+set :output, "log/publishscheduler_run_twitter.log"
 every :day, at: '12:00' do
-  runner 'PublishScheduler.run'
+  runner "PublishScheduler.run(platform: 'twitter')"
 end
 
-# 分配资源 人工运营和Grok两种
-set :output, "log/taskscheduler_assignoperationresources.log"
-every :day, at: '16:50' do
-  runner 'TaskScheduler.assign_resources'
+# YouTube: 工作日14:00发布，周末9:00发布，发布前10分钟分配资源
+set :output, "log/taskscheduler_assignresources_youtube.log"
+every :weekday, at: '13:50' do
+  runner "TaskScheduler.assign_resources(platform: 'youtube')"
 end
 
-# 每日下午五点开始重试中午发布错误的人工运营和Grok资源
-set :output, "log/publishscheduler_run.log"
-every :day, at: '17:00' do
-  runner 'PublishScheduler.run'
+set :output, "log/publishscheduler_run_youtube.log"
+every :weekday, at: '14:00' do
+  runner "PublishScheduler.run(platform: 'youtube')"
+end
+
+set :output, "log/taskscheduler_assignresources_youtube.log"
+every [:saturday, :sunday], at: '8:50' do
+  runner "TaskScheduler.assign_resources(platform: 'youtube')"
+end
+
+set :output, "log/publishscheduler_run_youtube.log"
+every [:saturday, :sunday], at: '9:00' do
+  runner "PublishScheduler.run(platform: 'youtube')"
+end
+
+# TikTok: 19:00 发布，18:50 分配资源
+set :output, "log/taskscheduler_assignresources_tiktok.log"
+every :day, at: '18:50' do
+  runner "TaskScheduler.assign_resources(platform: 'tiktok')"
+end
+
+set :output, "log/publishscheduler_run_tiktok.log"
+every :day, at: '19:00' do
+  runner "PublishScheduler.run(platform: 'tiktok')"
+end
+
+# Facebook: 20:00 发布，19:50 分配资源
+set :output, "log/taskscheduler_assignresources_facebook.log"
+every :day, at: '19:50' do
+  runner "TaskScheduler.assign_resources(platform: 'facebook')"
+end
+
+set :output, "log/publishscheduler_run_facebook.log"
+every :day, at: '20:00' do
+  runner "PublishScheduler.run(platform: 'facebook')"
 end
 
 # RedNote 关键词任务状态同步（每30分钟）
@@ -47,7 +100,17 @@ every 3.hours do
 end
 
 
-# set :output, "log/check_timeout_tasks.log"
-# every 5.minutes do
-#   runner 'TaskScheduler.check_timeout_tasks'
+# ==================== 养号任务配置 ====================
+# 约束条件：
+# - 每个账号养号：10-15分钟
+# - 可用时间窗口：凌晨23:00-02:30（3小时）
+# - 每批次可处理：约15个账号
+# - 机器隔离：视频搬运在一台，其他模式在另一台
+# - 策略：每天处理一批，轮流循环所有账号
+# - 机器自动检测：通过环境变量 WARMUP_MACHINE 或主机名自动识别
+
+# set :output, "log/warmup_scheduler.log"
+# every :day, at: '23:00' do
+#   runner 'WarmupScheduler.run'
 # end
+

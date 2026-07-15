@@ -9,7 +9,11 @@ class TaskScheduler
 		end
 	end
 
-	def self.assign_resources
+	def self.assign_resources(platform: nil)
+		logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'taskscheduler_assignresources.log'))
+		logger.formatter = Rails.logger.formatter
+		Rails.logger = logger
+
 		today = Date.today
 		today_start = today.beginning_of_day
 		today_end = today.end_of_day
@@ -21,7 +25,10 @@ class TaskScheduler
 		]
 
 		resource_configs.each do |config|
-			Account.active.where(work_type: config[:work_type]).each do |account|
+			accounts = Account.active.where(work_type: config[:work_type])
+			accounts = accounts.where(platform: platform) if platform.present?
+
+			accounts.each do |account|
 				task_model = config[:task_model]
 				type_name = config[:type_name]
 
@@ -51,18 +58,6 @@ class TaskScheduler
 		end
 
 		TaskScheduler.find_locked_browsers_in_pending_tasks
-	end
-
-	def self.assign_operation_resources
-		assign_resources
-	end
-
-	def self.assign_grok_resources
-		assign_resources
-	end
-
-	def self.assign_heygen_resources
-		assign_resources
 	end
 
 	# 找出待执行任务中与锁定接口重合的指纹浏览器名称

@@ -289,185 +289,83 @@
   </div>
 </div>
 
-<div class="admin-grid-two-equal">
-  <%# 搬运资源状况 %>
+<div class="admin-grid-full">
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          搬运任务储备
+          近1周报错次数排行榜
         </div>
         <div class="admin-card-subtitle">
-          各主题下 pending 搬运任务
+          正常状态账号的错误统计排行（按报错次数降序）
         </div>
       </div>
       <div class="admin-card-header-right">
-        <%= link_to admin_move_tasks_path(q: { status_eq: 0 }), class: "admin-tag" do %>
-          待处理: <%= @move_tasks_pending %>
-        <% end %>
+        <span class="admin-tag admin-tag-danger">
+          Top <%= @abnormal_accounts.size %>
+        </span>
       </div>
     </div>
 
-    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
-      <table class="admin-table" style="font-size: 11px;">
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
         <thead>
-          <tr style="background: rgba(15, 23, 42, 0.3);">
-            <th style="padding: 6px 8px;">内容主题</th>
-            <% MoveTask.platforms.keys.each do |p| %>
-              <th style="padding: 6px 4px; text-align: center; text-transform: capitalize;"><%= p.to_s[0..2] %></th>
-            <% end %>
-            <th style="padding: 6px 8px; text-align: center; background: rgba(59, 130, 246, 0.1);">总计</th>
+          <tr>
+            <th>排名</th>
+            <th>账号名</th>
+            <th>平台</th>
+            <th>工作模式</th>
+            <th>近1周报错次数</th>
+            <th>最近报错时间</th>
+            <th>最近报错信息</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <% if @theme_platform_stats.any? %>
-            <% @theme_platform_stats.each do |theme, platforms| %>
+          <% if @abnormal_accounts.any? %>
+            <% @abnormal_accounts.each_with_index do |item, index| %>
               <tr>
-                <td style="padding: 6px 8px;">
-                  <%= link_to theme, admin_move_tasks_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet", style: "font-weight: 500;" %>
+                <td>
+                  <span class="admin-pill-status" style="<%= index < 3 ? 'background: rgba(234, 179, 8, 0.1); color: #eab308; font-weight: 700;' : 'background: rgba(156, 163, 175, 0.1); color: #6b7280;' %>">
+                    <%= index + 1 %>
+                  </span>
                 </td>
-                <% MoveTask.platforms.keys.each do |p| %>
-                  <% count = platforms[p].to_i %>
-                  <td style="padding: 6px 4px; text-align: center; color: <%= count > 0 ? (count < 5 ? 'var(--danger)' : 'var(--text-primary)') : 'var(--text-muted)' %>; font-weight: <%= count > 0 && count < 5 ? '600' : 'normal' %>;">
-                    <% if count > 0 %>
-                      <%= link_to count, admin_move_tasks_path(q: { theme_cont: theme, platform_eq: MoveTask.platforms[p], status_eq: 0 }), class: "admin-link-quiet", style: "color: inherit;" %>
-                    <% else %>
-                      0
-                    <% end %>
-                  </td>
-                <% end %>
-                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: var(--accent); background: rgba(59, 130, 246, 0.05);">
-                  <%= platforms[:total] %>
+                <td>
+                  <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].work_type.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;">
+                    <%= item[:error_count] %> 次
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:last_failure_time]&.strftime("%m-%d %H:%M") || '-' %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= item[:last_error] %>">
+                    <%= item[:last_error] || '-' %>
+                  </span>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 8px;">
+                    <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to "日志", admin_task_logs_path(q: { account_id_eq: item[:account].id, status_eq: 1 }), class: "admin-link-quiet", style: "color: var(--danger);" %>
+                  </div>
                 </td>
               </tr>
             <% end %>
           <% else %>
             <tr>
-              <td colspan="<%= MoveTask.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无待处理任务</td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <%# 剪映资源状况 %>
-  <div class="admin-card">
-    <div class="admin-card-header">
-      <div>
-        <div class="admin-card-title">
-          剪映任务储备
-        </div>
-        <div class="admin-card-subtitle">
-          各主题下 pending 剪映任务
-        </div>
-      </div>
-      <div class="admin-card-header-right">
-        <%= link_to admin_jianying_tasks_path(q: { status_eq: 0 }), class: "admin-tag admin-tag-accent" do %>
-          待处理: <%= JianyingTask.pending.count %>
-        <% end %>
-      </div>
-    </div>
-
-    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
-      <table class="admin-table" style="font-size: 11px;">
-        <thead>
-          <tr style="background: rgba(15, 23, 42, 0.3);">
-            <th style="padding: 6px 8px;">内容主题</th>
-            <% JianyingTask.platforms.keys.each do |p| %>
-              <th style="padding: 6px 4px; text-align: center; text-transform: capitalize;"><%= p.to_s[0..2] %></th>
-            <% end %>
-            <th style="padding: 6px 8px; text-align: center; background: rgba(139, 92, 246, 0.1);">总计</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% if @jianying_theme_platform_stats.any? %>
-            <% @jianying_theme_platform_stats.each do |theme, platforms| %>
-              <tr>
-                <td style="padding: 6px 8px;">
-                  <%= link_to theme, admin_jianying_tasks_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet", style: "font-weight: 500;" %>
-                </td>
-                <% JianyingTask.platforms.keys.each do |p| %>
-                  <% count = platforms[p].to_i %>
-                  <td style="padding: 6px 4px; text-align: center; color: <%= count > 0 ? (count < 5 ? 'var(--danger)' : 'var(--text-primary)') : 'var(--text-muted)' %>; font-weight: <%= count > 0 && count < 5 ? '600' : 'normal' %>;">
-                    <% if count > 0 %>
-                      <%= link_to count, admin_jianying_tasks_path(q: { theme_cont: theme, platform_eq: JianyingTask.platforms[p], status_eq: 0 }), class: "admin-link-quiet", style: "color: inherit;" %>
-                    <% else %>
-                      0
-                    <% end %>
-                  </td>
-                <% end %>
-                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: #8b5cf6; background: rgba(139, 92, 246, 0.05);">
-                  <%= platforms[:total] %>
-                </td>
-              </tr>
-            <% end %>
-          <% else %>
-            <tr>
-              <td colspan="<%= JianyingTask.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无待处理任务</td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<div class="admin-grid-two-equal">
-  <%# Heygen 资源状况 %>
-  <div class="admin-card">
-    <div class="admin-card-header">
-      <div>
-        <div class="admin-card-title">
-          Heygen 任务储备
-        </div>
-        <div class="admin-card-subtitle">
-          各主题下 pending Heygen 任务
-        </div>
-      </div>
-      <div class="admin-card-header-right">
-        <%= link_to admin_heygen_tasks_path(q: { status_eq: 0 }), class: "admin-tag admin-tag-accent" do %>
-          待处理: <%= HeygenTask.pending.count %>
-        <% end %>
-      </div>
-    </div>
-
-    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
-      <table class="admin-table" style="font-size: 11px;">
-        <thead>
-          <tr style="background: rgba(15, 23, 42, 0.3);">
-            <th style="padding: 6px 8px;">内容主题</th>
-            <% HeygenTask.platforms.keys.each do |p| %>
-              <th style="padding: 6px 4px; text-align: center; text-transform: capitalize;"><%= p.to_s[0..2] %></th>
-            <% end %>
-            <th style="padding: 6px 8px; text-align: center; background: rgba(236, 72, 153, 0.1);">总计</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% if @heygen_theme_platform_stats.any? %>
-            <% @heygen_theme_platform_stats.each do |theme, platforms| %>
-              <tr>
-                <td style="padding: 6px 8px;">
-                  <%= link_to theme, admin_heygen_tasks_path(q: { theme_cont: theme, status_eq: 0 }), class: "admin-link-quiet", style: "font-weight: 500;" %>
-                </td>
-                <% HeygenTask.platforms.keys.each do |p| %>
-                  <% count = platforms[p].to_i %>
-                  <td style="padding: 6px 4px; text-align: center; color: <%= count > 0 ? (count < 5 ? 'var(--danger)' : 'var(--text-primary)') : 'var(--text-muted)' %>; font-weight: <%= count > 0 && count < 5 ? '600' : 'normal' %>;">
-                    <% if count > 0 %>
-                      <%= link_to count, admin_heygen_tasks_path(q: { theme_cont: theme, platform_eq: HeygenTask.platforms[p], status_eq: 0 }), class: "admin-link-quiet", style: "color: inherit;" %>
-                    <% else %>
-                      0
-                    <% end %>
-                  </td>
-                <% end %>
-                <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: #ec4899; background: rgba(236, 72, 153, 0.05);">
-                  <%= platforms[:total] %>
-                </td>
-              </tr>
-            <% end %>
-          <% else %>
-            <tr>
-              <td colspan="<%= HeygenTask.platforms.size + 2 %>" style="padding: 16px; text-align: center;" class="admin-label-muted">暂无待处理任务</td>
+              <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+                近1周暂无报错的账号，系统运行正常
+              </td>
             </tr>
           <% end %>
         </tbody>
@@ -481,17 +379,16 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          系统统计
+          运行统计
         </div>
         <div class="admin-card-subtitle">
-          历史运行数据概览
+          今日运行数据概览
         </div>
       </div>
     </div>
 
     <div style="padding-top: 10px;">
       <div style="display: flex; gap: 40px; align-items: flex-start;">
-        <%# 今日运行 %>
         <div style="flex: 1;">
           <div class="admin-card-subtitle" style="margin-bottom: 12px;">
             今日运行
@@ -524,31 +421,8 @@
           </div>
         </div>
 
-        <%# 总计运行 %>
         <div style="flex: 1; border-left: 1px solid var(--border-subtle); padding-left: 40px;">
           <div class="admin-card-subtitle" style="margin-bottom: 12px;">
-            总计运行
-          </div>
-          <div style="display: flex; gap: 20px; margin-bottom: 24px;">
-            <%= link_to admin_task_logs_path, class: "admin-link-card" do %>
-              <div class="admin-label-muted" style="font-size: 11px;">
-                总产生日志
-              </div>
-              <div style="font-size: 18px; font-weight: 600;">
-                <%= @total_logs_count %>
-              </div>
-            <% end %>
-            <%= link_to admin_task_logs_path(q: { status_eq: 1 }), class: "admin-link-card" do %>
-              <div class="admin-label-muted" style="font-size: 11px;">
-                总异常次数
-              </div>
-              <div style="font-size: 18px; font-weight: 600; color: var(--danger);">
-                <%= @total_errors_count %>
-              </div>
-            <% end %>
-          </div>
-
-          <div class="admin-card-subtitle" style="margin-bottom: 12px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
             浏览器健康
           </div>
           <div style="display: flex; gap: 20px;">

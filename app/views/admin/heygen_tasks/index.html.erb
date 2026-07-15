@@ -15,6 +15,11 @@
         监控和筛选 Heygen 任务队列
       </div>
     </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">
+        共 <%= @heygen_tasks.total_count %> 条
+      </span>
+    </div>
   </div>
 
   <div class="admin-filter-form">
@@ -29,7 +34,8 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
-        <%= f.select :status_eq, HeygenTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+        <% status_labels = { "pending" => "待分配", "waiting_publish" => "等待发布", "executing" => "执行中", "success" => "成功", "failed" => "失败" } %>
+        <%= f.select :status_eq, HeygenTask.statuses.map { |k, v| [status_labels[k.to_s] || k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
@@ -43,10 +49,14 @@
       <table class="admin-table">
         <thead>
           <tr>
-            <th>主题</th>
+            <th>ID</th>
+            <th>标题</th>
+            <th>描述</th>
+            <th>内容主题</th>
             <th>平台</th>
             <th>状态</th>
-            <th>标题</th>
+            <th>账号</th>
+            <th>浏览器</th>
             <th>创建时间</th>
             <th>操作</th>
           </tr>
@@ -54,6 +64,19 @@
         <tbody>
           <% @heygen_tasks.each do |task| %>
             <tr>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.id %>
+                </span>
+              </td>
+              <td>
+                <%= link_to truncate(task.title.presence || '-', length: 30), admin_heygen_task_path(task), class: "admin-link-quiet" %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= truncate(task.description.to_s, length: 30) %>
+                </span>
+              </td>
               <td>
                 <span class="admin-label-muted">
                   <%= task.theme %>
@@ -71,10 +94,15 @@
                     <span class="admin-pill-status-dot"></span>
                     待分配
                   </span>
-                <% when "waiting_publish", "executing" %>
+                <% when "waiting_publish" %>
                   <span class="admin-pill-status admin-pill-status-pending">
                     <span class="admin-pill-status-dot"></span>
-                    队列中
+                    等待发布
+                  </span>
+                <% when "executing" %>
+                  <span class="admin-pill-status admin-pill-status-pending">
+                    <span class="admin-pill-status-dot"></span>
+                    执行中
                   </span>
                 <% when "success" %>
                   <span class="admin-pill-status admin-pill-status-success">
@@ -89,22 +117,32 @@
                 <% end %>
               </td>
               <td>
-                <% if task.title.present? %>
-                  <span title="<%= task.title %>" style="display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">
-                    <%= task.title.length > 40 ? task.title.truncate(40) : task.title %>
-                  </span>
+                <% if task.account %>
+                  <%= link_to truncate(task.account.account_name, length: 20), admin_account_path(task.account), class: "admin-link-quiet", title: task.account.account_name %>
                 <% else %>
-                  -
+                  <span class="admin-label-muted">
+                    未分配
+                  </span>
                 <% end %>
               </td>
               <td>
                 <span class="admin-label-muted">
-                  <%= task.created_at&.strftime('%Y-%m-%d %H:%M') %>
+                  <%= task.browser&.profile_name || "未绑定" %>
                 </span>
               </td>
               <td>
-                <%= link_to '详情', admin_heygen_task_path(task), class: "admin-link-quiet" %>
-                <%= link_to '删除', admin_heygen_task_path(task), data: { turbo_method: :delete, turbo_confirm: '确定删除吗？' }, class: "admin-link-quiet", style: "color: #ef4444;" %>
+                <span class="admin-label-muted">
+                  <%= task.created_at&.strftime('%m-%d %H:%M') %>
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "详情", admin_heygen_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "日志", admin_task_logs_path(q: { task_uuid_eq: task.task_uuid }), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if task.pending? %>
+                    <%= link_to "删除", admin_heygen_task_path(task), data: { turbo_method: :delete, turbo_confirm: "确定要删除该 pending 任务吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
+                  <% end %>
+                </div>
               </td>
             </tr>
           <% end %>

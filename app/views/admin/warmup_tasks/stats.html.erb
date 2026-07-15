@@ -1,0 +1,119 @@
+<% content_for :page_title do %>
+  养号统计
+<% end %>
+<% content_for :page_subtitle do %>
+  养号任务执行统计分析
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        养号统计
+      </div>
+      <div class="admin-card-subtitle">
+        养号任务执行数据统计
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "返回列表", admin_warmup_tasks_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <div class="admin-stats-grid">
+    <div class="admin-stat-card">
+      <div class="admin-stat-value"><%= @move_accounts %></div>
+      <div class="admin-stat-label">视频搬运账号总数</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value"><%= @other_accounts %></div>
+      <div class="admin-stat-label">其他模式账号总数</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value"><%= @move_enabled_count %></div>
+      <div class="admin-stat-label">视频搬运启用养号</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value"><%= @other_enabled_count %></div>
+      <div class="admin-stat-label">其他模式启用养号</div>
+    </div>
+    <div class="admin-stat-card" style="background: rgba(34, 197, 94, 0.1);">
+      <div class="admin-stat-value" style="color: #22c55e;"><%= (@move_stats['success'] || 0) + (@other_stats['success'] || 0) %></div>
+      <div class="admin-stat-label">养号成功</div>
+    </div>
+    <div class="admin-stat-card" style="background: rgba(239, 68, 68, 0.1);">
+      <div class="admin-stat-value" style="color: #ef4444;"><%= (@move_stats['failed'] || 0) + (@other_stats['failed'] || 0) %></div>
+      <div class="admin-stat-label">养号失败</div>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <div class="admin-section-title">视频搬运机器</div>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>状态</th>
+            <th>数量</th>
+            <th>占比</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% total_move = @move_stats.values.sum %>
+          <% WarmupTask.statuses.each do |status, _| %>
+            <tr>
+              <td>
+                <%= status.to_s.titleize %>
+              </td>
+              <td><%= @move_stats[status] || 0 %></td>
+              <td><%= total_move > 0 ? ((@move_stats[status] || 0).to_f / total_move * 100).round(1) : 0 %>%</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <div class="admin-section-title">其他模式机器</div>
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>状态</th>
+            <th>数量</th>
+            <th>占比</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% total_other = @other_stats.values.sum %>
+          <% WarmupTask.statuses.each do |status, _| %>
+            <tr>
+              <td>
+                <%= status.to_s.titleize %>
+              </td>
+              <td><%= @other_stats[status] || 0 %></td>
+              <td><%= total_other > 0 ? ((@other_stats[status] || 0).to_f / total_other * 100).round(1) : 0 %>%</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <div class="admin-section-title">批次管理</div>
+    <div class="admin-form">
+      <div class="admin-form-group">
+        <label class="admin-form-label">分配批次</label>
+        <div style="display: flex; gap: 12px;">
+          <%= link_to "分配视频搬运账号批次", distribute_batches_admin_warmup_tasks_path(machine: :move), method: :post, class: "admin-button-primary" %>
+          <%= link_to "分配其他模式账号批次", distribute_batches_admin_warmup_tasks_path(machine: :other), method: :post, class: "admin-button-secondary" %>
+        </div>
+        <div style="margin-top: 8px; font-size: 14px; color: #6b7280;">
+          每批次最多处理18个账号（约3小时时间窗口，每账号10-15分钟）
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

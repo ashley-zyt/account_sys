@@ -61,6 +61,12 @@ Rails.application.routes.draw do
     end
     resources :grok_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]
     resources :heygen_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]
+    resources :warmup_tasks, only: [:index, :show, :new, :create, :destroy] do
+      collection do
+        get :stats
+        post :distribute_batches
+      end
+    end
     resources :operation_logs, only: [:index]
   end
 
