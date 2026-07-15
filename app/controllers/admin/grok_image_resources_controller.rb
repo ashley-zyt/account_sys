@@ -129,7 +129,7 @@ XML
     @grok_image_resources = @q.result
                               .includes(:video_tasks)
                               .order(created_at: :desc)
-                              .page(params[:page])
+                              .page(params[:page]).per(10)
   end
 
   def new
