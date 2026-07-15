@@ -30,7 +30,7 @@ module Api
 			end
 			# 获取需要续费的代理列表
 			def valid_proxies
-				browser_ids = Account.where(status:0).pluck("browser_id")
+				browser_ids = Account.where(status:[0,3]).pluck("browser_id")
 				hosts = Browser.where(id:browser_ids).pluck("proxy_host")
 				ips = []
 				hosts.each do |host|
