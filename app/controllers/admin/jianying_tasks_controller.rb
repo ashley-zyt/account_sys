@@ -30,6 +30,33 @@ class Admin::JianyingTasksController < Admin::BaseController
 		end
 	end
 
+	def batch_destroy
+		ids = params[:task_ids]
+		if ids.blank?
+			redirect_to admin_jianying_tasks_path, alert: "请选择要删除的任务"
+			return
+		end
+
+		ids = ids.is_a?(Array) ? ids : ids.split(",")
+		tasks = JianyingTask.where(id: ids)
+
+		success_count = 0
+		fail_count = 0
+		tasks.each do |task|
+			if task.pending?
+				delete_oss_video(task.oss_url)
+				task.destroy
+				success_count += 1
+			else
+				fail_count += 1
+			end
+		end
+
+		notice = "批量删除完成：成功 #{success_count} 条"
+		notice += "，#{fail_count} 条非待分配状态无法删除" if fail_count > 0
+		redirect_to admin_jianying_tasks_path, notice: notice
+	end
+
 	# 通过 OSS REST API 删除视频文件（V1 签名）
 	def delete_oss_video(object_key)
 		return if object_key.blank?

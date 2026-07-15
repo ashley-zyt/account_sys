@@ -19,6 +19,9 @@
       <span class="admin-tag">
         共 <%= @jianying_tasks.total_count %> 条
       </span>
+      <%= form_with(url: batch_destroy_admin_jianying_tasks_path, method: :delete, id: "batch-delete-form", class: "inline") do |f| %>
+        <%= f.submit "批量删除", class: "admin-button-danger", style: "margin-left: 12px;", data: { turbo_confirm: "确定批量删除选中的任务吗？" } %>
+      <% end %>
     </div>
   </div>
 
@@ -56,6 +59,9 @@
       <table class="admin-table">
         <thead>
           <tr>
+            <th style="width: 40px;">
+              <input type="checkbox" id="select-all-jianying-tasks" class="admin-checkbox">
+            </th>
             <th>主题</th>
             <th>平台</th>
             <th>关键词</th>
@@ -68,6 +74,11 @@
         <tbody>
           <% @jianying_tasks.each do |task| %>
             <tr>
+              <td>
+                <% if task.pending? %>
+                  <%= check_box_tag "task_ids[]", task.id, false, class: "admin-checkbox task-checkbox", form: "batch-delete-form" %>
+                <% end %>
+              </td>
               <td>
                 <span class="admin-label-muted"><%= task.theme %></span>
               </td>
@@ -138,3 +149,25 @@
     </div>
   <% end %>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all-jianying-tasks');
+    const taskCheckboxes = document.querySelectorAll('.task-checkbox');
+
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', function() {
+        taskCheckboxes.forEach(cb => {
+          cb.checked = this.checked;
+        });
+      });
+    }
+
+    taskCheckboxes.forEach(cb => {
+      cb.addEventListener('change', function() {
+        const allChecked = Array.from(taskCheckboxes).every(c => c.checked);
+        selectAllCheckbox.checked = allChecked;
+      });
+    });
+  });
+</script>
