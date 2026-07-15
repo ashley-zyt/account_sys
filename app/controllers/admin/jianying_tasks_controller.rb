@@ -11,7 +11,7 @@ class Admin::JianyingTasksController < Admin::BaseController
 		@jianying_tasks = @q.result(distinct: true)
 		                   .order(created_at: :desc)
 		                   .page(params[:page])
-		                   .per(15)
+		                   .per(20)
 	end
 
 	def show
