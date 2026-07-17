@@ -1,10 +1,8 @@
 class WarmupScheduler
-  PLATFORM_ENDPOINTS = {
-    facebook: 'http://174.139.46.15:8080/facebook/warmup',
-    twitter: 'http://174.139.46.15:8080/twitter/warmup',
-    youtube: 'http://174.139.46.15:8080/youtube/warmup',
-    tiktok: 'http://174.139.46.15:8080/tiktok/warmup',
-    instagram: 'http://174.139.46.15:8080/instagram/warmup'
+  # 浏览API端点（按机器模式区分）
+  NURTURE_ENDPOINTS = {
+    move: 'http://174.139.46.117:8081/accounts/nurture',
+    other: 'http://174.139.46.15:8080/accounts/nurture'
   }
 
   OPERATIONS = {
@@ -126,21 +124,21 @@ class WarmupScheduler
     )
 
     begin
-      endpoint = PLATFORM_ENDPOINTS[account.platform.to_sym]
+      endpoint = NURTURE_ENDPOINTS[machine.to_sym]
       unless endpoint
-        raise "平台 #{account.platform} 未配置养号接口"
+        raise "机器模式 #{machine} 未配置养号接口"
       end
 
       request_data = build_request_data(account, operations)
       response = send_warmup_request(endpoint, request_data)
 
-      if response['type'] == 'success'
+      if response['status'] == 'success'
         Rails.logger.info "[WarmupScheduler] 养号成功: #{account.account_name}"
-        warmup_task.update!(status: :success, executed_at: Time.current)
+        warmup_task.update!(status: :success, executed_at: Time.current, error_msg: response['info'])
         profile = account.warmup_profile || account.create_warmup_profile
         profile.update!(last_warmup_at: Time.current, warmup_status: 'success')
       else
-        error_msg = response['error_info'] || '养号失败'
+        error_msg = response['info'] || '养号失败'
         Rails.logger.error "[WarmupScheduler] 养号失败: #{account.account_name} - #{error_msg}"
         warmup_task.update!(status: :failed, error_msg: error_msg, executed_at: Time.current)
         profile = account.warmup_profile || account.create_warmup_profile
@@ -201,11 +199,13 @@ class WarmupScheduler
   end
 
   def self.build_request_data(account, operations)
-    {
+    data = {
       profile_name: account.browser.profile_name,
-      platform: account.platform,
-      operations: operations
+      platform: account.platform
     }
+    # TikTok 新接口不需要 operations 参数
+    data[:operations] = operations unless account.platform.to_s == 'tiktok'
+    data
   end
 
   def self.send_warmup_request(endpoint, request_data)

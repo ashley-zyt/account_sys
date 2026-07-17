@@ -66,6 +66,9 @@ Rails.application.routes.draw do
         get :stats
         post :distribute_batches
       end
+      member do
+        post :execute
+      end
     end
     resources :operation_logs, only: [:index]
   end

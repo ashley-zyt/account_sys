@@ -48,6 +48,27 @@ class Admin::WarmupTasksController < Admin::BaseController
     @other_enabled_count = WarmupProfile.where(machine: 'other', warmup_enabled: true).count
   end
 
+  def execute
+    @warmup_task = WarmupTask.find(params[:id])
+    
+    if @warmup_task.executing? || @warmup_task.success?
+      redirect_to admin_warmup_task_path(@warmup_task), alert: '任务已在执行中或已完成'
+      return
+    end
+
+    # 异步执行任务
+    Thread.new do
+      begin
+        ExecuteWorker.execute_warmup_task(@warmup_task)
+      rescue => e
+        Rails.logger.error "[ExecuteWorker] 执行异常: #{e.message}"
+        @warmup_task.update(status: :failed, error_msg: "执行异常: #{e.message}") rescue nil
+      end
+    end
+
+    redirect_to admin_warmup_task_path(@warmup_task), notice: '任务已开始执行'
+  end
+
   private
 
   def warmup_task_params

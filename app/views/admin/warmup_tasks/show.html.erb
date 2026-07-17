@@ -117,6 +117,9 @@
   <% end %>
 
   <div class="admin-form-actions" style="margin-top: 20px;">
+    <% if @warmup_task.pending? %>
+      <%= link_to "执行任务", execute_admin_warmup_task_path(@warmup_task), data: { turbo_method: :post, turbo_confirm: "确定要执行该任务吗？" }, class: "admin-button" %>
+    <% end %>
     <%= link_to "删除", admin_warmup_task_path(@warmup_task), data: { turbo_method: :delete, turbo_confirm: "确定要删除该任务吗？" }, class: "admin-button-danger" %>
   </div>
 </div>
