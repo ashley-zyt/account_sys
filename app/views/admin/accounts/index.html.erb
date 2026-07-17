@@ -66,6 +66,7 @@
       <table class="admin-table">
         <thead>
           <tr>
+            <th>ID</th>
             <th>
               账号名
             </th>
@@ -104,6 +105,9 @@
         <tbody>
           <% @accounts.each do |account| %>
             <tr>
+              <td>
+                <%= account.id %>
+              </td>
               <td>
                 <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet" %>
               </td>
