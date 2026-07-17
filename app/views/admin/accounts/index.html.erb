@@ -71,9 +71,6 @@
               账号名
             </th>
             <th>
-              账号主页
-            </th>
-            <th>
               主题
             </th>
             <th>
@@ -113,13 +110,6 @@
               </td>
               <td>
                 <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet" %>
-              </td>
-              <td>
-                <% if account.source_url.present? %>
-                  <%= link_to "访问主页", account.source_url, class: "admin-link-quiet", target: "_blank", title: account.source_url, style: "color: var(--accent);" %>
-                <% else %>
-                  <span class="admin-label-muted">-</span>
-                <% end %>
               </td>
               <td>
                 <span class="admin-label-muted">

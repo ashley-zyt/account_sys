@@ -46,7 +46,7 @@ class Admin::AccountsController < Admin::BaseController
 	def toggle_warmup
 		profile = @account.warmup_profile || @account.create_warmup_profile
 		profile.update!(warmup_enabled: !profile.warmup_enabled)
-		redirect_to admin_account_path(@account), notice: "养号开关已#{profile.warmup_enabled ? '启用' : '停止'}"
+		redirect_back fallback_location: admin_account_path(@account), notice: "养号开关已#{profile.warmup_enabled ? '启用' : '停止'}"
 	end
 
 	private
