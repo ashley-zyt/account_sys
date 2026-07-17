@@ -98,6 +98,9 @@
               最后运行错误
             </th>
             <th>
+              养号
+            </th>
+            <th>
               操作
             </th>
           </tr>
@@ -171,6 +174,25 @@
                   <span class="admin-label-muted">
                     暂无运行日志
                   </span>
+                <% end %>
+              </td>
+              <td>
+                <% if account.warmup_profile %>
+                  <%= link_to toggle_warmup_admin_account_path(account), method: :post, data: { confirm: "确定要#{ account.warmup_profile.warmup_enabled ? '停止' : '启用' }养号吗？" } do %>
+                    <% if account.warmup_profile.warmup_enabled %>
+                      <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.1); color: #22c55e; cursor: pointer;">
+                        <span class="admin-pill-status-dot"></span>
+                        已启用
+                      </span>
+                    <% else %>
+                      <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af; cursor: pointer;">
+                        <span class="admin-pill-status-dot"></span>
+                        已停止
+                      </span>
+                    <% end %>
+                  <% end %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
                 <% end %>
               </td>
               <td>

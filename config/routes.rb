@@ -3,7 +3,11 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root to: "dashboard#index"
-    resources :accounts, only: [:index, :show, :new, :create, :edit, :update]
+    resources :accounts, only: [:index, :show, :new, :create, :edit, :update] do
+      member do
+        post :toggle_warmup
+      end
+    end
     resources :move_tasks, only: [:index, :show]
     resources :jianying_tasks, only: [:index, :show, :destroy] do
       collection do

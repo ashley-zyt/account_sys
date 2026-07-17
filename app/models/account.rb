@@ -214,13 +214,15 @@ class Account < ApplicationRecord
 		)
 	end
 
-	# 同步养号启用状态：账号状态变为封禁/停用时自动禁用养号，恢复正常时自动启用养号
+	# 同步养号启用状态：
+	# - 正常(0) 或 浏览养护(3) → warmup_enabled = true
+	# - 未登录(1) 或 封禁/停用(2) → warmup_enabled = false
 	def sync_warmup_enabled
 		profile = warmup_profile
 		return unless profile
 
 		case status
-		when "正常"
+		when "正常", "浏览养护"
 			profile.update!(warmup_enabled: true) if !profile.warmup_enabled
 		when "封禁/停用", "未登录"
 			profile.update!(warmup_enabled: false) if profile.warmup_enabled

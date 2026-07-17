@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update]
+	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -41,6 +41,12 @@ class Admin::AccountsController < Admin::BaseController
 		else
 			render :edit, status: :unprocessable_entity
 		end
+	end
+
+	def toggle_warmup
+		profile = @account.warmup_profile || @account.create_warmup_profile
+		profile.update!(warmup_enabled: !profile.warmup_enabled)
+		redirect_to admin_account_path(@account), notice: "养号开关已#{profile.warmup_enabled ? '启用' : '停止'}"
 	end
 
 	private

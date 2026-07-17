@@ -68,8 +68,9 @@ class WarmupScheduler
     current_batch = get_current_batch(machine)
     Rails.logger.info "[WarmupScheduler] 当前批次: #{current_batch}"
 
-    Account.active
-           .joins(:warmup_profile)
+    # 以 warmup_enabled 为准，不限制账号状态
+    # 用户可以手动启用任何状态账号的养号功能
+    Account.joins(:warmup_profile)
            .where("browser_id IS NOT NULL")
            .where(warmup_profiles: { machine: machine.to_s, warmup_batch: current_batch, warmup_enabled: true })
            .order("warmup_profiles.last_warmup_at ASC NULLS FIRST, accounts.created_at ASC")
