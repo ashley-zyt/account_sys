@@ -129,7 +129,8 @@ class JianyingTask < ApplicationRecord
 	# 3. 从主题的 prompts 中匹配当前关键词的行，提取括号里的英文字符串
 	# 4. 用提取的英文字符串替换标题模板中的 ****
 	def self.generate_title(theme_name, keyword_text)
-		theme = Theme.find_by(name: theme_name)
+
+		theme = Theme.find_by(name: "剪映-#{theme_name}")
 		return default_title(theme_name) unless theme
 
 		titles = theme.titles_array

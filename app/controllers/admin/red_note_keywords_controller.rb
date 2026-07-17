@@ -28,6 +28,8 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
       return
     end
 
+    theme = theme.gsub("剪映-", "")
+
     created = []
     failed = []
     existing_codes = RedNoteKeyword.pluck(:keyword_code)
