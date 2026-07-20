@@ -1,11 +1,13 @@
 class WarmupScheduler
   # 浏览API端点（按机器模式区分，IP通过环境变量配置）
-  MOVE_NURTURE_HOST = ENV['MOVE_NURTURE_HOST']
-  OTHER_NURTURE_HOST = ENV['OTHER_NURTURE_HOST']
+  MOVE_NURTURE_HOST = ENV['MOVE_NURTURE_HOST'] || '174.139.46.117'
+  MOVE_NURTURE_PORT = ENV['MOVE_NURTURE_PORT'] || '8081'
+  OTHER_NURTURE_HOST = ENV['OTHER_NURTURE_HOST'] || '174.139.46.15'
+  OTHER_NURTURE_PORT = ENV['OTHER_NURTURE_PORT'] || '8080'
 
   NURTURE_ENDPOINTS = {
-    move: "http://#{MOVE_NURTURE_HOST}:8080/accounts/nurture",
-    other: "http://#{OTHER_NURTURE_HOST}:8080/accounts/nurture"
+    move: "http://#{MOVE_NURTURE_HOST}:#{MOVE_NURTURE_PORT}/accounts/nurture",
+    other: "http://#{OTHER_NURTURE_HOST}:#{OTHER_NURTURE_PORT}/accounts/nurture"
   }
 
   OPERATIONS = {
@@ -29,9 +31,6 @@ class WarmupScheduler
   @@start_time = nil
 
   def self.run(machine = nil)
-    logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'warmup_scheduler.log'))
-    logger.formatter = Rails.logger.formatter
-    Rails.logger = logger
     machine = detect_machine if machine.nil?
     Rails.logger.info "[WarmupScheduler] 开始养号任务，机器: #{machine}"
 
@@ -51,7 +50,6 @@ class WarmupScheduler
       end
     end
 
-    advance_batch(machine)
     Rails.logger.info "[WarmupScheduler] 养号任务执行完成"
   end
 
@@ -77,7 +75,7 @@ class WarmupScheduler
            .where("browser_id IS NOT NULL")
            .where.not(status: ["未登录", "封禁/停用"])
            .where(warmup_profiles: { machine: machine.to_s, warmup_enabled: true })
-           .order("warmup_profiles.last_warmup_at ASC NULLS FIRST")
+           .order(Arel.sql("warmup_profiles.last_warmup_at ASC NULLS FIRST"))
            .limit(MAX_ACCOUNTS_PER_NIGHT)
   end
 
@@ -116,14 +114,10 @@ class WarmupScheduler
 
     Rails.logger.info "[WarmupScheduler] 开始养号: #{account.account_name} (#{account.platform})"
 
-    operations = generate_operations(account.platform)
-    Rails.logger.info "[WarmupScheduler] 生成操作: #{operations.map { |o| o[:type] }.join(', ')}"
-
     warmup_task = WarmupTask.create!(
       account: account,
       browser: account.browser,
       platform: account.platform,
-      operations: operations.to_json,
       status: :executing,
       machine: machine.to_s
     )
@@ -134,11 +128,11 @@ class WarmupScheduler
         raise "机器模式 #{machine} 未配置养号接口"
       end
 
-      request_data = build_request_data(account, operations)
+      request_data = build_request_data(account)
       response = send_warmup_request(endpoint, request_data)
 
       if response['status'] == 'success'
-        Rails.logger.info "[WarmupScheduler] 养号成功: #{account.account_name}"
+        Rails.logger.info "[WarmupScheduler] 养号成功: #{account.account_name} - #{response['info']}"
         warmup_task.update!(status: :success, executed_at: Time.current, error_msg: response['info'])
         profile = account.warmup_profile || account.create_warmup_profile
         profile.update!(last_warmup_at: Time.current, warmup_status: 'success')
@@ -203,14 +197,11 @@ class WarmupScheduler
     comments.sample
   end
 
-  def self.build_request_data(account, operations)
-    data = {
+  def self.build_request_data(account)
+    {
       profile_name: account.browser.profile_name,
       platform: account.platform
     }
-    # TikTok 新接口不需要 operations 参数
-    data[:operations] = operations unless account.platform.to_s == 'tiktok'
-    data
   end
 
   def self.send_warmup_request(endpoint, request_data)
@@ -223,15 +214,19 @@ class WarmupScheduler
     request['Content-Type'] = 'application/json'
     request.body = request_data.to_json
 
-    response = http.request(request)
-    body = response.body
-
     begin
-      JSON.parse(body)
-    rescue JSON::ParserError
-      { status: 'error', info: "响应解析失败: #{body}" }
+      response = http.request(request)
+      body = response.body
+
+      begin
+        JSON.parse(body)
+      rescue JSON::ParserError
+        { status: 'error', info: "响应解析失败: #{body}" }
+      end
     rescue Net::ReadTimeout
       { status: 'error', info: '请求超时' }
+    rescue => e
+      { status: 'error', info: "请求异常: #{e.message}" }
     end
   end
 
