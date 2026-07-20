@@ -237,6 +237,22 @@
             <span class="section-arrow">▾</span>
           </div>
           <ul class="admin-nav">
+            <% queue_active = controller_path == "admin/warmup_queue" %>
+            <li class="admin-nav-item <%= "active" if queue_active %>">
+              <%= link_to admin_warmup_queue_index_path, class: "admin-nav-link", data: { tooltip: "养号配置" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🧑‍💻
+                  </div>
+                  <div class="admin-nav-label">
+                    养号配置
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Config
+                </div>
+              <% end %>
+            </li>
             <% warmup_active = controller_path == "admin/warmup_tasks" %>
             <li class="admin-nav-item <%= "active" if warmup_active %>">
               <%= link_to admin_warmup_tasks_path, class: "admin-nav-link", data: { tooltip: "养号日志" } do %>
@@ -250,22 +266,6 @@
                 </div>
                 <div class="admin-nav-meta">
                   Logs
-                </div>
-              <% end %>
-            </li>
-            <% queue_active = controller_path == "admin/warmup_queue" %>
-            <li class="admin-nav-item <%= "active" if queue_active %>">
-              <%= link_to admin_warmup_queue_index_path, class: "admin-nav-link", data: { tooltip: "账号队列" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    🧑‍💻
-                  </div>
-                  <div class="admin-nav-label">
-                    账号队列
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Queue
                 </div>
               <% end %>
             </li>
