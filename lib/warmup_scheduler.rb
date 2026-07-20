@@ -75,7 +75,7 @@ class WarmupScheduler
            .where("browser_id IS NOT NULL")
            .where.not(status: ["未登录", "封禁/停用"])
            .where(warmup_profiles: { machine: machine.to_s, warmup_enabled: true })
-           .order(Arel.sql("warmup_profiles.last_warmup_at ASC NULLS FIRST"))
+           .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.last_warmup_at ASC"))
            .limit(MAX_ACCOUNTS_PER_NIGHT)
   end
 
