@@ -499,13 +499,22 @@ function initOperationTaskUpload() {
   // 创建运营任务
   function createOperationTask(ossKey) {
     return new Promise(function(resolve, reject) {
-      var formData = new FormData(form);
+      // 手动构建 FormData，只包含必要字段，避免视频文件被误传
+      var formData = new FormData();
+      var themeInput = document.querySelector('input[name="operation_task[theme]"]');
+      var theme = themeInput ? themeInput.value.trim() : '';
+      var title = document.getElementById('title').value.trim();
+      var description = document.getElementById('description').value.trim();
+      
+      formData.append('operation_task[theme]', theme);
+      formData.append('operation_task[title]', title);
+      formData.append('operation_task[description]', description);
       formData.append('oss_key', ossKey);
-      // 移除文件字段，视频已通过 OSS 直传，无需再上传到 Rails
-      formData.delete('video_file');
 
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/admin/operation_tasks', true);
+      // 添加 CSRF 令牌
+      xhr.setRequestHeader('X-CSRF-Token', document.querySelector('meta[name="csrf-token"]')?.content);
 
       xhr.addEventListener('load', function() {
         if (xhr.status === 302 || xhr.status === 200) {
