@@ -1,6 +1,5 @@
 class WarmupScheduler
   # 养号API端点，端口统一8080，IP通过环境变量配置
-  # 视频搬运账号使用 MOVE_NURTURE_HOST，其他账号使用 OTHER_NURTURE_HOST
   MOVE_ENDPOINT = "http://#{ENV['MOVE_NURTURE_HOST'] || '174.139.46.117'}:8080/accounts/nurture"
   OTHER_ENDPOINT = "http://#{ENV['OTHER_NURTURE_HOST'] || '174.139.46.15'}:8080/accounts/nurture"
 
@@ -9,55 +8,62 @@ class WarmupScheduler
   # 账号间等待时间
   INTER_ACCOUNT_PAUSE_MIN = 30
   INTER_ACCOUNT_PAUSE_MAX = 60
-  # 单次运行最长时长（小时）
-  TIME_WINDOW_HOURS = 1
+  # 两台机器各自的运行时长（小时）
+  MOVE_TIME_WINDOW_HOURS = 5
+  OTHER_TIME_WINDOW_HOURS = 5
 
-  @@start_time = nil
+  def self.run_move
+    Rails.logger.info "[WarmupScheduler] 开始搬运机器养号任务"
+    run_machine(:move, MOVE_TIME_WINDOW_HOURS)
+  end
 
-  def self.run
-    Rails.logger.info "[WarmupScheduler] 开始养号任务"
+  def self.run_other
+    Rails.logger.info "[WarmupScheduler] 开始运营机器养号任务"
+    run_machine(:other, OTHER_TIME_WINDOW_HOURS)
+  end
 
-    @@start_time = Time.current
-    accounts = fetch_target_accounts
-    Rails.logger.info "[WarmupScheduler] 获取到 #{accounts.size} 个需要养号的账号"
+  private
+
+  def self.run_machine(machine_type, time_window_hours)
+    start_time = Time.current
+    accounts = fetch_target_accounts_by_machine(machine_type)
+    Rails.logger.info "[WarmupScheduler] #{machine_type} 机器获取到 #{accounts.size} 个需要养号的账号"
 
     accounts.each_with_index do |account, index|
-      break if time_window_exceeded?
+      break if time_exceeded?(start_time, time_window_hours)
 
-      execute_warmup_for_account(account)
+      execute_warmup_for_account(account, machine_type)
 
-      if index < accounts.size - 1 && !time_window_exceeded?
+      if index < accounts.size - 1 && !time_exceeded?(start_time, time_window_hours)
         pause_time = rand(INTER_ACCOUNT_PAUSE_MIN..INTER_ACCOUNT_PAUSE_MAX)
         Rails.logger.info "[WarmupScheduler] 等待 #{pause_time} 秒后处理下一个账号"
         sleep(pause_time)
       end
     end
 
-    Rails.logger.info "[WarmupScheduler] 养号任务执行完成"
+    Rails.logger.info "[WarmupScheduler] #{machine_type} 机器养号任务执行完成"
   end
 
-  # 查询已启用养号标记的账号，按上次养号时间排序
-  # 跳过未登录(1)和封禁/停用(2)的账号
-  # 不限制数量，由 TIME_WINDOW_HOURS 控制运行时长，到时间自动停止
-  # 下次执行时会从未养号的账号继续
-  def self.fetch_target_accounts
-    Account.joins(:warmup_profile)
-           .where("browser_id IS NOT NULL")
-           .where.not(status: ["未登录", "封禁/停用"])
-           .where(warmup_profiles: { warmup_enabled: true })
-           .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.last_warmup_at ASC"))
+  # 根据机器类型查询对应的账号
+  def self.fetch_target_accounts_by_machine(machine_type)
+    scope = Account.joins(:warmup_profile)
+                   .where("browser_id IS NOT NULL")
+                   .where.not(status: ["未登录", "封禁/停用"])
+                   .where(warmup_profiles: { warmup_enabled: true, machine: machine_type.to_s })
+                   .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.last_warmup_at ASC"))
+    
+    scope
   end
 
-  # 根据账号工作模式选择养号API端点
-  # 视频搬运 → MOVE_ENDPOINT，其他 → OTHER_ENDPOINT
-  def self.endpoint_for(account)
-    account.work_type == "视频搬运" ? MOVE_ENDPOINT : OTHER_ENDPOINT
+  # 根据机器类型选择端点
+  def self.endpoint_for_machine(machine_type)
+    machine_type == :move ? MOVE_ENDPOINT : OTHER_ENDPOINT
   end
 
-  def self.execute_warmup_for_account(account)
+  def self.execute_warmup_for_account(account, machine_type)
     return if account.browser.nil?
 
-    endpoint = endpoint_for(account)
+    endpoint = endpoint_for_machine(machine_type)
     Rails.logger.info "[WarmupScheduler] 开始养号: #{account.account_name} (#{account.platform}) → #{endpoint}"
 
     warmup_task = WarmupTask.create!(
@@ -117,8 +123,8 @@ class WarmupScheduler
     end
   end
 
-  def self.time_window_exceeded?
-    return false unless @@start_time
-    (Time.current - @@start_time) / 3600 >= TIME_WINDOW_HOURS
+  def self.time_exceeded?(start_time, time_window_hours)
+    return false unless start_time
+    (Time.current - start_time) / 3600 >= time_window_hours
   end
 end
