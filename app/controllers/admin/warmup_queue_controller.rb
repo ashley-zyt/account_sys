@@ -9,13 +9,22 @@ class Admin::WarmupQueueController < Admin::BaseController
                   .page(params[:page])
                   .per(20)
 
-    # 统计数据：正常(0) + 浏览养护(3) 的账号总数
+    # 按机器分类统计
+    # 搬运机器
+    @move_total = Account.joins(:warmup_profile).where(status: [0, 3], warmup_profiles: { machine: 'move' }).count
+    @move_enabled = WarmupProfile.where(machine: 'move', warmup_enabled: true).count
+    @move_due = Account.joins(:warmup_profile).where(warmup_profiles: { machine: 'move', warmup_enabled: true }).where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 48.hours.ago).count
+
+    # 运营机器
+    @other_total = Account.joins(:warmup_profile).where(status: [0, 3], warmup_profiles: { machine: 'other' }).count
+    @other_enabled = WarmupProfile.where(machine: 'other', warmup_enabled: true).count
+    @other_due = Account.joins(:warmup_profile).where(warmup_profiles: { machine: 'other', warmup_enabled: true }).where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 48.hours.ago).count
+
+    # 总计
     @total_count = Account.where(status: [0, 3]).count
     @enabled_count = WarmupProfile.where(warmup_enabled: true).count
-    @move_count = WarmupProfile.where(machine: 'move', warmup_enabled: true).count
-    @other_count = WarmupProfile.where(machine: 'other', warmup_enabled: true).count
     @never_warmed = Account.joins(:warmup_profile).where(warmup_profiles: { warmup_enabled: true, last_warmup_at: nil }).count
-    @due_count = Account.joins(:warmup_profile).where(warmup_profiles: { warmup_enabled: true }).where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 12.hours.ago).count
+    @due_count = Account.joins(:warmup_profile).where(warmup_profiles: { warmup_enabled: true }).where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 48.hours.ago).count
   end
 
   def show
