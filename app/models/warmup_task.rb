@@ -36,7 +36,7 @@ class WarmupTask < ApplicationRecord
   belongs_to :account, optional: true
   belongs_to :browser, optional: true
 
-  before_create :generate_task_uuid
+  before_validation :generate_task_uuid, on: :create
 
   enum platform: {
     facebook: 1,
