@@ -7,12 +7,10 @@ class WarmupScheduler
   # 单次请求最长16分钟
   TIMEOUT_SECONDS = 960
   # 账号间等待时间
-  INTER_ACCOUNT_PAUSE_MIN = 60
-  INTER_ACCOUNT_PAUSE_MAX = 120
-  # 单次运行最多处理账号数
-  MAX_ACCOUNTS_PER_RUN = 15
+  INTER_ACCOUNT_PAUSE_MIN = 30
+  INTER_ACCOUNT_PAUSE_MAX = 60
   # 单次运行最长时长（小时）
-  TIME_WINDOW_HOURS = 2.9
+  TIME_WINDOW_HOURS = 1
 
   @@start_time = nil
 
@@ -40,13 +38,14 @@ class WarmupScheduler
 
   # 查询已启用养号标记的账号，按上次养号时间排序
   # 跳过未登录(1)和封禁/停用(2)的账号
+  # 不限制数量，由 TIME_WINDOW_HOURS 控制运行时长，到时间自动停止
+  # 下次执行时会从未养号的账号继续
   def self.fetch_target_accounts
     Account.joins(:warmup_profile)
            .where("browser_id IS NOT NULL")
            .where.not(status: ["未登录", "封禁/停用"])
            .where(warmup_profiles: { warmup_enabled: true })
            .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.last_warmup_at ASC"))
-           .limit(MAX_ACCOUNTS_PER_RUN)
   end
 
   # 根据账号工作模式选择养号API端点
