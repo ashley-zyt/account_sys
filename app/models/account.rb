@@ -259,7 +259,7 @@ class Account < ApplicationRecord
 		]
 	end
 	def self.ransackable_associations(auth_object = nil)
-		["browser", "move_tasks"]
+		["browser", "move_tasks", "warmup_profile"]
 	end
 
 	# Ransack 搜索允许的字段
