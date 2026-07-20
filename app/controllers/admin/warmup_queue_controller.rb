@@ -15,4 +15,11 @@ class Admin::WarmupQueueController < Admin::BaseController
                                .order(created_at: :desc)
                                .limit(20)
   end
+
+  def toggle_warmup
+    @account = Account.find(params[:id])
+    profile = @account.warmup_profile || @account.create_warmup_profile
+    profile.update!(warmup_enabled: !profile.warmup_enabled)
+    redirect_back fallback_location: admin_warmup_queue_index_path, notice: "养号开关已#{profile.warmup_enabled ? '启用' : '停止'}"
+  end
 end

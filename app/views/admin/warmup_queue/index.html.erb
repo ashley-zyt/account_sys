@@ -132,16 +132,18 @@
 
               <%# 养号开关 %>
               <td>
-                <% if profile&.warmup_enabled %>
-                  <span style="display: inline-flex; align-items: center; gap: 6px;">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.4);"></span>
-                    <span style="color: #22c55e; font-size: 13px; font-weight: 500;">启用</span>
-                  </span>
-                <% else %>
-                  <span style="display: inline-flex; align-items: center; gap: 6px;">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #9ca3af;"></span>
-                    <span style="color: #9ca3af; font-size: 13px;">停用</span>
-                  </span>
+                <%= link_to toggle_warmup_admin_warmup_queue_path(account), data: { turbo_method: :post, turbo_confirm: "确定要#{ profile&.warmup_enabled ? '停止' : '启用' }养号吗？" }, style: "text-decoration: none;" do %>
+                  <% if profile&.warmup_enabled %>
+                    <span style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.4);"></span>
+                      <span style="color: #22c55e; font-size: 13px; font-weight: 500;">启用</span>
+                    </span>
+                  <% else %>
+                    <span style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <span style="width: 8px; height: 8px; border-radius: 50%; background: #9ca3af;"></span>
+                      <span style="color: #9ca3af; font-size: 13px;">停用</span>
+                    </span>
+                  <% end %>
                 <% end %>
               </td>
 

@@ -74,7 +74,11 @@ Rails.application.routes.draw do
         post :execute
       end
     end
-    resources :warmup_queue, only: [:index, :show]
+    resources :warmup_queue, only: [:index, :show] do
+      member do
+        post :toggle_warmup
+      end
+    end
     resources :operation_logs, only: [:index]
   end
 
