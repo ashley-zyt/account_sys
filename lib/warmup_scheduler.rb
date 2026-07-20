@@ -1,8 +1,11 @@
 class WarmupScheduler
-  # 浏览API端点（按机器模式区分）
+  # 浏览API端点（按机器模式区分，IP通过环境变量配置）
+  MOVE_NURTURE_HOST = ENV['MOVE_NURTURE_HOST']
+  OTHER_NURTURE_HOST = ENV['OTHER_NURTURE_HOST']
+
   NURTURE_ENDPOINTS = {
-    move: 'http://174.139.46.117:8081/accounts/nurture',
-    other: 'http://174.139.46.15:8080/accounts/nurture'
+    move: "http://#{MOVE_NURTURE_HOST}:8080/accounts/nurture",
+    other: "http://#{OTHER_NURTURE_HOST}:8080/accounts/nurture"
   }
 
   OPERATIONS = {
@@ -13,7 +16,7 @@ class WarmupScheduler
     share: '分享'
   }
 
-  TIMEOUT_SECONDS = 900
+  TIMEOUT_SECONDS = 960
   ACCOUNT_DURATION_MIN = 10
   ACCOUNT_DURATION_MAX = 15
   INTER_ACCOUNT_PAUSE_MIN = 60
@@ -65,15 +68,16 @@ class WarmupScheduler
   end
 
   def self.fetch_target_accounts(machine)
-    current_batch = get_current_batch(machine)
-    Rails.logger.info "[WarmupScheduler] 当前批次: #{current_batch}"
+    Rails.logger.info "[WarmupScheduler] 查询已启用养号标记的账号，按上次养号时间排序"
 
-    # 以 warmup_enabled 为准，不限制账号状态
-    # 用户可以手动启用任何状态账号的养号功能
+    # 自动寻找已启用养号标记的账号，不限制批次
+    # 跳过状态为 1(未登录) 和 2(封禁/停用) 的账号
+    # 按距离上一次养号越久越靠前排序（NULL 值最优先，从未养号过的最先执行）
     Account.joins(:warmup_profile)
            .where("browser_id IS NOT NULL")
-           .where(warmup_profiles: { machine: machine.to_s, warmup_batch: current_batch, warmup_enabled: true })
-           .order("warmup_profiles.last_warmup_at ASC NULLS FIRST, accounts.created_at ASC")
+           .where.not(status: ["未登录", "封禁/停用"])
+           .where(warmup_profiles: { machine: machine.to_s, warmup_enabled: true })
+           .order("warmup_profiles.last_warmup_at ASC NULLS FIRST")
            .limit(MAX_ACCOUNTS_PER_NIGHT)
   end
 
@@ -225,7 +229,9 @@ class WarmupScheduler
     begin
       JSON.parse(body)
     rescue JSON::ParserError
-      { type: 'error', error_info: "响应解析失败: #{body}" }
+      { status: 'error', info: "响应解析失败: #{body}" }
+    rescue Net::ReadTimeout
+      { status: 'error', info: '请求超时' }
     end
   end
 
