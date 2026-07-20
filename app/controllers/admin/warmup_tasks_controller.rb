@@ -33,12 +33,6 @@ class Admin::WarmupTasksController < Admin::BaseController
     redirect_to admin_warmup_tasks_path, notice: '养号任务已删除'
   end
 
-  def distribute_batches
-    machine = params[:machine].to_sym
-    total_batches = Account.distribute_warmup_batches(machine)
-    redirect_to admin_warmup_tasks_path, notice: "已将账号分配到 #{total_batches} 个批次"
-  end
-
   def stats
     @move_stats = WarmupTask.where(machine: 'move').group(:status).count
     @other_stats = WarmupTask.where(machine: 'other').group(:status).count

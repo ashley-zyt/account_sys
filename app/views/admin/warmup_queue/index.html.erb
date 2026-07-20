@@ -87,9 +87,7 @@
             <th>工作类型</th>
             <th>养号开关</th>
             <th>机器类型</th>
-            <th>批次</th>
             <th>上次养号</th>
-            <th>养号频率</th>
             <th>浏览器</th>
             <th>操作</th>
           </tr>
@@ -160,15 +158,6 @@
                 <% end %>
               </td>
 
-              <%# 批次 %>
-              <td>
-                <% if profile&.warmup_batch && profile.warmup_batch > 0 %>
-                  <span class="admin-tag" style="font-size: 12px;">#<%= profile.warmup_batch %></span>
-                <% else %>
-                  <span class="admin-label-muted">-</span>
-                <% end %>
-              </td>
-
               <%# 上次养号 %>
               <td>
                 <% if profile&.last_warmup_at %>
@@ -180,11 +169,6 @@
                 <% else %>
                   <span style="color: #f59e0b; font-size: 13px;">从未养号</span>
                 <% end %>
-              </td>
-
-              <%# 养号频率 %>
-              <td>
-                <span class="admin-label-muted"><%= profile&.warmup_frequency || '-' %></span>
               </td>
 
               <%# 浏览器 %>

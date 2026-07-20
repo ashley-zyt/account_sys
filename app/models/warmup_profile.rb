@@ -40,9 +40,7 @@ class WarmupProfile < ApplicationRecord
       account_id
       last_warmup_at
       warmup_enabled
-      warmup_frequency
       warmup_status
-      warmup_batch
       machine
       created_at
       updated_at

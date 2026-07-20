@@ -68,7 +68,6 @@ Rails.application.routes.draw do
     resources :warmup_tasks, only: [:index, :show, :new, :create, :destroy] do
       collection do
         get :stats
-        post :distribute_batches
       end
       member do
         post :execute

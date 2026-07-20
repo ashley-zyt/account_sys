@@ -100,20 +100,6 @@
         </span>
       </div>
       <div class="admin-detail-item">
-        <span class="admin-detail-label">批次</span>
-        <span class="admin-detail-value">
-          <% if @warmup_profile.warmup_batch && @warmup_profile.warmup_batch > 0 %>
-            <span class="admin-tag">第 <%= @warmup_profile.warmup_batch %> 批</span>
-          <% else %>
-            <span class="admin-label-muted">未分配</span>
-          <% end %>
-        </span>
-      </div>
-      <div class="admin-detail-item">
-        <span class="admin-detail-label">养号频率</span>
-        <span class="admin-detail-value"><%= @warmup_profile.warmup_frequency || '-' %></span>
-      </div>
-      <div class="admin-detail-item">
         <span class="admin-detail-label">上次养号</span>
         <span class="admin-detail-value">
           <% if @warmup_profile.last_warmup_at %>

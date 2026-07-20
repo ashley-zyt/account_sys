@@ -169,36 +169,6 @@ class Account < ApplicationRecord
 		warmup_profile&.warmup_due? || false
 	end
 
-	def self.warmup_batch_size
-		15
-	end
-
-	def self.warmup_accounts_for_machine(machine)
-		base_scope = active.where("browser_id IS NOT NULL")
-
-		case machine
-		when :move
-			base_scope.where(work_type: "视频搬运")
-		when :other
-			base_scope.where.not(work_type: "视频搬运")
-		else
-			base_scope
-		end
-	end
-
-	def self.distribute_warmup_batches(machine, batch_size = warmup_batch_size)
-		accounts = warmup_accounts_for_machine(machine)
-		total_batches = (accounts.count.to_f / batch_size).ceil
-		total_batches = [total_batches, 1].max
-
-		accounts.each_with_index do |account, index|
-			profile = account.warmup_profile || account.create_warmup_profile
-			profile.update!(warmup_batch: (index % total_batches) + 1)
-		end
-
-		total_batches
-	end
-
 	private
 
 	# 同步更新浏览器的状态
