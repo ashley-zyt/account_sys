@@ -6,8 +6,8 @@
 <% end %>
 
 <%# --- 调度状态概览 --- %>
-<div class="admin-card" style="padding: 20px; margin-bottom: 24px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%); border: 1px solid rgba(59, 130, 246, 0.1);">
-  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+<div class="admin-card" style="padding: 20px; margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
     <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); display: flex; align-items: center; justify-content: center; font-size: 16px;">
       ⚙️
     </div>
@@ -16,51 +16,53 @@
       <div style="font-size: 12px; color: var(--text-secondary);">两台机器独立运行，各自控制时长</div>
     </div>
   </div>
-  
-  <%# 机器分布 %>
-  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; padding: 16px; background: rgba(255,255,255,0.6); border-radius: 12px;">
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <div style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; box-shadow: 0 0 8px rgba(59,130,246,0.4);"></div>
-      <div>
-        <div style="font-size: 12px; color: var(--text-secondary);">搬运机器 <span style="font-size: 10px; color: var(--text-tertiary);">23:00</span></div>
-        <div style="font-size: 20px; font-weight: 700; color: #3b82f6;"><%= @move_count %></div>
+
+  <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; align-items: end;">
+    <%# 搬运机器 %>
+    <div style="padding: 12px; border-radius: 10px; background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.12);">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></div>
+        <div style="font-size: 12px; color: var(--text-secondary);">搬运机器</div>
       </div>
+      <div style="font-size: 22px; font-weight: 700; color: #3b82f6;"><%= @move_count %></div>
+      <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">23:00 运行</div>
     </div>
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <div style="width: 10px; height: 10px; border-radius: 50%; background: #8b5cf6; box-shadow: 0 0 8px rgba(139,92,246,0.4);"></div>
-      <div>
-        <div style="font-size: 12px; color: var(--text-secondary);">运营机器 <span style="font-size: 10px; color: var(--text-tertiary);">00:30</span></div>
-        <div style="font-size: 20px; font-weight: 700; color: #8b5cf6;"><%= @other_count %></div>
+    <%# 运营机器 %>
+    <div style="padding: 12px; border-radius: 10px; background: rgba(139, 92, 246, 0.06); border: 1px solid rgba(139, 92, 246, 0.12);">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #8b5cf6;"></div>
+        <div style="font-size: 12px; color: var(--text-secondary);">运营机器</div>
       </div>
+      <div style="font-size: 22px; font-weight: 700; color: #8b5cf6;"><%= @other_count %></div>
+      <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">00:30 运行</div>
     </div>
-  </div>
-  
-  <%# 总体统计 %>
-  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+    <%# 分隔线区域 %>
+    <div style="display: flex; align-items: center; justify-content: center;">
+      <div style="width: 1px; height: 40px; background: var(--border-color, #e5e7eb);"></div>
+    </div>
+    <%# 可用账号数（正常+浏览养护） %>
     <div>
-      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">总账号数</div>
-      <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);"><%= @total_count %></div>
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">可用账号</div>
+      <div style="font-size: 22px; font-weight: 700; color: var(--text-primary);"><%= @total_count %></div>
     </div>
+    <%# 养号启用 %>
     <div>
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">养号启用</div>
-      <div style="font-size: 24px; font-weight: 700; color: #22c55e;"><%= @enabled_count %></div>
+      <div style="font-size: 22px; font-weight: 700; color: #22c55e;"><%= @enabled_count %></div>
     </div>
-    <div>
-      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">从未养号</div>
-      <div style="font-size: 24px; font-weight: 700; color: #f59e0b;"><%= @never_warmed %></div>
-    </div>
+    <%# 待养号 %>
     <div>
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">待养号（>12h）</div>
-      <div style="font-size: 24px; font-weight: 700; color: #ef4444;"><%= @due_count %></div>
+      <div style="font-size: 22px; font-weight: 700; color: #ef4444;"><%= @due_count %></div>
     </div>
   </div>
 </div>
 
-<%# --- 账号列表 --- %>
+<%# --- 配置列表 --- %>
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
-      <div class="admin-card-title">账号列表</div>
+      <div class="admin-card-title">配置列表</div>
       <div class="admin-card-subtitle">按养号紧急程度排序（从未养号优先，其次按上次养号时间升序）</div>
     </div>
     <div class="admin-card-header-right">

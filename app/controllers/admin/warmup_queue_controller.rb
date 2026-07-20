@@ -9,8 +9,8 @@ class Admin::WarmupQueueController < Admin::BaseController
                   .page(params[:page])
                   .per(20)
 
-    # 统计数据
-    @total_count = Account.count
+    # 统计数据：正常(0) + 浏览养护(3) 的账号总数
+    @total_count = Account.where(status: [0, 3]).count
     @enabled_count = WarmupProfile.where(warmup_enabled: true).count
     @move_count = WarmupProfile.where(machine: 'move', warmup_enabled: true).count
     @other_count = WarmupProfile.where(machine: 'other', warmup_enabled: true).count
