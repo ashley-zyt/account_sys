@@ -3,9 +3,18 @@ class Admin::WarmupQueueController < Admin::BaseController
     @q = Account.ransack(params[:q])
     @accounts = @q.result(distinct: true)
                   .includes(:warmup_profile, :browser)
-                  .order(updated_at: :desc)
+                  .joins(:warmup_profile)
+                  .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.last_warmup_at ASC"))
                   .page(params[:page])
                   .per(20)
+
+    # 统计数据
+    @total_count = Account.count
+    @enabled_count = WarmupProfile.where(warmup_enabled: true).count
+    @move_count = WarmupProfile.where(machine: 'move', warmup_enabled: true).count
+    @other_count = WarmupProfile.where(machine: 'other', warmup_enabled: true).count
+    @never_warmed = Account.joins(:warmup_profile).where(warmup_profiles: { warmup_enabled: true, last_warmup_at: nil }).count
+    @due_count = Account.joins(:warmup_profile).where(warmup_profiles: { warmup_enabled: true }).where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 12.hours.ago).count
   end
 
   def show

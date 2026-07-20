@@ -1,46 +1,69 @@
 <% content_for :page_title do %>
-  账号队列
+  养号配置
 <% end %>
 <% content_for :page_subtitle do %>
-  养号账号队列状态总览
+  管理账号养号状态，按养号紧急程度排序
 <% end %>
 
-<%# --- 统计卡片 --- %>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
-  <% total_count = Account.count %>
-  <% enabled_count = WarmupProfile.where(warmup_enabled: true).count %>
-  <% move_count = WarmupProfile.where(machine: 'move', warmup_enabled: true).count %>
-  <% other_count = WarmupProfile.where(machine: 'other', warmup_enabled: true).count %>
-  <% due_count = Account.joins(:warmup_profile).where(warmup_profiles: { warmup_enabled: true }).where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 12.hours.ago).count %>
-
-  <div class="admin-card" style="padding: 20px;">
-    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">总账号数</div>
-    <div style="font-size: 28px; font-weight: 700; color: var(--text-primary);"><%= total_count %></div>
+<%# --- 调度状态概览 --- %>
+<div class="admin-card" style="padding: 20px; margin-bottom: 24px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%); border: 1px solid rgba(59, 130, 246, 0.1);">
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+    <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+      ⚙️
+    </div>
+    <div>
+      <div style="font-size: 15px; font-weight: 600; color: var(--text-primary);">调度配置</div>
+      <div style="font-size: 12px; color: var(--text-secondary);">单次运行5小时，账号间隔60-120秒</div>
+    </div>
   </div>
-  <div class="admin-card" style="padding: 20px;">
-    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">养号启用</div>
-    <div style="font-size: 28px; font-weight: 700; color: #22c55e;"><%= enabled_count %></div>
-  </div>
-  <div class="admin-card" style="padding: 20px;">
-    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">搬运机器</div>
-    <div style="font-size: 28px; font-weight: 700; color: #3b82f6;"><%= move_count %></div>
-  </div>
-  <div class="admin-card" style="padding: 20px;">
-    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">运营机器</div>
-    <div style="font-size: 28px; font-weight: 700; color: #8b5cf6;"><%= other_count %></div>
-  </div>
-  <div class="admin-card" style="padding: 20px;">
-    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">待养号</div>
-    <div style="font-size: 28px; font-weight: 700; color: #f59e0b;"><%= due_count %></div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px;">
+    <div>
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">总账号数</div>
+      <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);"><%= @total_count %></div>
+    </div>
+    <div>
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">养号启用</div>
+      <div style="font-size: 24px; font-weight: 700; color: #22c55e;"><%= @enabled_count %></div>
+    </div>
+    <div>
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">从未养号</div>
+      <div style="font-size: 24px; font-weight: 700; color: #f59e0b;"><%= @never_warmed %></div>
+    </div>
+    <div>
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">待养号（>12h）</div>
+      <div style="font-size: 24px; font-weight: 700; color: #ef4444;"><%= @due_count %></div>
+    </div>
   </div>
 </div>
 
-<%# --- 筛选区 --- %>
+<%# --- 机器分布 --- %>
+<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px;">
+  <div class="admin-card" style="padding: 16px;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+      <div style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></div>
+      <div style="font-size: 13px; font-weight: 500; color: var(--text-primary);">搬运机器</div>
+      <div style="font-size: 11px; color: var(--text-tertiary); margin-left: auto;">174.139.46.117:8080</div>
+    </div>
+    <div style="font-size: 32px; font-weight: 700; color: #3b82f6;"><%= @move_count %></div>
+    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">个账号启用养号</div>
+  </div>
+  <div class="admin-card" style="padding: 16px;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+      <div style="width: 8px; height: 8px; border-radius: 50%; background: #8b5cf6;"></div>
+      <div style="font-size: 13px; font-weight: 500; color: var(--text-primary);">运营机器</div>
+      <div style="font-size: 11px; color: var(--text-tertiary); margin-left: auto;">174.139.46.15:8080</div>
+    </div>
+    <div style="font-size: 32px; font-weight: 700; color: #8b5cf6;"><%= @other_count %></div>
+    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">个账号启用养号</div>
+  </div>
+</div>
+
+<%# --- 账号列表 --- %>
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
-      <div class="admin-card-title">账号队列</div>
-      <div class="admin-card-subtitle">展示所有账号的养号状态，按更新时间倒序排列</div>
+      <div class="admin-card-title">账号列表</div>
+      <div class="admin-card-subtitle">按养号紧急程度排序（从未养号优先，其次按上次养号时间升序）</div>
     </div>
     <div class="admin-card-header-right">
       <span class="admin-tag">共 <%= @accounts.total_count %> 个账号</span>
@@ -62,10 +85,6 @@
         <%= f.select :status_eq, Account.statuses.map { |k, v| [k, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">工作类型</label>
-        <%= f.select :work_type_eq, Account.work_types.map { |k, v| [k, v] }, { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
-      </div>
-      <div class="admin-filter-group">
         <label class="admin-filter-label">养号开关</label>
         <%= f.select :warmup_profile_warmup_enabled_eq, [["启用", true], ["停用", false]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
       </div>
@@ -84,9 +103,8 @@
             <th>账号</th>
             <th>平台</th>
             <th>状态</th>
-            <th>工作类型</th>
             <th>养号开关</th>
-            <th>机器类型</th>
+            <th>机器</th>
             <th>上次养号</th>
             <th>浏览器</th>
             <th>操作</th>
@@ -95,14 +113,18 @@
         <tbody>
           <% @accounts.each do |account| %>
             <% profile = account.warmup_profile %>
-            <% is_due = profile&.warmup_due? && (profile.last_warmup_at.nil? || profile.last_warmup_at < 12.hours.ago) %>
-            <tr style="<%= is_due ? 'background: rgba(245, 158, 11, 0.04);' : '' %>">
+            <% is_never = profile&.last_warmup_at.nil? %>
+            <% is_due = profile&.warmup_enabled && !is_never && profile.last_warmup_at < 12.hours.ago %>
+            <% row_bg = is_never ? 'background: rgba(245, 158, 11, 0.06);' : (is_due ? 'background: rgba(239, 68, 68, 0.04);' : '') %>
+            <tr style="<%= row_bg %>">
               <%# 账号名 %>
               <td>
-                <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent); font-weight: 500;" %>
-                <% if account.theme.present? %>
-                  <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;"><%= account.theme %></div>
-                <% end %>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent); font-weight: 500;" %>
+                  <% if account.theme.present? %>
+                    <div style="font-size: 11px; color: var(--text-tertiary);"><%= account.theme %></div>
+                  <% end %>
+                </div>
               </td>
 
               <%# 平台 %>
@@ -110,7 +132,7 @@
                 <% platform_colors = { 'facebook' => '#1877f2', 'twitter' => '#1da1f2', 'tiktok' => '#000000', 'youtube' => '#ff0000', 'instagram' => '#e4405f' } %>
                 <span style="display: inline-flex; align-items: center; gap: 6px;">
                   <span style="width: 8px; height: 8px; border-radius: 50%; background: <%= platform_colors[account.platform] || '#9ca3af' %>;"></span>
-                  <span class="admin-label-muted"><%= account.platform.to_s.titleize %></span>
+                  <span style="font-size: 13px; color: var(--text-secondary);"><%= account.platform.to_s.titleize %></span>
                 </span>
               </td>
 
@@ -121,11 +143,6 @@
                 <span class="admin-pill-status" style="background: <%= color %>1a; color: <%= color %>;">
                   <%= account.status %>
                 </span>
-              </td>
-
-              <%# 工作类型 %>
-              <td>
-                <span class="admin-label-muted"><%= account.work_type || '-' %></span>
               </td>
 
               <%# 养号开关 %>
@@ -145,13 +162,19 @@
                 <% end %>
               </td>
 
-              <%# 机器类型 %>
+              <%# 机器 %>
               <td>
                 <% if profile %>
                   <% if profile.machine == 'move' %>
-                    <span style="color: #3b82f6; font-size: 13px;">174.139.46.117</span>
+                    <span style="display: inline-flex; align-items: center; gap: 6px;">
+                      <span style="width: 6px; height: 6px; border-radius: 50%; background: #3b82f6;"></span>
+                      <span style="color: #3b82f6; font-size: 13px;">搬运</span>
+                    </span>
                   <% else %>
-                    <span style="color: #8b5cf6; font-size: 13px;">174.139.46.15</span>
+                    <span style="display: inline-flex; align-items: center; gap: 6px;">
+                      <span style="width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6;"></span>
+                      <span style="color: #8b5cf6; font-size: 13px;">运营</span>
+                    </span>
                   <% end %>
                 <% else %>
                   <span class="admin-label-muted">-</span>
@@ -161,13 +184,24 @@
               <%# 上次养号 %>
               <td>
                 <% if profile&.last_warmup_at %>
-                  <div style="font-size: 13px;"><%= profile.last_warmup_at.strftime("%m-%d %H:%M") %></div>
                   <% hours_ago = ((Time.current - profile.last_warmup_at) / 3600).round(1) %>
-                  <div style="font-size: 11px; color: <%= hours_ago > 24 ? '#ef4444' : hours_ago > 12 ? '#f59e0b' : '#22c55e' %>;">
-                    <%= hours_ago < 1 ? '刚刚' : "#{hours_ago}小时前" %>
+                  <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <div style="font-size: 13px; color: var(--text-primary);"><%= profile.last_warmup_at.strftime("%m-%d %H:%M") %></div>
+                    <% if hours_ago < 1 %>
+                      <div style="font-size: 11px; color: #22c55e;">刚刚</div>
+                    <% elsif hours_ago < 12 %>
+                      <div style="font-size: 11px; color: #22c55e;"><%= hours_ago %>小时前</div>
+                    <% elsif hours_ago < 24 %>
+                      <div style="font-size: 11px; color: #f59e0b;"><%= hours_ago %>小时前</div>
+                    <% else %>
+                      <div style="font-size: 11px; color: #ef4444;"><%= hours_ago %>小时前</div>
+                    <% end %>
                   </div>
                 <% else %>
-                  <span style="color: #f59e0b; font-size: 13px;">从未养号</span>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; color: #f59e0b; font-size: 13px; font-weight: 500;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
+                    从未养号
+                  </span>
                 <% end %>
               </td>
 
