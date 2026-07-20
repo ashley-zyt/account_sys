@@ -1,0 +1,221 @@
+<% content_for :page_title do %>
+  账号养号详情
+<% end %>
+<% content_for :page_subtitle do %>
+  <%= @account.account_name %>
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        <%= @account.account_name %>
+      </div>
+      <div class="admin-card-subtitle">
+        账号养号详细信息
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "返回队列", admin_warmup_queue_index_path, class: "admin-button-secondary" %>
+      <%= link_to "账号详情", admin_account_path(@account), class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <%# 基础信息网格 %>
+  <div class="admin-detail-grid">
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">平台</span>
+      <span class="admin-detail-value"><%= @account.platform.to_s.titleize %></span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">状态</span>
+      <span class="admin-detail-value">
+        <% status_colors = { '正常' => '#22c55e', '未登录' => '#f59e0b', '封禁/停用' => '#ef4444', '浏览养护' => '#3b82f6' } %>
+        <% color = status_colors[@account.status] || '#9ca3af' %>
+        <span class="admin-pill-status" style="background: <%= color %>1a; color: <%= color %>;">
+          <%= @account.status %>
+        </span>
+      </span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">工作类型</span>
+      <span class="admin-detail-value"><%= @account.work_type || '-' %></span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">主题</span>
+      <span class="admin-detail-value"><%= @account.theme || '-' %></span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">浏览器</span>
+      <span class="admin-detail-value">
+        <% if @account.browser %>
+          <%= link_to @account.browser.profile_name, admin_browser_path(@account.browser), class: "admin-link-quiet" %>
+        <% else %>
+          <span class="admin-label-muted">未绑定</span>
+        <% end %>
+      </span>
+    </div>
+    <div class="admin-detail-item">
+      <span class="admin-detail-label">运营人员</span>
+      <span class="admin-detail-value"><%= @account.operator || '-' %></span>
+    </div>
+  </div>
+</div>
+
+<%# 养号配置信息 %>
+<div class="admin-card" style="margin-top: 24px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">养号配置</div>
+      <div class="admin-card-subtitle">账号的养号参数设置</div>
+    </div>
+  </div>
+
+  <% if @warmup_profiles.any? %>
+    <% profile = @warmup_profiles.first %>
+    <div class="admin-detail-grid">
+      <div class="admin-detail-item">
+        <span class="admin-detail-label">养号开关</span>
+        <span class="admin-detail-value">
+          <% if profile.warmup_enabled %>
+            <span style="display: inline-flex; align-items: center; gap: 6px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.4);"></span>
+              <span style="color: #22c55e; font-weight: 500;">启用</span>
+            </span>
+          <% else %>
+            <span style="display: inline-flex; align-items: center; gap: 6px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #9ca3af;"></span>
+              <span style="color: #9ca3af;">停用</span>
+            </span>
+          <% end %>
+        </span>
+      </div>
+      <div class="admin-detail-item">
+        <span class="admin-detail-label">机器类型</span>
+        <span class="admin-detail-value">
+          <% if profile.machine == 'move' %>
+            <span style="color: #3b82f6;">视频搬运机器</span>
+          <% else %>
+            <span style="color: #8b5cf6;">其他模式机器</span>
+          <% end %>
+        </span>
+      </div>
+      <div class="admin-detail-item">
+        <span class="admin-detail-label">批次</span>
+        <span class="admin-detail-value">
+          <% if profile.warmup_batch && profile.warmup_batch > 0 %>
+            <span class="admin-tag">第 <%= profile.warmup_batch %> 批</span>
+          <% else %>
+            <span class="admin-label-muted">未分配</span>
+          <% end %>
+        </span>
+      </div>
+      <div class="admin-detail-item">
+        <span class="admin-detail-label">养号频率</span>
+        <span class="admin-detail-value"><%= profile.warmup_frequency || '-' %></span>
+      </div>
+      <div class="admin-detail-item">
+        <span class="admin-detail-label">上次养号</span>
+        <span class="admin-detail-value">
+          <% if profile.last_warmup_at %>
+            <div><%= profile.last_warmup_at.strftime("%Y-%m-%d %H:%M:%S") %></div>
+            <% hours_ago = ((Time.current - profile.last_warmup_at) / 3600).round(1) %>
+            <div style="font-size: 12px; color: <%= hours_ago > 24 ? '#ef4444' : hours_ago > 12 ? '#f59e0b' : '#22c55e' %>; margin-top: 4px;">
+              <%= hours_ago < 1 ? '刚刚' : "#{hours_ago}小时前" %>
+            </div>
+          <% else %>
+            <span style="color: #f59e0b;">从未养号</span>
+          <% end %>
+        </span>
+      </div>
+      <div class="admin-detail-item">
+        <span class="admin-detail-label">养号状态</span>
+        <span class="admin-detail-value">
+          <% if profile.warmup_status.present? %>
+            <span class="admin-label-muted"><%= profile.warmup_status %></span>
+          <% else %>
+            <span class="admin-label-muted">-</span>
+          <% end %>
+        </span>
+      </div>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无养号配置信息
+    </div>
+  <% end %>
+</div>
+
+<%# 最近养号任务 %>
+<div class="admin-card" style="margin-top: 24px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">最近养号任务</div>
+      <div class="admin-card-subtitle">最近 20 条养号任务执行记录</div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">共 <%= @recent_tasks.count %> 条</span>
+    </div>
+  </div>
+
+  <% if @recent_tasks.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>任务ID</th>
+            <th>平台</th>
+            <th>状态</th>
+            <th>执行时间</th>
+            <th>耗时(分钟)</th>
+            <th>机器</th>
+            <th>错误信息</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @recent_tasks.each do |task| %>
+            <tr>
+              <td>
+                <%= link_to task.id, admin_warmup_task_path(task), class: "admin-link-quiet", title: task.task_uuid %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.platform.to_s.titleize %></span>
+              </td>
+              <td>
+                <% if task.success? %>
+                  <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">成功</span>
+                <% elsif task.failed? %>
+                  <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">失败</span>
+                <% elsif task.executing? %>
+                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">执行中</span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af;">待执行</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.executed_at&.strftime("%m-%d %H:%M") || '-' %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.duration_minutes || '-' %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.machine == 'move' ? '视频搬运机器' : '其他模式机器' %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= task.error_msg %>"><%= task.error_msg || '-' %></span>
+              </td>
+              <td>
+                <%= link_to "详情", admin_warmup_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无养号任务记录
+    </div>
+  <% end %>
+</div>

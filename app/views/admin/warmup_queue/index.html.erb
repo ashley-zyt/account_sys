@@ -1,0 +1,214 @@
+<% content_for :page_title do %>
+  账号队列
+<% end %>
+<% content_for :page_subtitle do %>
+  养号账号队列状态总览
+<% end %>
+
+<%# --- 统计卡片 --- %>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
+  <% total_count = Account.count %>
+  <% enabled_count = WarmupProfile.where(warmup_enabled: true).count %>
+  <% move_count = WarmupProfile.where(machine: 'move', warmup_enabled: true).count %>
+  <% other_count = WarmupProfile.where(machine: 'other', warmup_enabled: true).count %>
+  <% due_count = Account.joins(:warmup_profile).where(warmup_profiles: { warmup_enabled: true }).where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 12.hours.ago).count %>
+
+  <div class="admin-card" style="padding: 20px;">
+    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">总账号数</div>
+    <div style="font-size: 28px; font-weight: 700; color: var(--text-primary);"><%= total_count %></div>
+  </div>
+  <div class="admin-card" style="padding: 20px;">
+    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">养号启用</div>
+    <div style="font-size: 28px; font-weight: 700; color: #22c55e;"><%= enabled_count %></div>
+  </div>
+  <div class="admin-card" style="padding: 20px;">
+    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">搬运机器</div>
+    <div style="font-size: 28px; font-weight: 700; color: #3b82f6;"><%= move_count %></div>
+  </div>
+  <div class="admin-card" style="padding: 20px;">
+    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">其他机器</div>
+    <div style="font-size: 28px; font-weight: 700; color: #8b5cf6;"><%= other_count %></div>
+  </div>
+  <div class="admin-card" style="padding: 20px;">
+    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">待养号</div>
+    <div style="font-size: 28px; font-weight: 700; color: #f59e0b;"><%= due_count %></div>
+  </div>
+</div>
+
+<%# --- 筛选区 --- %>
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">账号队列</div>
+      <div class="admin-card-subtitle">展示所有账号的养号状态，按更新时间倒序排列</div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">共 <%= @accounts.total_count %> 个账号</span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], url: admin_warmup_queue_index_path, class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">账号名</label>
+        <%= f.search_field :account_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索账号名..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <%= f.select :platform_eq, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status_eq, Account.statuses.map { |k, v| [k, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">工作类型</label>
+        <%= f.select :work_type_eq, Account.work_types.map { |k, v| [k, v] }, { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">养号开关</label>
+        <%= f.select :warmup_profile_warmup_enabled_eq, [["启用", true], ["停用", false]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_warmup_queue_index_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @accounts.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>账号</th>
+            <th>平台</th>
+            <th>状态</th>
+            <th>工作类型</th>
+            <th>养号开关</th>
+            <th>机器类型</th>
+            <th>批次</th>
+            <th>上次养号</th>
+            <th>养号频率</th>
+            <th>浏览器</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @accounts.each do |account| %>
+            <% profile = account.warmup_profile %>
+            <% is_due = profile&.warmup_due? && (profile.last_warmup_at.nil? || profile.last_warmup_at < 12.hours.ago) %>
+            <tr style="<%= is_due ? 'background: rgba(245, 158, 11, 0.04);' : '' %>">
+              <%# 账号名 %>
+              <td>
+                <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent); font-weight: 500;" %>
+                <% if account.theme.present? %>
+                  <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px;"><%= account.theme %></div>
+                <% end %>
+              </td>
+
+              <%# 平台 %>
+              <td>
+                <% platform_colors = { 'facebook' => '#1877f2', 'twitter' => '#1da1f2', 'tiktok' => '#000000', 'youtube' => '#ff0000', 'instagram' => '#e4405f' } %>
+                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: <%= platform_colors[account.platform] || '#9ca3af' %>;"></span>
+                  <span class="admin-label-muted"><%= account.platform.to_s.titleize %></span>
+                </span>
+              </td>
+
+              <%# 状态 %>
+              <td>
+                <% status_colors = { '正常' => '#22c55e', '未登录' => '#f59e0b', '封禁/停用' => '#ef4444', '浏览养护' => '#3b82f6' } %>
+                <% color = status_colors[account.status] || '#9ca3af' %>
+                <span class="admin-pill-status" style="background: <%= color %>1a; color: <%= color %>;">
+                  <%= account.status %>
+                </span>
+              </td>
+
+              <%# 工作类型 %>
+              <td>
+                <span class="admin-label-muted"><%= account.work_type || '-' %></span>
+              </td>
+
+              <%# 养号开关 %>
+              <td>
+                <% if profile&.warmup_enabled %>
+                  <span style="display: inline-flex; align-items: center; gap: 6px;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.4);"></span>
+                    <span style="color: #22c55e; font-size: 13px; font-weight: 500;">启用</span>
+                  </span>
+                <% else %>
+                  <span style="display: inline-flex; align-items: center; gap: 6px;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #9ca3af;"></span>
+                    <span style="color: #9ca3af; font-size: 13px;">停用</span>
+                  </span>
+                <% end %>
+              </td>
+
+              <%# 机器类型 %>
+              <td>
+                <% if profile %>
+                  <% if profile.machine == 'move' %>
+                    <span style="color: #3b82f6; font-size: 13px;">搬运机器</span>
+                  <% else %>
+                    <span style="color: #8b5cf6; font-size: 13px;">其他机器</span>
+                  <% end %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+
+              <%# 批次 %>
+              <td>
+                <% if profile&.warmup_batch && profile.warmup_batch > 0 %>
+                  <span class="admin-tag" style="font-size: 12px;">#<%= profile.warmup_batch %></span>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+
+              <%# 上次养号 %>
+              <td>
+                <% if profile&.last_warmup_at %>
+                  <div style="font-size: 13px;"><%= profile.last_warmup_at.strftime("%m-%d %H:%M") %></div>
+                  <% hours_ago = ((Time.current - profile.last_warmup_at) / 3600).round(1) %>
+                  <div style="font-size: 11px; color: <%= hours_ago > 24 ? '#ef4444' : hours_ago > 12 ? '#f59e0b' : '#22c55e' %>;">
+                    <%= hours_ago < 1 ? '刚刚' : "#{hours_ago}小时前" %>
+                  </div>
+                <% else %>
+                  <span style="color: #f59e0b; font-size: 13px;">从未养号</span>
+                <% end %>
+              </td>
+
+              <%# 养号频率 %>
+              <td>
+                <span class="admin-label-muted"><%= profile&.warmup_frequency || '-' %></span>
+              </td>
+
+              <%# 浏览器 %>
+              <td>
+                <% if account.browser %>
+                  <%= link_to account.browser.profile_name, admin_browser_path(account.browser), class: "admin-link-quiet", style: "font-size: 13px;" %>
+                <% else %>
+                  <span class="admin-label-muted">未绑定</span>
+                <% end %>
+              </td>
+
+              <%# 操作 %>
+              <td>
+                <%= link_to "详情", admin_warmup_queue_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @accounts %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无账号数据。
+    </div>
+  <% end %>
+</div>
