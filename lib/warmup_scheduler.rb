@@ -83,7 +83,13 @@ class WarmupScheduler
 
       if response['status'] == 'success'
         Rails.logger.info "[WarmupScheduler] 养号成功: #{account.account_name} - #{response['info']}"
-        warmup_task.update!(status: :success, executed_at: Time.current, error_msg: response['info'])
+        # 从 info 中提取总时长（秒），如 "总时长 720 秒, 浏览帖子: 30, 点赞: 1, 评论: 7, 关注: 0"
+        duration_minutes = nil
+        if response['info'] =~ /总时长\s*(\d+)\s*秒/
+          total_seconds = $1.to_i
+          duration_minutes = (total_seconds / 60.0).round(1)
+        end
+        warmup_task.update!(status: :success, executed_at: Time.current, error_msg: response['info'], duration_minutes: duration_minutes)
         profile = account.warmup_profile || account.create_warmup_profile
         profile.update!(last_warmup_at: Time.current, warmup_status: 'success')
       else
