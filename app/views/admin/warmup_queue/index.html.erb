@@ -197,9 +197,9 @@
                     <div style="font-size: 13px; color: var(--text-primary);"><%= profile.last_warmup_at.strftime("%m-%d %H:%M") %></div>
                     <% if hours_ago < 1 %>
                       <div style="font-size: 11px; color: #22c55e;">刚刚</div>
-                    <% elsif hours_ago < 12 %>
-                      <div style="font-size: 11px; color: #22c55e;"><%= hours_ago %>小时前</div>
                     <% elsif hours_ago < 24 %>
+                      <div style="font-size: 11px; color: #22c55e;"><%= hours_ago %>小时前</div>
+                    <% elsif hours_ago < 48 %>
                       <div style="font-size: 11px; color: #f59e0b;"><%= hours_ago %>小时前</div>
                     <% else %>
                       <div style="font-size: 11px; color: #ef4444;"><%= hours_ago %>小时前</div>
