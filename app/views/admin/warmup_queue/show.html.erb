@@ -5,15 +5,12 @@
   <%= @account.account_name %>
 <% end %>
 
+<%# 基础信息 %>
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
-      <div class="admin-card-title">
-        <%= @account.account_name %>
-      </div>
-      <div class="admin-card-subtitle">
-        账号养号详细信息
-      </div>
+      <div class="admin-card-title"><%= @account.account_name %></div>
+      <div class="admin-card-subtitle">账号养号详细信息</div>
     </div>
     <div class="admin-card-header-right">
       <%= link_to "返回队列", admin_warmup_queue_index_path, class: "admin-button-secondary" %>
@@ -21,43 +18,38 @@
     </div>
   </div>
 
-  <%# 基础信息网格 %>
-  <div class="admin-detail-grid">
-    <div class="admin-detail-item">
-      <span class="admin-detail-label">平台</span>
-      <span class="admin-detail-value"><%= @account.platform.to_s.titleize %></span>
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px;">
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">平台</div>
+      <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @account.platform.to_s.titleize %></div>
     </div>
-    <div class="admin-detail-item">
-      <span class="admin-detail-label">状态</span>
-      <span class="admin-detail-value">
-        <% status_colors = { '正常' => '#22c55e', '未登录' => '#f59e0b', '封禁/停用' => '#ef4444', '浏览养护' => '#3b82f6' } %>
-        <% color = status_colors[@account.status] || '#9ca3af' %>
-        <span class="admin-pill-status" style="background: <%= color %>1a; color: <%= color %>;">
-          <%= @account.status %>
-        </span>
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">状态</div>
+      <% status_colors = { '正常' => '#22c55e', '未登录' => '#f59e0b', '封禁/停用' => '#ef4444', '浏览养护' => '#3b82f6' } %>
+      <% color = status_colors[@account.status] || '#9ca3af' %>
+      <span class="admin-pill-status" style="background: <%= color %>1a; color: <%= color %>; font-size: 13px;">
+        <%= @account.status %>
       </span>
     </div>
-    <div class="admin-detail-item">
-      <span class="admin-detail-label">工作类型</span>
-      <span class="admin-detail-value"><%= @account.work_type || '-' %></span>
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">工作类型</div>
+      <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @account.work_type || '-' %></div>
     </div>
-    <div class="admin-detail-item">
-      <span class="admin-detail-label">主题</span>
-      <span class="admin-detail-value"><%= @account.theme || '-' %></span>
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">主题</div>
+      <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @account.theme || '-' %></div>
     </div>
-    <div class="admin-detail-item">
-      <span class="admin-detail-label">浏览器</span>
-      <span class="admin-detail-value">
-        <% if @account.browser %>
-          <%= link_to @account.browser.profile_name, admin_browser_path(@account.browser), class: "admin-link-quiet" %>
-        <% else %>
-          <span class="admin-label-muted">未绑定</span>
-        <% end %>
-      </span>
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">浏览器</div>
+      <% if @account.browser %>
+        <%= link_to @account.browser.profile_name, admin_browser_path(@account.browser), class: "admin-link-quiet", style: "font-size: 14px; font-weight: 500;" %>
+      <% else %>
+        <span style="font-size: 13px; color: var(--text-tertiary);">未绑定</span>
+      <% end %>
     </div>
-    <div class="admin-detail-item">
-      <span class="admin-detail-label">运营人员</span>
-      <span class="admin-detail-value"><%= @account.operator || '-' %></span>
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">运营人员</div>
+      <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @account.operator || '-' %></div>
     </div>
   </div>
 </div>
@@ -72,56 +64,55 @@
   </div>
 
   <% if @warmup_profile %>
-    <div class="admin-detail-grid">
-      <div class="admin-detail-item">
-        <span class="admin-detail-label">养号开关</span>
-        <span class="admin-detail-value">
-          <% if @warmup_profile.warmup_enabled %>
-            <span style="display: inline-flex; align-items: center; gap: 6px;">
-              <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.4);"></span>
-              <span style="color: #22c55e; font-weight: 500;">启用</span>
-            </span>
-          <% else %>
-            <span style="display: inline-flex; align-items: center; gap: 6px;">
-              <span style="width: 8px; height: 8px; border-radius: 50%; background: #9ca3af;"></span>
-              <span style="color: #9ca3af;">停用</span>
-            </span>
-          <% end %>
-        </span>
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px;">
+      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">养号开关</div>
+        <% if @warmup_profile.warmup_enabled %>
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.4);"></span>
+            <span style="color: #22c55e; font-weight: 500; font-size: 14px;">启用</span>
+          </span>
+        <% else %>
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #9ca3af;"></span>
+            <span style="color: #9ca3af; font-size: 14px;">停用</span>
+          </span>
+        <% end %>
       </div>
-      <div class="admin-detail-item">
-        <span class="admin-detail-label">机器类型</span>
-        <span class="admin-detail-value">
-          <% if @warmup_profile.machine == 'move' %>
-            <span style="color: #3b82f6;">视频搬运机器</span>
-          <% else %>
-            <span style="color: #8b5cf6;">其他模式机器</span>
-          <% end %>
-        </span>
+      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">机器类型</div>
+        <% if @warmup_profile.machine == 'move' %>
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #3b82f6;"></span>
+            <span style="color: #3b82f6; font-weight: 500; font-size: 14px;">搬运机器</span>
+          </span>
+        <% else %>
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6;"></span>
+            <span style="color: #8b5cf6; font-weight: 500; font-size: 14px;">运营机器</span>
+          </span>
+        <% end %>
       </div>
-      <div class="admin-detail-item">
-        <span class="admin-detail-label">上次养号</span>
-        <span class="admin-detail-value">
-          <% if @warmup_profile.last_warmup_at %>
-            <div><%= @warmup_profile.last_warmup_at.strftime("%Y-%m-%d %H:%M:%S") %></div>
-            <% hours_ago = ((Time.current - @warmup_profile.last_warmup_at) / 3600).round(1) %>
-            <div style="font-size: 12px; color: <%= hours_ago > 24 ? '#ef4444' : hours_ago > 12 ? '#f59e0b' : '#22c55e' %>; margin-top: 4px;">
-              <%= hours_ago < 1 ? '刚刚' : "#{hours_ago}小时前" %>
-            </div>
-          <% else %>
-            <span style="color: #f59e0b;">从未养号</span>
-          <% end %>
-        </span>
+      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">上次养号</div>
+        <% if @warmup_profile.last_warmup_at %>
+          <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @warmup_profile.last_warmup_at.strftime("%m-%d %H:%M") %></div>
+          <% hours_ago = ((Time.current - @warmup_profile.last_warmup_at) / 3600).round(1) %>
+          <div style="font-size: 11px; color: <%= hours_ago > 24 ? '#ef4444' : hours_ago > 12 ? '#f59e0b' : '#22c55e' %>; margin-top: 4px;">
+            <%= hours_ago < 1 ? '刚刚' : "#{hours_ago}小时前" %>
+          </div>
+        <% else %>
+          <span style="color: #f59e0b; font-size: 13px;">从未养号</span>
+        <% end %>
       </div>
-      <div class="admin-detail-item">
-        <span class="admin-detail-label">养号状态</span>
-        <span class="admin-detail-value">
-          <% if @warmup_profile.warmup_status.present? %>
-            <span class="admin-label-muted"><%= @warmup_profile.warmup_status %></span>
-          <% else %>
-            <span class="admin-label-muted">-</span>
-          <% end %>
-        </span>
+      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">养号状态</div>
+        <% if @warmup_profile.warmup_status.present? %>
+          <% ws_color = @warmup_profile.warmup_status == 'success' ? '#22c55e' : '#ef4444' %>
+          <span style="font-size: 14px; font-weight: 500; color: <%= ws_color %>;"><%= @warmup_profile.warmup_status == 'success' ? '成功' : @warmup_profile.warmup_status %></span>
+        <% else %>
+          <span style="font-size: 13px; color: var(--text-tertiary);">-</span>
+        <% end %>
       </div>
     </div>
   <% else %>
@@ -185,7 +176,7 @@
                 <span class="admin-label-muted"><%= task.duration_minutes || '-' %></span>
               </td>
               <td>
-                <span class="admin-label-muted"><%= task.machine == 'move' ? '视频搬运机器' : '其他模式机器' %></span>
+                <span class="admin-label-muted"><%= task.machine == 'move' ? '搬运机器' : '运营机器' %></span>
               </td>
               <td>
                 <span class="admin-label-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= task.error_msg %>"><%= task.error_msg || '-' %></span>
