@@ -24,14 +24,6 @@
   <%# 筛选表单 %>
   <%= form_with url: trends_admin_post_stats_path, method: :get, class: "admin-filter-form", data: { turbo: false } do |f| %>
     <div class="admin-filter-group">
-      <label class="admin-filter-label">平台</label>
-      <%= select_tag "q[account_platform_eq]", options_for_select(@platforms, params.dig(:q, :account_platform_eq)), include_blank: "全部平台", class: "admin-input admin-filter-input" %>
-    </div>
-    <div class="admin-filter-group">
-      <label class="admin-filter-label">工作模式</label>
-      <%= select_tag "q[account_work_type_eq]", options_for_select(@work_types, params.dig(:q, :account_work_type_eq)), include_blank: "全部模式", class: "admin-input admin-filter-input" %>
-    </div>
-    <div class="admin-filter-group">
       <label class="admin-filter-label">日期范围</label>
       <div style="display: flex; gap: 8px; align-items: center;">
         <%= date_field_tag "q[post_date_gteq]", params.dig(:q, :post_date_gteq), class: "admin-input admin-filter-input", placeholder: "开始" %>
@@ -105,24 +97,24 @@
   <% end %>
 </div>
 
-<%# 堆叠柱状图 %>
+<%# 工作模式趋势图 %>
 <div class="admin-card" style="margin-top: 20px;">
   <div class="admin-card-header">
     <div>
-      <div class="admin-card-title">平台占比</div>
-      <div class="admin-card-subtitle">各平台数据贡献堆叠展示</div>
+      <div class="admin-card-title">工作模式趋势</div>
+      <div class="admin-card-subtitle">按工作模式分组的数据变化</div>
     </div>
     <div class="admin-card-header-right" style="display: flex; gap: 6px;">
-      <button type="button" class="stacked-btn active" data-metric="views">浏览量</button>
-      <button type="button" class="stacked-btn" data-metric="likes">点赞数</button>
-      <button type="button" class="stacked-btn" data-metric="comments">评论数</button>
-      <button type="button" class="stacked-btn" data-metric="shares">转发数</button>
+      <button type="button" class="work-type-btn active" data-metric="views">浏览量</button>
+      <button type="button" class="work-type-btn" data-metric="likes">点赞数</button>
+      <button type="button" class="work-type-btn" data-metric="comments">评论数</button>
+      <button type="button" class="work-type-btn" data-metric="shares">转发数</button>
     </div>
   </div>
 
-  <% if @trend_views.present? || @trend_likes.present? || @trend_comments.present? || @trend_shares.present? %>
+  <% if @work_type_views.present? || @work_type_likes.present? || @work_type_comments.present? || @work_type_shares.present? %>
     <div style="position: relative; height: 400px; padding: 20px;">
-      <canvas id="stackedChart"></canvas>
+      <canvas id="workTypeChart"></canvas>
     </div>
   <% else %>
     <div class="admin-empty-state">
@@ -133,7 +125,7 @@
 </div>
 
 <style>
-.metric-btn, .stacked-btn {
+.metric-btn, .work-type-btn {
   background: transparent;
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
@@ -143,11 +135,11 @@
   cursor: pointer;
   transition: all 0.2s;
 }
-.metric-btn:hover, .stacked-btn:hover {
+.metric-btn:hover, .work-type-btn:hover {
   background: var(--bg-secondary);
   color: var(--text-primary);
 }
-.metric-btn.active, .stacked-btn.active {
+.metric-btn.active, .work-type-btn.active {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
@@ -187,6 +179,13 @@
     shares: parseTrendData(<%= @trend_shares.to_json.html_safe %>)
   };
 
+  var workTypeData = {
+    views: parseTrendData(<%= @work_type_views.to_json.html_safe %>),
+    likes: parseTrendData(<%= @work_type_likes.to_json.html_safe %>),
+    comments: parseTrendData(<%= @work_type_comments.to_json.html_safe %>),
+    shares: parseTrendData(<%= @work_type_shares.to_json.html_safe %>)
+  };
+
   var platformConfig = {
     '1': { label: 'Facebook', color: '#3b82f6' },
     '2': { label: 'Twitter', color: '#06b6d4' },
@@ -195,10 +194,16 @@
     '5': { label: 'Instagram', color: '#a855f7' }
   };
 
+  var workTypeConfig = {
+    '视频搬运': { label: '视频搬运', color: '#f59e0b' },
+    '人工运营': { label: '人工运营', color: '#10b981' },
+    'Grok': { label: 'Grok', color: '#8b5cf6' }
+  };
+
   var currentMetric = 'views';
   var trendChart = null;
-  var stackedChart = null;
-  var currentStackedMetric = 'views';
+  var workTypeChart = null;
+  var currentWorkTypeMetric = 'views';
 
   function getChartData(metric) {
     var data = trendData[metric];
@@ -285,7 +290,6 @@
 
       currentMetric = metric;
 
-      // 更新按钮active状态
       document.querySelectorAll('.metric-btn').forEach(function(btn) {
         btn.classList.remove('active');
       });
@@ -294,61 +298,65 @@
       renderChart();
     }
 
-    if (e.target.classList.contains('stacked-btn')) {
+    if (e.target.classList.contains('work-type-btn')) {
       var metric = e.target.getAttribute('data-metric');
       if (!metric) return;
 
-      currentStackedMetric = metric;
+      currentWorkTypeMetric = metric;
 
-      // 更新按钮active状态
-      document.querySelectorAll('.stacked-btn').forEach(function(btn) {
+      document.querySelectorAll('.work-type-btn').forEach(function(btn) {
         btn.classList.remove('active');
       });
       e.target.classList.add('active');
 
-      renderStackedChart();
+      renderWorkTypeChart();
     }
   });
 
-  function getStackedChartData(metric) {
-    var data = trendData[metric];
+  function getWorkTypeChartData(metric) {
+    var data = workTypeData[metric];
     var dates = Object.keys(data).sort();
-    var platforms = {};
+    var types = {};
 
     dates.forEach(function(date) {
-      Object.keys(data[date]).forEach(function(platform) {
-        platforms[platform] = true;
+      Object.keys(data[date]).forEach(function(type) {
+        types[type] = true;
       });
     });
 
-    var platformList = Object.keys(platforms);
+    var typeList = Object.keys(types);
 
-    var datasets = platformList.map(function(platform) {
-      var config = platformConfig[platform] || { label: platform, color: '#94a3b8' };
-      var platformData = dates.map(function(date) {
-        return data[date][platform] || 0;
+    var datasets = typeList.map(function(type) {
+      var config = workTypeConfig[type] || { label: type, color: '#94a3b8' };
+      var typeData = dates.map(function(date) {
+        return data[date][type] || 0;
       });
 
       return {
         label: config.label,
-        data: platformData,
-        backgroundColor: config.color,
-        borderWidth: 0
+        data: typeData,
+        borderColor: config.color,
+        backgroundColor: config.color + '33',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        tension: 0.3,
+        fill: false
       };
     });
 
     return { labels: dates, datasets: datasets };
   }
 
-  function renderStackedChart() {
-    var ctx = document.getElementById('stackedChart');
+  function renderWorkTypeChart() {
+    var ctx = document.getElementById('workTypeChart');
     if (!ctx) return;
 
-    if (stackedChart) stackedChart.destroy();
+    if (workTypeChart) workTypeChart.destroy();
 
-    stackedChart = new Chart(ctx.getContext('2d'), {
-      type: 'bar',
-      data: getStackedChartData(currentStackedMetric),
+    workTypeChart = new Chart(ctx.getContext('2d'), {
+      type: 'line',
+      data: getWorkTypeChartData(currentWorkTypeMetric),
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -369,12 +377,10 @@
         },
         scales: {
           x: {
-            stacked: true,
             grid: { color: 'rgba(255,255,255,0.05)' },
             ticks: { color: '#64748b', maxTicksLimit: 15, font: { size: 11 } }
           },
           y: {
-            stacked: true,
             beginAtZero: true,
             grid: { color: 'rgba(255,255,255,0.05)' },
             ticks: { color: '#64748b', font: { size: 11 } }
@@ -387,7 +393,7 @@
   // 初始化图表
   waitForChart(function() {
     renderChart();
-    renderStackedChart();
+    renderWorkTypeChart();
   });
 })();
 </script>

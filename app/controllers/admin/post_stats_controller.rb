@@ -39,6 +39,12 @@ class Admin::PostStatsController < Admin::BaseController
     @trend_comments = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:comments_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
     @trend_shares = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:shares_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
 
+    # 3) 按工作模式分组的趋势数据
+    @work_type_views = base_scope.group('post_stats.post_date', 'accounts.work_type').sum(:views_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
+    @work_type_likes = base_scope.group('post_stats.post_date', 'accounts.work_type').sum(:likes_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
+    @work_type_comments = base_scope.group('post_stats.post_date', 'accounts.work_type').sum(:comments_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
+    @work_type_shares = base_scope.group('post_stats.post_date', 'accounts.work_type').sum(:shares_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
+
     # 3) 明细表格（复用 index 逻辑）
     sort_column = params[:sort] || 'post_date'
     sort_direction = params[:direction] || 'desc'
