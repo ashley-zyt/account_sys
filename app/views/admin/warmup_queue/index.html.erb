@@ -89,6 +89,10 @@
         <%= f.select :platform_eq, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">工作模式</label>
+        <%= f.select :work_type_eq, Account.work_types.map { |k, v| [k, v] }, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
         <%= f.select :status_eq, Account.statuses.map { |k, v| [k, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
