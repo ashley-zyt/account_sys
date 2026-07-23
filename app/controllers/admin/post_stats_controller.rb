@@ -33,10 +33,11 @@ class Admin::PostStatsController < Admin::BaseController
     }
 
     # 2) 趋势数据：按日期 + 平台分组聚合（预加载4个指标）
-    @trend_views = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:views_count)
-    @trend_likes = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:likes_count)
-    @trend_comments = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:comments_count)
-    @trend_shares = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:shares_count)
+    # 将 [date, platform] => sum 格式化为 { "date,platform" => sum } 方便前端解析
+    @trend_views = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:views_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
+    @trend_likes = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:likes_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
+    @trend_comments = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:comments_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
+    @trend_shares = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:shares_count).map { |k, v| ["#{k[0]},#{k[1]}", v] }.to_h
 
     # 3) 明细表格（复用 index 逻辑）
     sort_column = params[:sort] || 'post_date'
