@@ -22,21 +22,21 @@
   </div>
 
   <%# 筛选表单 %>
-  <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+  <%= form_with url: trends_admin_post_stats_path, method: :get, class: "admin-filter-form", data: { turbo: false } do |f| %>
     <div class="admin-filter-group">
       <label class="admin-filter-label">平台</label>
-      <%= f.select :account_platform_eq, @platforms, { include_blank: "全部平台" }, class: "admin-input admin-filter-input" %>
+      <%= select_tag "q[account_platform_eq]", options_for_select(@platforms, params.dig(:q, :account_platform_eq)), include_blank: "全部平台", class: "admin-input admin-filter-input" %>
     </div>
     <div class="admin-filter-group">
       <label class="admin-filter-label">工作模式</label>
-      <%= f.select :account_work_type_eq, @work_types, { include_blank: "全部模式" }, class: "admin-input admin-filter-input" %>
+      <%= select_tag "q[account_work_type_eq]", options_for_select(@work_types, params.dig(:q, :account_work_type_eq)), include_blank: "全部模式", class: "admin-input admin-filter-input" %>
     </div>
     <div class="admin-filter-group">
       <label class="admin-filter-label">日期范围</label>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <%= f.date_field :post_date_gteq, class: "admin-input admin-filter-input", placeholder: "开始" %>
+        <%= date_field_tag "q[post_date_gteq]", params.dig(:q, :post_date_gteq), class: "admin-input admin-filter-input", placeholder: "开始" %>
         <span>~</span>
-        <%= f.date_field :post_date_lteq, class: "admin-input admin-filter-input", placeholder: "结束" %>
+        <%= date_field_tag "q[post_date_lteq]", params.dig(:q, :post_date_lteq), class: "admin-input admin-filter-input", placeholder: "结束" %>
       </div>
     </div>
     <div style="margin-left: auto; display: flex; gap: 8px;">
@@ -102,57 +102,6 @@
       <div style="font-size: 48px; margin-bottom: 12px;">📊</div>
       <div>暂无趋势数据，请先添加发文统计记录</div>
     </div>
-  <% end %>
-</div>
-
-<%# 明细数据表格 %>
-<div class="admin-card" style="margin-top: 20px;">
-  <div class="admin-card-header">
-    <div>
-      <div class="admin-card-title">明细数据</div>
-      <div class="admin-card-subtitle">最近发文记录详情</div>
-    </div>
-    <div class="admin-card-header-right">
-      <span class="admin-tag">共 <%= @post_stats.total_count %> 条</span>
-    </div>
-  </div>
-
-  <% if @post_stats.any? %>
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>账号</th>
-            <th>平台</th>
-            <th>发文日期</th>
-            <th>标题</th>
-            <th style="text-align: right;">浏览</th>
-            <th style="text-align: right;">点赞</th>
-            <th style="text-align: right;">评论</th>
-            <th style="text-align: right;">转发</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @post_stats.each do |stat| %>
-            <tr>
-              <td><%= link_to stat.account&.account_name, admin_account_path(stat.account), class: "admin-link-quiet" %></td>
-              <td><span class="admin-label"><%= stat.account&.platform || "-" %></span></td>
-              <td><%= stat.post_date&.strftime("%Y-%m-%d") || "-" %></td>
-              <td><%= truncate(stat.title, length: 40) || "-" %></td>
-              <td style="text-align: right;"><%= stat.views_count || 0 %></td>
-              <td style="text-align: right;"><%= stat.likes_count || 0 %></td>
-              <td style="text-align: right;"><%= stat.comments_count || 0 %></td>
-              <td style="text-align: right;"><%= stat.shares_count || 0 %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-    <div class="admin-pagination">
-      <%= paginate @post_stats %>
-    </div>
-  <% else %>
-    <div class="admin-empty-state">暂无发文数据</div>
   <% end %>
 </div>
 
