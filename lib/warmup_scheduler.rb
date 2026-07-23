@@ -9,8 +9,8 @@ class WarmupScheduler
   INTER_ACCOUNT_PAUSE_MIN = 30
   INTER_ACCOUNT_PAUSE_MAX = 60
   # 两台机器各自的运行时长（小时）
-  MOVE_TIME_WINDOW_HOURS = 5
-  OTHER_TIME_WINDOW_HOURS = 5
+  MOVE_TIME_WINDOW_HOURS = 4
+  OTHER_TIME_WINDOW_HOURS = 4
 
   def self.run_move
     Rails.logger.info "[WarmupScheduler] 开始搬运机器养号任务"
