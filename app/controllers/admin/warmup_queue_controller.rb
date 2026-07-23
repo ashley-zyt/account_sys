@@ -4,7 +4,7 @@ class Admin::WarmupQueueController < Admin::BaseController
     @accounts = @q.result(distinct: true)
                   .includes(:warmup_profile, :browser)
                   .joins(:warmup_profile)
-                  .where.not(status: [1, 2])  # 默认剔除未登录(1)和封禁/停用(2)的账号
+                  .where.not(status: [1, 2])
                   .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.last_warmup_at ASC"))
                   .page(params[:page])
                   .per(20)
