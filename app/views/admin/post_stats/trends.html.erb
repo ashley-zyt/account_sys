@@ -105,8 +105,35 @@
   <% end %>
 </div>
 
+<%# 堆叠柱状图 %>
+<div class="admin-card" style="margin-top: 20px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">平台占比</div>
+      <div class="admin-card-subtitle">各平台数据贡献堆叠展示</div>
+    </div>
+    <div class="admin-card-header-right" style="display: flex; gap: 6px;">
+      <button type="button" class="stacked-btn active" data-metric="views">浏览量</button>
+      <button type="button" class="stacked-btn" data-metric="likes">点赞数</button>
+      <button type="button" class="stacked-btn" data-metric="comments">评论数</button>
+      <button type="button" class="stacked-btn" data-metric="shares">转发数</button>
+    </div>
+  </div>
+
+  <% if @trend_views.present? || @trend_likes.present? || @trend_comments.present? || @trend_shares.present? %>
+    <div style="position: relative; height: 400px; padding: 20px;">
+      <canvas id="stackedChart"></canvas>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      <div style="font-size: 48px; margin-bottom: 12px;">📊</div>
+      <div>暂无数据</div>
+    </div>
+  <% end %>
+</div>
+
 <style>
-.metric-btn {
+.metric-btn, .stacked-btn {
   background: transparent;
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
@@ -116,11 +143,11 @@
   cursor: pointer;
   transition: all 0.2s;
 }
-.metric-btn:hover {
+.metric-btn:hover, .stacked-btn:hover {
   background: var(--bg-secondary);
   color: var(--text-primary);
 }
-.metric-btn.active {
+.metric-btn.active, .stacked-btn.active {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
@@ -170,6 +197,8 @@
 
   var currentMetric = 'views';
   var trendChart = null;
+  var stackedChart = null;
+  var currentStackedMetric = 'views';
 
   function getChartData(metric) {
     var data = trendData[metric];
@@ -253,20 +282,112 @@
     if (e.target.classList.contains('metric-btn')) {
       var metric = e.target.getAttribute('data-metric');
       if (!metric) return;
-      
+
       currentMetric = metric;
-      
+
       // 更新按钮active状态
       document.querySelectorAll('.metric-btn').forEach(function(btn) {
         btn.classList.remove('active');
       });
       e.target.classList.add('active');
-      
+
       renderChart();
+    }
+
+    if (e.target.classList.contains('stacked-btn')) {
+      var metric = e.target.getAttribute('data-metric');
+      if (!metric) return;
+
+      currentStackedMetric = metric;
+
+      // 更新按钮active状态
+      document.querySelectorAll('.stacked-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+      });
+      e.target.classList.add('active');
+
+      renderStackedChart();
     }
   });
 
+  function getStackedChartData(metric) {
+    var data = trendData[metric];
+    var dates = Object.keys(data).sort();
+    var platforms = {};
+
+    dates.forEach(function(date) {
+      Object.keys(data[date]).forEach(function(platform) {
+        platforms[platform] = true;
+      });
+    });
+
+    var platformList = Object.keys(platforms);
+
+    var datasets = platformList.map(function(platform) {
+      var config = platformConfig[platform] || { label: platform, color: '#94a3b8' };
+      var platformData = dates.map(function(date) {
+        return data[date][platform] || 0;
+      });
+
+      return {
+        label: config.label,
+        data: platformData,
+        backgroundColor: config.color,
+        borderWidth: 0
+      };
+    });
+
+    return { labels: dates, datasets: datasets };
+  }
+
+  function renderStackedChart() {
+    var ctx = document.getElementById('stackedChart');
+    if (!ctx) return;
+
+    if (stackedChart) stackedChart.destroy();
+
+    stackedChart = new Chart(ctx.getContext('2d'), {
+      type: 'bar',
+      data: getStackedChartData(currentStackedMetric),
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { color: '#94a3b8', usePointStyle: true, padding: 20, font: { size: 12 } }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            titleColor: '#e2e8f0',
+            bodyColor: '#cbd5e1',
+            borderColor: 'rgba(255,255,255,0.1)',
+            borderWidth: 1,
+            padding: 12
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#64748b', maxTicksLimit: 15, font: { size: 11 } }
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#64748b', font: { size: 11 } }
+          }
+        }
+      }
+    });
+  }
+
   // 初始化图表
-  waitForChart(renderChart);
+  waitForChart(function() {
+    renderChart();
+    renderStackedChart();
+  });
 })();
 </script>
