@@ -19,6 +19,41 @@ class Admin::PostStatsController < Admin::BaseController
     @current_direction = sort_direction
   end
 
+  # 发文数据趋势分析页面
+  def trends
+    @q = PostStat.ransack(params[:q])
+    base_scope = @q.result(distinct: true).joins(:account)
+
+    # 1) 汇总统计
+    @summary = {
+      views:   base_scope.sum(:views_count),
+      likes:   base_scope.sum(:likes_count),
+      comments: base_scope.sum(:comments_count),
+      shares:  base_scope.sum(:shares_count)
+    }
+
+    # 2) 趋势数据：按日期 + 平台分组聚合（预加载4个指标）
+    @trend_views = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:views_count)
+    @trend_likes = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:likes_count)
+    @trend_comments = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:comments_count)
+    @trend_shares = base_scope.group('post_stats.post_date', 'accounts.platform').sum(:shares_count)
+
+    # 3) 明细表格（复用 index 逻辑）
+    sort_column = params[:sort] || 'post_date'
+    sort_direction = params[:direction] || 'desc'
+    @post_stats = @q.result(distinct: true)
+                   .includes(:account)
+                   .order(sort_column => sort_direction)
+                   .page(params[:page])
+                   .per(15)
+
+    # 筛选选项
+    @work_types = Account.work_types.map { |k, v| [k, v] }
+    @platforms = Account.platforms.map { |k, v| [k, v] }
+    @current_sort = sort_column
+    @current_direction = sort_direction
+  end
+
   # 导出当前筛选结果为 CSV
   def export
     require 'csv'

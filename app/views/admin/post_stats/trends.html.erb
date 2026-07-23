@@ -1,0 +1,341 @@
+<% content_for :page_title do %>
+  发文数据趋势
+<% end %>
+<% content_for :page_subtitle do %>
+  查看各平台发文数据的趋势变化
+<% end %>
+
+<% content_for :head do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        发文数据趋势
+      </div>
+      <div class="admin-card-subtitle">
+        查看各平台发文数据的趋势变化
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <div style="display: flex; gap: 8px;">
+        <%= link_to "数据列表", admin_post_stats_path, class: "admin-button-secondary" %>
+        <span class="admin-tag">
+          共 <%= @post_stats.total_count %> 条
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <%# 筛选栏 %>
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <%= f.select :account_platform_eq, @platforms, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">工作模式</label>
+        <%= f.select :account_work_type_eq, @work_types, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">发文日期</label>
+        <div style="display: flex; gap: 8px;">
+          <%= f.date_field :post_date_gteq, class: "admin-input admin-filter-input", placeholder: "开始日期" %>
+          <span style="margin-top: 8px;">~</span>
+          <%= f.date_field :post_date_lteq, class: "admin-input admin-filter-input", placeholder: "结束日期" %>
+        </div>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", trends_admin_post_stats_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# 汇总统计卡片 %>
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px;">
+    <div style="padding: 20px; border-radius: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); border: 1px solid rgba(59, 130, 246, 0.2);">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div style="font-size: 20px;">👁️</div>
+        <div style="font-size: 12px; color: var(--text-secondary);">总浏览量</div>
+      </div>
+      <div style="font-size: 28px; font-weight: 700; color: #3b82f6;"><%= number_with_delimiter(@summary[:views]) %></div>
+    </div>
+    <div style="padding: 20px; border-radius: 12px; background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(236, 72, 153, 0.05)); border: 1px solid rgba(236, 72, 153, 0.2);">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div style="font-size: 20px;">❤️</div>
+        <div style="font-size: 12px; color: var(--text-secondary);">总点赞数</div>
+      </div>
+      <div style="font-size: 28px; font-weight: 700; color: #ec4899;"><%= number_with_delimiter(@summary[:likes]) %></div>
+    </div>
+    <div style="padding: 20px; border-radius: 12px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05)); border: 1px solid rgba(139, 92, 246, 0.2);">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div style="font-size: 20px;">💬</div>
+        <div style="font-size: 12px; color: var(--text-secondary);">总评论数</div>
+      </div>
+      <div style="font-size: 28px; font-weight: 700; color: #8b5cf6;"><%= number_with_delimiter(@summary[:comments]) %></div>
+    </div>
+    <div style="padding: 20px; border-radius: 12px; background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05)); border: 1px solid rgba(34, 197, 94, 0.2);">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div style="font-size: 20px;">🔄</div>
+        <div style="font-size: 12px; color: var(--text-secondary);">总转发数</div>
+      </div>
+      <div style="font-size: 28px; font-weight: 700; color: #22c55e;"><%= number_with_delimiter(@summary[:shares]) %></div>
+    </div>
+  </div>
+
+  <%# 趋势折线图 %>
+  <div style="margin-top: 32px; padding: 24px; border-radius: 12px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div>
+        <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);">数据趋势</div>
+        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">按日期展示各平台数据变化</div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="metric-btn admin-button-primary" data-metric="views">浏览量</button>
+        <button type="button" class="metric-btn admin-button-secondary" data-metric="likes">点赞数</button>
+        <button type="button" class="metric-btn admin-button-secondary" data-metric="comments">评论数</button>
+        <button type="button" class="metric-btn admin-button-secondary" data-metric="shares">转发数</button>
+      </div>
+    </div>
+    <div style="position: relative; height: 400px;">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+
+  <%# 明细表格 %>
+  <div style="margin-top: 32px;">
+    <div class="admin-card-header" style="margin-bottom: 16px;">
+      <div>
+        <div class="admin-card-title">明细数据</div>
+        <div class="admin-card-subtitle">按发文日期倒序展示</div>
+      </div>
+    </div>
+
+    <% if @post_stats.any? %>
+      <div class="admin-table-wrapper admin-table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>账号</th>
+              <th>平台</th>
+              <th>发文日期 <%= link_to '↑↓', request.params.merge(sort: 'post_date', direction: @current_sort == 'post_date' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+              <th>标题</th>
+              <th>点赞数 <%= link_to '↑↓', request.params.merge(sort: 'likes_count', direction: @current_sort == 'likes_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+              <th>转发数 <%= link_to '↑↓', request.params.merge(sort: 'shares_count', direction: @current_sort == 'shares_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+              <th>评论数 <%= link_to '↑↓', request.params.merge(sort: 'comments_count', direction: @current_sort == 'comments_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+              <th>浏览数 <%= link_to '↑↓', request.params.merge(sort: 'views_count', direction: @current_sort == 'views_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+              <th>数据更新时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @post_stats.each do |stat| %>
+              <tr>
+                <td>
+                  <%= link_to stat.account&.account_name, admin_account_path(stat.account), class: "admin-link-quiet" %>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= stat.account&.platform || "-" %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= stat.post_date.strftime("%Y-%m-%d") %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= truncate(stat.title, length: 30) || "-" %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= stat.likes_count || 0 %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= stat.shares_count || 0 %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= stat.comments_count || 0 %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= stat.views_count || 0 %>
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= stat.data_updated_at&.strftime("%Y-%m-%d %H:%M") || "-" %>
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <div class="admin-pagination">
+        <%= paginate @post_stats %>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        暂无发文数据。
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  // 趋势数据
+  const trendData = {
+    views: <%= @trend_views.to_json.html_safe %>,
+    likes: <%= @trend_likes.to_json.html_safe %>,
+    comments: <%= @trend_comments.to_json.html_safe %>,
+    shares: <%= @trend_shares.to_json.html_safe %>
+  };
+
+  // 平台配置（数据库存储整数，需要映射）
+  const platformConfig = {
+    '1': { label: 'Facebook', color: '#3b82f6' },
+    '2': { label: 'Twitter', color: '#06b6d4' },
+    '3': { label: 'TikTok', color: '#ec4899' },
+    '4': { label: 'YouTube', color: '#ef4444' },
+    '5': { label: 'Instagram', color: '#a855f7' }
+  };
+
+  let currentMetric = 'views';
+  let trendChart = null;
+
+  // 初始化图表
+  function initChart() {
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    trendChart = new Chart(ctx, {
+      type: 'line',
+      data: getChartData(currentMetric),
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              color: '#94a3b8',
+              usePointStyle: true,
+              padding: 20
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            titleColor: '#e2e8f0',
+            bodyColor: '#cbd5e1',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: 1,
+            padding: 12,
+            displayColors: true
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.06)'
+            },
+            ticks: {
+              color: '#94a3b8'
+            }
+          },
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(255, 255, 255, 0.06)'
+            },
+            ticks: {
+              color: '#94a3b8'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 获取图表数据
+  function getChartData(metric) {
+    const data = trendData[metric];
+    const dates = [...new Set(Object.keys(data).map(key => key.split(',')[0]))].sort();
+    const platforms = [...new Set(Object.keys(data).map(key => key.split(',')[1]))];
+
+    const datasets = platforms.map(platform => {
+      const config = platformConfig[platform] || { label: platform, color: '#94a3b8' };
+      const platformData = dates.map(date => {
+        const key = `${date},${platform}`;
+        return data[key] || 0;
+      });
+
+      return {
+        label: config.label,
+        data: platformData,
+        borderColor: config.color,
+        backgroundColor: config.color + '20',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.4,
+        fill: false
+      };
+    });
+
+    return {
+      labels: dates,
+      datasets: datasets
+    };
+  }
+
+  // 切换指标
+  function switchMetric(metric) {
+    currentMetric = metric;
+    trendChart.data = getChartData(metric);
+    trendChart.update();
+
+    // 更新按钮样式
+    document.querySelectorAll('.metric-btn').forEach(btn => {
+      if (btn.dataset.metric === metric) {
+        btn.className = 'metric-btn admin-button-primary';
+      } else {
+        btn.className = 'metric-btn admin-button-secondary';
+      }
+    });
+  }
+
+  // 绑定按钮事件
+  document.querySelectorAll('.metric-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchMetric(btn.dataset.metric));
+  });
+
+  // 页面加载完成后初始化
+  if (typeof Chart !== 'undefined') {
+    initChart();
+  } else {
+    window.addEventListener('load', initChart);
+  }
+</script>
+
+<style>
+  .metric-btn {
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+</style>
