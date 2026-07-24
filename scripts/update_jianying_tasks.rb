@@ -42,6 +42,7 @@ puts "总记录数: #{total_count}"
 puts "=" * 60
 
 JianyingTask.find_each(batch_size: 100) do |task|
+  puts task.id
   begin
     updates = {}
 
