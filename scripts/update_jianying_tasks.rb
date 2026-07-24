@@ -42,14 +42,13 @@ puts "总记录数: #{total_count}"
 puts "=" * 60
 
 JianyingTask.find_each(batch_size: 100) do |task|
-    task = JianyingTask.find(5821)
-  puts task.id
   begin
     updates = {}
 
-    if task.oss_url.present? && task.full_oss_url.blank?
+    if task.oss_url.present? 
       full_url = oss_v1_sign_url(task.oss_url)
-      updates[:full_oss_url] = full_url if full_url.present?
+      updates[:full_oss_url] = task.oss_url if task.oss_url.present?
+      updates[:oss_url] = full_url if full_url.present?
     end
 
     if task.platform == "youtube" && task.title.present?
