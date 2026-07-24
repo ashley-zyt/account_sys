@@ -104,7 +104,7 @@ class JianyingTask < ApplicationRecord
 		%w[account browser]
 	end
 	
-	def percent_encode(str)
+	def self.percent_encode(str)
 		URI.encode_www_form_component(str).gsub("+", "%20")
 	end
 	def self.oss_v1_sign_url(key, expires_seconds = 31536000)
