@@ -70,7 +70,7 @@ JianyingTask.find_each(batch_size: 100) do |task|
     failed_count += 1
     puts "\n任务 #{task.task_uuid} 更新失败: #{e.message}"
   end
-  break
+#   break
 end
 
 puts "\n"

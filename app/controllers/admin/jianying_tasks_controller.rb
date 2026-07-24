@@ -17,12 +17,12 @@ class Admin::JianyingTasksController < Admin::BaseController
 	def show
 		@image_names = parse_image_names(@jianying_task)
 		@image_urls  = build_oss_image_urls(@jianying_task, @image_names)
-		@video_url   = oss_v4_sign_url(@jianying_task.oss_url)
+		@video_url   = oss_v4_sign_url(@jianying_task.full_oss_url)
 	end
 
 	def destroy
 		if @jianying_task.pending?
-			delete_oss_video(@jianying_task.oss_url)
+			delete_oss_video(@jianying_task.full_oss_url)
 			@jianying_task.destroy
 			redirect_to admin_jianying_tasks_path, notice: "任务删除成功"
 		else
@@ -44,7 +44,7 @@ class Admin::JianyingTasksController < Admin::BaseController
 		fail_count = 0
 		tasks.each do |task|
 			if task.pending?
-				delete_oss_video(task.oss_url)
+				delete_oss_video(task.full_oss_url)
 				task.destroy
 				success_count += 1
 			else
