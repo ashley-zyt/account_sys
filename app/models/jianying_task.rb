@@ -80,6 +80,11 @@ class JianyingTask < ApplicationRecord
 		order(created_at: :desc)
 	}
 
+	OSS_BUCKET = "jianying-rd".freeze
+	OSS_REGION = "cn-hangzhou".freeze
+	OSS_ACCESS_KEY_ID = "gZL8z938T19mSUHf".freeze
+	OSS_ACCESS_KEY_SECRET = "A9fSDa9cH5YAExpEUR4QSizkFQEcrS".freeze
+
 	# 重置任务到 pending 状态
 	def reset_to_pending!
 		update!(
@@ -98,6 +103,23 @@ class JianyingTask < ApplicationRecord
 	def self.ransackable_associations(auth_object = nil)
 		%w[account browser]
 	end
+	
+
+	def self.oss_v1_sign_url(key, expires_seconds = 31536000)
+		return nil if key.blank?
+		expires = (Time.now.utc.to_i + expires_seconds).to_s
+		key = key.sub(%r{^/}, "")
+		string_to_sign = "GET\n\n\n#{expires}\n/#{OSS_BUCKET}/#{key}"
+		signature = Base64.strict_encode64(
+			OpenSSL::HMAC.digest("sha1", OSS_ACCESS_KEY_SECRET, string_to_sign)
+		).strip
+
+		encoded_key = key.split("/").map { |seg| percent_encode(seg) }.join("/")
+		"https://#{OSS_BUCKET}.oss-#{OSS_REGION}.aliyuncs.com/#{encoded_key}?" \
+			"OSSAccessKeyId=#{OSS_ACCESS_KEY_ID}" \
+			"&Expires=#{expires}" \
+			"&Signature=#{percent_encode(signature)}"
+	end
 
 	# 根据 API 接收的数据批量创建任务（每项数据生成 5 条，对应 5 个平台）
 	# item = { keyword:, keyword_code:, theme:, associated_images:, oss_key: }
@@ -105,17 +127,26 @@ class JianyingTask < ApplicationRecord
 		created = 0
 		items.each do |item|
 			group_id = SecureRandom.uuid
+			full_url = oss_v1_sign_url(item[:oss_key])
 			ALL_PLATFORMS.each do |platform|
+				title = generate_title(item[:theme], item[:keyword])
+				description = ""
+				if platform == :youtube
+					title = title[0...99]
+					description = title[99..-1]
+				end
 				task = new(
 					keyword: item[:keyword],
 					keyword_code: item[:keyword_code],
 					theme: item[:theme],
 					associated_images: item[:associated_images].is_a?(Array) ? item[:associated_images].to_json : item[:associated_images],
-					oss_url: item[:oss_key],
+					full_oss_url: item[:oss_key],
+					oss_url: full_url,
 					platform: platform,
 					status: :pending,
 					group_id: group_id,
-					title: generate_title(item[:theme], item[:keyword])
+					title: title,
+					description: description
 				)
 				created += 1 if task.save
 			end
