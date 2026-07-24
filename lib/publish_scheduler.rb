@@ -52,6 +52,8 @@ class PublishScheduler
                   'grok'
                 elsif task.is_a?(HeygenTask)
                   'heygen'
+                elsif task.is_a?(JianyingTask)
+                  'jianying'
                 else
                   'operation'
                 end
@@ -81,7 +83,11 @@ class PublishScheduler
                              .where("account_id IS NOT NULL")
                              .includes(:browser)
 
-    tasks = operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a
+    jianying_tasks = JianyingTask.where(status: :waiting_publish)
+                               .where("account_id IS NOT NULL")
+                               .includes(:browser)
+
+    tasks = operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a + jianying_tasks.to_a
     tasks = tasks.select { |t| t.platform == platform } if platform.present?
     tasks
   end

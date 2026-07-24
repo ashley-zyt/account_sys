@@ -21,7 +21,8 @@ class TaskScheduler
 		resource_configs = [
 			{ work_type: "人工运营", task_model: OperationTask, type_name: "运营" },
 			{ work_type: "Grok", task_model: GrokTask, type_name: "Grok" },
-			{ work_type: "Heygen", task_model: HeygenTask, type_name: "Heygen" }
+			{ work_type: "Heygen", task_model: HeygenTask, type_name: "Heygen" },
+			{ work_type: "剪映", task_model: JianyingTask, type_name: "剪映" }
 		]
 
 		resource_configs.each do |config|
@@ -77,6 +78,9 @@ class TaskScheduler
 
 		# 从 Heygen 任务中获取
 		pending_browser_ids += HeygenTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
+
+		# 从剪映任务中获取
+		pending_browser_ids += JianyingTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 获取浏览器名称
 		pending_browser_names = Browser.where(id: pending_browser_ids.uniq).pluck(:profile_name).uniq
@@ -215,7 +219,10 @@ class TaskScheduler
 		timeout_heygen_tasks = HeygenTask.where(status: :executing)
 		                                 .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
 
-		timeout_count = timeout_operation_tasks.count + timeout_grok_tasks.count + timeout_move_tasks.count + timeout_heygen_tasks.count
+		timeout_jianying_tasks = JianyingTask.where(status: :executing)
+		                                     .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
+
+		timeout_count = timeout_operation_tasks.count + timeout_grok_tasks.count + timeout_move_tasks.count + timeout_heygen_tasks.count + timeout_jianying_tasks.count
 
 		return if timeout_count == 0
 
@@ -265,11 +272,22 @@ class TaskScheduler
 			)
 		end
 
-		send_timeout_alert(timeout_count, timeout_operation_tasks.count, timeout_grok_tasks.count, timeout_move_tasks.count, timeout_heygen_tasks.count)
+		# 重置剪映任务
+		timeout_jianying_tasks.each do |task|
+			task.update!(
+				status: :pending,
+				account_id: nil,
+				browser_id: nil,
+				error_msg: "任务执行超时（超过8分钟）",
+				start_at: nil
+			)
+		end
+
+		send_timeout_alert(timeout_count, timeout_operation_tasks.count, timeout_grok_tasks.count, timeout_move_tasks.count, timeout_heygen_tasks.count, timeout_jianying_tasks.count)
 	end
 
 	# 发送超时任务告警消息
-	def self.send_timeout_alert(total_count, operation_count, grok_count, move_count, heygen_count = 0)
+	def self.send_timeout_alert(total_count, operation_count, grok_count, move_count, heygen_count = 0, jianying_count = 0)
 		require 'net/http'
 		require 'json'
 
@@ -282,7 +300,8 @@ class TaskScheduler
 		message += "• 运营任务：#{operation_count} 个\n"
 		message += "• Grok任务：#{grok_count} 个\n"
 		message += "• 搬运任务：#{move_count} 个\n"
-		message += "• Heygen任务：#{heygen_count} 个\n\n"
+		message += "• Heygen任务：#{heygen_count} 个\n"
+		message += "• 剪映任务：#{jianying_count} 个\n\n"
 		message += "⏰ 超时阈值：8分钟\n"
 		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}"
 
