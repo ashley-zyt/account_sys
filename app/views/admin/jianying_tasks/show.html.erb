@@ -70,6 +70,11 @@
     <span class="info-label">发布标题</span>
     <span class="info-value" style="font-size: 13px; color: #cbd5e1;"><%= @jianying_task.title %></span>
   </div>
+
+  <div class="info-item" style="padding-bottom: 16px;">
+    <span class="info-label">视频描述</span>
+    <span class="info-value" style="font-size: 13px; color: #cbd5e1;"><%= @jianying_task.description.presence || "-" %></span>
+  </div>
 </div>
 
 <!-- 视频下载 -->
@@ -86,6 +91,20 @@
       <% end %>
     </div>
   </div>
+
+  <% if @jianying_task.full_oss_url.present? %>
+    <div style="padding: 12px 16px; border-top: 1px solid #334155;">
+      <div class="info-item">
+        <span class="info-label">完整下载链接（有效期1年）</span>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <code style="flex: 1; font-size: 11px; color: #94a3b8; background: rgba(15,23,42,0.8); padding: 6px 10px; border-radius: 4px; word-break: break-all;"><%= @jianying_task.full_oss_url %></code>
+          <button class="copy-link-btn" data-url="<%= @jianying_task.full_oss_url %>" style="flex-shrink: 0; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25); color: #60a5fa; border-radius: 4px; padding: 6px 10px; cursor: pointer; white-space: nowrap;" title="复制链接">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  <% end %>
   <% if @video_url %>
     <div style="padding-top: 12px;">
       <video src="<%= @video_url %>" controls preload="metadata"
