@@ -108,7 +108,7 @@
                 <span class="admin-label-muted"><%= task.machine == 'move' ? '视频搬运机器' : '其他模式机器' %></span>
               </td>
               <td>
-                <span class="admin-label-muted" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;" title="<%= task.error_msg %>"><%= task.error_msg || '-' %></span>
+                <span class="admin-label-muted" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;" title="<%= task.error_msg %>"><%= task.error_msg || '-' %></span>
               </td>
               <td>
                 <span class="admin-label-muted"><%= task.created_at&.strftime("%m-%d %H:%M") %></span>
