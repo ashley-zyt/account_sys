@@ -26,35 +26,40 @@ class TaskScheduler
 		]
 
 		resource_configs.each do |config|
-			accounts = Account.active.where(work_type: config[:work_type])
-			accounts = accounts.where(platform: platform) if platform.present?
+			begin
+				accounts = Account.active.where(work_type: config[:work_type])
+				accounts = accounts.where(platform: platform) if platform.present?
 
-			accounts.each do |account|
-				task_model = config[:task_model]
-				type_name = config[:type_name]
+				accounts.each do |account|
+					task_model = config[:task_model]
+					type_name = config[:type_name]
 
-				has_posted_today = task_model.exists?(
-					account_id: account.id,
-					status: :success,
-					actual_publish_time: today_start..today_end
-				)
+					has_posted_today = task_model.exists?(
+						account_id: account.id,
+						status: :success,
+						actual_publish_time: today_start..today_end
+					)
 
-				next if has_posted_today
+					next if has_posted_today
 
-				pending_task = task_model.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
+					pending_task = task_model.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
 
-				if pending_task
-					ActiveRecord::Base.transaction do
-						pending_task.update!(
-							account_id: account.id,
-							browser_id: account.browser_id,
-							status: :waiting_publish
-						)
+					if pending_task
+						ActiveRecord::Base.transaction do
+							pending_task.update!(
+								account_id: account.id,
+								browser_id: account.browser_id,
+								status: :waiting_publish
+							)
+						end
+						Rails.logger.info "#{type_name}账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配 #{type_name} 资源成功"
+					else
+						Rails.logger.warn "#{type_name}账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用 #{type_name} 资源"
 					end
-					Rails.logger.info "#{type_name}账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配 #{type_name} 资源成功"
-				else
-					Rails.logger.warn "#{type_name}账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用 #{type_name} 资源"
 				end
+			rescue => e
+				Rails.logger.error "[TaskScheduler] 处理 #{config[:type_name]} 资源分配时发生异常: #{e.message}"
+				Rails.logger.error "[TaskScheduler] 异常堆栈: #{e.backtrace.join("\n")}"
 			end
 		end
 
