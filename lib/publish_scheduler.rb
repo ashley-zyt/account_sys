@@ -137,10 +137,15 @@ class PublishScheduler
   end
 
   def self.build_request_data(task)
+    video_url = if task.is_a?(OperationTask) || task.is_a?(JianyingTask)
+                  task.oss_url
+                else
+                  task.video_url
+                end
     {
       profile_name: ensure_utf8(task.browser.profile_name),
       title: ensure_utf8(task.title),
-      video_oss_url: ensure_utf8(task.is_a?(OperationTask) ? task.oss_url : task.video_url),
+      video_oss_url: ensure_utf8(video_url),
       description: ensure_utf8(task.description.to_s)
     }
   end
