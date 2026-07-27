@@ -23,17 +23,15 @@
 
   <%# 筛选表单 %>
   <%= form_with url: trends_admin_post_stats_path, method: :get, class: "admin-filter-form", data: { turbo: false } do |f| %>
-    <div class="admin-filter-group">
-      <label class="admin-filter-label">日期范围</label>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <%= date_field_tag "q[post_date_gteq]", params.dig(:q, :post_date_gteq), class: "admin-input admin-filter-input", placeholder: "开始" %>
-        <span>~</span>
-        <%= date_field_tag "q[post_date_lteq]", params.dig(:q, :post_date_lteq), class: "admin-input admin-filter-input", placeholder: "结束" %>
-        <div style="display: flex; gap: 4px; margin-left: 8px;">
-          <%= link_to "近一周", trends_admin_post_stats_path(q: { post_date_gteq: (Date.today - 7).strftime('%Y-%m-%d'), post_date_lteq: Date.today.strftime('%Y-%m-%d') }), class: "admin-button-secondary date-shortcut" %>
-          <%= link_to "近一个月", trends_admin_post_stats_path(q: { post_date_gteq: (Date.today - 30).strftime('%Y-%m-%d'), post_date_lteq: Date.today.strftime('%Y-%m-%d') }), class: "admin-button-secondary date-shortcut" %>
-          <%= link_to "近一年", trends_admin_post_stats_path(q: { post_date_gteq: (Date.today - 365).strftime('%Y-%m-%d'), post_date_lteq: Date.today.strftime('%Y-%m-%d') }), class: "admin-button-secondary date-shortcut" %>
-        </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <label class="admin-filter-label" style="margin-right: 4px;">日期范围</label>
+      <%= date_field_tag "q[post_date_gteq]", params.dig(:q, :post_date_gteq), class: "admin-input admin-filter-input", placeholder: "开始" %>
+      <span>~</span>
+      <%= date_field_tag "q[post_date_lteq]", params.dig(:q, :post_date_lteq), class: "admin-input admin-filter-input", placeholder: "结束" %>
+      <div style="display: flex; gap: 4px; margin-left: 8px;">
+        <%= link_to "近一周", trends_admin_post_stats_path(q: { post_date_gteq: (Date.today - 7).strftime('%Y-%m-%d'), post_date_lteq: Date.today.strftime('%Y-%m-%d') }), class: "admin-button-secondary date-shortcut" %>
+        <%= link_to "近一个月", trends_admin_post_stats_path(q: { post_date_gteq: (Date.today - 30).strftime('%Y-%m-%d'), post_date_lteq: Date.today.strftime('%Y-%m-%d') }), class: "admin-button-secondary date-shortcut" %>
+        <%= link_to "近一年", trends_admin_post_stats_path(q: { post_date_gteq: (Date.today - 365).strftime('%Y-%m-%d'), post_date_lteq: Date.today.strftime('%Y-%m-%d') }), class: "admin-button-secondary date-shortcut" %>
       </div>
     </div>
     <div style="margin-left: auto; display: flex; gap: 8px;">
