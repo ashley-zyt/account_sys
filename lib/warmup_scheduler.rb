@@ -3,8 +3,8 @@ class WarmupScheduler
   MOVE_ENDPOINT = "http://#{ENV['MOVE_NURTURE_HOST'] || '174.139.46.117'}:8080/accounts/nurture"
   OTHER_ENDPOINT = "http://#{ENV['OTHER_NURTURE_HOST'] || '174.139.46.15'}:8080/accounts/nurture"
 
-  # 单次请求最长16分钟
-  TIMEOUT_SECONDS = 960
+  # 单次请求最长10分钟
+  TIMEOUT_SECONDS = 660
   # 账号间等待时间
   INTER_ACCOUNT_PAUSE_MIN = 30
   INTER_ACCOUNT_PAUSE_MAX = 60
