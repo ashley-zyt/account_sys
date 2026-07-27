@@ -134,15 +134,19 @@
       <div class="admin-card-title">各平台浏览量前十账号</div>
       <div class="admin-card-subtitle">当前筛选条件下各平台浏览量最高的账号</div>
     </div>
+    <div class="admin-card-header-right" style="display: flex; gap: 4px;">
+      <% @top_accounts_by_platform.each_with_index do |(platform, accounts), index| %>
+        <button type="button" class="platform-tab-btn <%= index == 0 ? 'active' : '' %>" data-platform="<%= platform %>">
+          <%= Account.platforms.key(platform) || platform %>
+        </button>
+      <% end %>
+    </div>
   </div>
 
   <% if @top_accounts_by_platform.present? %>
     <div style="padding: 20px;">
-      <% @top_accounts_by_platform.each do |platform, accounts| %>
-        <div style="margin-bottom: 24px;">
-          <div style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">
-            <%= Account.platforms.key(platform) || platform %>
-          </div>
+      <% @top_accounts_by_platform.each_with_index do |(platform, accounts), index| %>
+        <div class="platform-tab-content <%= index == 0 ? 'active' : '' %>" data-platform="<%= platform %>">
           <table style="width: 100%; border-collapse: collapse;">
             <thead>
               <tr style="background: var(--bg-secondary);">
@@ -221,6 +225,31 @@
 .date-shortcut:hover {
   background: var(--accent);
   color: #fff;
+}
+.platform-tab-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.platform-tab-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+.platform-tab-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.platform-tab-content {
+  display: none;
+}
+.platform-tab-content.active {
+  display: block;
 }
 </style>
 
@@ -391,6 +420,24 @@
       e.target.classList.add('active');
 
       renderWorkTypeChart();
+    }
+
+    if (e.target.classList.contains('platform-tab-btn')) {
+      var platform = e.target.getAttribute('data-platform');
+      if (!platform) return;
+
+      document.querySelectorAll('.platform-tab-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+      });
+      e.target.classList.add('active');
+
+      document.querySelectorAll('.platform-tab-content').forEach(function(content) {
+        content.classList.remove('active');
+      });
+      var targetContent = document.querySelector('.platform-tab-content[data-platform="' + platform + '"]');
+      if (targetContent) {
+        targetContent.classList.add('active');
+      }
     }
   });
 
