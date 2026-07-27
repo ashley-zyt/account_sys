@@ -59,6 +59,29 @@ class Admin::PostStatsController < Admin::BaseController
                    .page(params[:page])
                    .per(15)
 
+    # 4) 各平台浏览量前十的账号
+    @top_accounts_by_platform = {}
+    platforms = base_scope.distinct.pluck('accounts.platform')
+    platforms.each do |platform|
+      platform_scope = @q.result.joins(:account).where(accounts: { platform: platform })
+      top_accounts = platform_scope.group('accounts.id')
+                                   .select(
+                                     'accounts.id',
+                                     'accounts.theme',
+                                     'accounts.work_type',
+                                     'accounts.account_name',
+                                     'accounts.source_url',
+                                     'accounts.platform',
+                                     'SUM(post_stats.views_count) as total_views',
+                                     'SUM(post_stats.likes_count) as total_likes',
+                                     'SUM(post_stats.comments_count) as total_comments',
+                                     'SUM(post_stats.shares_count) as total_shares'
+                                   )
+                                   .order('total_views DESC')
+                                   .limit(10)
+      @top_accounts_by_platform[platform] = top_accounts
+    end
+
     # 筛选选项
     @work_types = Account.work_types.map { |k, v| [k, v] }
     @platforms = Account.platforms.map { |k, v| [k, v] }
