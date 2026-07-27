@@ -50,7 +50,7 @@ class WarmupScheduler
                    .where("browser_id IS NOT NULL")
                    .where.not(status: ["未登录", "封禁/停用"])
                    .where(warmup_profiles: { warmup_enabled: true, machine: machine_type.to_s })
-                   .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.last_warmup_at ASC"))
+                   .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.warmup_status = 'failed' DESC, warmup_profiles.last_warmup_at ASC"))
     
     scope
   end
@@ -97,13 +97,13 @@ class WarmupScheduler
         Rails.logger.error "[WarmupScheduler] 养号失败: #{account.account_name} - #{error_msg}"
         warmup_task.update!(status: :failed, error_msg: error_msg, executed_at: Time.current)
         profile = account.warmup_profile || account.create_warmup_profile
-        profile.update!(warmup_status: 'failed')
+        profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
       end
     rescue => e
       Rails.logger.error "[WarmupScheduler] 养号异常: #{account.account_name} - #{e.message}"
       warmup_task.update!(status: :failed, error_msg: e.message, executed_at: Time.current)
       profile = account.warmup_profile || account.create_warmup_profile
-      profile.update!(warmup_status: 'failed')
+      profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
     end
   end
 
