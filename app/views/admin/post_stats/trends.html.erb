@@ -29,6 +29,11 @@
         <%= date_field_tag "q[post_date_gteq]", params.dig(:q, :post_date_gteq), class: "admin-input admin-filter-input", placeholder: "开始" %>
         <span>~</span>
         <%= date_field_tag "q[post_date_lteq]", params.dig(:q, :post_date_lteq), class: "admin-input admin-filter-input", placeholder: "结束" %>
+        <div style="display: flex; gap: 4px; margin-left: 8px;">
+          <%= link_to "近一周", trends_admin_post_stats_path(q: { post_date_gteq: (Date.today - 7).strftime('%Y-%m-%d'), post_date_lteq: Date.today.strftime('%Y-%m-%d') }), class: "admin-button-secondary date-shortcut" %>
+          <%= link_to "近一个月", trends_admin_post_stats_path(q: { post_date_gteq: (Date.today - 30).strftime('%Y-%m-%d'), post_date_lteq: Date.today.strftime('%Y-%m-%d') }), class: "admin-button-secondary date-shortcut" %>
+          <%= link_to "近一年", trends_admin_post_stats_path(q: { post_date_gteq: (Date.today - 365).strftime('%Y-%m-%d'), post_date_lteq: Date.today.strftime('%Y-%m-%d') }), class: "admin-button-secondary date-shortcut" %>
+        </div>
       </div>
     </div>
     <div style="margin-left: auto; display: flex; gap: 8px;">
@@ -143,6 +148,14 @@
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
+}
+.date-shortcut {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+.date-shortcut:hover {
+  background: var(--accent);
+  color: #fff;
 }
 </style>
 

@@ -21,6 +21,11 @@ class Admin::PostStatsController < Admin::BaseController
 
   # 发文数据趋势分析页面
   def trends
+    params[:q] ||= {}
+    unless params[:q][:post_date_gteq].present? && params[:q][:post_date_lteq].present?
+      params[:q][:post_date_gteq] = (Date.today - 30).strftime('%Y-%m-%d')
+      params[:q][:post_date_lteq] = Date.today.strftime('%Y-%m-%d')
+    end
     @q = PostStat.ransack(params[:q])
     base_scope = @q.result(distinct: true).joins(:account)
 
