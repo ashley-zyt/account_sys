@@ -101,16 +101,17 @@ end
 
 
 # ==================== 养号任务配置 ====================
-# 约束条件：
-# - 每个账号养号：10-15分钟
-# - 可用时间窗口：凌晨23:00-02:30（3小时）
-# - 每批次可处理：约15个账号
-# - 机器隔离：视频搬运在一台，其他模式在另一台
-# - 策略：每天处理一批，轮流循环所有账号
-# - 机器自动检测：通过环境变量 WARMUP_MACHINE 或主机名自动识别
+# 两台机器独立运行，各自控制运行时长
+# - 运行5小时
+# - 错开时间运行，避免冲突
 
-# set :output, "log/warmup_scheduler.log"
-# every :day, at: '23:00' do
-#   runner 'WarmupScheduler.run'
-# end
+set :output, "log/warmup_scheduler_move.log"
+every :day, at: '21:00' do
+  runner 'WarmupScheduler.run_move'
+end
+
+set :output, "log/warmup_scheduler_other.log"
+every :day, at: '21:00' do
+  runner 'WarmupScheduler.run_other'
+end
 
