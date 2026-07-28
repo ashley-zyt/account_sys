@@ -217,12 +217,12 @@ XML
 
   def destroy
     unless @operation_task.pending?
-      redirect_to admin_operation_tasks_path, alert: '仅 pending 状态的运营任务可被删除'
+      redirect_back fallback_location: admin_operation_tasks_path, alert: '仅 pending 状态的运营任务可被删除'
       return
     end
 
     @operation_task.destroy
-    redirect_to admin_operation_tasks_path, notice: '运营任务已删除'
+    redirect_back fallback_location: admin_operation_tasks_path, notice: '运营任务已删除'
   end
 
   private
