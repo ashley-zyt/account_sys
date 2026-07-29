@@ -26,7 +26,8 @@ class PostDatas
     data = browsers.map do |browser|
       active_accounts = browser.accounts
                           .where(status: Account.statuses['正常'])
-                          .where.not(platform: Account.platforms['facebook'])
+                          .where(platform: 4)
+                          # .where.not(platform: Account.platforms['facebook'])
       {
         id: browser.id,
         profile_name: browser.profile_name,
