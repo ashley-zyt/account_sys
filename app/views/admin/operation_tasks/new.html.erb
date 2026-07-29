@@ -396,9 +396,12 @@ function initOperationTaskUpload() {
   var progressPercent = document.getElementById('progress_percent');
   var uploadInfo = document.getElementById('upload_info');
 
+  var originalFileName = '';
+
   fileInput.addEventListener('change', function() {
     if (this.files && this.files.length > 0) {
       var file = this.files[0];
+      originalFileName = file.name;
       fileName.textContent = file.name + ' (' + formatSize(file.size) + ')';
       fileInfo.style.display = 'flex';
     }
@@ -408,6 +411,7 @@ function initOperationTaskUpload() {
     e.preventDefault();
     fileInput.value = '';
     fileInfo.style.display = 'none';
+    originalFileName = '';
   });
 
   form.addEventListener('submit', function(e) {
@@ -510,6 +514,7 @@ function initOperationTaskUpload() {
       formData.append('operation_task[title]', title);
       formData.append('operation_task[description]', description);
       formData.append('oss_key', ossKey);
+      formData.append('source_filename', originalFileName);
 
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/admin/operation_tasks', true);

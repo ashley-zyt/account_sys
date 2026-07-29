@@ -85,7 +85,7 @@ class OperationTask < ApplicationRecord
 	end
 
 	def self.ransackable_attributes(auth_object = nil)
-		%w[id task_uuid oss_url theme title description status error_msg start_at actual_publish_time account_id browser_id platform group_id created_at updated_at]
+		%w[id task_uuid oss_url theme title description status error_msg start_at actual_publish_time account_id browser_id platform group_id created_at updated_at source_filename]
 	end
 
 	def self.ransackable_associations(auth_object = nil)

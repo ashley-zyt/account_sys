@@ -152,6 +152,7 @@ XML
       theme = operation_task_params[:theme]
       title = escape_quotes(operation_task_params[:title])
       description = escape_quotes(operation_task_params[:description])
+      source_filename = params[:source_filename]
       
       # 生成带签名的 URL（有效期7天）
       oss_url = generate_signed_url(params[:oss_key])
@@ -166,7 +167,8 @@ XML
           oss_url: oss_url,
           platform: platform,
           status: :pending,
-          group_id: group_id
+          group_id: group_id,
+          source_filename: source_filename
         )
       end
       OperationTask.create(
@@ -176,7 +178,8 @@ XML
           oss_url: oss_url,
           platform: "youtube",
           status: :pending,
-          group_id: group_id
+          group_id: group_id,
+          source_filename: source_filename
         )
       redirect_to admin_operation_tasks_path, notice: '运营资源添加成功'
     else
