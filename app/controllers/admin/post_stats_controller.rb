@@ -72,6 +72,7 @@ class Admin::PostStatsController < Admin::BaseController
                                      'accounts.account_name',
                                      'accounts.source_url',
                                      'accounts.platform',
+                                     'COUNT(post_stats.id) as total_posts',
                                      'SUM(post_stats.views_count) as total_views',
                                      'SUM(post_stats.likes_count) as total_likes',
                                      'SUM(post_stats.comments_count) as total_comments',

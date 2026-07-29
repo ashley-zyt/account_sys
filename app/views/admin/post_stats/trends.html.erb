@@ -155,6 +155,7 @@
                 <th style="padding: 10px; text-align: left; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">工作模式</th>
                 <th style="padding: 10px; text-align: left; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">账号名</th>
                 <th style="padding: 10px; text-align: left; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">账号链接</th>
+                <th style="padding: 10px; text-align: right; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">发文总量</th>
                 <th style="padding: 10px; text-align: right; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">浏览总量</th>
                 <th style="padding: 10px; text-align: right; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">点赞总量</th>
                 <th style="padding: 10px; text-align: right; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">评论总量</th>
@@ -175,6 +176,7 @@
                       <span style="color: var(--text-secondary); font-size: 13px;">-</span>
                     <% end %>
                   </td>
+                  <td style="padding: 10px; text-align: right; font-size: 13px; color: var(--text-primary);"><%= number_with_delimiter(account.total_posts || 0) %></td>
                   <td style="padding: 10px; text-align: right; font-size: 13px; color: var(--text-primary);"><%= number_with_delimiter(account.total_views || 0) %></td>
                   <td style="padding: 10px; text-align: right; font-size: 13px; color: var(--text-primary);"><%= number_with_delimiter(account.total_likes || 0) %></td>
                   <td style="padding: 10px; text-align: right; font-size: 13px; color: var(--text-primary);"><%= number_with_delimiter(account.total_comments || 0) %></td>
