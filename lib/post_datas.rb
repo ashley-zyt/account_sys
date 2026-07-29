@@ -19,10 +19,10 @@ class PostDatas
     browsers = Browser
                  .joins(:accounts)
                  .where(accounts: { status: Account.statuses['正常'] })
-                 .where.not(accounts: { platform: Account.platforms['facebook'] })
+                 .where(accounts: { platform: 4 })
                  .distinct
                  .order(created_at: :desc)
-
+    # .where.not(accounts: { platform: Account.platforms['facebook'] })
     data = browsers.map do |browser|
       active_accounts = browser.accounts
                           .where(status: Account.statuses['正常'])
