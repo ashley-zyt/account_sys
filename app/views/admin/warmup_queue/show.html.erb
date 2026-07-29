@@ -19,11 +19,11 @@
   </div>
 
   <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px;">
-    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">平台</div>
       <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @account.platform.to_s.titleize %></div>
     </div>
-    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">状态</div>
       <% status_colors = { '正常' => '#22c55e', '未登录' => '#f59e0b', '封禁/停用' => '#ef4444', '浏览养护' => '#3b82f6' } %>
       <% color = status_colors[@account.status] || '#9ca3af' %>
@@ -31,23 +31,23 @@
         <%= @account.status %>
       </span>
     </div>
-    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">工作类型</div>
       <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @account.work_type || '-' %></div>
     </div>
-    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">主题</div>
       <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @account.theme || '-' %></div>
     </div>
-    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">浏览器</div>
       <% if @account.browser %>
         <%= link_to @account.browser.profile_name, admin_browser_path(@account.browser), class: "admin-link-quiet", style: "font-size: 14px; font-weight: 500;" %>
       <% else %>
-        <span style="font-size: 13px; color: var(--text-tertiary);">未绑定</span>
+        <span style="font-size: 13px; color: var(--text-tertiary, #6b7280);">未绑定</span>
       <% end %>
     </div>
-    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">运营人员</div>
       <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @account.operator || '-' %></div>
     </div>
@@ -65,7 +65,7 @@
 
   <% if @warmup_profile %>
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px;">
-      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">养号开关</div>
         <% if @warmup_profile.warmup_enabled %>
           <span style="display: inline-flex; align-items: center; gap: 6px;">
@@ -79,7 +79,7 @@
           </span>
         <% end %>
       </div>
-      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">机器类型</div>
         <% if @warmup_profile.machine == 'move' %>
           <span style="display: inline-flex; align-items: center; gap: 6px;">
@@ -93,7 +93,7 @@
           </span>
         <% end %>
       </div>
-      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">上次养号</div>
         <% if @warmup_profile.last_warmup_at %>
           <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);"><%= @warmup_profile.last_warmup_at.strftime("%m-%d %H:%M") %></div>
@@ -105,13 +105,13 @@
           <span style="color: #f59e0b; font-size: 13px;">从未养号</span>
         <% end %>
       </div>
-      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+      <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">养号状态</div>
         <% if @warmup_profile.warmup_status.present? %>
           <% ws_color = @warmup_profile.warmup_status == 'success' ? '#22c55e' : '#ef4444' %>
           <span style="font-size: 14px; font-weight: 500; color: <%= ws_color %>;"><%= @warmup_profile.warmup_status == 'success' ? '成功' : @warmup_profile.warmup_status %></span>
         <% else %>
-          <span style="font-size: 13px; color: var(--text-tertiary);">-</span>
+          <span style="font-size: 13px; color: var(--text-tertiary, #6b7280);">-</span>
         <% end %>
       </div>
     </div>

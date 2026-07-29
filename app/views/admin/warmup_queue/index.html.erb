@@ -19,47 +19,47 @@
 
   <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
     <%# 可用账号 %>
-    <div style="padding: 14px; border-radius: 10px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="padding: 14px; border-radius: 10px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">可用账号</div>
       <div style="display: flex; gap: 20px; align-items: baseline;">
         <div>
           <div style="font-size: 22px; font-weight: 700; color: #3b82f6;"><%= @move_total %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary);">搬运机器</div>
+          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">搬运机器</div>
         </div>
-        <div style="width: 1px; height: 32px; background: var(--border-color, #e5e7eb);"></div>
+        <div style="width: 1px; height: 32px; background: var(--border-color, #1f2937);"></div>
         <div>
           <div style="font-size: 22px; font-weight: 700; color: #8b5cf6;"><%= @other_total %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary);">运营机器</div>
+          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">运营机器</div>
         </div>
       </div>
     </div>
     <%# 养号启用 %>
-    <div style="padding: 14px; border-radius: 10px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="padding: 14px; border-radius: 10px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">养号启用</div>
       <div style="display: flex; gap: 20px; align-items: baseline;">
         <div>
           <div style="font-size: 22px; font-weight: 700; color: #3b82f6;"><%= @move_enabled %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary);">搬运机器</div>
+          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">搬运机器</div>
         </div>
-        <div style="width: 1px; height: 32px; background: var(--border-color, #e5e7eb);"></div>
+        <div style="width: 1px; height: 32px; background: var(--border-color, #1f2937);"></div>
         <div>
           <div style="font-size: 22px; font-weight: 700; color: #8b5cf6;"><%= @other_enabled %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary);">运营机器</div>
+          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">运营机器</div>
         </div>
       </div>
     </div>
     <%# 待养号 %>
-    <div style="padding: 14px; border-radius: 10px; background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border-color, #e5e7eb);">
+    <div style="padding: 14px; border-radius: 10px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
       <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">待养号（>48h）</div>
       <div style="display: flex; gap: 20px; align-items: baseline;">
         <div>
           <div style="font-size: 22px; font-weight: 700; color: #3b82f6;"><%= @move_due %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary);">搬运机器</div>
+          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">搬运机器</div>
         </div>
-        <div style="width: 1px; height: 32px; background: var(--border-color, #e5e7eb);"></div>
+        <div style="width: 1px; height: 32px; background: var(--border-color, #1f2937);"></div>
         <div>
           <div style="font-size: 22px; font-weight: 700; color: #8b5cf6;"><%= @other_due %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary);">运营机器</div>
+          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">运营机器</div>
         </div>
       </div>
     </div>
