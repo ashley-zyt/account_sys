@@ -130,13 +130,10 @@
               </td>
               <td>
                 <span class="admin-label-muted">
-                  <% case stat.account&.work_type %>
-                  <% when "人工运营" %>
-                    <%= stat.account&.operator || "-" %>
-                  <% when "Grok" %>
-                    Grok
+                  <% if stat.account&.operator.present? %>
+                    <%= stat.account.operator %>
                   <% else %>
-                    视频搬运
+                    <%= stat.account&.work_type || "-" %>
                   <% end %>
                 </span>
               </td>
