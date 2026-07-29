@@ -67,6 +67,14 @@
           <%= @operation_task.created_at&.strftime("%Y-%m-%d %H:%M") %>
         </div>
       </div>
+      <div>
+        <div class="admin-field-label">
+          源文件名
+        </div>
+        <div class="admin-field-value">
+          <%= @operation_task.source_filename || "无" %>
+        </div>
+      </div>
     </div>
 
     <div class="admin-section-title" style="margin-top: 14px;">
