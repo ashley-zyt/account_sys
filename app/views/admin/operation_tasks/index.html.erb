@@ -58,9 +58,6 @@
               ID
             </th>
             <th>
-              源文件名
-            </th>
-            <th>
               文案
             </th>
             <th>
@@ -96,15 +93,6 @@
                 <span class="admin-label-muted">
                   <%= task.id %>
                 </span>
-              </td>
-              <td>
-                <% if task.source_filename.present? %>
-                  <span class="admin-label-muted" title="<%= task.source_filename %>">
-                    <%= truncate(task.source_filename, length: 20) %>
-                  </span>
-                <% else %>
-                  <span class="admin-label-muted">-</span>
-                <% end %>
               </td>
               <td>
                 <%= link_to truncate(task.title.presence || task.oss_url, length: 30), admin_operation_task_path(task), class: "admin-link-quiet" %>
