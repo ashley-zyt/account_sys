@@ -59,7 +59,7 @@ class PostDatas
       else
         data << {
           id: browser.id,
-          profile_name: self.browser.profile_name,
+          profile_name: browser.profile_name,
           active_accounts: accounts.map do |acc|
             {
               id: acc.id,
