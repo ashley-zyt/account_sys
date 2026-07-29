@@ -20,6 +20,7 @@ class PostDatas
                  .joins(:accounts)
                  .where(accounts: { status: Account.statuses['正常'] })
                  .where(accounts: { platform: 4 })
+                 .where(profile_name: ["hanfuxiu","	zhongguowu"])
                  .distinct
                  .order(created_at: :desc)
     # .where.not(accounts: { platform: Account.platforms['facebook'] })
