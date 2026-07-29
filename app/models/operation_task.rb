@@ -6,13 +6,14 @@
 #  actual_publish_time(实际发布时间) :datetime
 #  description                       :text(65535)
 #  error_msg(错误信息)               :text(65535)
-#  oss_url(OSS文件地址)              :string(255)
+#  oss_url(OSS文件地址)              :text(65535)
 #  platform                          :integer
+#  source_filename                   :string(255)
 #  start_at(开始时间)                :datetime
 #  status                            :integer          default("pending")
 #  task_uuid(任务UUID)               :string(255)
 #  theme(主题)                       :string(255)
-#  title(标题)                       :string(255)
+#  title(标题)                       :text(65535)
 #  created_at                        :datetime         not null
 #  updated_at                        :datetime         not null
 #  account_id(账号ID)                :bigint
@@ -24,6 +25,7 @@
 #  index_operation_tasks_on_account_id              (account_id)
 #  index_operation_tasks_on_account_id_and_oss_url  (account_id,oss_url) UNIQUE
 #  index_operation_tasks_on_oss_url_and_platform    (oss_url,platform) UNIQUE
+#  index_operation_tasks_on_source_filename         (source_filename)
 #  index_operation_tasks_on_status                  (status)
 #  index_operation_tasks_on_task_uuid               (task_uuid) UNIQUE
 #
