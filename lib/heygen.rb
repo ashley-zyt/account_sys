@@ -372,7 +372,6 @@ class Heygen
       caption_url = response.parsed_response['data']['captioned_video_url'] rescue nil
       if caption_url
         task = HeygenTask.find_by(id: video.heygen_task_id)
-        next unless task.present?
         title,description = task['title'], task['description']
         
         platforms = Account.where(theme:task["theme"]).pluck("platform").uniq
