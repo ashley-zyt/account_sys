@@ -363,49 +363,52 @@ class Heygen
 
       api_key = ENV['HEYGEN_API_KEY']
       return nil unless api_key.present?
-      video = CryptoVideo.where(video_status:"生成中").order("created_at desc").first
-      response = HTTParty.get(
-        "https://api.heygen.com/v3/videos/#{video.video_id}",
-        headers: { 'X-Api-Key' => api_key },
-        timeout: 30
-      )
-      caption_url = response.parsed_response['data']['captioned_video_url'] rescue nil
-      if caption_url
-        task = HeygenTask.find_by(id: video.heygen_task_id)
-        title,description = task['title'], task['description']
-        
-        platforms = Account.where(theme:task["theme"]).pluck("platform").uniq
-        if platforms.include?"youtube"
-          platforms.delete("youtube")
-          platforms.each do |platform|
-            HeygenTask.create(
-              theme: task['theme'],
-              video_url: caption_url,
-              status: 0,
-              templete_id: task['templete_id'],
-              video_text: task['video_text'],
-              task_uuid: task['task_uuid'],
-              platform: platform,
-              title: title,
-            )
+      crypto_videos = CryptoVideo.where(video_status:"生成中")
+      crypto_videos.each do |video|
+        response = HTTParty.get(
+          "https://api.heygen.com/v3/videos/#{video.video_id}",
+          headers: { 'X-Api-Key' => api_key },
+          timeout: 30
+        )
+        caption_url = response.parsed_response['data']['captioned_video_url'] rescue nil
+        if caption_url
+          task = HeygenTask.find_by(id: video.heygen_task_id)
+          next unless task.present?
+          title,description = task['title'], task['description']
+          
+          platforms = Account.where(theme:task["theme"]).pluck("platform").uniq
+          if platforms.include?"youtube"
+            platforms.delete("youtube")
+            platforms.each do |platform|
+              HeygenTask.create(
+                theme: task['theme'],
+                video_url: caption_url,
+                status: 0,
+                templete_id: task['templete_id'],
+                video_text: task['video_text'],
+                task_uuid: task['task_uuid'],
+                platform: platform,
+                title: title,
+              )
+            end
+            task.update!(video_url: caption_url, platform: 'youtube',title:description,description: title)
+          else
+            platforms.each do |platform|
+              HeygenTask.create(
+                theme: task['theme'],
+                video_url: caption_url,
+                status: 0,
+                templete_id: task['templete_id'],
+                video_text: task['video_text'],
+                task_uuid: task['task_uuid'],
+                platform: platform,
+                title: title,
+              )
+            end
+            task.destroy
           end
-          task.update!(video_url: caption_url, platform: 'youtube',title:description,description: title)
-        else
-          platforms.each do |platform|
-            HeygenTask.create(
-              theme: task['theme'],
-              video_url: caption_url,
-              status: 0,
-              templete_id: task['templete_id'],
-              video_text: task['video_text'],
-              task_uuid: task['task_uuid'],
-              platform: platform,
-              title: title,
-            )
-          end
-          task.destroy
+          video.update!(video_status:"已完成")
         end
-        video.update!(video_status:"已完成")
       end
     end
   
