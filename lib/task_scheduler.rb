@@ -21,7 +21,7 @@ class TaskScheduler
 		resource_configs = [
 			{ work_type: "人工运营", task_model: OperationTask, type_name: "运营" },
 			{ work_type: "Grok", task_model: GrokTask, type_name: "Grok" },
-			{ work_type: "Heygen", task_model: HeygenTask, type_name: "Heygen" },
+			# { work_type: "Heygen", task_model: HeygenTask, type_name: "Heygen" },
 			{ work_type: "剪映", task_model: JianyingTask, type_name: "剪映" }
 		]
 

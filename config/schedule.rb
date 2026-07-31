@@ -11,15 +11,15 @@ every :day, at: '03:00' do
   runner 'PostDatas.fetch'
 end
 # 做数字货币视频
-set :output, "log/heygen_crypto_video_pipeline.log"
-every :day, at: '07:10' do
-  runner 'Heygen.run_crypto_video_pipeline'
-end
+# set :output, "log/heygen_crypto_video_pipeline.log"
+# every :day, at: '07:10' do
+#   runner 'Heygen.run_crypto_video_pipeline'
+# end
 # 获取数字货币视频生成结果
-set :output, "log/heygen_fetch_video_info.log"
-every :day, at: '07:40' do
-  runner 'Heygen.fetch_video_info'
-end
+# set :output, "log/heygen_fetch_video_info.log"
+# every :day, at: '07:40' do
+#   runner 'Heygen.fetch_video_info'
+# end
 
 # ==================== 平台分批发布配置 ====================
 # Instagram: 8:00 发布，7:50 分配资源
