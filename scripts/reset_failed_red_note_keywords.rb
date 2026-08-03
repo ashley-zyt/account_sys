@@ -2,7 +2,7 @@
 
 # 批量重置 RedNoteKeyword 表中失败状态的数据为"未启动"
 # 执行: rails runner scripts/reset_failed_red_note_keywords.rb
-require_relative "../config/environment"
+# require_relative "../config/environment"
 require 'benchmark'
 
 puts "=" * 60
