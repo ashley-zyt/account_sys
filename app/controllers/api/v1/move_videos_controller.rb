@@ -5,14 +5,18 @@ module Api
 		# 流程：
 		#   import            录入源视频 → move_video(pending_download)
 		#   fetch_for_download   下载软件拉取 → downloading
-		#   report_download      下载完成回传 raw_oss_url → pending_process
+		#   report_download      下载完成回传 path → 校验 OSS 存在并生成签名 URL 存 raw_oss_url → pending_process
 		#   fetch_for_processing 剪映项目拉取 → processing
 		#   report_processing    剪映完成回传 processed_oss_url → processed + 创建多平台 move_task
 		class MoveVideosController < ApplicationController
 			skip_before_action :verify_authenticity_token
 			rescue_from MoveVideo::StateError, with: :render_state_error
 
+			include OssSignedUrl
+
 			DEFAULT_PLATFORMS_STR = MoveVideo::DEFAULT_PLATFORMS.join(',')
+			# 下载转存目标 bucket（下载软件上传到此 bucket，本系统校验存在并生成签名 URL）
+			OSS_BUCKET = 'jianying-videos'
 
 			# ---------- 1. 录入源视频 ----------
 			# POST /api/v1/move_videos/import
@@ -68,72 +72,34 @@ module Api
 				render_success(data: build_download_payload(move_video))
 			end
 
-			# 外部传入文件路径，截取文件名后校验在 jianying-videos bucket 中是否存在，存在则返回 OSS 签名 URL
-			def video_url
-				path = params[:path].to_s.strip
-
-				if path.blank?
-					render json: { code: 400, msg: '缺少 path 参数', data: nil }
-					return
-				end
-
-				# 从路径中截取文件名（兼容 URL / Linux 路径 / Windows 路径）
-				filename = path.split('?').first.split(/[\/\\]/).last.to_s
-
-				if filename.blank?
-					render json: { code: 400, msg: '无法从路径中解析出文件名', data: nil }
-					return
-				end
-
-				bucket_name = 'jianying-videos'
-
-				access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
-				access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
-
-				if access_key_id.blank? || access_key_secret.blank?
-					render json: { code: 500, msg: 'OSS 凭证未配置', data: nil }, status: :internal_server_error
-					return
-				end
-
-				# 先校验视频文件在 OSS 中是否存在（HEAD 请求）
-				unless oss_object_exists?(bucket_name, filename, access_key_id, access_key_secret)
-					render json: { code: 404, msg: '视频文件在 OSS 中不存在', data: nil }
-					return
-				end
-
-				# 存在则生成签名 URL（1 年有效期）
-				signed_url = generate_oss_signed_url(bucket_name, filename, access_key_id, access_key_secret)
-
-				render json: {
-					code: 200,
-					msg: 'success',
-					data: {
-						url: signed_url,
-						bucket: bucket_name,
-						filename: filename
-					}
-				}
-			rescue => e
-				render json: { code: 500, msg: "服务器错误: #{e.message}", data: nil }, status: :internal_server_error
-			end
-			# ---------- 3. 下载完成回调 ----------
+			# ---------- 3. 下载完成回调（融合原 video_url 的 OSS 签名逻辑）----------
 			# POST /api/v1/move_videos/report_download
-			# 入参：id、status('success'|'error')、raw_oss_url、error_msg
+			# 入参：id、path(下载后上传到 OSS 的文件路径/URL)
+			# 无需 status：调用即视为下载软件已尝试上传。系统校验文件在 jianying-videos bucket 中是否存在：
+			#   存在   → 生成签名 URL 存 raw_oss_url → 标记下载成功（pending_process）
+			#   不存在 → 标记下载失败（failed）
+			# 文件名解析失败 / OSS 凭证未配置等属于请求或配置异常，不改动 move_video 状态，直接返回 error
 			def report_download
 				move_video = find_move_video
 				return unless move_video
 
-				status = params[:status].to_s.strip
-				if status == 'success'
-					raw_oss_url = params[:raw_oss_url].to_s.strip
-					return render_error('raw_oss_url 不能为空') if raw_oss_url.blank?
-					move_video.mark_downloaded!(raw_oss_url)
-					render_success(message: '下载完成已记录')
-				elsif status == 'error'
-					move_video.mark_failed!("下载失败：#{params[:error_msg].to_s}")
-					render_success(message: '下载失败已记录')
+				path = params[:path].to_s.strip
+				return render_error('path 不能为空') if path.blank?
+
+				result = resolve_oss_signed_url(path, OSS_BUCKET)
+				if result[:ok]
+					move_video.mark_downloaded!(result[:signed_url])
+					render_success(
+						message: '下载完成已记录',
+						data: { raw_oss_url: result[:signed_url], bucket: result[:bucket], filename: result[:filename] }
+					)
+				elsif result[:reason] == :not_found
+					# bucket 中不存在文件 → 视频下载失败
+					move_video.mark_failed!("下载失败：OSS 中未找到该文件")
+					render_success(message: '下载失败已记录（OSS 中未找到文件）', data: { error: result[:error] })
 				else
-					render_error('status 必须为 success 或 error')
+					# invalid_filename / no_credentials 等异常 → 不改动状态，直接返回错误
+					render_error(result[:error])
 				end
 			end
 
