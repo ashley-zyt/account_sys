@@ -87,6 +87,58 @@ class MoveTask < ApplicationRecord
 		waiting_to_execute.where.not(account_id: Account.joins(:move_tasks).where(move_tasks: { start_at: TODAY_BEGINNING.. }).distinct.select(:id))
 	}
 
+	# 备份「所有平台都未发布成功」的 video_url
+	# 规则：同一 video_url 下任一平台任务为 success（已发布）即整组丢弃；
+	#       仅保留没有任何平台发布成功的 video_url，写入 JSON 文件留存。
+	# 用于清理 move_task.video_url 字段前的数据备份。
+	# 入参：path（可选，默认 tmp/unpublished_video_urls.json）
+	# 出参：{ path:, total_video_urls:, skipped_published_video_urls:, records: }
+	def self.backup_unpublished_video_urls(path: nil)
+		# 1. 收集所有「至少有一个平台发布成功」的 video_url（这些整组不保留）
+		published_urls = where(status: :success)
+			.where.not(video_url: [nil, ""])
+			.distinct
+			.pluck(:video_url)
+
+		# 2. 剩余 task：video_url 非空 且 不在已发布集合中
+		#    注意 Rails 的 NOT IN 空集合陷阱：published_urls 为空时不追加该条件
+		scope = where.not(video_url: [nil, ""])
+		scope = scope.where.not(video_url: published_urls) if published_urls.any?
+
+		# 3. 按 video_url 分组，组装备份记录
+		records = scope.group_by(&:video_url).map do |video_url, tasks|
+			first_task = tasks.first
+			{
+				video_url: video_url,
+				source_account_url: first_task.source_account_url,
+				theme: first_task.theme,
+				group_id: first_task.group_id,
+				task_ids: tasks.map(&:id),
+				platforms: tasks.map { |t| MoveTask.platforms.invert[t[:platform]] },
+				statuses: tasks.map { |t|
+					{ platform: MoveTask.platforms.invert[t[:platform]], status: MoveTask.statuses.invert[t[:status]] }
+				}
+			}
+		end
+
+		# 4. 写入 JSON 文件
+		path ||= Rails.root.join("tmp", "unpublished_video_urls.json")
+		FileUtils.mkdir_p(File.dirname(path))
+		File.write(path, JSON.pretty_generate(
+			exported_at: Time.current.iso8601,
+			total_video_urls: records.size,
+			skipped_published_video_urls: published_urls.size,
+			records: records
+		))
+
+		{
+			path: path.to_s,
+			total_video_urls: records.size,
+			skipped_published_video_urls: published_urls.size,
+			records: records
+		}
+	end
+
 	# 重置任务到 pending 状态（清空账号信息）
 	def reset_to_pending!
 		update!(
