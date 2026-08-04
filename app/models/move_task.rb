@@ -11,23 +11,23 @@
 #  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
 #  theme(内容主题)                                                   :string(255)
 #  title(发布标题)                                                   :text(65535)
-#  video_url(源视频地址)                                             :string(255)
 #  created_at                                                        :datetime         not null
 #  updated_at                                                        :datetime         not null
 #  account_id(发布账号ID)                                            :bigint
 #  browser_id(执行任务的浏览器ID)                                    :bigint
 #  group_id(任务组ID，同一视频的多平台任务共享)                      :string(255)
+#  move_video_id                                                     :bigint
 #
 # Indexes
 #
-#  idx_move_tasks_move_video_platform (move_video_id,platform) UNIQUE
-#  idx_tasks_status_created        (status,created_at)
-#  idx_tasks_theme_status          (theme,status)
-#  index_move_tasks_on_browser_id  (browser_id)
-#  index_move_tasks_on_group_id    (group_id)
-#  index_move_tasks_on_platform    (platform)
-#  index_move_tasks_on_status      (status)
-#  index_move_tasks_on_task_uuid   (task_uuid) UNIQUE
+#  idx_move_tasks_move_video_platform  (move_video_id,platform) UNIQUE
+#  idx_tasks_status_created            (status,created_at)
+#  idx_tasks_theme_status              (theme,status)
+#  index_move_tasks_on_browser_id      (browser_id)
+#  index_move_tasks_on_group_id        (group_id)
+#  index_move_tasks_on_platform        (platform)
+#  index_move_tasks_on_status          (status)
+#  index_move_tasks_on_task_uuid       (task_uuid) UNIQUE
 #
 class MoveTask < ApplicationRecord
 	belongs_to :browser, optional: true

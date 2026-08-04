@@ -2,22 +2,29 @@
 #
 # Table name: move_videos
 #
-#  id                                                                :bigint           not null, primary key
-#  source_video_url(源视频链接)                                      :string(255)      not null
-#  source_account_url(来源账号主页链接)                              :string(255)
-#  theme(内容主题)                                                   :string(255)
-#  group_id(视频组UUID)                                              :string(255)      not null
-#  platforms(目标平台列表，逗号分隔)                                 :string(255)
-#  status(状态)                                                      :integer          default("pending_download"), not null
-#  raw_oss_url(下载后原始视频 OSS URL)                               :text(65535)
-#  processed_oss_url(剪映处理后 OSS URL)                             :text(65535)
-#  error_msg(错误信息)                                               :text(65535)
-#  download_started_at(下载领取时间)                                 :datetime
-#  downloaded_at(下载完成时间)                                       :datetime
-#  process_started_at(剪映领取时间)                                  :datetime
-#  processed_at(剪映完成时间)                                        :datetime
-#  created_at                                                        :datetime         not null
-#  updated_at                                                        :datetime         not null
+#  id                                                                                    :bigint           not null, primary key
+#  download_started_at(下载领取时间)                                                     :datetime
+#  downloaded_at(下载完成时间)                                                           :datetime
+#  error_msg(错误信息/失败原因)                                                          :text(65535)
+#  platforms(目标平台列表，逗号分隔，如 youtube,facebook,twitter,tiktok)                 :string(255)
+#  process_started_at(剪映领取时间)                                                      :datetime
+#  processed_at(剪映完成时间)                                                            :datetime
+#  processed_oss_url(剪映处理后 OSS URL（发布用）)                                       :text(65535)
+#  raw_oss_url(下载后原始视频 OSS URL)                                                   :text(65535)
+#  source_account_url(来源账号主页链接)                                                  :string(255)
+#  source_video_url(源视频链接（核心幂等）)                                              :string(255)      not null
+#  status(状态 pending_download/downloading/pending_process/processing/processed/failed) :integer          default("pending_download"), not null
+#  theme(内容主题)                                                                       :string(255)
+#  created_at                                                                            :datetime         not null
+#  updated_at                                                                            :datetime         not null
+#  group_id(视频组UUID，多平台 move_task 共享)                                           :string(255)      not null
+#
+# Indexes
+#
+#  idx_move_videos_source_video_url  (source_video_url) UNIQUE
+#  idx_move_videos_status_created    (status,created_at)
+#  index_move_videos_on_group_id     (group_id)
+#  index_move_videos_on_status       (status)
 #
 class MoveVideo < ApplicationRecord
   has_many :move_tasks, dependent: :nullify
