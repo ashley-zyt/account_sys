@@ -85,6 +85,61 @@ class MoveVideo < ApplicationRecord
     end
   end
 
+  # 从 backup_unpublished_video_urls 产生的 JSON 批量导入历史未发布视频
+  # 去重策略（双重保障）：
+  #   1. 内存去重：按 source_video_url 去重，JSON 内重复的只保留首条
+  #   2. DB 去重：find_or_create_by + source_video_url UNIQUE 索引，已存在的跳过（不覆盖进度）
+  # 已存在的 move_video 不更新（避免覆盖已下载/已剪映的进度），仅新建缺失的为 pending_download
+  # @param path [String, Pathname] 备份 JSON 文件路径
+  # @return [Hash] { path:, total_records:, unique_records:, created:, skipped:, failed: }
+  def self.import_from_backup!(path:)
+    path = path.to_s
+    raise "备份文件不存在：#{path}" unless File.exist?(path)
+
+    records = Array(JSON.parse(File.read(path))["records"])
+
+    # 内存去重：按 source_video_url 去重，保留首条
+    seen = {}
+    unique_records = records.each_with_object([]) do |record, acc|
+      video_url = record["video_url"].to_s.strip
+      next if video_url.blank? || seen.key?(video_url)
+      seen[video_url] = true
+      acc << record
+    end
+
+    created = 0
+    skipped = 0
+    failed = 0
+
+    unique_records.each do |record|
+      video_url = record["video_url"].to_s.strip
+      platforms = Array(record["platforms"]).map(&:to_s).reject(&:blank?).join(",")
+      platforms = DEFAULT_PLATFORMS.join(",") if platforms.blank?
+
+      existed = exists?(source_video_url: video_url)
+      find_or_create_by!(source_video_url: video_url) do |v|
+        v.source_account_url = record["source_account_url"]
+        v.theme = record["theme"]
+        v.group_id = record["group_id"].presence || SecureRandom.uuid
+        v.platforms = platforms
+        v.status = :pending_download
+      end
+      existed ? skipped += 1 : created += 1
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+      failed += 1
+      warn "导入失败 video_url=#{video_url}：#{e.message}"
+    end
+
+    {
+      path: path,
+      total_records: records.size,
+      unique_records: unique_records.size,
+      created: created,
+      skipped: skipped,
+      failed: failed
+    }
+  end
+
   # ---------- 下载阶段领取（原子） ----------
   # 拉取一条 pending_download 并原子置为 downloading，并发安全
   # @return [MoveVideo, nil] 领取到的视频（已 reload 为 downloading），无则 nil
