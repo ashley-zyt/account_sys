@@ -68,6 +68,54 @@ module Api
 				render_success(data: build_download_payload(move_video))
 			end
 
+			# 外部传入文件路径，截取文件名后校验在 jianying-videos bucket 中是否存在，存在则返回 OSS 签名 URL
+			def video_url
+				path = params[:path].to_s.strip
+
+				if path.blank?
+					render json: { code: 400, msg: '缺少 path 参数', data: nil }
+					return
+				end
+
+				# 从路径中截取文件名（兼容 URL / Linux 路径 / Windows 路径）
+				filename = path.split('?').first.split(/[\/\\]/).last.to_s
+
+				if filename.blank?
+					render json: { code: 400, msg: '无法从路径中解析出文件名', data: nil }
+					return
+				end
+
+				bucket_name = 'jianying-videos'
+
+				access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+				access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+
+				if access_key_id.blank? || access_key_secret.blank?
+					render json: { code: 500, msg: 'OSS 凭证未配置', data: nil }, status: :internal_server_error
+					return
+				end
+
+				# 先校验视频文件在 OSS 中是否存在（HEAD 请求）
+				unless oss_object_exists?(bucket_name, filename, access_key_id, access_key_secret)
+					render json: { code: 404, msg: '视频文件在 OSS 中不存在', data: nil }
+					return
+				end
+
+				# 存在则生成签名 URL（1 年有效期）
+				signed_url = generate_oss_signed_url(bucket_name, filename, access_key_id, access_key_secret)
+
+				render json: {
+					code: 200,
+					msg: 'success',
+					data: {
+						url: signed_url,
+						bucket: bucket_name,
+						filename: filename
+					}
+				}
+			rescue => e
+				render json: { code: 500, msg: "服务器错误: #{e.message}", data: nil }, status: :internal_server_error
+			end
 			# ---------- 3. 下载完成回调 ----------
 			# POST /api/v1/move_videos/report_download
 			# 入参：id、status('success'|'error')、raw_oss_url、error_msg
