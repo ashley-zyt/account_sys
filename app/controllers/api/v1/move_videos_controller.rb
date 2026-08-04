@@ -18,6 +18,12 @@ module Api
 			# 下载转存目标 bucket（下载软件上传到此 bucket，本系统校验存在并生成签名 URL）
 			OSS_BUCKET = 'jianying-videos'
 
+			# 下载软件所在机器的标准视频目录
+			# 下载软件回传的 path 有时会丢失路径分隔符 /，如
+			#   "C:UsersAdministratorDesktopvideosxxx.mp4" 实际应为 "C:/Users/Administrator/Desktop/videos/xxx.mp4"
+			# 据此常量还原标准路径前缀，确保后续能正确解析出文件名
+			DOWNLOAD_STANDARD_DIR = 'C:/Users/Administrator/Desktop/videos/'.freeze
+
 			# ---------- 1. 录入源视频 ----------
 			# POST /api/v1/move_videos/import
 			# 入参：source_url(来源账号主页链接)、video_url(源视频链接)、platforms(可选，逗号分隔)
@@ -86,6 +92,9 @@ module Api
 				path = params[:path].to_s.strip
 				return render_error('path 不能为空') if path.blank?
 
+				# 下载软件回传的 path 有时丢失了 /，按标准目录前缀还原后再做 OSS 校验
+				path = normalize_download_path(path) unless path.include?('/')
+
 				result = resolve_oss_signed_url(path, OSS_BUCKET)
 				if result[:ok]
 					move_video.mark_downloaded!(result[:signed_url])
@@ -146,6 +155,15 @@ module Api
 				move_video = MoveVideo.find_by(id: params[:id])
 				render_error('视频不存在') unless move_video
 				move_video
+			end
+
+			# 还原丢失了分隔符的下载路径：
+			# 下载软件回传 "C:UsersAdministratorDesktopvideosxxx.mp4"（/ 被剔除）
+			# 剥离标准目录前缀（无斜杠形式）得到文件名，再拼回标准路径 "C:/Users/.../xxx.mp4"
+			def normalize_download_path(path)
+				base_without_slashes = DOWNLOAD_STANDARD_DIR.delete('/')
+				filename = path.sub(/\A#{Regexp.escape(base_without_slashes)}/i, '')
+				"#{DOWNLOAD_STANDARD_DIR}#{filename}"
 			end
 
 			def build_download_payload(move_video)
