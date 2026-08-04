@@ -21,6 +21,13 @@ module OssSignedUrl
 		path.to_s.split('?').first.split(/[\/\\]/).last.to_s
 	end
 
+	# OSS URL path 编码：percent-encode，空格用 %20
+	# 注意：URI.encode_www_form_component 把空格编成 +（用于 query 值），但 OSS 对象 key 在 URL path 中
+	# + 不会被解码成空格，会导致文件名含空格时 HEAD/Copy/Delete 全部对不上。故修正为 %20。
+	def oss_encode_key(key)
+		URI.encode_www_form_component(key).gsub('+', '%20')
+	end
+
 	# 校验 OSS 对象是否存在（HEAD 请求，签名基于 Date）
 	def oss_object_exists?(bucket_name, key, access_key_id, access_key_secret)
 		date = Time.now.utc.strftime('%a, %d %b %Y %H:%M:%S GMT')
@@ -32,7 +39,7 @@ module OssSignedUrl
 		).strip
 
 		# URL 中的 key 需要编码
-		encoded_key = URI.encode_www_form_component(key)
+		encoded_key = oss_encode_key(key)
 		uri = URI.parse("https://#{bucket_name}.#{OSS_REGION_HOST}/#{encoded_key}")
 		http = Net::HTTP.new(uri.host, uri.port)
 		http.use_ssl = true
@@ -59,7 +66,7 @@ module OssSignedUrl
 		signature = URI.encode_www_form_component(signature)
 
 		# URL 中的 key 需要编码
-		encoded_key = URI.encode_www_form_component(key)
+		encoded_key = oss_encode_key(key)
 
 		"https://#{bucket_name}.#{OSS_REGION_HOST}/#{encoded_key}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
 	end
@@ -97,7 +104,7 @@ module OssSignedUrl
 			OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)
 		).strip
 
-		encoded_target = URI.encode_www_form_component(target_key)
+		encoded_target = oss_encode_key(target_key)
 		uri = URI.parse("https://#{bucket_name}.#{OSS_REGION_HOST}/#{encoded_target}")
 		http = Net::HTTP.new(uri.host, uri.port)
 		http.use_ssl = true
@@ -120,7 +127,7 @@ module OssSignedUrl
 			OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)
 		).strip
 
-		encoded_key = URI.encode_www_form_component(key)
+		encoded_key = oss_encode_key(key)
 		uri = URI.parse("https://#{bucket_name}.#{OSS_REGION_HOST}/#{encoded_key}")
 		http = Net::HTTP.new(uri.host, uri.port)
 		http.use_ssl = true
