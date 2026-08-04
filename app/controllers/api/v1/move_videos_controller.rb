@@ -76,9 +76,9 @@ module Api
 			# POST /api/v1/move_videos/report_download
 			# 入参：id、path(下载后上传到 OSS 的文件路径/URL)
 			# 无需 status：调用即视为下载软件已尝试上传。系统校验文件在 jianying-videos bucket 中是否存在：
-			#   存在   → 生成签名 URL 存 raw_oss_url → 标记下载成功（pending_process）
+			#   存在   → 重命名为随机不重复文件名 → 生成签名 URL 存 raw_oss_url → 标记下载成功（pending_process）
 			#   不存在 → 标记下载失败（failed）
-			# 文件名解析失败 / OSS 凭证未配置等属于请求或配置异常，不改动 move_video 状态，直接返回 error
+			# 文件名解析失败 / OSS 凭证未配置 / 复制失败等属于请求或配置异常，不改动 move_video 状态，直接返回 error
 			def report_download
 				move_video = find_move_video
 				return unless move_video
@@ -86,19 +86,24 @@ module Api
 				path = params[:path].to_s.strip
 				return render_error('path 不能为空') if path.blank?
 
-				result = resolve_oss_signed_url(path, OSS_BUCKET)
+				result = resolve_and_rename_oss_signed_url(path, OSS_BUCKET)
 				if result[:ok]
 					move_video.mark_downloaded!(result[:signed_url])
 					render_success(
 						message: '下载完成已记录',
-						data: { raw_oss_url: result[:signed_url], bucket: result[:bucket], filename: result[:filename] }
+						data: {
+							raw_oss_url: result[:signed_url],
+							bucket: result[:bucket],
+							filename: result[:filename],
+							original_filename: result[:original_filename]
+						}
 					)
 				elsif result[:reason] == :not_found
 					# bucket 中不存在文件 → 视频下载失败
 					move_video.mark_failed!("下载失败：OSS 中未找到该文件")
 					render_success(message: '下载失败已记录（OSS 中未找到文件）', data: { error: result[:error] })
 				else
-					# invalid_filename / no_credentials 等异常 → 不改动状态，直接返回错误
+					# invalid_filename / no_credentials / copy_failed 等异常 → 不改动状态，直接返回错误
 					render_error(result[:error])
 				end
 			end
