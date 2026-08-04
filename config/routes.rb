@@ -9,6 +9,7 @@ Rails.application.routes.draw do
       end
     end
     resources :move_tasks, only: [:index, :show]
+    resources :move_videos, only: [:index, :show]
     resources :jianying_tasks, only: [:index, :show, :destroy] do
       collection do
         delete :batch_destroy
@@ -86,7 +87,13 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      post "video/receive", to: "video_receive#create"
+      # 搬运视频资源接口（录入 / 下载转存 / 剪映处理）
+      post "move_videos/import",             to: "move_videos#import"
+      get  "move_videos/fetch_for_download", to: "move_videos#fetch_for_download"
+      post "move_videos/report_download",    to: "move_videos#report_download"
+      get  "move_videos/fetch_for_processing", to: "move_videos#fetch_for_processing"
+      post "move_videos/report_processing",  to: "move_videos#report_processing"
+
       get "task/fetch_next_executable_task", to: "tasks#fetch_next_executable_task"
       get "task/report", to: "tasks#report"
       get "check/accounts"

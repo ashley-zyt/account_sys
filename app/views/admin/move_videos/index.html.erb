@@ -1,0 +1,123 @@
+<% content_for :page_title do %>
+  搬运视频储备
+<% end %>
+<% content_for :page_subtitle do %>
+  源视频录入及下载/剪映处理进度
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        视频储备列表
+      </div>
+      <div class="admin-card-subtitle">
+        监控下载转存与剪映处理流转
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">
+        共 <%= @move_videos.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">源视频URL</label>
+        <%= f.search_field :source_video_url_cont, class: "admin-input admin-filter-input", placeholder: "搜索源视频链接..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">主题</label>
+        <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status_eq, MoveVideo.statuses.map { |k, v| [MoveVideo.human_status(k), v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_move_videos_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @move_videos.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>源视频</th>
+            <th>主题</th>
+            <th>目标平台</th>
+            <th>状态</th>
+            <th>处理结果</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @move_videos.each do |video| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted"><%= video.id %></span>
+              </td>
+              <td>
+                <%= link_to truncate(video.source_video_url, length: 40), admin_move_video_path(video), class: "admin-link-quiet" %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= video.theme %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= video.platforms %></span>
+              </td>
+              <td>
+                <% case video.status %>
+                <% when "pending_download", "downloading", "pending_process", "processing" %>
+                  <span class="admin-pill-status admin-pill-status-pending">
+                    <span class="admin-pill-status-dot"></span>
+                    <%= video.human_status %>
+                  </span>
+                <% when "processed" %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>
+                    <%= video.human_status %>
+                  </span>
+                <% when "failed" %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>
+                    <%= video.human_status %>
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <% if video.processed_oss_url.present? %>
+                  <%= link_to "剪映成片", video.processed_oss_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <% elsif video.raw_oss_url.present? %>
+                  <span class="admin-label-muted">已下载待剪映</span>
+                <% else %>
+                  <span class="admin-label-muted">—</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= video.created_at&.strftime("%m-%d %H:%M") %></span>
+              </td>
+              <td>
+                <%= link_to "详情", admin_move_video_path(video), class: "admin-link-quiet", style: "color: var(--accent);" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @move_videos %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无视频储备数据。
+    </div>
+  <% end %>
+</div>

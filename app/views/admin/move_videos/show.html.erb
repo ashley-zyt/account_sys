@@ -1,0 +1,206 @@
+<% content_for :page_title do %>
+  视频储备详情
+<% end %>
+<% content_for :page_subtitle do %>
+  视频 <%= @move_video.id %> 的下载与剪映处理情况
+<% end %>
+
+<div class="admin-grid">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          基本信息
+        </div>
+        <div class="admin-card-subtitle">
+          源视频与目标平台
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">ID</div>
+        <div class="admin-field-value"><%= @move_video.id %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">状态</div>
+        <div class="admin-field-value"><%= @move_video.human_status %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">主题</div>
+        <div class="admin-field-value"><%= @move_video.theme %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">目标平台</div>
+        <div class="admin-field-value"><%= @move_video.platforms %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">来源账号</div>
+        <div class="admin-field-value">
+          <% if @move_video.source_account_url.present? %>
+            <%= link_to truncate(@move_video.source_account_url, length: 50), @move_video.source_account_url, target: "_blank", class: "admin-link-quiet" %>
+          <% else %>
+            —
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">组 UUID</div>
+        <div class="admin-field-value"><%= @move_video.group_id %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">创建时间</div>
+        <div class="admin-field-value"><%= @move_video.created_at&.strftime("%Y-%m-%d %H:%M") %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">更新时间</div>
+        <div class="admin-field-value"><%= @move_video.updated_at&.strftime("%Y-%m-%d %H:%M") %></div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      源视频链接
+    </div>
+    <div>
+      <div class="admin-field-value">
+        <%= link_to @move_video.source_video_url, @move_video.source_video_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          下载转存
+        </div>
+        <div class="admin-card-subtitle">
+          下载软件拉取并上传 OSS
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">领取时间</div>
+        <div class="admin-field-value"><%= @move_video.download_started_at&.strftime("%Y-%m-%d %H:%M") || "未领取" %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">完成时间</div>
+        <div class="admin-field-value"><%= @move_video.downloaded_at&.strftime("%Y-%m-%d %H:%M") || "未完成" %></div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      下载后 OSS URL
+    </div>
+    <div>
+      <div class="admin-field-value">
+        <% if @move_video.raw_oss_url.present? %>
+          <%= link_to truncate(@move_video.raw_oss_url, length: 70), @move_video.raw_oss_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" %>
+        <% else %>
+          <span class="admin-label-muted">尚未回传</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          剪映处理
+        </div>
+        <div class="admin-card-subtitle">
+          剪映项目加工并回传成片
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">领取时间</div>
+        <div class="admin-field-value"><%= @move_video.process_started_at&.strftime("%Y-%m-%d %H:%M") || "未领取" %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">完成时间</div>
+        <div class="admin-field-value"><%= @move_video.processed_at&.strftime("%Y-%m-%d %H:%M") || "未完成" %></div>
+      </div>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
+      剪映后 OSS URL（发布用）
+    </div>
+    <div>
+      <div class="admin-field-value">
+        <% if @move_video.processed_oss_url.present? %>
+          <%= link_to truncate(@move_video.processed_oss_url, length: 70), @move_video.processed_oss_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" %>
+        <% else %>
+          <span class="admin-label-muted">尚未回传</span>
+        <% end %>
+      </div>
+    </div>
+
+    <% if @move_video.error_msg.present? %>
+      <div class="admin-section-title" style="margin-top: 14px;">
+        错误信息
+      </div>
+      <div class="admin-empty-state" style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.5);">
+        <pre style="margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 11px;"><%= @move_video.error_msg %></pre>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        关联发布任务
+      </div>
+      <div class="admin-card-subtitle">
+        剪映完成后按平台创建的 move_task
+      </div>
+    </div>
+  </div>
+
+  <% if @move_video.move_tasks.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>平台</th>
+            <th>状态</th>
+            <th>标题</th>
+            <th>账号</th>
+            <th>创建时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @move_video.move_tasks.each do |task| %>
+            <tr>
+              <td><span class="admin-label-muted"><%= task.id %></span></td>
+              <td><span class="admin-label-muted"><%= task.platform %></span></td>
+              <td><span class="admin-label-muted"><%= task.status %></span></td>
+              <td><%= link_to truncate(task.title.presence || "无标题", length: 40), admin_move_task_path(task), class: "admin-link-quiet" %></td>
+              <td>
+                <% if task.account %>
+                  <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet" %>
+                <% else %>
+                  <span class="admin-label-muted">未分配</span>
+                <% end %>
+              </td>
+              <td><span class="admin-label-muted"><%= task.created_at&.strftime("%m-%d %H:%M") %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无关联发布任务（剪映完成后将自动创建）。
+    </div>
+  <% end %>
+</div>
