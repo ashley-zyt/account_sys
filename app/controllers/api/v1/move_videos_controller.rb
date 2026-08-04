@@ -107,7 +107,7 @@ module Api
 			# ---------- 5. 剪映完成回调 ----------
 			# POST /api/v1/move_videos/report_processing
 			# 入参：id、status('success'|'error')、processed_oss_url、error_msg
-			# success：→ processed，写 processed_oss_url，并创建多平台 move_task（pending）
+			# success：→ processed，成片 URL 写入每条 move_task.oss_url，并创建多平台 move_task（pending）
 			def report_processing
 				move_video = find_move_video
 				return unless move_video

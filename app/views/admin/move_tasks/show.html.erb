@@ -87,6 +87,19 @@
 
     <div style="margin-top: 10px;">
       <div class="admin-field-label">
+        成片 OSS URL
+      </div>
+      <div class="admin-field-value">
+        <% if @move_task.oss_url.present? %>
+          <%= link_to truncate(@move_task.oss_url, length: 70), @move_task.oss_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" %>
+        <% else %>
+          <span class="admin-label-muted">尚未剪映</span>
+        <% end %>
+      </div>
+    </div>
+
+    <div style="margin-top: 10px;">
+      <div class="admin-field-label">
         标题
       </div>
       <div class="admin-field-value">

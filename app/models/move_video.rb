@@ -48,7 +48,7 @@ class MoveVideo < ApplicationRecord
 
   def self.ransackable_attributes(auth_object = nil)
     %w[id source_video_url source_account_url theme group_id platforms status
-       raw_oss_url processed_oss_url error_msg created_at updated_at]
+       raw_oss_url error_msg created_at updated_at]
   end
 
   def self.ransackable_associations(auth_object = nil)
@@ -187,18 +187,18 @@ class MoveVideo < ApplicationRecord
     updated == 1 ? reload : false
   end
 
-  # 剪映完成回调：processing → processed，写 processed_oss_url，并创建多平台 move_task
+  # 剪映完成回调：processing → processed，并按 platforms 创建多平台 move_task
+  # 成片 OSS URL 写到每条 move_task.oss_url（与 jianying_task 等资源队列一致，发布时直接用）
   def mark_processed!(processed_oss_url)
     raise StateError, "当前状态 #{status} 不允许标记剪映完成" unless processing?
 
     transaction do
       update!(
         status: :processed,
-        processed_oss_url: processed_oss_url,
         processed_at: Time.current,
         error_msg: nil
       )
-      create_move_tasks!
+      create_move_tasks!(processed_oss_url)
     end
   end
 
@@ -211,7 +211,8 @@ class MoveVideo < ApplicationRecord
 
   # 剪映成功后，按 platforms 为每个平台创建一条 move_task（pending）
   # (move_video_id, platform) 唯一索引兜底幂等
-  def create_move_tasks!
+  # 成片 OSS URL 写入 move_task.oss_url，发布时直接读取
+  def create_move_tasks!(processed_oss_url)
     platforms_list.each do |platform_name|
       platform_value = MoveTask.platforms[platform_name.strip.to_sym]
       next unless platform_value
@@ -221,6 +222,7 @@ class MoveVideo < ApplicationRecord
         t.title = ThemeConfig.random_title(theme)
         t.group_id = group_id
         t.status = :pending
+        t.oss_url = processed_oss_url
       end
     end
   end

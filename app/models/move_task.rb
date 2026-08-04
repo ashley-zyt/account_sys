@@ -102,6 +102,7 @@ class MoveTask < ApplicationRecord
 			task_uuid
 			theme
 			title
+			oss_url
 			platform
 			account_id
 			browser_id

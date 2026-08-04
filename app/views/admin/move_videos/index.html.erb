@@ -93,10 +93,10 @@
                 <% end %>
               </td>
               <td>
-                <% if video.processed_oss_url.present? %>
-                  <%= link_to "剪映成片", video.processed_oss_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <% if video.processed? %>
+                  <span class="admin-label-muted">✓ 已剪映</span>
                 <% elsif video.raw_oss_url.present? %>
-                  <span class="admin-label-muted">已下载待剪映</span>
+                  <span class="admin-label-muted">已转存待剪映</span>
                 <% else %>
                   <span class="admin-label-muted">—</span>
                 <% end %>

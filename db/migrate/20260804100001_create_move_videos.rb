@@ -9,8 +9,8 @@ class CreateMoveVideos < ActiveRecord::Migration[6.1]
       t.integer :status, default: 0, null: false, comment: '状态 pending_download/downloading/pending_process/processing/processed/failed'
 
       # OSS 链接（直接存 URL，不存 key、不签名）
+      # 注意：剪映后的成片 OSS URL 存到 move_task.oss_url（与 jianying_task 等一致），move_video 不存
       t.text :raw_oss_url, comment: '下载后原始视频 OSS URL'
-      t.text :processed_oss_url, comment: '剪映处理后 OSS URL（发布用）'
 
       t.text :error_msg, comment: '错误信息/失败原因'
 

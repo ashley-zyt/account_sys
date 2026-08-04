@@ -130,16 +130,10 @@
     </div>
 
     <div class="admin-section-title" style="margin-top: 14px;">
-      剪映后 OSS URL（发布用）
+      成片 OSS URL
     </div>
-    <div>
-      <div class="admin-field-value">
-        <% if @move_video.processed_oss_url.present? %>
-          <%= link_to truncate(@move_video.processed_oss_url, length: 70), @move_video.processed_oss_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" %>
-        <% else %>
-          <span class="admin-label-muted">尚未回传</span>
-        <% end %>
-      </div>
+    <div class="admin-card-subtitle">
+      剪映成片存于关联发布任务 move_task.oss_url，见下方
     </div>
 
     <% if @move_video.error_msg.present? %>
@@ -174,6 +168,7 @@
             <th>平台</th>
             <th>状态</th>
             <th>标题</th>
+            <th>成片 OSS URL</th>
             <th>账号</th>
             <th>创建时间</th>
           </tr>
@@ -185,6 +180,13 @@
               <td><span class="admin-label-muted"><%= task.platform %></span></td>
               <td><span class="admin-label-muted"><%= task.status %></span></td>
               <td><%= link_to truncate(task.title.presence || "无标题", length: 40), admin_move_task_path(task), class: "admin-link-quiet" %></td>
+              <td>
+                <% if task.oss_url.present? %>
+                  <%= link_to truncate(task.oss_url, length: 40), task.oss_url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <% else %>
+                  <span class="admin-label-muted">—</span>
+                <% end %>
+              </td>
               <td>
                 <% if task.account %>
                   <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet" %>
