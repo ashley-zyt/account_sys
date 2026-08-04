@@ -1,6 +1,6 @@
 class CreateMoveVideos < ActiveRecord::Migration[6.1]
   def change
-    create_table :move_videos, charset: 'utf8mb4', collation: 'utf8mb4_0900_ai_ci', comment: '搬运视频资源维度表' do |t|
+    create_table :move_videos, comment: '搬运视频资源维度表' do |t|
       t.string :source_video_url, null: false, comment: '源视频链接（核心幂等）'
       t.string :source_account_url, comment: '来源账号主页链接'
       t.string :theme, comment: '内容主题'
