@@ -140,14 +140,35 @@ class MoveVideo < ApplicationRecord
     }
   end
 
-  # ---------- 下载阶段领取（原子） ----------
+  # ---------- 下载阶段领取（原子 + 主题轮询） ----------
   # 拉取一条 pending_download 并原子置为 downloading，并发安全
+  # 主题轮询：每次选取「最近一次领取时间最早」的主题（从未领取过的优先），
+  # 再从该主题取最早录入的一条。这样多次调用会按主题轮流获取（A→B→C→A…）。
+  # 无需额外存储游标，基于 download_started_at 历史，跨进程/跨重启均有效。
   # @return [MoveVideo, nil] 领取到的视频（已 reload 为 downloading），无则 nil
   def self.claim_for_download!
-    pending_download.order(created_at: :asc).limit(50).each do |record|
+    theme = next_download_theme
+    candidates = theme ? pending_download.where(theme: theme) : pending_download
+
+    candidates.order(created_at: :asc).limit(50).each do |record|
       return record if record.claim_download!
     end
     nil
+  end
+
+  # 选下一个要领取的主题：在有待下载视频的主题中，选「最近领取时间最早」的
+  # 从未领取过的主题（download_started_at 为 NULL）优先，保证每个主题都能被轮到
+  # @return [String, nil] 主题名；无待下载视频时返回 nil
+  def self.next_download_theme
+    themes = pending_download.where.not(theme: [nil, '']).distinct.pluck(:theme)
+    return nil if themes.empty?
+
+    last_claimed = where(theme: themes).group(:theme).maximum(:download_started_at)
+
+    themes.min_by do |t|
+      claimed = last_claimed[t]
+      [claimed ? 1 : 0, claimed || Time.at(0), t]
+    end
   end
 
   def claim_download!
