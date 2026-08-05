@@ -23,14 +23,14 @@ module Api
             group_id: v.group_id,
             platforms: v.platforms,
             status: v.status,
-            human_status: v.human_status,
+            # human_status: v.human_status,
             raw_oss_url: v.raw_oss_url,
-            processed_oss_url: v.processed_oss_url,
+            # processed_oss_url: v.processed_oss_url,
             error_msg: v.error_msg,
             download_started_at: v.download_started_at&.strftime("%Y-%m-%d %H:%M:%S"),
             downloaded_at: v.downloaded_at&.strftime("%Y-%m-%d %H:%M:%S"),
-            process_started_at: v.process_started_at&.strftime("%Y-%m-%d %H:%M:%S"),
-            processed_at: v.processed_at&.strftime("%Y-%m-%d %H:%M:%S"),
+            # process_started_at: v.process_started_at&.strftime("%Y-%m-%d %H:%M:%S"),
+            # processed_at: v.processed_at&.strftime("%Y-%m-%d %H:%M:%S"),
             created_at: v.created_at&.strftime("%Y-%m-%d %H:%M:%S"),
             updated_at: v.updated_at&.strftime("%Y-%m-%d %H:%M:%S")
           }
