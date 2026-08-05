@@ -1,4 +1,4 @@
-class AddMachineIpToBrowsers < ActiveRecord::Migration[7.0]
+class AddMachineIpToBrowsers < ActiveRecord::Migration[6.1]
   # 一个指纹浏览器(browser)固定由一台运营机器运营
   # machine_ip 存储该浏览器所属运营机器的 IP（端口按用途固定：养号 8080，cloud_id 同步 8384）
   def up
