@@ -123,6 +123,8 @@ Rails.application.routes.draw do
       post "red_note/keywords", to: "red_note#keywords"
       # 剪映任务批量接收
       post "jianying_tasks/batch", to: "jianying_tasks#batch"
+      # 搬运视频按ID范围查询
+      get "move_video_queries", to: "move_video_queries#index"
     end
   end
 
