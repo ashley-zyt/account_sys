@@ -128,26 +128,85 @@ module Api
 			end
 
 			# ---------- 5. 剪映完成回调 ----------
-			# POST /api/v1/move_videos/report_processing
-			# 入参：id、status('success'|'error')、processed_oss_url、error_msg
-			# success：→ processed，成片 URL 写入每条 move_task.oss_url，并创建多平台 move_task（pending）
-			def report_processing
-				move_video = find_move_video
-				return unless move_video
+		# POST /api/v1/move_videos/report_processing
+		# 入参：id、status('success'|'error')、processed_oss_url、error_msg
+		# success：→ processed，成片 URL 写入每条 move_task.oss_url，并创建多平台 move_task（pending）
+		def report_processing
+			move_video = find_move_video
+			return unless move_video
 
-				status = params[:status].to_s.strip
-				if status == 'success'
-					processed_oss_url = params[:processed_oss_url].to_s.strip
-					return render_error('processed_oss_url 不能为空') if processed_oss_url.blank?
-					move_video.mark_processed!(processed_oss_url)
-					render_success(message: '剪映完成已记录，已创建发布任务')
-				elsif status == 'error'
-					move_video.mark_failed!("剪映失败：#{params[:error_msg].to_s}")
-					render_success(message: '剪映失败已记录')
+			status = params[:status].to_s.strip
+			if status == 'success'
+				processed_oss_url = params[:processed_oss_url].to_s.strip
+				return render_error('processed_oss_url 不能为空') if processed_oss_url.blank?
+				move_video.mark_processed!(processed_oss_url)
+				render_success(message: '剪映完成已记录，已创建发布任务')
+			elsif status == 'error'
+				move_video.mark_failed!("剪映失败：#{params[:error_msg].to_s}")
+				render_success(message: '剪映失败已记录')
+			else
+				render_error('status 必须为 success 或 error')
+			end
+		end
+
+		# ---------- 6. 远端回传处理结果（单平台） ----------
+		# POST /api/v1/move_videos/report_result
+		# 入参：id、status('processed'|'failed')、platform、oss_url(成片URL, processed时必填)、title(可选)、error_msg(可选)
+		# 流程：更新 move_video 状态 → upsert move_task（按 move_video_id + platform）→ 删除 raw_oss_url 对应 OSS 文件
+		def report_result
+			move_video = find_move_video
+			return unless move_video
+
+			status = params[:status].to_s.strip
+			unless %w[processed failed].include?(status)
+				return render_error('status 必须为 processed 或 failed')
+			end
+
+			platform_name = params[:platform].to_s.strip
+			platform_value = MoveTask.platforms[platform_name.to_sym]
+			return render_error("不支持的平台: #{platform_name}") if platform_value.nil?
+
+			oss_url = params[:oss_url].to_s.strip
+			if status == 'processed' && oss_url.blank?
+				return render_error('oss_url 不能为空')
+			end
+
+			ActiveRecord::Base.transaction do
+				if status == 'processed'
+					move_video.update!(status: :processed, processed_at: Time.current, error_msg: nil)
+
+					move_task = MoveTask.find_or_initialize_by(move_video_id: move_video.id, platform: platform_value)
+					is_new = move_task.new_record?
+					move_task.assign_attributes(
+						oss_url: oss_url,
+						title: params[:title].presence || move_task.title || ThemeConfig.random_title(move_video.theme),
+						theme: move_video.theme,
+						group_id: move_video.group_id
+					)
+					move_task.status = :pending if is_new
+					move_task.save!
 				else
-					render_error('status 必须为 success 或 error')
+					move_video.update!(status: :failed, error_msg: params[:error_msg].to_s)
 				end
 			end
+
+			# 事务提交后删除 raw OSS 文件（失败不影响主流程）
+			if move_video.raw_oss_url.present?
+				begin
+					delete_oss_object_by_url(move_video.raw_oss_url, OSS_BUCKET)
+					Rails.logger.info "[MoveVideo##{move_video.id}] 已删除 raw OSS 文件"
+				rescue => e
+					Rails.logger.error "[MoveVideo##{move_video.id}] 删除 raw OSS 文件失败: #{e.message}"
+				end
+			end
+
+			render_success(
+				message: '处理结果已记录',
+				data: { id: move_video.id, status: move_video.status }
+			)
+		rescue => e
+			render_error(e.message)
+		end
 
 			private
 

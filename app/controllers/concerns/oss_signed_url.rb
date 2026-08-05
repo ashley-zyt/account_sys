@@ -80,4 +80,41 @@ module OssSignedUrl
 		signed_url = generate_oss_signed_url(bucket_name, filename, access_key_id, access_key_secret)
 		{ ok: true, signed_url: signed_url, bucket: bucket_name, filename: filename }
 	end
+
+	# 从签名 URL 中提取 key 并删除 OSS 对象（DELETE 请求，V1 签名）
+	# @param signed_url [String] OSS 签名 URL
+	# @param bucket_name [String] OSS bucket 名称
+	# @return [Boolean] 是否删除成功（404 视为已不存在，也算成功）
+	def delete_oss_object_by_url(signed_url, bucket_name)
+		return false if signed_url.blank?
+		return false unless oss_credentials_configured?
+
+		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+
+		uri = URI.parse(signed_url.to_s)
+		encoded_key = uri.path.sub(%r{\A/}, '')
+		return false if encoded_key.blank?
+
+		# 签名字符串中的 key 使用解码后的原始路径
+		key = URI.decode_www_form_component(encoded_key)
+
+		date = Time.now.utc.strftime('%a, %d %b %Y %H:%M:%S GMT')
+		string_to_sign = "DELETE\n\n\n#{date}\n/#{bucket_name}/#{key}"
+		signature = Base64.strict_encode64(
+			OpenSSL::HMAC.digest('sha1', access_key_secret, string_to_sign)
+		).strip
+
+		oss_uri = URI.parse("https://#{bucket_name}.#{OSS_REGION_HOST}/#{encoded_key}")
+		http = Net::HTTP.new(oss_uri.host, oss_uri.port)
+		http.use_ssl = true
+		http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+		request = Net::HTTP::Delete.new(oss_uri.request_uri)
+		request['Date'] = date
+		request['Authorization'] = "OSS #{access_key_id}:#{signature}"
+
+		response = http.request(request)
+		['200', '204', '404'].include?(response.code)
+	end
 end

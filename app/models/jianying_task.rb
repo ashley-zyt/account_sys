@@ -140,7 +140,7 @@ class JianyingTask < ApplicationRecord
 				task = new(
 					keyword: item[:keyword],
 					keyword_code: item[:keyword_code],
-					theme: item[:theme],
+					theme: "剪映-#{item[:theme]}",
 					associated_images: item[:associated_images].is_a?(Array) ? item[:associated_images].to_json : item[:associated_images],
 					full_oss_url: item[:oss_key],
 					oss_url: full_url,
