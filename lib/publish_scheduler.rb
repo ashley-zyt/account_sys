@@ -142,7 +142,12 @@ class PublishScheduler
                                .where("account_id IS NOT NULL")
                                .includes(:browser)
 
-    tasks = operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a + jianying_tasks.to_a
+    # 搬运任务：视频搬运模式的资源队列，发布时与运营/Grok/剪映任务一并执行
+    move_tasks = MoveTask.where(status: :waiting_publish)
+                         .where("account_id IS NOT NULL")
+                         .includes(:browser)
+
+    tasks = operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a + jianying_tasks.to_a + move_tasks.to_a
     tasks = tasks.select { |t| t.platform == platform } if platform.present?
     tasks
   end
@@ -231,22 +236,27 @@ class PublishScheduler
       'heygen'
     elsif task.is_a?(JianyingTask)
       'jianying'
+    elsif task.is_a?(MoveTask)
+      'move'
     else
       'operation'
     end
   end
 
   def self.build_request_data(task)
-    video_url = if task.is_a?(OperationTask) || task.is_a?(JianyingTask)
+    # 运营/剪映/搬运 任务均使用 oss_url 作为视频地址；Grok/Heygen 使用 video_url
+    video_url = if task.is_a?(OperationTask) || task.is_a?(JianyingTask) || task.is_a?(MoveTask)
                   task.oss_url
                 else
                   task.video_url
                 end
+    # MoveTask 没有 description 字段，搬运模式发布不需要描述
+    description = task.respond_to?(:description) ? task.description.to_s : ""
     {
       profile_name: ensure_utf8(task.browser.profile_name),
       title: ensure_utf8(task.title),
       video_oss_url: ensure_utf8(video_url),
-      description: ensure_utf8(task.description.to_s)
+      description: ensure_utf8(description)
     }
   end
 
