@@ -36,7 +36,7 @@ module Api
           }
         end
 
-        render_success(data: data, msg: "查询成功，共 #{data.size} 条记录")
+        render_success(msg: "查询成功，共 #{data.size} 条记录", data: data)
       end
     end
   end
