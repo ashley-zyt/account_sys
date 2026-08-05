@@ -13,56 +13,67 @@
     </div>
     <div>
       <div style="font-size: 15px; font-weight: 600; color: var(--text-primary);">调度配置</div>
-      <div style="font-size: 12px; color: var(--text-secondary);">两台机器独立运行，各自控制时长</div>
+      <div style="font-size: 12px; color: var(--text-secondary);">按运营机器IP分组并行运行，每台机器独立 5 小时时间窗口</div>
     </div>
   </div>
 
-  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-    <%# 可用账号 %>
-    <div style="padding: 14px; border-radius: 10px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
-      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">可用账号</div>
-      <div style="display: flex; gap: 20px; align-items: baseline;">
-        <div>
-          <div style="font-size: 22px; font-weight: 700; color: #3b82f6;"><%= @move_total %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">搬运机器</div>
-        </div>
-        <div style="width: 1px; height: 32px; background: var(--border-color, #1f2937);"></div>
-        <div>
-          <div style="font-size: 22px; font-weight: 700; color: #8b5cf6;"><%= @other_total %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">运营机器</div>
-        </div>
+  <% if @orphan_total > 0 %>
+    <div style="padding: 12px 14px; border-radius: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.4); margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 14px;">⚠️</span>
+      <div style="font-size: 13px; color: #fbbf24;">
+        有 <strong><%= @orphan_total %></strong> 个账号的浏览器未设置运营机器IP，养号会被跳过。
+        <%= link_to "去浏览器页面补全", admin_browsers_path, class: "admin-link-quiet", style: "color: #fbbf24; text-decoration: underline; margin-left: 6px;" %>
       </div>
     </div>
-    <%# 养号启用 %>
-    <div style="padding: 14px; border-radius: 10px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
-      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">养号启用</div>
-      <div style="display: flex; gap: 20px; align-items: baseline;">
-        <div>
-          <div style="font-size: 22px; font-weight: 700; color: #3b82f6;"><%= @move_enabled %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">搬运机器</div>
-        </div>
-        <div style="width: 1px; height: 32px; background: var(--border-color, #1f2937);"></div>
-        <div>
-          <div style="font-size: 22px; font-weight: 700; color: #8b5cf6;"><%= @other_enabled %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">运营机器</div>
-        </div>
-      </div>
-    </div>
-    <%# 待养号 %>
-    <div style="padding: 14px; border-radius: 10px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
-      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">待养号（>48h）</div>
-      <div style="display: flex; gap: 20px; align-items: baseline;">
-        <div>
-          <div style="font-size: 22px; font-weight: 700; color: #3b82f6;"><%= @move_due %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">搬运机器</div>
-        </div>
-        <div style="width: 1px; height: 32px; background: var(--border-color, #1f2937);"></div>
-        <div>
-          <div style="font-size: 22px; font-weight: 700; color: #8b5cf6;"><%= @other_due %></div>
-          <div style="font-size: 11px; color: var(--text-tertiary, #6b7280);">运营机器</div>
-        </div>
-      </div>
-    </div>
+  <% end %>
+
+  <div class="admin-table-wrapper" style="margin: 0;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>运营机器 IP</th>
+          <th>可用账号</th>
+          <th>养号启用</th>
+          <th>待养号（&gt;48h）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @machine_stats.any? %>
+          <% @machine_stats.each do |stat| %>
+            <tr>
+              <td>
+                <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                  <%= stat[:ip] %>
+                </span>
+              </td>
+              <td><span style="font-size: 15px; font-weight: 600; color: var(--text-primary);"><%= stat[:total] %></span></td>
+              <td><span style="font-size: 15px; font-weight: 600; color: #22c55e;"><%= stat[:enabled] %></span></td>
+              <td>
+                <% if stat[:due] > 0 %>
+                  <span style="font-size: 15px; font-weight: 600; color: #ef4444;"><%= stat[:due] %></span>
+                <% else %>
+                  <span class="admin-label-muted">0</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="4" class="admin-empty-state">暂无已配置机器IP的浏览器</td>
+          </tr>
+        <% end %>
+      </tbody>
+      <% if @machine_stats.any? %>
+        <tfoot>
+          <tr style="border-top: 2px solid var(--border-color, #1f2937);">
+            <td><span style="font-weight: 600; color: var(--text-secondary);">总计</span></td>
+            <td><span style="font-weight: 700; color: var(--text-primary);"><%= @total_count %></span></td>
+            <td><span style="font-weight: 700; color: #22c55e;"><%= @enabled_count %></span></td>
+            <td><span style="font-weight: 700; color: #ef4444;"><%= @due_count %></span></td>
+          </tr>
+        </tfoot>
+      <% end %>
+    </table>
   </div>
 </div>
 
@@ -89,8 +100,8 @@
         <%= f.select :platform_eq, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">机器</label>
-        <%= f.select :warmup_profile_machine_eq, [["所有机器", ""], ["搬运机器", "move"], ["运营机器", "other"]], { include_blank: false }, class: "admin-input admin-filter-input" %>
+        <label class="admin-filter-label">运营机器</label>
+        <%= f.select :browser_machine_ip_eq, [["所有机器", ""]] + @machine_stats.map { |s| [s[:ip], s[:ip]] }, { include_blank: false }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
@@ -176,20 +187,12 @@
 
               <%# 机器 %>
               <td>
-                <% if profile %>
-                  <% if profile.machine == 'move' %>
-                    <span style="display: inline-flex; align-items: center; gap: 6px;">
-                      <span style="width: 6px; height: 6px; border-radius: 50%; background: #3b82f6;"></span>
-                      <span style="color: #3b82f6; font-size: 13px;">搬运</span>
-                    </span>
-                  <% else %>
-                    <span style="display: inline-flex; align-items: center; gap: 6px;">
-                      <span style="width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6;"></span>
-                      <span style="color: #8b5cf6; font-size: 13px;">运营</span>
-                    </span>
-                  <% end %>
+                <% if account.browser&.machine_ip.present? %>
+                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                    <%= account.browser.machine_ip %>
+                  </span>
                 <% else %>
-                  <span class="admin-label-muted">-</span>
+                  <span style="color: #f59e0b; font-size: 12px;">未设置</span>
                 <% end %>
               </td>
 

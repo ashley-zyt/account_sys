@@ -30,6 +30,10 @@
         <%= f.search_field :profile_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索名称..." %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">机器 IP</label>
+        <%= f.search_field :machine_ip_cont, class: "admin-input admin-filter-input", placeholder: "搜索 IP..." %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
         <%= f.select :status_eq, Browser.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
@@ -50,6 +54,9 @@
             </th>
             <th>
               云端 ID
+            </th>
+            <th>
+              运营机器
             </th>
             <th>
               状态
@@ -81,6 +88,15 @@
                 <span class="admin-label-muted">
                   <%= browser.cloud_id %>
                 </span>
+              </td>
+              <td>
+                <% if browser.machine_ip.present? %>
+                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                    <%= browser.machine_ip %>
+                  </span>
+                <% else %>
+                  <span class="admin-label-muted">未设置</span>
+                <% end %>
               </td>
               <td>
                 <% case browser.status %>

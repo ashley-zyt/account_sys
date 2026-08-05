@@ -101,17 +101,11 @@ end
 
 
 # ==================== 养号任务配置 ====================
-# 两台机器独立运行，各自控制运行时长
-# - 运行5小时
-# - 错开时间运行，避免冲突
-
-set :output, "log/warmup_scheduler_move.log"
+# 按 browser.machine_ip 分组，多台机器并行运行、互不影响
+# - 每台机器独立 5 小时时间窗口
+# - 机器IP在浏览器页面动态管理，无需改代码
+set :output, "log/warmup_scheduler.log"
 every :day, at: '21:00' do
-  runner 'WarmupScheduler.run_move'
-end
-
-set :output, "log/warmup_scheduler_other.log"
-every :day, at: '21:00' do
-  runner 'WarmupScheduler.run_other'
+  runner 'WarmupScheduler.run'
 end
 

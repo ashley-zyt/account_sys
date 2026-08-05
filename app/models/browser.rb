@@ -23,6 +23,15 @@ class Browser < ApplicationRecord
 	# 一个浏览器可执行多个发布任务（任务执行时会记录快照 browser_id）
 	has_many :move_tasks, dependent: :nullify
 
+	# 养号接口固定端口
+	NURTURE_PORT = 8080
+
+	# 校验：一个浏览器固定一台运营机器，避免频繁换IP导致封号
+	# 格式校验在填写时生效；未填写时不阻断保存（便于渐进迁移）
+	validates :machine_ip,
+		format: { with: /\A\d{1,3}(\.\d{1,3}){3}\z/, message: "请填写合法的 IP 地址（如 174.139.46.117）" },
+		allow_nil: true
+
 	# 浏览器状态枚举
 	# - online        : 在线且空闲，可分配任务
 	# - offline       : 离线（关机、未启动）
@@ -69,11 +78,19 @@ class Browser < ApplicationRecord
 		正常
 	}
 
+	# 该浏览器所属运营机器的养号接口端点
+	# 例：machine_ip = '174.139.46.117' -> 'http://174.139.46.117:8080/accounts/nurture'
+	def nurture_endpoint
+		return nil if machine_ip.blank?
+		"http://#{machine_ip}:#{NURTURE_PORT}/accounts/nurture"
+	end
+
 	def self.ransackable_attributes(auth_object = nil)
 		%w[
 			id
 			profile_name
 			cloud_id
+			machine_ip
 			proxy_type
 			proxy_host
 			proxy_port

@@ -80,17 +80,13 @@
         <% end %>
       </div>
       <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
-        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">机器类型</div>
-        <% if @warmup_profile.machine == 'move' %>
-          <span style="display: inline-flex; align-items: center; gap: 6px;">
-            <span style="width: 6px; height: 6px; border-radius: 50%; background: #3b82f6;"></span>
-            <span style="color: #3b82f6; font-weight: 500; font-size: 14px;">搬运机器</span>
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">运营机器</div>
+        <% if @account.browser&.machine_ip.present? %>
+          <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; font-weight: 500; font-size: 14px;">
+            <%= @account.browser.machine_ip %>
           </span>
         <% else %>
-          <span style="display: inline-flex; align-items: center; gap: 6px;">
-            <span style="width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6;"></span>
-            <span style="color: #8b5cf6; font-weight: 500; font-size: 14px;">运营机器</span>
-          </span>
+          <span style="color: #f59e0b; font-size: 13px;">未设置</span>
         <% end %>
       </div>
       <div style="padding: 12px; border-radius: 8px; background: var(--bg-secondary, rgba(15, 23, 42, 0.98)); border: 1px solid var(--border-color, #1f2937);">
@@ -176,7 +172,11 @@
                 <span class="admin-label-muted"><%= task.duration_minutes || '-' %></span>
               </td>
               <td>
-                <span class="admin-label-muted"><%= task.machine == 'move' ? '搬运机器' : '运营机器' %></span>
+                <% if task.machine.present? %>
+                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><%= task.machine %></span>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
               </td>
               <td>
                 <span class="admin-label-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= task.error_msg %>"><%= task.error_msg || '-' %></span>

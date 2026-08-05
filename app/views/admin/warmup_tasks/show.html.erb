@@ -64,8 +64,14 @@
       <span class="admin-detail-value"><%= @warmup_task.duration_minutes ? "#{@warmup_task.duration_minutes} 分钟" : '-' %></span>
     </div>
     <div class="admin-detail-item">
-      <span class="admin-detail-label">机器</span>
-      <span class="admin-detail-value"><%= @warmup_task.machine == 'move' ? '视频搬运机器' : '其他模式机器' %></span>
+      <span class="admin-detail-label">运营机器</span>
+      <span class="admin-detail-value">
+        <% if @warmup_task.machine.present? %>
+          <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><%= @warmup_task.machine %></span>
+        <% else %>
+          <span class="admin-label-muted">-</span>
+        <% end %>
+      </span>
     </div>
     <div class="admin-detail-item">
       <span class="admin-detail-label">错误信息</span>

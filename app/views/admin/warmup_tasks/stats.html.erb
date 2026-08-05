@@ -2,7 +2,7 @@
   养号统计
 <% end %>
 <% content_for :page_subtitle do %>
-  养号任务执行统计分析
+  按运营机器IP分组的养号任务执行统计
 <% end %>
 
 <div class="admin-card">
@@ -12,7 +12,7 @@
         养号统计
       </div>
       <div class="admin-card-subtitle">
-        养号任务执行数据统计
+        按运营机器IP分组展示养号任务执行数据
       </div>
     </div>
     <div class="admin-card-header-right">
@@ -22,98 +22,71 @@
 
   <div class="admin-stats-grid">
     <div class="admin-stat-card">
-      <div class="admin-stat-value"><%= @move_accounts %></div>
-      <div class="admin-stat-label">视频搬运账号总数</div>
+      <div class="admin-stat-value"><%= @machine_stats.sum { |s| s[:total_accounts] } %></div>
+      <div class="admin-stat-label">可用账号总数</div>
     </div>
     <div class="admin-stat-card">
-      <div class="admin-stat-value"><%= @other_accounts %></div>
-      <div class="admin-stat-label">其他模式账号总数</div>
-    </div>
-    <div class="admin-stat-card">
-      <div class="admin-stat-value"><%= @move_enabled_count %></div>
-      <div class="admin-stat-label">视频搬运启用养号</div>
-    </div>
-    <div class="admin-stat-card">
-      <div class="admin-stat-value"><%= @other_enabled_count %></div>
-      <div class="admin-stat-label">其他模式启用养号</div>
+      <div class="admin-stat-value"><%= @machine_stats.sum { |s| s[:enabled_accounts] } %></div>
+      <div class="admin-stat-label">启用养号账号</div>
     </div>
     <div class="admin-stat-card" style="background: rgba(34, 197, 94, 0.1);">
-      <div class="admin-stat-value" style="color: #22c55e;"><%= (@move_stats['success'] || 0) + (@other_stats['success'] || 0) %></div>
+      <div class="admin-stat-value" style="color: #22c55e;"><%= @total_success %></div>
       <div class="admin-stat-label">养号成功</div>
     </div>
     <div class="admin-stat-card" style="background: rgba(239, 68, 68, 0.1);">
-      <div class="admin-stat-value" style="color: #ef4444;"><%= (@move_stats['failed'] || 0) + (@other_stats['failed'] || 0) %></div>
+      <div class="admin-stat-value" style="color: #ef4444;"><%= @total_failed %></div>
       <div class="admin-stat-label">养号失败</div>
     </div>
   </div>
 
-  <div class="admin-section">
-    <div class="admin-section-title">视频搬运机器</div>
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>状态</th>
-            <th>数量</th>
-            <th>占比</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% total_move = @move_stats.values.sum %>
-          <% WarmupTask.statuses.each do |status, _| %>
-            <tr>
-              <td>
-                <%= status.to_s.titleize %>
-              </td>
-              <td><%= @move_stats[status] || 0 %></td>
-              <td><%= total_move > 0 ? ((@move_stats[status] || 0).to_f / total_move * 100).round(1) : 0 %>%</td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="admin-section">
-    <div class="admin-section-title">其他模式机器</div>
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>状态</th>
-            <th>数量</th>
-            <th>占比</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% total_other = @other_stats.values.sum %>
-          <% WarmupTask.statuses.each do |status, _| %>
-            <tr>
-              <td>
-                <%= status.to_s.titleize %>
-              </td>
-              <td><%= @other_stats[status] || 0 %></td>
-              <td><%= total_other > 0 ? ((@other_stats[status] || 0).to_f / total_other * 100).round(1) : 0 %>%</td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="admin-section">
-    <div class="admin-section-title">批次管理</div>
-    <div class="admin-form">
-      <div class="admin-form-group">
-        <label class="admin-form-label">分配批次</label>
-        <div style="display: flex; gap: 12px;">
-          <%= link_to "分配视频搬运账号批次", distribute_batches_admin_warmup_tasks_path(machine: :move), method: :post, class: "admin-button-primary" %>
-          <%= link_to "分配其他模式账号批次", distribute_batches_admin_warmup_tasks_path(machine: :other), method: :post, class: "admin-button-secondary" %>
+  <% if @machine_stats.any? %>
+    <% @machine_stats.each do |stat| %>
+      <div class="admin-section">
+        <div class="admin-section-title">
+          运营机器
+          <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; margin-left: 8px;"><%= stat[:ip] %></span>
         </div>
-        <div style="margin-top: 8px; font-size: 14px; color: #6b7280;">
-          每批次最多处理18个账号（约3小时时间窗口，每账号10-15分钟）
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+          可用账号 <%= stat[:total_accounts] %> · 启用养号 <%= stat[:enabled_accounts] %>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>状态</th>
+                <th>数量</th>
+                <th>占比</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% total = stat[:task_counts].values.sum %>
+              <% WarmupTask.statuses.each do |status, _v| %>
+                <% count = stat[:task_counts][WarmupTask.statuses[status]] || 0 %>
+                <tr>
+                  <td>
+                    <% case status.to_s %>
+                    <% when 'success' %>
+                      <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">成功</span>
+                    <% when 'failed' %>
+                      <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">失败</span>
+                    <% when 'executing' %>
+                      <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">执行中</span>
+                    <% else %>
+                      <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af;">待执行</span>
+                    <% end %>
+                  </td>
+                  <td><%= count %></td>
+                  <td><%= total > 0 ? (count.to_f / total * 100).round(1) : 0 %>%</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
       </div>
+    <% end %>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无养号任务执行记录（任务执行后机器IP会自动记录到任务中）。
     </div>
-  </div>
+  <% end %>
 </div>

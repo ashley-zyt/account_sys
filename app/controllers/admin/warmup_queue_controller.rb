@@ -9,16 +9,26 @@ class Admin::WarmupQueueController < Admin::BaseController
                   .page(params[:page])
                   .per(20)
 
-    # 按机器分类统计
-    # 搬运机器
-    @move_total = Account.joins(:warmup_profile).where(status: [0, 3], warmup_profiles: { machine: 'move' }).count
-    @move_enabled = WarmupProfile.where(machine: 'move', warmup_enabled: true).count
-    @move_due = Account.joins(:warmup_profile).where(warmup_profiles: { machine: 'move', warmup_enabled: true }).where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 48.hours.ago).count
+    # 按运营机器 IP（browser.machine_ip）分组统计
+    machine_ips = Browser.where.not(machine_ip: [nil, ""]).distinct.pluck(:machine_ip)
+    @machine_stats = machine_ips.map do |ip|
+      browser_ids = Browser.where(machine_ip: ip).pluck(:id)
+      total   = Account.where(browser_id: browser_ids, status: [0, 3]).count
+      enabled = Account.joins(:warmup_profile)
+                       .where(browser_id: browser_ids, status: [0, 3], warmup_profiles: { warmup_enabled: true })
+                       .count
+      due     = Account.joins(:warmup_profile)
+                       .where(browser_id: browser_ids, status: [0, 3], warmup_profiles: { warmup_enabled: true })
+                       .where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 48.hours.ago)
+                       .count
+      { ip: ip, total: total, enabled: enabled, due: due }
+    end.sort_by { |s| s[:ip] }
 
-    # 运营机器
-    @other_total = Account.joins(:warmup_profile).where(status: [0, 3], warmup_profiles: { machine: 'other' }).count
-    @other_enabled = WarmupProfile.where(machine: 'other', warmup_enabled: true).count
-    @other_due = Account.joins(:warmup_profile).where(warmup_profiles: { machine: 'other', warmup_enabled: true }).where("warmup_profiles.last_warmup_at IS NULL OR warmup_profiles.last_warmup_at < ?", 48.hours.ago).count
+    # 未设置机器IP的浏览器下的账号（需提醒补全）
+    @orphan_total = Account.joins(:browser)
+                            .where(status: [0, 3])
+                            .where(browsers: { machine_ip: [nil, ""] })
+                            .count
 
     # 总计
     @total_count = Account.where(status: [0, 3]).count

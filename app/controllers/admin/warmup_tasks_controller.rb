@@ -34,12 +34,26 @@ class Admin::WarmupTasksController < Admin::BaseController
   end
 
   def stats
-    @move_stats = WarmupTask.where(machine: 'move').group(:status).count
-    @other_stats = WarmupTask.where(machine: 'other').group(:status).count
-    @move_accounts = Account.active.where(work_type: '视频搬运').count
-    @other_accounts = Account.active.where.not(work_type: '视频搬运').count
-    @move_enabled_count = WarmupProfile.where(machine: 'move', warmup_enabled: true).count
-    @other_enabled_count = WarmupProfile.where(machine: 'other', warmup_enabled: true).count
+    # 按运营机器 IP（记录在 warmup_tasks.machine）分组统计
+    machine_ips = WarmupTask.where.not(machine: [nil, ""]).distinct.pluck(:machine).sort
+    @machine_stats = machine_ips.map do |ip|
+      task_counts = WarmupTask.where(machine: ip).group(:status).count
+      browser_ids = Browser.where(machine_ip: ip).pluck(:id)
+      total_accounts   = Account.where(browser_id: browser_ids, status: [0, 3]).count
+      enabled_accounts = Account.joins(:warmup_profile)
+                                .where(browser_id: browser_ids, status: [0, 3], warmup_profiles: { warmup_enabled: true })
+                                .count
+      {
+        ip: ip,
+        task_counts: task_counts,
+        total_accounts: total_accounts,
+        enabled_accounts: enabled_accounts,
+        success: task_counts[2] || 0,   # status enum: success=2
+        failed:  task_counts[3] || 0    # status enum: failed=3
+      }
+    end
+    @total_success = @machine_stats.sum { |s| s[:success] }
+    @total_failed  = @machine_stats.sum { |s| s[:failed] }
   end
 
   def execute

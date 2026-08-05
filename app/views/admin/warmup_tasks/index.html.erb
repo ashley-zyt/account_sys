@@ -39,8 +39,8 @@
         <%= f.select :status_eq, WarmupTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">机器</label>
-        <%= f.select :machine_eq, [["视频搬运机器", "move"], ["其他模式机器", "other"]], { include_blank: "所有机器" }, class: "admin-input admin-filter-input" %>
+        <label class="admin-filter-label">运营机器</label>
+        <%= f.select :machine_eq, [["所有机器", ""]] + WarmupTask.where.not(machine: [nil, ""]).distinct.pluck(:machine).sort.map { |ip| [ip, ip] }, { include_blank: false }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
@@ -105,7 +105,11 @@
                 <span class="admin-label-muted"><%= task.duration_minutes || '-' %></span>
               </td>
               <td>
-                <span class="admin-label-muted"><%= task.machine == 'move' ? '视频搬运机器' : '其他模式机器' %></span>
+                <% if task.machine.present? %>
+                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><%= task.machine %></span>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
               </td>
               <td>
                 <span class="admin-label-muted" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;" title="<%= task.error_msg %>"><%= task.error_msg || '-' %></span>

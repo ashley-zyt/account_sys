@@ -177,11 +177,9 @@ class Account < ApplicationRecord
 	end
 
 	# 创建养号配置
+	# 说明：运营机器IP现已由 browser.machine_ip 管理，warmup_profile 不再持有 machine 字段
 	def create_warmup_profile
-		WarmupProfile.create!(
-			account: self,
-			machine: work_type == '视频搬运' ? 'move' : 'other'
-		)
+		WarmupProfile.create!(account: self)
 	end
 
 	# 同步养号启用状态：

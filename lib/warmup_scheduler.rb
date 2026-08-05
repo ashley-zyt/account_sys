@@ -1,75 +1,93 @@
 class WarmupScheduler
-  # 养号API端点，端口统一8080，IP通过环境变量配置
-  MOVE_ENDPOINT = "http://#{ENV['MOVE_NURTURE_HOST'] || '174.139.46.117'}:8080/accounts/nurture"
-  OTHER_ENDPOINT = "http://#{ENV['OTHER_NURTURE_HOST'] || '174.139.46.15'}:8080/accounts/nurture"
-
   # 单次请求最长10分钟
   TIMEOUT_SECONDS = 660
   # 账号间等待时间
   INTER_ACCOUNT_PAUSE_MIN = 30
   INTER_ACCOUNT_PAUSE_MAX = 60
-  # 两台机器各自的运行时长（小时）
-  MOVE_TIME_WINDOW_HOURS = 5
-  OTHER_TIME_WINDOW_HOURS = 5
+  # 每台运营机器单次运行时长上限（小时）；超时自动停止，下次从上次位置继续
+  TIME_WINDOW_HOURS = 5
 
-  def self.run_move
-    Rails.logger.info "[WarmupScheduler] 开始搬运机器养号任务"
-    run_machine(:move, MOVE_TIME_WINDOW_HOURS)
+  # 统一入口：按 browser.machine_ip 分组，多台机器并行运行、互不影响
+  def self.run
+    machine_ips = target_machine_ips
+    Rails.logger.info "[WarmupScheduler] 发现 #{machine_ips.size} 台运营机器: #{machine_ips.join(', ')}"
+
+    # 提示存在未设置 machine_ip 的浏览器（其账号本轮会被跳过）
+    orphan_accounts = Account.joins(:browser)
+                             .where.not(status: ["未登录", "封禁/停用"])
+                             .where(browsers: { machine_ip: [nil, ""] })
+                             .count
+    if orphan_accounts > 0
+      Rails.logger.warn "[WarmupScheduler] 有 #{orphan_accounts} 个账号的浏览器未设置 machine_ip，本轮跳过，请在浏览器页面补全机器IP"
+    end
+
+    return if machine_ips.empty?
+
+    threads = machine_ips.map do |ip|
+      Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          run_for_machine(ip)
+        end
+      end
+    end
+    threads.each(&:join)
+    Rails.logger.info "[WarmupScheduler] 所有机器养号任务执行完成"
   end
 
-  def self.run_other
-    Rails.logger.info "[WarmupScheduler] 开始运营机器养号任务"
-    run_machine(:other, OTHER_TIME_WINDOW_HOURS)
-  end
-
-  private
-
-  def self.run_machine(machine_type, time_window_hours)
+  # 针对单台机器运行（公开方法，便于单独触发或调试）
+  def self.run_for_machine(machine_ip)
     start_time = Time.current
-    accounts = fetch_target_accounts_by_machine(machine_type)
-    Rails.logger.info "[WarmupScheduler] #{machine_type} 机器获取到 #{accounts.size} 个需要养号的账号"
+    accounts = fetch_target_accounts_for_machine(machine_ip)
+    Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 获取到 #{accounts.size} 个需要养号的账号"
+    return if accounts.empty?
 
     accounts.each_with_index do |account, index|
-      break if time_exceeded?(start_time, time_window_hours)
+      break if time_exceeded?(start_time, TIME_WINDOW_HOURS)
 
-      execute_warmup_for_account(account, machine_type)
+      execute_warmup_for_account(account, machine_ip)
 
-      if index < accounts.size - 1 && !time_exceeded?(start_time, time_window_hours)
+      if index < accounts.size - 1 && !time_exceeded?(start_time, TIME_WINDOW_HOURS)
         pause_time = rand(INTER_ACCOUNT_PAUSE_MIN..INTER_ACCOUNT_PAUSE_MAX)
-        Rails.logger.info "[WarmupScheduler] 等待 #{pause_time} 秒后处理下一个账号"
+        Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 等待 #{pause_time} 秒后处理下一个账号"
         sleep(pause_time)
       end
     end
 
-    Rails.logger.info "[WarmupScheduler] #{machine_type} 机器养号任务执行完成"
+    Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 养号任务执行完成"
   end
 
-  # 根据机器类型查询对应的账号
-  def self.fetch_target_accounts_by_machine(machine_type)
-    scope = Account.joins(:warmup_profile)
-                   .where("browser_id IS NOT NULL")
-                   .where.not(status: ["未登录", "封禁/停用"])
-                   .where(warmup_profiles: { warmup_enabled: true, machine: machine_type.to_s })
-                   .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.warmup_status = 'failed' DESC, warmup_profiles.last_warmup_at ASC"))
-    
-    scope
+  private
+
+  # 当前需要参与养号的所有运营机器 IP（来自浏览器配置）
+  def self.target_machine_ips
+    Browser.where.not(machine_ip: [nil, ""])
+           .joins(:accounts)
+           .distinct
+           .pluck(:machine_ip)
   end
 
-  # 根据机器类型选择端点
-  def self.endpoint_for_machine(machine_type)
-    machine_type == :move ? MOVE_ENDPOINT : OTHER_ENDPOINT
+  # 查询指定机器下需要养号的账号
+  # 排序：1) 从未养号优先 2) 上次报错优先 3) 上次养号时间更久优先
+  def self.fetch_target_accounts_for_machine(machine_ip)
+    browser_ids = Browser.where(machine_ip: machine_ip).pluck(:id)
+    Account.joins(:warmup_profile)
+           .where(browser_id: browser_ids)
+           .where.not(status: ["未登录", "封禁/停用"])
+           .where(warmup_profiles: { warmup_enabled: true })
+           .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.warmup_status = 'failed' DESC, warmup_profiles.last_warmup_at ASC"))
   end
 
-  def self.execute_warmup_for_account(account, machine_type)
+  def self.execute_warmup_for_account(account, machine_ip)
     return if account.browser.nil?
 
-    endpoint = endpoint_for_machine(machine_type)
-    Rails.logger.info "[WarmupScheduler] 开始养号: #{account.account_name} (#{account.platform}) → #{endpoint}"
+    endpoint = "http://#{machine_ip}:#{Browser::NURTURE_PORT}/accounts/nurture"
+    Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 开始养号: #{account.account_name} (#{account.platform}) → #{endpoint}"
 
     warmup_task = WarmupTask.create!(
       account: account,
       browser: account.browser,
       platform: account.platform,
+      machine: machine_ip,
       status: :executing
     )
 
@@ -94,13 +112,14 @@ class WarmupScheduler
         profile.update!(last_warmup_at: Time.current, warmup_status: 'success')
       else
         error_msg = response['info'] || '养号失败'
-        Rails.logger.error "[WarmupScheduler] 养号失败: #{account.account_name} - #{error_msg}"
+        Rails.logger.error "[WarmupScheduler] 养号失败: 机器 #{machine_ip} / 账号 #{account.account_name} / 原因: #{error_msg}"
         warmup_task.update!(status: :failed, error_msg: error_msg, executed_at: Time.current)
         profile = account.warmup_profile || account.create_warmup_profile
+        # 即使失败也更新 last_warmup_at，避免无限重试
         profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
       end
     rescue => e
-      Rails.logger.error "[WarmupScheduler] 养号异常: #{account.account_name} - #{e.message}"
+      Rails.logger.error "[WarmupScheduler] 养号异常: 机器 #{machine_ip} / 账号 #{account.account_name} / 原因: #{e.message}"
       warmup_task.update!(status: :failed, error_msg: e.message, executed_at: Time.current)
       profile = account.warmup_profile || account.create_warmup_profile
       profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
