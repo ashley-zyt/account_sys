@@ -33,7 +33,7 @@ class MoveTask < ApplicationRecord
 	belongs_to :browser, optional: true
 	belongs_to :account, optional: true
 	belongs_to :move_video, optional: true
-
+	before_validation :generate_task_uuid, on: :create
 
 	enum status: {
 		pending: 0,          # 待分配账号
@@ -125,7 +125,7 @@ class MoveTask < ApplicationRecord
 	private
 
 	def generate_task_uuid
-		self.task_uuid ||= SecureRandom.uuid
+		self.task_uuid ||= "MOVE-#{SecureRandom.uuid}"
 	end
 	def assign_group_id
 		self.group_id ||= SecureRandom.uuid
