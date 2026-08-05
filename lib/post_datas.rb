@@ -1,13 +1,19 @@
 # 抓取所有发文的详细数据
-# 每日定期获取绑定正常账号的浏览器列表，推送到外部接口采集发文数据
+# 每日定期获取绑定正常账号的浏览器列表，推送到该浏览器所属运营机器采集发文数据
+#
+# 调度模型：
+#   - 按浏览器所属运营机器 IP（browser.machine_ip）分组
+#   - 每台机器一个 Thread 并行推送，互不影响
+#   - 端点动态生成：http://<browser.machine_ip>:8080/accounts/fetch_posts（端口固定 8080）
+#   - 一个浏览器只属于一台机器，其下所有账号（不论 work_type）统一推送到该机器
 class PostDatas
 
   RETRY_COUNT = 2
   RETRY_DELAY = 20
   REQUEST_INTERVAL = 2
 
-  VIDEO_MOVE_URL = "http://174.139.46.117:8080"
-  OTHER_URL = "http://174.139.46.15:8080"
+  # 运营机器发文数据采集服务固定端口
+  FETCH_PORT = 8080
 
   def self.fetch
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_fetch.log'))
@@ -29,6 +35,7 @@ class PostDatas
       {
         id: browser.id,
         profile_name: browser.profile_name,
+        machine_ip: browser.machine_ip,
         active_accounts: active_accounts.map do |acc|
           {
             id: acc.id,
@@ -60,6 +67,7 @@ class PostDatas
         data << {
           id: browser.id,
           profile_name: browser.profile_name,
+          machine_ip: browser.machine_ip,
           active_accounts: accounts.map do |acc|
             {
               id: acc.id,
@@ -74,53 +82,64 @@ class PostDatas
 
     Rails.logger.info "[PostDatas] 共 #{data.size} 个浏览器需要采集发文数据（包含 #{special_accounts.size} 个特殊账号）"
 
+    # 按运营机器 IP 分组：一个浏览器只属于一台机器，其下所有账号统一推送到该机器
+    grouped_by_machine = data.group_by { |item| item[:machine_ip] }
+    machine_ips = grouped_by_machine.keys.compact.reject(&:blank?).sort
+    orphan_count = data.count { |item| item[:machine_ip].blank? }
+
+    if orphan_count > 0
+      Rails.logger.warn "[PostDatas] 有 #{orphan_count} 个浏览器未设置 machine_ip，本轮跳过，请在浏览器页面补全机器IP"
+    end
+
+    Rails.logger.info "[PostDatas] 发现 #{machine_ips.size} 台运营机器: #{machine_ips.join(', ')}"
+
+    return { success_count: 0, fail_count: 0, total: data.size } if machine_ips.empty?
+
+    # 每台机器并行推送其下所有浏览器
     success_count = 0
     fail_count = 0
+    success_mutex = Mutex.new
 
-    data.each_with_index do |browser_data, index|
-      begin
-        move_accounts = browser_data[:active_accounts].select { |acc| acc[:work_type] == "视频搬运" }
-        other_accounts = browser_data[:active_accounts].reject { |acc| acc[:work_type] == "视频搬运" }
+    threads = machine_ips.map do |ip|
+      Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          browser_items = grouped_by_machine[ip]
+          machine_success = 0
+          machine_fail = 0
 
-        unless move_accounts.empty?
-          move_payload = {
-            id: browser_data[:id],
-            profile_name: browser_data[:profile_name],
-            active_accounts: move_accounts
-          }
-          response = push_to_external_with_retry(move_payload, VIDEO_MOVE_URL)
-          if response[:success]
-            success_count += 1
-            Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送成功 (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
-          else
-            fail_count += 1
-            Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 视频搬运账号推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{VIDEO_MOVE_URL})"
+          browser_items.each_with_index do |browser_data, index|
+            begin
+              payload = {
+                id: browser_data[:id],
+                profile_name: browser_data[:profile_name],
+                active_accounts: browser_data[:active_accounts]
+              }
+              endpoint = "http://#{ip}:#{FETCH_PORT}/accounts/fetch_posts"
+              response = push_to_external_with_retry(payload, endpoint)
+
+              if response[:success]
+                machine_success += 1
+                Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送成功 (第 #{index + 1} 个, 目标: #{endpoint})"
+              else
+                machine_fail += 1
+                Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{endpoint})"
+              end
+            rescue => e
+              machine_fail += 1
+              Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 执行异常: #{e.message}"
+            end
+
+            sleep(REQUEST_INTERVAL) unless index == browser_items.size - 1
           end
-          sleep(REQUEST_INTERVAL)
-        end
 
-        unless other_accounts.empty?
-          other_payload = {
-            id: browser_data[:id],
-            profile_name: browser_data[:profile_name],
-            active_accounts: other_accounts
-          }
-          response = push_to_external_with_retry(other_payload, OTHER_URL)
-          if response[:success]
-            success_count += 1
-            Rails.logger.info "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送成功 (第 #{index + 1} 个, 目标: #{OTHER_URL})"
-          else
-            fail_count += 1
-            Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 其他工作模式账号推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{OTHER_URL})"
+          success_mutex.synchronize do
+            success_count += machine_success
+            fail_count += machine_fail
           end
         end
-      rescue => e
-        fail_count += 1
-        Rails.logger.error "[PostDatas] 浏览器 #{browser_data[:profile_name]} 执行异常: #{e.message}"
       end
-
-      sleep(REQUEST_INTERVAL) unless index == data.size - 1
     end
+    threads.each(&:join)
 
     Rails.logger.info "[PostDatas] 采集完成: 成功 #{success_count} 个, 失败 #{fail_count} 个"
     { success_count: success_count, fail_count: fail_count, total: data.size }
@@ -129,10 +148,10 @@ class PostDatas
     { success_count: 0, fail_count: 0, total: 0, error: e.message }
   end
 
-  def self.push_to_external_with_retry(browser_data, base_url)
+  def self.push_to_external_with_retry(browser_data, endpoint)
     response = nil
     RETRY_COUNT.times do |attempt|
-      response = push_to_external(browser_data, base_url)
+      response = push_to_external(browser_data, endpoint)
       return response if response[:success]
 
       if attempt < RETRY_COUNT - 1
@@ -143,8 +162,8 @@ class PostDatas
     response
   end
 
-  def self.push_to_external(browser_data, base_url)
-    uri = URI.parse("#{base_url}/accounts/fetch_posts")
+  def self.push_to_external(browser_data, endpoint)
+    uri = URI.parse(endpoint)
     http = Net::HTTP.new(uri.host, uri.port)
     http.read_timeout = 600
     http.open_timeout = 300

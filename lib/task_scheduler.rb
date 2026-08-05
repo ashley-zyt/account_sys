@@ -67,13 +67,11 @@ class TaskScheduler
 	end
 
 	# 找出待执行任务中与锁定接口重合的指纹浏览器名称
+	# 遍历所有运营机器（browser.machine_ip）查询锁定状态，避免遗漏其他机器上的锁
 	def self.find_locked_browsers_in_pending_tasks
 
-		# 1. 获取待执行任务中的指纹浏览器名称
+		# 1. 获取待执行任务中的指纹浏览器
 		pending_browser_ids = []
-
-		# 从搬运任务中获取
-		# pending_browser_ids += MoveTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 从运营任务中获取
 		pending_browser_ids += OperationTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
@@ -87,51 +85,71 @@ class TaskScheduler
 		# 从剪映任务中获取
 		pending_browser_ids += JianyingTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
-		# 获取浏览器名称
-		pending_browser_names = Browser.where(id: pending_browser_ids.uniq).pluck(:profile_name).uniq
+		# 获取待发布浏览器及其所属机器 IP（用于遍历每台机器查询锁定）
+		pending_browsers = Browser.where(id: pending_browser_ids.uniq)
+		pending_browser_names = pending_browsers.pluck(:profile_name).uniq
 
 		return { pending_browsers: pending_browser_names, locked_browsers: [], matched_browsers: [] } if pending_browser_names.empty?
 
-		# 2. 调用锁定接口获取锁定的浏览器列表
-		begin
-			uri = URI('http://174.139.46.15:8080/api/browser/locked')
-			http = Net::HTTP.new(uri.host, uri.port)
-			http.open_timeout = 100
-			http.read_timeout = 100
+		# 待发布任务覆盖的运营机器 IP；同时遍历所有运营机器以发现跨机器的锁
+		machine_ips = Browser.where.not(machine_ip: [nil, ""]).distinct.pluck(:machine_ip).sort
 
-			response = http.get(uri.path)
-			locked_data = JSON.parse(response.body)
+		if machine_ips.empty?
+			Rails.logger.warn "[TaskScheduler] 暂无已配置 machine_ip 的运营机器，无法查询锁定状态"
+			return { pending_browsers: pending_browser_names, locked_browsers: [], matched_browsers: [] }
+		end
 
-			# 提取锁定的浏览器名称
-			locked_browser_names = if locked_data.is_a?(Array)
-				locked_data.map { |item| item['name'] || item[:name] }.compact
-			elsif locked_data.is_a?(Hash) && locked_data['data'].is_a?(Array)
-				locked_data['data'].map { |item| item['name'] || item[:name] }.compact
-			else
-				[]
+		# 2. 遍历每台运营机器调用锁定接口，合并锁定列表
+		locked_browser_names = []
+		machine_errors = []
+
+		machine_ips.each do |ip|
+			begin
+				names = fetch_locked_browser_names(ip)
+				locked_browser_names.concat(names)
+				Rails.logger.info "[TaskScheduler] 机器 #{ip} 返回 #{names.size} 个锁定浏览器"
+			rescue => e
+				machine_errors << "#{ip}: #{e.message}"
+				Rails.logger.error "[TaskScheduler] 调用机器 #{ip} 锁定接口失败: #{e.message}"
 			end
+		end
 
-			# 3. 找出重合的浏览器名称
-			matched_browser_names = pending_browser_names & locked_browser_names
+		locked_browser_names.uniq!
 
-			# 4. 如果有匹配的浏览器，发送钉钉通知
-			if matched_browser_names.present?
-				send_locked_browsers_alert(matched_browser_names, pending_browser_names, locked_browser_names)
-			end
+		# 3. 找出重合的浏览器名称
+		matched_browser_names = pending_browser_names & locked_browser_names
 
-			{
-				pending_browsers: pending_browser_names,
-				locked_browsers: locked_browser_names,
-				matched_browsers: matched_browser_names
-			}
-		rescue => e
-			Rails.logger.error "调用锁定浏览器接口失败: #{e.message}"
-			{
-				pending_browsers: pending_browser_names,
-				locked_browsers: [],
-				matched_browsers: [],
-				error: e.message
-			}
+		# 4. 如果有匹配的浏览器，发送钉钉通知
+		if matched_browser_names.present?
+			send_locked_browsers_alert(matched_browser_names, pending_browser_names, locked_browser_names)
+		end
+
+		result = {
+			pending_browsers: pending_browser_names,
+			locked_browsers: locked_browser_names,
+			matched_browsers: matched_browser_names
+		}
+		result[:machine_errors] = machine_errors if machine_errors.any?
+		result
+	end
+
+	# 调用单台运营机器的锁定接口，返回锁定的浏览器名称数组
+	# 端点：http://<machine_ip>:8080/api/browser/locked（端口固定 8080）
+	def self.fetch_locked_browser_names(machine_ip)
+		uri = URI("http://#{machine_ip}:8080/api/browser/locked")
+		http = Net::HTTP.new(uri.host, uri.port)
+		http.open_timeout = 100
+		http.read_timeout = 100
+
+		response = http.get(uri.path)
+		locked_data = JSON.parse(response.body)
+
+		if locked_data.is_a?(Array)
+			locked_data.map { |item| item['name'] || item[:name] }.compact
+		elsif locked_data.is_a?(Hash) && locked_data['data'].is_a?(Array)
+			locked_data['data'].map { |item| item['name'] || item[:name] }.compact
+		else
+			[]
 		end
 	end
 
@@ -148,7 +166,7 @@ class TaskScheduler
 		pending_list = pending_browsers.map { |name| "• #{name}" }.join("\n")
 		locked_list = locked_browsers.map { |name| "• #{name}" }.join("\n")
 
-		message = "【养号】检测到被锁定的浏览器正在执行任务\n\n"
+		message = "【发布】检测到被锁定的浏览器正在执行任务\n\n"
 		message += "🔒 被锁定的浏览器（共 #{matched_browsers.size} 个）：\n#{matched_list}\n\n"
 		message += "📋 待执行任务中的浏览器（共 #{pending_browsers.size} 个）：\n#{pending_list}\n\n"
 		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}"
