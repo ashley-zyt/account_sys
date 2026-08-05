@@ -19,6 +19,7 @@ class TaskScheduler
 		today_end = today.end_of_day
 
 		resource_configs = [
+			{ work_type: "视频搬运", task_model: MoveTask, type_name: "搬运" },
 			{ work_type: "人工运营", task_model: OperationTask, type_name: "运营" },
 			{ work_type: "Grok", task_model: GrokTask, type_name: "Grok" },
 			# { work_type: "Heygen", task_model: HeygenTask, type_name: "Heygen" },
@@ -72,6 +73,9 @@ class TaskScheduler
 
 		# 1. 获取待执行任务中的指纹浏览器
 		pending_browser_ids = []
+
+		# 从搬运任务中获取
+		pending_browser_ids += MoveTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 从运营任务中获取
 		pending_browser_ids += OperationTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
