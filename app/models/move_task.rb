@@ -11,6 +11,7 @@
 #  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
 #  theme(内容主题)                                                   :string(255)
 #  title(发布标题)                                                   :text(65535)
+#  description(视频描述)                                             :string(255)
 #  created_at                                                        :datetime         not null
 #  updated_at                                                        :datetime         not null
 #  account_id(发布账号ID)                                            :bigint
@@ -102,6 +103,7 @@ class MoveTask < ApplicationRecord
 			task_uuid
 			theme
 			title
+			description
 			oss_url
 			platform
 			account_id

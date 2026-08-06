@@ -194,9 +194,19 @@ module Api
 					MoveTask.platforms.each_key do |platform_name|
 						move_task = MoveTask.find_or_initialize_by(move_video_id: move_video.id, platform: platform_name)
 						is_new = move_task.new_record?
+						
+						# 处理标题：youtube 平台如果超过 99 字符则截断
+						title = theme_titles.empty? ? move_task.title : theme_titles.sample
+						description = nil
+						if platform_name == "youtube" && title.present? && title.length > 99
+							description = title[99..]
+							title = title[0...99]
+						end
+						
 						move_task.assign_attributes(
 							oss_url: oss_url,
-							title: theme_titles.empty? ? move_task.title : theme_titles.sample,
+							title: title,
+							description: description,
 							theme: move_video.theme,
 							group_id: move_video.group_id
 						)
