@@ -1,6 +1,5 @@
 class Load
 	def self.get_browsers
-		arries = ["meishizhizuo1","meishizhizuo","banyun_tw_003","banyun_tw_003","banyun_tw_006","banyun_tw_003","hanfuxiu","zhongguowu","wushiwulong","wushiwulong","banyun_tw_004","wushiwulong","mingshengguji"]
 		url = "http://174.139.46.15:8384/undetectable/list"
 		res = RestClient.get(url) rescue nil
 		if !res.nil?
@@ -12,22 +11,21 @@ class Load
 				working_types = 4
 				puts adspower_user_name = browser["name"]
 				account_type = 0
-				if arries.include?adspower_user_name.to_s
-					puts status = browser["status"]
-					puts cloud_id = browser["cloud_id"]
-					detail_url = "http://174.139.46.15:8384/undetectable/profile_id?profile_id=#{profile_id}"
-					detail_res = RestClient.get(detail_url) rescue nil
-					detail_res = JSON.parse(detail_res)
-					proxy = detail_res["data"]["proxy"]
-					without_protocol = proxy.sub(/^\w+:\/\//, '')
-					parts = without_protocol.split(':')
-					proxy_type = proxy_string.match(/^(\w+):/)[1] rescue ""
-					proxy_host = parts[0] rescue ""
-				    proxy_port = parts[1]  rescue ""
-				    proxy_username = parts[2] rescue ""
-				    proxy_password = parts[3] rescue ""
-					Browser.create(profile_name: adspower_user_name, cloud_id: cloud_id, proxy_type: "socks5", proxy_host: proxy_host,proxy_port: proxy_port, proxy_username: proxy_username, proxy_password: proxy_password, status: "正常", purpose: "账号培育")
-				end
+				puts status = browser["status"]
+				puts cloud_id = browser["cloud_id"]
+				detail_url = "http://174.139.46.15:8384/undetectable/profile_id?profile_id=#{profile_id}"
+				detail_res = RestClient.get(detail_url) rescue nil
+				detail_res = JSON.parse(detail_res)
+				proxy = detail_res["data"]["proxy"]
+				without_protocol = proxy.sub(/^\w+:\/\//, '')
+				parts = without_protocol.split(':')
+				proxy_type = proxy_string.match(/^(\w+):/)[1] rescue ""
+				proxy_host = parts[0] rescue ""
+				proxy_port = parts[1]  rescue ""
+				proxy_username = parts[2] rescue ""
+				proxy_password = parts[3] rescue ""
+				browser = Browser.find_by(profile_name: adspower_user_name)
+				browser.update(cloud_id: cloud_id, proxy_type: "socks5", proxy_host: proxy_host,proxy_port: proxy_port, proxy_username: proxy_username, proxy_password: proxy_password) if browser.present?
 			end
 		end
 	end
