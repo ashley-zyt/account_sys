@@ -133,7 +133,7 @@ class JianyingTask < ApplicationRecord
 			ALL_PLATFORMS.each do |platform|
 				title = generate_title(item[:theme], item[:keyword])
 				description = ""
-				if platform == :youtube
+				if platform == "youtube"
 					title = title[0...99]
 					description = title[99..-1]
 				end
