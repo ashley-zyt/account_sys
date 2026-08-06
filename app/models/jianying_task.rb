@@ -131,16 +131,17 @@ class JianyingTask < ApplicationRecord
 			group_id = SecureRandom.uuid
 			full_url = oss_v1_sign_url(item[:oss_key])
 			ALL_PLATFORMS.each do |platform|
-				title = generate_title(item[:theme], item[:keyword])
+				title0 = generate_title(item[:theme], item[:keyword])
 				description = ""
-				if platform == :youtube
-					title = title[0...99]
-					description = title[99..-1]
+				title = title0
+				if platform == "youtube"
+					title = title0[0...99]
+					description = title0[99..-1]	
 				end
 				task = new(
 					keyword: item[:keyword],
 					keyword_code: item[:keyword_code],
-					theme: item[:theme],
+					theme: "剪映-#{item[:theme]}",
 					associated_images: item[:associated_images].is_a?(Array) ? item[:associated_images].to_json : item[:associated_images],
 					full_oss_url: item[:oss_key],
 					oss_url: full_url,

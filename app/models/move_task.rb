@@ -11,6 +11,7 @@
 #  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
 #  theme(内容主题)                                                   :string(255)
 #  title(发布标题)                                                   :text(65535)
+#  description(视频描述)                                             :string(255)
 #  created_at                                                        :datetime         not null
 #  updated_at                                                        :datetime         not null
 #  account_id(发布账号ID)                                            :bigint
@@ -33,7 +34,7 @@ class MoveTask < ApplicationRecord
 	belongs_to :browser, optional: true
 	belongs_to :account, optional: true
 	belongs_to :move_video, optional: true
-
+	before_validation :generate_task_uuid, on: :create
 
 	enum status: {
 		pending: 0,          # 待分配账号
@@ -102,6 +103,7 @@ class MoveTask < ApplicationRecord
 			task_uuid
 			theme
 			title
+			description
 			oss_url
 			platform
 			account_id
@@ -125,7 +127,7 @@ class MoveTask < ApplicationRecord
 	private
 
 	def generate_task_uuid
-		self.task_uuid ||= SecureRandom.uuid
+		self.task_uuid ||= "MOVE-#{SecureRandom.uuid}"
 	end
 	def assign_group_id
 		self.group_id ||= SecureRandom.uuid

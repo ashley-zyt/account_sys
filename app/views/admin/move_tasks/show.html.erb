@@ -106,6 +106,17 @@
         <%= @move_task.title %>
       </div>
     </div>
+
+    <% if @move_task.description.present? %>
+    <div style="margin-top: 10px;">
+      <div class="admin-field-label">
+        描述 (YouTube)
+      </div>
+      <div class="admin-field-value">
+        <%= @move_task.description %>
+      </div>
+    </div>
+    <% end %>
   </div>
 
   <div class="admin-card">
