@@ -29,6 +29,18 @@
       </div>
       <div>
         <div class="admin-field-label">
+          视频 ID
+        </div>
+        <div class="admin-field-value">
+          <% if @move_task.move_video_id.present? %>
+            <%= link_to @move_task.move_video_id, admin_move_video_path(@move_task.move_video_id), class: "admin-link-quiet", style: "color: var(--accent);" %>
+          <% else %>
+            -
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
           平台
         </div>
         <div class="admin-field-value">
