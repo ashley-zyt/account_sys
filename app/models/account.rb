@@ -110,6 +110,22 @@ class Account < ApplicationRecord
 		update!(last_used_at: Time.current)
 	end
 
+	# 检查账号过去3天（不含今天）的发文浏览量是否均为0
+	# 用于发布调度时跳过长期零浏览量的账号（冷却3天后再恢复）
+	# - 过去3天无发文记录：返回 false（允许发布）
+	# - 过去3天有发文记录且全部浏览量为0：返回 true（暂停分配）
+	# - 过去3天有任意一条浏览量>0：返回 false（允许发布）
+	#
+	# 说明：通过滑动3天窗口实现「停3天再发布」效果——
+	#       账号连续0浏览量时会被持续跳过，直到窗口滑出那些0浏览量的发文。
+	def zero_views_in_past_3_days?
+		range_start = Date.today - 3
+		range_end   = Date.today - 1
+		recent_stats = post_stats.where(post_date: range_start..range_end)
+		return false if recent_stats.none?
+		recent_stats.where('views_count > 0').none?
+	end
+
 	# 根据工作模式返回对应的任务模型类
 	def task_model_for_work_type
 		case work_type

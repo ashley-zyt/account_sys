@@ -43,6 +43,13 @@ class TaskScheduler
 
 					next if has_posted_today
 
+					# TikTok 限制：账号过去3天发文浏览量均为0时暂停分配，冷却3天后再恢复
+					# （滑动窗口：连续0浏览量的账号会被持续跳过，直到窗口滑出那些0浏览量的发文）
+					if platform == 'tiktok' && account.zero_views_in_past_3_days?
+						Rails.logger.info "TikTok账号 #{account.account_name}[#{account.platform}-#{account.theme}] 过去3天发文浏览量均为0，暂停3天后再分配资源"
+						next
+					end
+
 					pending_task = task_model.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
 
 					if pending_task
