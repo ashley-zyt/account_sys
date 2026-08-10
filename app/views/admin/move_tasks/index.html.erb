@@ -29,6 +29,10 @@
         <%= f.search_field :title_or_move_video_source_video_url_cont, class: "admin-input admin-filter-input", placeholder: "搜索文案或URL..." %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">主题</label>
+        <%= f.select :theme_eq, @themes.map { |t| [t, t] }, { include_blank: "所有主题" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">平台</label>
         <%= f.select :platform_eq, MoveTask.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>

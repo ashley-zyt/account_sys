@@ -8,6 +8,7 @@ class Admin::MoveTasksController < Admin::BaseController
 			.references(:move_videos)
 			.order(created_at: :desc)
 			.page(params[:page]).per(15)
+		@themes = Theme.pluck(:name)
 	end
 
 	def show
