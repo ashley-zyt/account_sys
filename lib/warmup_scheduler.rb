@@ -5,7 +5,7 @@ class WarmupScheduler
   INTER_ACCOUNT_PAUSE_MIN = 30
   INTER_ACCOUNT_PAUSE_MAX = 60
   # 每台运营机器单次运行时长上限（小时）；超时自动停止，下次从上次位置继续
-  TIME_WINDOW_HOURS = 5
+  TIME_WINDOW_HOURS = 6
 
   # 统一入口：按 browser.machine_ip 分组，多台机器并行运行、互不影响
   def self.run
