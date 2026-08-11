@@ -81,10 +81,16 @@
     .btn-secondary:hover {
       background: #475569;
     }
+    .error-message {
+      color: #f87171;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
   <div class="modal-title">编辑主题</div>
+  <div id="theme-error" class="error-message" style="display: none;"></div>
 
   <form id="theme-form">
     <input type="hidden" name="_method" value="PATCH">
@@ -134,6 +140,9 @@
       const formData = new FormData(form);
       const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
       const actionUrl = '<%= admin_theme_path(@theme) %>';
+      const errorDiv = document.getElementById('theme-error');
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
 
       fetch(actionUrl, {
         method: 'POST',
@@ -150,12 +159,14 @@
             window.parent.closeThemeModal(true);
           }
         } else {
-          alert(data.message || '保存失败');
+          errorDiv.textContent = data.message || '保存失败';
+          errorDiv.style.display = 'block';
         }
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('保存失败，请重试');
+        errorDiv.textContent = '保存失败，请重试';
+        errorDiv.style.display = 'block';
       });
     });
 

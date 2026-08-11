@@ -23,6 +23,19 @@
     </div>
   </div>
 
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">主题名称</label>
+        <%= f.search_field :name_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题名称..." %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_themes_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
   <% if @themes.any? %>
     <div class="admin-table-wrapper admin-table-scroll">
       <table class="admin-table">

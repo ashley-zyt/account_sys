@@ -90,6 +90,7 @@
 </head>
 <body>
   <div class="modal-title">新增主题</div>
+  <div id="theme-error" class="error-message" style="display: none;"></div>
 
   <form id="theme-form">
     <div class="form-group">
@@ -135,6 +136,9 @@
       const form = this;
       const formData = new FormData(form);
       const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+      const errorDiv = document.getElementById('theme-error');
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
 
       fetch('<%= admin_themes_path %>', {
         method: 'POST',
@@ -151,12 +155,14 @@
             window.parent.closeThemeModal(true);
           }
         } else {
-          alert(data.message || '创建失败');
+          errorDiv.textContent = data.message || '创建失败';
+          errorDiv.style.display = 'block';
         }
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('创建失败，请重试');
+        errorDiv.textContent = '创建失败，请重试';
+        errorDiv.style.display = 'block';
       });
     });
 
