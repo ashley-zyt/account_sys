@@ -315,6 +315,7 @@
             <th>工作模式</th>
             <th>主题</th>
             <th>平台</th>
+            <th style="text-align: center;">正常账号</th>
             <th style="text-align: center;">剩余资源</th>
             <th style="text-align: center;">可用天数</th>
           </tr>
@@ -343,12 +344,25 @@
                       <span class="admin-label-muted"><%= row[:platform]&.capitalize || '-' %></span>
                     </td>
                     <td style="text-align: center; font-weight: 600;">
+                      <% if row[:active_accounts] == 0 %>
+                        <span style="color: var(--danger);" title="该主题×平台组合下无正常账号，无法消耗资源">
+                          0
+                        </span>
+                      <% else %>
+                        <span style="color: var(--success);"><%= row[:active_accounts] %></span>
+                      <% end %>
+                    </td>
+                    <td style="text-align: center; font-weight: 600;">
                       <%= row[:pending] %>
                     </td>
                     <td style="text-align: center; font-weight: 600;">
                       <% if row[:pending] == 0 %>
                         <span style="color: var(--danger);" title="该主题×平台组合无待分配资源，需立即补充">
                           无库存
+                        </span>
+                      <% elsif row[:active_accounts] == 0 %>
+                        <span style="color: var(--danger);" title="该主题×平台组合下无正常账号，库存无法消耗，需先补充对应账号">
+                          无账号
                         </span>
                       <% elsif row[:available_days] <= 3 %>
                         <span style="color: var(--danger);" title="剩余可用不足3天，建议尽快补充资源">
@@ -366,7 +380,7 @@
             <% end %>
           <% else %>
             <tr>
-              <td colspan="5" style="padding: 24px; text-align: center;" class="admin-label-muted">
+              <td colspan="6" style="padding: 24px; text-align: center;" class="admin-label-muted">
                 <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
                 所有工作模式资源充足，暂无低库存预警
               </td>
