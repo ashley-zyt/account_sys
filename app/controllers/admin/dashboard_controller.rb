@@ -94,69 +94,80 @@ class Admin::DashboardController < Admin::BaseController
 	LOW_STOCK_DAY_THRESHOLD = 10
 
 	# 低库存预警：按工作模式 → 主题 → 平台 三级聚合，仅保留需要预警的项
+	# 计算基准：每个正常状态的账号每天固定发布 1 条（理论消耗速率，不看历史实际发布）
+	#   日均消耗 = 正常账号数
+	#   可用天数 = 剩余资源 / 正常账号数
 	# 预警条件（满足任一即展示）：
-	#   - 剩余资源 = 0（无库存）
-	#   - 近 7 天有成功发布且可用天数 < 阈值
-	#   （近7天无成功发布的项会被跳过，避免展示"无法估算"的噪音项）
+	#   - 剩余资源 = 0（无库存，需补货）
+	#   - 正常账号 = 0（有库存也无法消耗，需先补账号）
+	#   - 可用天数 < 阈值
 	# @return [Array<Hash>] 工作模式维度聚合的预警列表
 	def fetch_low_stock_alerts
-		consumption_window_days = 7
-		window_start = consumption_window_days.days.ago.beginning_of_day
-
 		RESOURCE_DAYS_CONFIGS.map do |config|
 			task_model = config[:task_model]
+			work_type = config[:work_type]
 
-			# 按 theme + platform 双维度统计 pending 与近 7 天成功发布数
+			# 按 theme + platform 双维度统计 pending 数
 			pending_counts = task_model.where(status: :pending).group(:theme, :platform).count
-			success_counts = task_model.where(status: :success)
-			                           .where("actual_publish_time >= ?", window_start)
-			                           .group(:theme, :platform)
-			                           .count
 
-			# 合并所有出现过的 (theme, platform) 组合
-			keys = (pending_counts.keys + success_counts.keys).uniq
+			# 该工作模式下 (theme, platform) → 正常状态账号数 的映射
+			account_counts = Account.active
+			                        .where(work_type: work_type)
+			                        .group(:theme, :platform)
+			                        .count
+
+			# 合并所有出现过的 (theme, platform) 组合（有库存或有账号都要考虑）
+			keys = (pending_counts.keys + account_counts.keys).uniq
 
 			platform_rows = keys.map do |theme, platform|
 				pending = pending_counts[[theme, platform]].to_i
-				success_in_window = success_counts[[theme, platform]].to_i
-				daily_avg = success_in_window.to_f / consumption_window_days
+				active_accounts = account_counts[[theme, platform]].to_i
 
-				# 近7天无成功发布 → 跳过（无法估算且展示无意义，噪音项）
-				next nil if daily_avg <= 0 && pending > 0
+				# 日均消耗 = 正常账号数（每个账号每天固定发1条）
+				daily_consumption = active_accounts
 
-				available_days = if daily_avg > 0
-					(pending.to_f / daily_avg).round(1)
+				# 可用天数计算
+				available_days = if daily_consumption > 0
+					(pending.to_f / daily_consumption).round(1)
 				else
-					0 # pending=0 且 daily_avg=0 → 等同无库存
+					nil # 无正常账号 → 无法消耗
 				end
 
-				# 有库存且可用天数充足 → 跳过
-				next nil if pending > 0 && available_days >= LOW_STOCK_DAY_THRESHOLD
+				# 不需要预警：有账号、有库存、且可用天数充足
+				next nil if daily_consumption > 0 && pending > 0 && available_days >= LOW_STOCK_DAY_THRESHOLD
 
 				{
 					theme: theme,
 					platform: platform,
 					pending: pending,
+					active_accounts: active_accounts,
 					available_days: available_days
 				}
 			end.compact
 
-			# 按 theme 分组，再按可用天数升序（紧急的在前）
+			# 按 theme 分组，紧急程度排序
 			grouped_by_theme = platform_rows.group_by { |row| row[:theme] }
 			                                .map do |theme, rows|
 				sorted_rows = rows.sort_by do |row|
 					case
 					when row[:pending] == 0 then 0
-					else row[:available_days]
+					when row[:active_accounts] == 0 then 1
+					else 2 + (row[:available_days] || Float::INFINITY)
 					end
 				end
 				{ theme: theme, platforms: sorted_rows }
 			end.sort_by do |group|
-				group[:platforms].map { |row| row[:pending] == 0 ? 0 : row[:available_days] }.min
+				group[:platforms].map { |row|
+					case
+					when row[:pending] == 0 then 0
+					when row[:active_accounts] == 0 then 1
+					else 2 + (row[:available_days] || Float::INFINITY)
+					end
+				}.min
 			end
 
 			{
-				work_type: config[:work_type],
+				work_type: work_type,
 				themes: grouped_by_theme
 			}
 		end
