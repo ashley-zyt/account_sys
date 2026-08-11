@@ -2,7 +2,8 @@ class Admin::ThemesController < Admin::BaseController
   before_action :set_theme, only: [:edit, :update, :destroy]
 
   def index
-    @themes = Theme.order(created_at: :desc).page(params[:page]).per(10)
+    @q = Theme.ransack(params[:q])
+    @themes = @q.result(distinct: true).order(created_at: :desc).page(params[:page]).per(10)
     @theme = Theme.new
   end
 
