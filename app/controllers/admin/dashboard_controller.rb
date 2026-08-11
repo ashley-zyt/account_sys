@@ -83,10 +83,9 @@ class Admin::DashboardController < Admin::BaseController
 		@low_stock_alerts = fetch_low_stock_alerts
 	end
 
-	# 资源剩余可用天数统计配置（与 TaskScheduler.assign_resources 保持一致，排除 Heygen）
+	# 资源剩余可用天数统计配置（跳过人工运营，排除 Heygen）
 	RESOURCE_DAYS_CONFIGS = [
 		{ work_type: "视频搬运", task_model: MoveTask },
-		{ work_type: "人工运营", task_model: OperationTask },
 		{ work_type: "Grok", task_model: GrokTask },
 		{ work_type: "剪映", task_model: JianyingTask }
 	].freeze
@@ -97,8 +96,8 @@ class Admin::DashboardController < Admin::BaseController
 	# 低库存预警：按工作模式 → 主题 → 平台 三级聚合，仅保留需要预警的项
 	# 预警条件（满足任一即展示）：
 	#   - 剩余资源 = 0（无库存）
-	#   - 近 7 天有成功发布但可用天数 < 阈值
-	#   - 剩余资源 > 0 但近 7 天无成功发布（无法估算消耗速率，存在滞销风险）
+	#   - 近 7 天有成功发布且可用天数 < 阈值
+	#   （近7天无成功发布的项会被跳过，避免展示"无法估算"的噪音项）
 	# @return [Array<Hash>] 工作模式维度聚合的预警列表
 	def fetch_low_stock_alerts
 		consumption_window_days = 7
@@ -122,20 +121,22 @@ class Admin::DashboardController < Admin::BaseController
 				success_in_window = success_counts[[theme, platform]].to_i
 				daily_avg = success_in_window.to_f / consumption_window_days
 
+				# 近7天无成功发布 → 跳过（无法估算且展示无意义，噪音项）
+				next nil if daily_avg <= 0 && pending > 0
+
 				available_days = if daily_avg > 0
 					(pending.to_f / daily_avg).round(1)
 				else
-					nil
+					0 # pending=0 且 daily_avg=0 → 等同无库存
 				end
 
-				# 预警过滤
-				next nil if pending > 0 && available_days && available_days >= LOW_STOCK_DAY_THRESHOLD
+				# 有库存且可用天数充足 → 跳过
+				next nil if pending > 0 && available_days >= LOW_STOCK_DAY_THRESHOLD
 
 				{
 					theme: theme,
 					platform: platform,
 					pending: pending,
-					daily_avg: daily_avg.round(2),
 					available_days: available_days
 				}
 			end.compact
@@ -144,24 +145,14 @@ class Admin::DashboardController < Admin::BaseController
 			grouped_by_theme = platform_rows.group_by { |row| row[:theme] }
 			                                .map do |theme, rows|
 				sorted_rows = rows.sort_by do |row|
-					# 排序权重：无库存=0（最紧急），无法估算=1，有可用天数=2+days
 					case
 					when row[:pending] == 0 then 0
-					when row[:available_days].nil? then 1
-					else 2 + row[:available_days]
+					else row[:available_days]
 					end
 				end
 				{ theme: theme, platforms: sorted_rows }
 			end.sort_by do |group|
-				# 主题组排序：取该主题下最紧急的项作为排序键
-				min_weight = group[:platforms].map { |row|
-					case
-					when row[:pending] == 0 then 0
-					when row[:available_days].nil? then 1
-					else 2 + row[:available_days]
-					end
-				}.min
-				min_weight
+				group[:platforms].map { |row| row[:pending] == 0 ? 0 : row[:available_days] }.min
 			end
 
 			{
