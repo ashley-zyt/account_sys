@@ -79,8 +79,8 @@ class Admin::DashboardController < Admin::BaseController
 
 		@abnormal_accounts = fetch_abnormal_accounts(3)
 
-		# 各工作模式/主题的剩余资源可用天数统计
-		@resource_remaining_stats = fetch_resource_remaining_stats
+		# 低库存预警：仅展示可用天数 < 10 天（含无库存/无法估算）的工作模式×主题×平台组合
+		@low_stock_alerts = fetch_low_stock_alerts
 	end
 
 	# 资源剩余可用天数统计配置（与 TaskScheduler.assign_resources 保持一致，排除 Heygen）
@@ -91,51 +91,82 @@ class Admin::DashboardController < Admin::BaseController
 		{ work_type: "剪映", task_model: JianyingTask }
 	].freeze
 
-	# 计算各工作模式、各主题的剩余资源可用天数
-	# - 剩余资源 = pending 状态任务数
-	# - 日均消耗 = 近 7 天成功发布数 / 7
-	# - 可用天数 = 剩余资源 / 日均消耗
-	# @return [Array<Hash>] 各工作模式的资源统计
-	def fetch_resource_remaining_stats
+	# 预警阈值：可用天数 < 此值才会在仪表盘展示
+	LOW_STOCK_DAY_THRESHOLD = 10
+
+	# 低库存预警：按工作模式 → 主题 → 平台 三级聚合，仅保留需要预警的项
+	# 预警条件（满足任一即展示）：
+	#   - 剩余资源 = 0（无库存）
+	#   - 近 7 天有成功发布但可用天数 < 阈值
+	#   - 剩余资源 > 0 但近 7 天无成功发布（无法估算消耗速率，存在滞销风险）
+	# @return [Array<Hash>] 工作模式维度聚合的预警列表
+	def fetch_low_stock_alerts
 		consumption_window_days = 7
 		window_start = consumption_window_days.days.ago.beginning_of_day
 
 		RESOURCE_DAYS_CONFIGS.map do |config|
 			task_model = config[:task_model]
 
-			# 按 theme 分组统计 pending 数量
-			pending_counts = task_model.where(status: :pending).group(:theme).count
-			# 按 theme 分组统计近 N 天成功发布数
+			# 按 theme + platform 双维度统计 pending 与近 7 天成功发布数
+			pending_counts = task_model.where(status: :pending).group(:theme, :platform).count
 			success_counts = task_model.where(status: :success)
 			                           .where("actual_publish_time >= ?", window_start)
-			                           .group(:theme)
+			                           .group(:theme, :platform)
 			                           .count
 
-			# 合并所有出现过的 theme
-			themes = (pending_counts.keys + success_counts.keys).uniq.compact
+			# 合并所有出现过的 (theme, platform) 组合
+			keys = (pending_counts.keys + success_counts.keys).uniq
 
-			rows = themes.map do |theme|
-				pending = pending_counts[theme].to_i
-				success_in_window = success_counts[theme].to_i
+			platform_rows = keys.map do |theme, platform|
+				pending = pending_counts[[theme, platform]].to_i
+				success_in_window = success_counts[[theme, platform]].to_i
 				daily_avg = success_in_window.to_f / consumption_window_days
 
 				available_days = if daily_avg > 0
 					(pending.to_f / daily_avg).round(1)
 				else
-					nil # 近期无消耗数据，无法估算
+					nil
 				end
+
+				# 预警过滤
+				next nil if pending > 0 && available_days && available_days >= LOW_STOCK_DAY_THRESHOLD
 
 				{
 					theme: theme,
+					platform: platform,
 					pending: pending,
 					daily_avg: daily_avg.round(2),
 					available_days: available_days
 				}
-			end.sort_by { |row| [row[:available_days] ? 0 : 1, row[:available_days] || Float::INFINITY] }
+			end.compact
+
+			# 按 theme 分组，再按可用天数升序（紧急的在前）
+			grouped_by_theme = platform_rows.group_by { |row| row[:theme] }
+			                                .map do |theme, rows|
+				sorted_rows = rows.sort_by do |row|
+					# 排序权重：无库存=0（最紧急），无法估算=1，有可用天数=2+days
+					case
+					when row[:pending] == 0 then 0
+					when row[:available_days].nil? then 1
+					else 2 + row[:available_days]
+					end
+				end
+				{ theme: theme, platforms: sorted_rows }
+			end.sort_by do |group|
+				# 主题组排序：取该主题下最紧急的项作为排序键
+				min_weight = group[:platforms].map { |row|
+					case
+					when row[:pending] == 0 then 0
+					when row[:available_days].nil? then 1
+					else 2 + row[:available_days]
+					end
+				}.min
+				min_weight
+			end
 
 			{
 				work_type: config[:work_type],
-				rows: rows
+				themes: grouped_by_theme
 			}
 		end
 	end

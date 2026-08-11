@@ -294,11 +294,17 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
-          资源剩余可用天数
+          低库存资源预警
         </div>
         <div class="admin-card-subtitle">
-          按工作模式与主题统计剩余资源（待分配 pending）及近 7 天日均消耗推算的可用天数
+          仅展示可用天数不足 10 天（含无库存/无法估算）的工作模式 × 主题 × 平台组合，按紧急程度排序
         </div>
+      </div>
+      <div class="admin-card-header-right">
+        <% total_alerts = @low_stock_alerts.sum { |g| g[:themes].sum { |t| t[:platforms].size } } %>
+        <span class="admin-tag admin-tag-danger">
+          <%= total_alerts %> 项预警
+        </span>
       </div>
     </div>
 
@@ -308,52 +314,69 @@
           <tr>
             <th>工作模式</th>
             <th>主题</th>
+            <th>平台</th>
             <th style="text-align: center;">剩余资源</th>
             <th style="text-align: center;">日均消耗(近7天)</th>
             <th style="text-align: center;">可用天数</th>
           </tr>
         </thead>
         <tbody>
-          <% if @resource_remaining_stats.any? { |group| group[:rows].any? } %>
-            <% @resource_remaining_stats.each do |group| %>
-              <% next if group[:rows].empty? %>
-              <% group[:rows].each_with_index do |row, idx| %>
-                <tr>
-                  <% if idx == 0 %>
-                    <td rowspan="<%= group[:rows].size %>" style="vertical-align: top; font-weight: 600;">
-                      <%= group[:work_type] %>
-                    </td>
-                  <% end %>
-                  <td>
-                    <span class="admin-label-muted"><%= row[:theme] || '-' %></span>
-                  </td>
-                  <td style="text-align: center; font-weight: 600;">
-                    <%= row[:pending] %>
-                  </td>
-                  <td style="text-align: center;">
-                    <%= row[:daily_avg] %>
-                  </td>
-                  <td style="text-align: center; font-weight: 600;">
-                    <% if row[:pending] == 0 %>
-                      <span style="color: var(--text-muted);">无库存</span>
-                    <% elsif row[:available_days].nil? %>
-                      <span style="color: var(--text-muted);" title="近7天无成功发布记录，无法估算消耗速率">无法估算</span>
-                    <% elsif row[:available_days] <= 3 %>
-                      <span style="color: var(--danger);" title="剩余可用不足3天，建议尽快补充资源"><%= row[:available_days] %> 天</span>
-                    <% elsif row[:available_days] <= 7 %>
-                      <span style="color: var(--warning);" title="剩余可用不足7天"><%= row[:available_days] %> 天</span>
-                    <% else %>
-                      <span style="color: var(--success);" title="资源充足"><%= row[:available_days] %> 天</span>
+          <% has_alerts = @low_stock_alerts.any? { |g| g[:themes].any? } %>
+          <% if has_alerts %>
+            <% @low_stock_alerts.each do |group| %>
+              <% next if group[:themes].empty? %>
+              <% total_rows = group[:themes].sum { |t| t[:platforms].size } %>
+              <% group[:themes].each_with_index do |theme_group, theme_idx| %>
+                <% theme_rowspan = theme_group[:platforms].size %>
+                <% theme_group[:platforms].each_with_index do |row, platform_idx| %>
+                  <tr>
+                    <% if theme_idx == 0 && platform_idx == 0 %>
+                      <td rowspan="<%= total_rows %>" style="vertical-align: top; font-weight: 600;">
+                        <%= group[:work_type] %>
+                      </td>
                     <% end %>
-                  </td>
-                </tr>
+                    <% if platform_idx == 0 %>
+                      <td rowspan="<%= theme_rowspan %>" style="vertical-align: top;">
+                        <span class="admin-label-muted"><%= theme_group[:theme] || '-' %></span>
+                      </td>
+                    <% end %>
+                    <td>
+                      <span class="admin-label-muted"><%= row[:platform]&.capitalize || '-' %></span>
+                    </td>
+                    <td style="text-align: center; font-weight: 600;">
+                      <%= row[:pending] %>
+                    </td>
+                    <td style="text-align: center;">
+                      <%= row[:daily_avg] %>
+                    </td>
+                    <td style="text-align: center; font-weight: 600;">
+                      <% if row[:pending] == 0 %>
+                        <span style="color: var(--danger);" title="该主题×平台组合无待分配资源，需立即补充">
+                          无库存
+                        </span>
+                      <% elsif row[:available_days].nil? %>
+                        <span style="color: var(--warning);" title="近7天无成功发布记录，无法估算消耗速率">
+                          无法估算
+                        </span>
+                      <% elsif row[:available_days] <= 3 %>
+                        <span style="color: var(--danger);" title="剩余可用不足3天，建议尽快补充资源">
+                          <%= row[:available_days] %> 天
+                        </span>
+                      <% else %>
+                        <span style="color: var(--warning);" title="剩余可用不足10天">
+                          <%= row[:available_days] %> 天
+                        </span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
               <% end %>
             <% end %>
           <% else %>
             <tr>
-              <td colspan="5" style="padding: 24px; text-align: center;" class="admin-label-muted">
-                <div style="font-size: 32px; margin-bottom: 8px;">∅</div>
-                暂无待分配资源数据
+              <td colspan="6" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+                所有工作模式资源充足，暂无低库存预警
               </td>
             </tr>
           <% end %>
