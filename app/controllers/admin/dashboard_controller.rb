@@ -99,8 +99,8 @@ class Admin::DashboardController < Admin::BaseController
 	#   可用天数 = 剩余资源 / 正常账号数
 	# 预警条件（满足任一即展示）：
 	#   - 剩余资源 = 0（无库存，需补货）
-	#   - 正常账号 = 0（有库存也无法消耗，需先补账号）
 	#   - 可用天数 < 阈值
+	# 注：无正常账号的组合直接跳过（没有账号则不需要计算资源消耗）
 	# @return [Array<Hash>] 工作模式维度聚合的预警列表
 	def fetch_low_stock_alerts
 		RESOURCE_DAYS_CONFIGS.map do |config|
@@ -116,25 +116,15 @@ class Admin::DashboardController < Admin::BaseController
 			                        .group(:theme, :platform)
 			                        .count
 
-			# 合并所有出现过的 (theme, platform) 组合（有库存或有账号都要考虑）
-			keys = (pending_counts.keys + account_counts.keys).uniq
-
-			platform_rows = keys.map do |theme, platform|
+			# 仅遍历有正常账号的组合（无账号的组合无意义，直接跳过）
+			platform_rows = account_counts.map do |(theme, platform), active_accounts|
 				pending = pending_counts[[theme, platform]].to_i
-				active_accounts = account_counts[[theme, platform]].to_i
 
 				# 日均消耗 = 正常账号数（每个账号每天固定发1条）
-				daily_consumption = active_accounts
+				available_days = (pending.to_f / active_accounts).round(1)
 
-				# 可用天数计算
-				available_days = if daily_consumption > 0
-					(pending.to_f / daily_consumption).round(1)
-				else
-					nil # 无正常账号 → 无法消耗
-				end
-
-				# 不需要预警：有账号、有库存、且可用天数充足
-				next nil if daily_consumption > 0 && pending > 0 && available_days >= LOW_STOCK_DAY_THRESHOLD
+				# 不需要预警：有库存且可用天数充足
+				next nil if pending > 0 && available_days >= LOW_STOCK_DAY_THRESHOLD
 
 				{
 					theme: theme,
@@ -145,25 +135,16 @@ class Admin::DashboardController < Admin::BaseController
 				}
 			end.compact
 
-			# 按 theme 分组，紧急程度排序
+			# 按 theme 分组，按可用天数升序（紧急的在前）
 			grouped_by_theme = platform_rows.group_by { |row| row[:theme] }
 			                                .map do |theme, rows|
 				sorted_rows = rows.sort_by do |row|
-					case
-					when row[:pending] == 0 then 0
-					when row[:active_accounts] == 0 then 1
-					else 2 + (row[:available_days] || Float::INFINITY)
-					end
+					# 权重：无库存=0（最紧急），有可用天数=days 本身
+					row[:pending] == 0 ? 0 : row[:available_days]
 				end
 				{ theme: theme, platforms: sorted_rows }
 			end.sort_by do |group|
-				group[:platforms].map { |row|
-					case
-					when row[:pending] == 0 then 0
-					when row[:active_accounts] == 0 then 1
-					else 2 + (row[:available_days] || Float::INFINITY)
-					end
-				}.min
+				group[:platforms].map { |row| row[:pending] == 0 ? 0 : row[:available_days] }.min
 			end
 
 			{

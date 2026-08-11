@@ -360,10 +360,6 @@
                         <span style="color: var(--danger);" title="该主题×平台组合无待分配资源，需立即补充">
                           无库存
                         </span>
-                      <% elsif row[:active_accounts] == 0 %>
-                        <span style="color: var(--danger);" title="该主题×平台组合下无正常账号，库存无法消耗，需先补充对应账号">
-                          无账号
-                        </span>
                       <% elsif row[:available_days] <= 3 %>
                         <span style="color: var(--danger);" title="剩余可用不足3天，建议尽快补充资源">
                           <%= row[:available_days] %> 天
