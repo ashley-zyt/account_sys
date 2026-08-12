@@ -317,181 +317,181 @@
       </div>
     <% end %>
   </div>
+</div>
 
-  <div class="admin-card">
-    <div class="admin-card-header">
-      <div>
-        <div class="admin-card-title">
-          最近养号记录
-        </div>
-        <div class="admin-card-subtitle">
-          该账号最近 10 条养号任务记录
-        </div>
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        最近发文数据
       </div>
-      <div class="admin-card-header-right">
-        <%= link_to "查看全部", admin_warmup_tasks_path(q: { account_id_eq: @account.id }), class: "admin-button-secondary" %>
+      <div class="admin-card-subtitle">
+        采集到的最近 10 条发文统计数据
       </div>
     </div>
-
-    <% if @recent_warmup_tasks.any? %>
-      <div class="admin-table-wrapper admin-table-scroll">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>平台</th>
-              <th>状态</th>
-              <th>执行时间</th>
-              <th>耗时(分)</th>
-              <th>运营机器</th>
-              <th>错误信息</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @recent_warmup_tasks.each do |task| %>
-              <tr>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= task.platform %>
-                  </span>
-                </td>
-                <td>
-                  <% if task.status == "success" %>
-                    <span class="admin-pill-status admin-pill-status-success">
-                      <span class="admin-pill-status-dot"></span>
-                      成功
-                    </span>
-                  <% elsif task.status == "failed" %>
-                    <span class="admin-pill-status admin-pill-status-failed">
-                      <span class="admin-pill-status-dot"></span>
-                      失败
-                    </span>
-                  <% elsif task.status == "executing" %>
-                    <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                      <span class="admin-pill-status-dot"></span>
-                      执行中
-                    </span>
-                  <% else %>
-                    <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af;">
-                      <span class="admin-pill-status-dot"></span>
-                      待执行
-                    </span>
-                  <% end %>
-                </td>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= task.executed_at&.strftime("%Y-%m-%d %H:%M") || "—" %>
-                  </span>
-                </td>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= task.duration_minutes || "—" %>
-                  </span>
-                </td>
-                <td>
-                  <% if task.machine.present? %>
-                    <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                      <%= task.machine %>
-                    </span>
-                  <% else %>
-                    <span class="admin-label-muted">—</span>
-                  <% end %>
-                </td>
-                <td>
-                  <span class="admin-label-muted" title="<%= task.error_msg %>">
-                    <%= truncate(task.error_msg.to_s, length: 40) %>
-                  </span>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% else %>
-      <div class="admin-empty-state">
-        暂无养号记录。
-      </div>
-    <% end %>
+    <div class="admin-card-header-right">
+      <%= link_to "查看全部", admin_post_stats_path(q: { account_id_eq: @account.id }), class: "admin-button-secondary" %>
+    </div>
   </div>
 
-  <div class="admin-card">
-    <div class="admin-card-header">
-      <div>
-        <div class="admin-card-title">
-          最近发文数据
-        </div>
-        <div class="admin-card-subtitle">
-          采集到的最近 10 条发文统计数据
-        </div>
+  <% if @recent_post_stats.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>发文日期</th>
+            <th>标题</th>
+            <th>浏览</th>
+            <th>点赞</th>
+            <th>评论</th>
+            <th>转发</th>
+            <th>链接</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @recent_post_stats.each do |stat| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.post_date&.strftime("%Y-%m-%d") %>
+                </span>
+              </td>
+              <td>
+                <span title="<%= stat.title %>">
+                  <%= truncate(stat.title.to_s, length: 25) %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.views_count || 0 %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.likes_count || 0 %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.comments_count || 0 %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.shares_count || 0 %>
+                </span>
+              </td>
+              <td>
+                <% if stat.url.present? %>
+                  <%= link_to "查看", stat.url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);", title: stat.url %>
+                <% else %>
+                  <span class="admin-label-muted">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无发文数据。
+    </div>
+  <% end %>
+</div>
+
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        最近养号记录
       </div>
-      <div class="admin-card-header-right">
-        <%= link_to "查看全部", admin_post_stats_path(q: { account_id_eq: @account.id }), class: "admin-button-secondary" %>
+      <div class="admin-card-subtitle">
+        该账号最近 10 条养号任务记录
       </div>
     </div>
-
-    <% if @recent_post_stats.any? %>
-      <div class="admin-table-wrapper admin-table-scroll">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>发文日期</th>
-              <th>标题</th>
-              <th>浏览</th>
-              <th>点赞</th>
-              <th>评论</th>
-              <th>转发</th>
-              <th>链接</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @recent_post_stats.each do |stat| %>
-              <tr>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= stat.post_date&.strftime("%Y-%m-%d") %>
-                  </span>
-                </td>
-                <td>
-                  <span title="<%= stat.title %>">
-                    <%= truncate(stat.title.to_s, length: 25) %>
-                  </span>
-                </td>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= stat.views_count || 0 %>
-                  </span>
-                </td>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= stat.likes_count || 0 %>
-                  </span>
-                </td>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= stat.comments_count || 0 %>
-                  </span>
-                </td>
-                <td>
-                  <span class="admin-label-muted">
-                    <%= stat.shares_count || 0 %>
-                  </span>
-                </td>
-                <td>
-                  <% if stat.url.present? %>
-                    <%= link_to "查看", stat.url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);", title: stat.url %>
-                  <% else %>
-                    <span class="admin-label-muted">—</span>
-                  <% end %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% else %>
-      <div class="admin-empty-state">
-        暂无发文数据。
-      </div>
-    <% end %>
+    <div class="admin-card-header-right">
+      <%= link_to "查看全部", admin_warmup_tasks_path(q: { account_id_eq: @account.id }), class: "admin-button-secondary" %>
+    </div>
   </div>
+
+  <% if @recent_warmup_tasks.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>平台</th>
+            <th>状态</th>
+            <th>执行时间</th>
+            <th>耗时(分)</th>
+            <th>运营机器</th>
+            <th>错误信息</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @recent_warmup_tasks.each do |task| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.platform %>
+                </span>
+              </td>
+              <td>
+                <% if task.status == "success" %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>
+                    成功
+                  </span>
+                <% elsif task.status == "failed" %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>
+                    失败
+                  </span>
+                <% elsif task.status == "executing" %>
+                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                    <span class="admin-pill-status-dot"></span>
+                    执行中
+                  </span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af;">
+                    <span class="admin-pill-status-dot"></span>
+                    待执行
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.executed_at&.strftime("%Y-%m-%d %H:%M") || "—" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.duration_minutes || "—" %>
+                </span>
+              </td>
+              <td>
+                <% if task.machine.present? %>
+                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                    <%= task.machine %>
+                  </span>
+                <% else %>
+                  <span class="admin-label-muted">—</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted" title="<%= task.error_msg %>">
+                  <%= truncate(task.error_msg.to_s, length: 40) %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无养号记录。
+    </div>
+  <% end %>
 </div>
 
