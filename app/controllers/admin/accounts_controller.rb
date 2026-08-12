@@ -30,6 +30,14 @@ class Admin::AccountsController < Admin::BaseController
 		@recent_task_logs = @account.task_logs
 		                           .order(run_at: :desc)
 		                           .limit(10)
+		# 最近十条养号记录
+		@recent_warmup_tasks = @account.warmup_tasks
+		                               .order(executed_at: :desc)
+		                               .limit(10)
+		# 采集到的最近十条发文数据
+		@recent_post_stats = @account.post_stats
+		                             .order(post_date: :desc)
+		                             .limit(10)
 	end
 
 	def edit
