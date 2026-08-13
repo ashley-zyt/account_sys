@@ -49,6 +49,11 @@ Rails.application.routes.draw do
         get :trends
       end
     end
+    resources :account_stats, only: [:index] do
+      collection do
+        get :export
+      end
+    end
     resources :grok_image_resources, only: [:index, :new, :create, :destroy] do
       collection do
         get :oss_signature

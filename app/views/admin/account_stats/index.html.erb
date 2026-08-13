@@ -1,0 +1,426 @@
+<% content_for :page_title do %>
+  账号数据统计
+<% end %>
+<% content_for :page_subtitle do %>
+  每个账号的最新累计总量快照，用于横向对比表现
+<% end %>
+
+<% content_for :head do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" data-turbo-track="reload"></script>
+<% end %>
+
+<%# =========================================================== %>
+<%# 筛选栏                                                         %>
+<%# =========================================================== %>
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">筛选</div>
+      <div class="admin-card-subtitle">按账号属性（主题/平台/工作模式/状态）过滤</div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "导出CSV", export_admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq])), class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <%= form_with url: admin_account_stats_path, method: :get, class: "admin-filter-form", data: { turbo: false } do %>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+      <div>
+        <div class="admin-filter-label">主题</div>
+        <%= select_tag "q[theme_eq]", options_for_select(@themes.map { |n| [n, n] }, params.dig(:q, :theme_eq)), include_blank: "所有主题", class: "admin-input admin-filter-input" %>
+      </div>
+      <div>
+        <div class="admin-filter-label">平台</div>
+        <%= select_tag "q[platform_eq]", options_for_select(@platforms, params.dig(:q, :platform_eq)), include_blank: "所有平台", class: "admin-input admin-filter-input" %>
+      </div>
+      <div>
+        <div class="admin-filter-label">工作模式</div>
+        <%= select_tag "q[work_type_eq]", options_for_select(@work_types, params.dig(:q, :work_type_eq)), include_blank: "所有模式", class: "admin-input admin-filter-input" %>
+      </div>
+      <div>
+        <div class="admin-filter-label">账号状态</div>
+        <%= select_tag "q[status_eq]", options_for_select(@statuses.map { |s| [s, s] }, params.dig(:q, :status_eq)), include_blank: "所有状态", class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <%= submit_tag "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_account_stats_path, class: "admin-button-secondary" %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<%# =========================================================== %>
+<%# 总体 KPI 卡（7 项）                                            %>
+<%# =========================================================== %>
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 20px;">
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">账号总数</span>
+      <span style="font-size: 18px;">👥</span>
+    </div>
+    <div style="font-size: 24px; font-weight: 600; color: #6366f1;"><%= number_with_delimiter(@summary[:account_count]) %></div>
+  </div>
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">总粉丝数</span>
+      <span style="font-size: 18px;">👑</span>
+    </div>
+    <div style="font-size: 24px; font-weight: 600; color: #f59e0b;"><%= number_with_delimiter(@summary[:total_followers]) %></div>
+  </div>
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">总浏览量</span>
+      <span style="font-size: 18px;">👁️</span>
+    </div>
+    <div style="font-size: 24px; font-weight: 600; color: #3b82f6;"><%= number_with_delimiter(@summary[:total_views_count]) %></div>
+  </div>
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">总点赞数</span>
+      <span style="font-size: 18px;">❤️</span>
+    </div>
+    <div style="font-size: 24px; font-weight: 600; color: #ec4899;"><%= number_with_delimiter(@summary[:total_likes_count]) %></div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px;">
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">总评论数</span>
+      <span style="font-size: 18px;">💬</span>
+    </div>
+    <div style="font-size: 22px; font-weight: 600; color: #8b5cf6;"><%= number_with_delimiter(@summary[:total_comments_count]) %></div>
+  </div>
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">总转发数</span>
+      <span style="font-size: 18px;">🔄</span>
+    </div>
+    <div style="font-size: 22px; font-weight: 600; color: #22c55e;"><%= number_with_delimiter(@summary[:total_shares_count]) %></div>
+  </div>
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">累计发帖</span>
+      <span style="font-size: 18px;">📝</span>
+    </div>
+    <div style="font-size: 22px; font-weight: 600; color: #06b6d4;"><%= number_with_delimiter(@summary[:total_posts_count]) %></div>
+  </div>
+</div>
+
+<%# =========================================================== %>
+<%# 图表区：双栏布局（平台分布 + 主题Top N 柱状图）                 %>
+<%# =========================================================== %>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px;">
+  <%# 平台分布（饼图）：按浏览量占比 %>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">平台分布</div>
+        <div class="admin-card-subtitle">各平台浏览量占比</div>
+      </div>
+      <div class="admin-card-header-right">
+        <button type="button" class="platform-dist-btn active" data-dist-metric="views">浏览</button>
+        <button type="button" class="platform-dist-btn" data-dist-metric="followers">粉丝</button>
+        <button type="button" class="platform-dist-btn" data-dist-metric="likes">点赞</button>
+      </div>
+    </div>
+    <% if @by_platform.present? %>
+      <div style="position: relative; height: 340px; padding: 12px;">
+        <canvas id="platformPieChart"></canvas>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">暂无数据</div>
+    <% end %>
+  </div>
+
+  <%# 主题 Top N（横向柱状图）：按浏览量排名 %>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">主题排名 Top <%= [@by_theme.size, 10].min %></div>
+        <div class="admin-card-subtitle">按浏览量降序</div>
+      </div>
+      <div class="admin-card-header-right">
+        <button type="button" class="theme-rank-btn active" data-rank-metric="views">浏览</button>
+        <button type="button" class="theme-rank-btn" data-rank-metric="followers">粉丝</button>
+        <button type="button" class="theme-rank-btn" data-rank-metric="likes">点赞</button>
+      </div>
+    </div>
+    <% if @by_theme.present? %>
+      <div style="position: relative; height: 340px; padding: 12px;">
+        <canvas id="themeBarChart"></canvas>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">暂无数据</div>
+    <% end %>
+  </div>
+</div>
+
+<%# =========================================================== %>
+<%# 每个账号的最新快照列表                                           %>
+<%# =========================================================== %>
+<div class="admin-card" style="margin-top: 20px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">账号最新快照明细</div>
+      <div class="admin-card-subtitle">共 <%= number_with_delimiter(@summary[:account_count]) %> 个账号，展示每个账号最近一次采集的累计总量</div>
+    </div>
+  </div>
+
+  <% if @account_stats.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <% [
+              ['账号名', nil],
+              ['主题', nil],
+              ['平台', nil],
+              ['工作模式', nil],
+              ['粉丝数', 'followers_count'],
+              ['总浏览', 'total_views_count'],
+              ['总点赞', 'total_likes_count'],
+              ['总评论', 'total_comments_count'],
+              ['总转发', 'total_shares_count'],
+              ['总发帖', 'total_posts_count'],
+              ['快照日期', 'stat_date']
+            ].each do |label, sortable| %>
+              <th>
+                <% if sortable %>
+                  <% if @current_sort == sortable && @current_direction == 'desc' %>
+                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'asc', page: params[:page])), class: "admin-link-quiet" do %>
+                      <%= label %> ↓
+                    <% end %>
+                  <% elsif @current_sort == sortable && @current_direction == 'asc' %>
+                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'desc', page: params[:page])), class: "admin-link-quiet" do %>
+                      <%= label %> ↑
+                    <% end %>
+                  <% else %>
+                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'desc', page: params[:page])), class: "admin-link-quiet" do %>
+                      <%= label %>
+                    <% end %>
+                  <% end %>
+                <% else %>
+                  <%= label %>
+                <% end %>
+              </th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @account_stats.each do |stat| %>
+            <% a = stat.account %>
+            <tr>
+              <td>
+                <%= link_to a.account_name, admin_account_path(a), class: "admin-link-quiet", style: "color: var(--accent);" %>
+              </td>
+              <td><%= a.theme %></td>
+              <td>
+                <% case a.platform %>
+                <% when "facebook"  then %><span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><%= a.platform %></span>
+                <% when "twitter"   then %><span class="admin-pill-status" style="background: rgba(6, 182, 212, 0.1);  color: #06b6d4;"><%= a.platform %></span>
+                <% when "tiktok"    then %><span class="admin-pill-status" style="background: rgba(236, 72, 153, 0.1); color: #ec4899;"><%= a.platform %></span>
+                <% when "youtube"   then %><span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1);  color: #ef4444;"><%= a.platform %></span>
+                <% when "instagram" then %><span class="admin-pill-status" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;"><%= a.platform %></span>
+                <% else %><span><%= a.platform %></span>
+                <% end %>
+              </td>
+              <td><%= a.work_type %></td>
+              <td class="admin-table-num"><%= number_with_delimiter(stat.followers_count) %></td>
+              <td class="admin-table-num"><%= number_with_delimiter(stat.total_views_count) %></td>
+              <td class="admin-table-num"><%= number_with_delimiter(stat.total_likes_count) %></td>
+              <td class="admin-table-num"><%= number_with_delimiter(stat.total_comments_count) %></td>
+              <td class="admin-table-num"><%= number_with_delimiter(stat.total_shares_count) %></td>
+              <td class="admin-table-num"><%= number_with_delimiter(stat.total_posts_count) %></td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= stat.stat_date.strftime("%Y-%m-%d") %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding: 16px;">
+      <%= paginate @account_stats %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      <div style="font-size: 48px; margin-bottom: 12px;">📊</div>
+      <div>暂无账号快照数据，请先运行 <code>PostDatas.fetch</code> 触发采集</div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.platform-dist-btn, .theme-rank-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 4px;
+}
+.platform-dist-btn:hover, .theme-rank-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+.platform-dist-btn.active, .theme-rank-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.admin-table-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+</style>
+
+<script data-turbo-eval="true">
+(function() {
+  function waitForChart(callback, attempts) {
+    attempts = attempts || 0;
+    if (typeof Chart !== 'undefined') callback();
+    else if (attempts < 50) setTimeout(function(){ waitForChart(callback, attempts + 1); }, 100);
+  }
+
+  var platformConfig = {
+    'facebook':  { label: 'Facebook',  color: '#3b82f6' },
+    'twitter':   { label: 'Twitter',   color: '#06b6d4' },
+    'tiktok':    { label: 'TikTok',    color: '#ec4899' },
+    'youtube':   { label: 'YouTube',   color: '#ef4444' },
+    'instagram': { label: 'Instagram', color: '#a855f7' }
+  };
+
+  var byPlatform = <%= @by_platform.to_json.html_safe %>;
+  var byTheme    = <%= @by_theme.first(10).to_json.html_safe %>;
+
+  var pieChart, barChart;
+
+  function buildPieData(metric) {
+    var data = byPlatform.map(function(p) { return p[metric] || 0; });
+    var labels = byPlatform.map(function(p) {
+      return (platformConfig[p.platform] || {}).label || p.platform;
+    });
+    var colors = byPlatform.map(function(p) {
+      return (platformConfig[p.platform] || {}).color || '#94a3b8';
+    });
+    return { labels: labels, data: data, colors: colors };
+  }
+
+  function buildBarData(metric) {
+    var sorted = byTheme.slice().sort(function(a, b) { return (b[metric] || 0) - (a[metric] || 0); }).slice(0, 10);
+    return {
+      labels: sorted.map(function(t) { return t.theme || '未设置'; }),
+      data:   sorted.map(function(t) { return t[metric] || 0; })
+    };
+  }
+
+  waitForChart(function() {
+    var pieCtx = document.getElementById('platformPieChart');
+    var barCtx = document.getElementById('themeBarChart');
+
+    // 饼图
+    if (pieCtx) {
+      var p0 = buildPieData('views');
+      pieChart = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: p0.labels,
+          datasets: [{
+            data: p0.data,
+            backgroundColor: p0.colors,
+            borderColor: 'rgba(255,255,255,0.08)',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12, color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1f2937' } },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + Number(ctx.parsed).toLocaleString(); } } }
+          }
+        }
+      });
+    }
+
+    // 柱状图（横向，Top N）
+    if (barCtx) {
+      var b0 = buildBarData('views');
+      barChart = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: b0.labels,
+          datasets: [{
+            data: b0.data,
+            backgroundColor: [
+              'rgba(99, 102, 241, 0.85)',
+              'rgba(59, 130, 246, 0.85)',
+              'rgba(6, 182, 212, 0.85)',
+              'rgba(34, 197, 94, 0.85)',
+              'rgba(245, 158, 11, 0.85)',
+              'rgba(236, 72, 153, 0.85)',
+              'rgba(139, 92, 246, 0.85)',
+              'rgba(168, 85, 247, 0.85)',
+              'rgba(239, 68, 68, 0.85)',
+              'rgba(107, 114, 128, 0.85)'
+            ],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ' ' + Number(ctx.parsed.x).toLocaleString(); } } }
+          },
+          scales: {
+            x: {
+              grid:  { color: 'rgba(148, 163, 184, 0.15)' },
+              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#6b7280' }
+            },
+            y: {
+              grid:  { display: false },
+              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1f2937', font: { size: 12 } }
+            }
+          }
+        }
+      });
+    }
+
+    // 饼图指标切换
+    document.querySelectorAll('.platform-dist-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.platform-dist-btn').forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        var metric = btn.getAttribute('data-dist-metric');
+        var next = buildPieData(metric);
+        pieChart.data.labels = next.labels;
+        pieChart.data.datasets[0].data = next.data;
+        pieChart.data.datasets[0].backgroundColor = next.colors;
+        pieChart.update();
+      });
+    });
+
+    // 柱状图指标切换
+    document.querySelectorAll('.theme-rank-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.theme-rank-btn').forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        var metric = btn.getAttribute('data-rank-metric');
+        var next = buildBarData(metric);
+        barChart.data.labels = next.labels;
+        barChart.data.datasets[0].data = next.data;
+        barChart.update();
+      });
+    });
+  });
+})();
+</script>
