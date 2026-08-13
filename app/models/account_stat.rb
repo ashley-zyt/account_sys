@@ -2,24 +2,24 @@
 #
 # Table name: account_stats
 #
-#  id                  :bigint           not null, primary key
-#  account_id          :bigint           not null
-#  stat_date           :date             not null
-#  followers_count     :integer          default(0)
-#  total_views_count   :integer          default(0)
-#  total_likes_count   :integer          default(0)
-#  total_comments_count :integer         default(0)
-#  total_shares_count  :integer          default(0)
-#  total_posts_count   :integer          default(0)
-#  snapshot_at         :datetime
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
+#  id                                              :bigint           not null, primary key
+#  followers_count(总粉丝数（截止当前）)           :integer          default(0)
+#  snapshot_at(快照采集时间（采集接口返回的时刻）) :datetime
+#  stat_date(统计日期（快照所属的自然日）)         :date             not null
+#  total_comments_count(总评论量（所有发文累计）)  :integer          default(0)
+#  total_likes_count(总点赞量（所有发文累计）)     :integer          default(0)
+#  total_posts_count(总发帖量（截止当前）)         :integer          default(0)
+#  total_shares_count(总转发量（所有发文累计）)    :integer          default(0)
+#  total_views_count(总浏览量（所有发文累计）)     :integer          default(0)
+#  created_at                                      :datetime         not null
+#  updated_at                                      :datetime         not null
+#  account_id(账号ID)                              :bigint           not null
 #
 # Indexes
 #
-#  index_account_stats_on_account_id            (account_id)
-#  index_account_stats_on_stat_date             (stat_date)
+#  index_account_stats_on_account_id                (account_id)
 #  index_account_stats_on_account_id_and_stat_date  (account_id,stat_date) UNIQUE
+#  index_account_stats_on_stat_date                 (stat_date)
 #
 
 class AccountStat < ApplicationRecord
