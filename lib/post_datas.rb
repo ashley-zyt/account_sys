@@ -120,6 +120,10 @@ class PostDatas
               if response[:success]
                 machine_success += 1
                 Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送成功 (第 #{index + 1} 个, 目标: #{endpoint})"
+
+                # 推送成功后解析返回体，提取每个账号的 total_followers / total_likes
+                # 落库到 account_stat 表（当天日维度快照）
+                snapshot_from_response!(response[:response], browser_data)
               else
                 machine_fail += 1
                 Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{endpoint})"
@@ -182,5 +186,61 @@ class PostDatas
     end
   rescue => e
     { success: false, error: e.message }
+  end
+
+  # 解析运营机器返回体，提取每个账号的 total_followers / total_likes
+  # 落库到 account_stat 当天日维度快照
+  #
+  # 返回体示例：
+  #   {
+  #     "type": "success",
+  #     "profile_id": "2e1e7...",
+  #     "results": [
+  #       {
+  #         "account_id": 2,
+  #         "platform": "tiktok",
+  #         "total_followers": 1234,
+  #         "total_likes": 5678,        # 仅 tiktok > 0，其他平台为 0
+  #         "posts": [...]
+  #       }
+  #     ]
+  #   }
+  #
+  # 说明：
+  # - 仅 results 中的 account_id 在本次推送列表里才会落库（避免误写其他账号）
+  # - total_likes = 0 会在 upsert_from_post_stats! 内部 fallback 到 post_stats 聚合
+  def self.snapshot_from_response!(response_body, browser_data)
+    return unless response_body.present?
+
+    parsed = response_body.is_a?(Hash) ? response_body : JSON.parse(response_body.to_s)
+    results = parsed.is_a?(Hash) ? parsed['results'] : nil
+    return if results.blank? || !results.is_a?(Array)
+
+    # 本次推送涉及的 account_id 集合（白名单）
+    pushed_account_ids = browser_data[:active_accounts].map { |a| a[:id] }.compact
+
+    results.each do |item|
+      account_id = item['account_id'] || item[:account_id]
+      next unless account_id.present?
+      next unless pushed_account_ids.include?(account_id)
+
+      total_followers = item['total_followers'] || item[:total_followers]
+      total_likes     = item['total_likes']     || item[:total_likes]
+
+      begin
+        AccountStat.upsert_from_post_stats!(
+          account_id,
+          Date.today,
+          followers_count: total_followers,
+          total_likes:     total_likes,
+          snapshot_at:     Time.current
+        )
+        Rails.logger.info "[PostDatas] 账号 #{account_id} account_stat 快照已更新 (followers=#{total_followers}, total_likes=#{total_likes})"
+      rescue => e
+        Rails.logger.error "[PostDatas] 账号 #{account_id} account_stat 快照失败: #{e.message}"
+      end
+    end
+  rescue JSON::ParserError => e
+    Rails.logger.error "[PostDatas] 返回体 JSON 解析失败，跳过快照: #{e.message}"
   end
 end

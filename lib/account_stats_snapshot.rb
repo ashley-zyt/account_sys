@@ -19,6 +19,7 @@
 #     同一天重复调用不会产生重复记录，而是用最新采集值覆盖。
 class AccountStatsSnapshot
   # 批量生成今日快照：所有「正常」状态账号
+  # 不传 total_followers / total_likes 时，AccountStat 内部会用最近一次快照的粉丝数 + post_stats 聚合的点赞数
   def self.snapshot_all_today!
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'account_stats_snapshot.log'))
     logger.formatter = Rails.logger.formatter
@@ -45,22 +46,24 @@ class AccountStatsSnapshot
   end
 
   # 给单个账号生成今日快照
-  # @param account        [Account, Integer] Account 对象或 account_id
-  # @param followers_count [Integer, nil]    采集端返回的粉丝数（可选）
-  def self.snapshot_account!(account, followers_count: nil, snapshot_at: nil)
+  # @param account         [Account, Integer] Account 对象或 account_id
+  # @param followers_count [Integer, nil]    采集端 total_followers
+  # @param total_likes     [Integer, nil]    采集端 total_likes（仅 tiktok > 0）
+  def self.snapshot_account!(account, followers_count: nil, total_likes: nil, snapshot_at: nil)
     account_id = account.is_a?(Account) ? account.id : account
     AccountStat.upsert_from_post_stats!(
       account_id,
       Date.today,
       followers_count: followers_count,
-      snapshot_at: snapshot_at
+      total_likes:     total_likes,
+      snapshot_at:     snapshot_at
     )
   end
 
   # 批量给指定账号集合生成今日快照
   # @param account_ids    [Array<Integer>]
-  # @param followers_map  [Hash<Integer, Integer>] { account_id => followers_count }
-  def self.snapshot_accounts!(account_ids, followers_map: {}, snapshot_at: nil)
+  # @param stats_map     [Hash<Integer, Hash>] { account_id => { followers_count:, total_likes: } }
+  def self.snapshot_accounts!(account_ids, stats_map: {}, snapshot_at: nil)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'account_stats_snapshot.log'))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
@@ -70,11 +73,13 @@ class AccountStatsSnapshot
 
     Array(account_ids).each do |account_id|
       begin
+        stat = stats_map[account_id] || {}
         AccountStat.upsert_from_post_stats!(
           account_id,
           Date.today,
-          followers_count: followers_map[account_id],
-          snapshot_at: snapshot_at
+          followers_count: stat[:followers_count],
+          total_likes:     stat[:total_likes],
+          snapshot_at:     snapshot_at
         )
         success_count += 1
       rescue => e

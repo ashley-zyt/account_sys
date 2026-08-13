@@ -195,14 +195,16 @@ class Account < ApplicationRecord
 	end
 
 	# 生成/更新当日快照（从 post_stats 聚合）
-	# @param followers_count [Integer, nil] 采集端返回的粉丝数，可空
+	# @param followers_count [Integer, nil] 采集端返回的总粉丝数，可空
+	# @param total_likes     [Integer, nil] 采集端返回的总点赞数（仅 tiktok > 0），可空
 	# @return [AccountStat, nil]
-	def snapshot_today!(followers_count: nil, snapshot_at: nil)
+	def snapshot_today!(followers_count: nil, total_likes: nil, snapshot_at: nil)
 		AccountStat.upsert_from_post_stats!(
 			id,
 			Date.today,
 			followers_count: followers_count,
-			snapshot_at: snapshot_at
+			total_likes:     total_likes,
+			snapshot_at:     snapshot_at
 		)
 	end
 

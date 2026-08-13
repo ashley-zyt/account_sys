@@ -94,49 +94,61 @@ class AccountStat < ApplicationRecord
 
   # === 数据落库入口 ===
 
-  # 从 post_stats 表反推一个账号当日的累计快照（粉丝数需要采集接口传入）
+  # 从 post_stats 表反推一个账号当日的累计快照
+  # 采集端返回的 total_followers / total_likes 可直接传入，缺失则用历史数据聚合
   #
-  # 说明：
-  # - post_stats 存的是"单条发文"的数据，本方法把某账号所有历史发文聚合
-  #   为账号级别总量，写入（或 upsert）当天的 account_stats。
-  # - followers_count 只能由运营机器采集回来，参数中可选传入；
-  #   没有传则复用该账号最近一次的快照值（保证字段不被清空）。
+  # 字段处理策略：
+  # - followers_count (总粉丝数)：只能由采集端返回。传入则用，没传则复用最近一条快照值。
+  # - total_likes_count (总点赞数)：
+  #     * tiktok 平台采集端会返回真实总数（total_likes > 0）→ 直接使用
+  #     * 其他平台采集端返回 0 → 自动用 post_stats 聚合的累计点赞数 fallback
+  # - 其他累计字段（views/comments/shares/posts）始终用 post_stats 聚合
   #
-  # @param account_id   [Integer]
-  # @param stat_date    [Date]    快照日期（一般是 Date.today）
-  # @param followers_count [Integer, nil] 采集到的粉丝数，可空
-  # @param snapshot_at  [DateTime, nil] 快照采集时刻
+  # @param account_id      [Integer]
+  # @param stat_date       [Date]
+  # @param followers_count [Integer, nil] 采集端 total_followers
+  # @param total_likes     [Integer, nil] 采集端 total_likes（仅 tiktok > 0）
+  # @param snapshot_at     [DateTime, nil]
   # @return [AccountStat, nil]
-  def self.upsert_from_post_stats!(account_id, stat_date = Date.today, followers_count: nil, snapshot_at: nil)
+  def self.upsert_from_post_stats!(account_id, stat_date = Date.today, followers_count: nil, total_likes: nil, snapshot_at: nil)
     account = Account.find_by(id: account_id)
     return nil unless account
 
     base_scope = account.post_stats
 
-    # 所有历史发文累计
-    aggregated = base_scope.select(
-      'COUNT(*)                   AS posts',
-      'COALESCE(SUM(views_count),    0) AS views',
-      'COALESCE(SUM(likes_count),    0) AS likes',
-      'COALESCE(SUM(comments_count), 0) AS comments',
-      'COALESCE(SUM(shares_count),   0) AS shares'
-    ).take
+    aggregated = base_scope.pick(
+      Arel.sql('COUNT(*)'),
+      Arel.sql('COALESCE(SUM(views_count), 0)'),
+      Arel.sql('COALESCE(SUM(likes_count), 0)'),
+      Arel.sql('COALESCE(SUM(comments_count), 0)'),
+      Arel.sql('COALESCE(SUM(shares_count), 0)')
+    )
+    posts_count, views_sum, likes_sum, comments_sum, shares_sum = aggregated
 
-    # 如果采集端没有返回粉丝数，复用最近一条快照的粉丝数
-    final_followers = if followers_count.present?
-                        followers_count.to_i
-                      else
-                        prev = AccountStat.by_account(account_id).order_by_date.first
-                        prev ? prev.followers_count.to_i : 0
-                      end
+    # 粉丝数：采集端返回优先，否则复用上次快照
+    final_followers =
+      if followers_count.present?
+        followers_count.to_i
+      else
+        prev = AccountStat.by_account(account_id).order_by_date.first
+        prev ? prev.followers_count.to_i : 0
+      end
+
+    # 总点赞：tiktok 采集端 > 0 时直接用；否则用 post_stats 聚合
+    final_total_likes =
+      if total_likes.present? && total_likes.to_i > 0
+        total_likes.to_i
+      else
+        likes_sum.to_i
+      end
 
     attrs = {
       followers_count:      final_followers,
-      total_views_count:    aggregated.views.to_i,
-      total_likes_count:    aggregated.likes.to_i,
-      total_comments_count: aggregated.comments.to_i,
-      total_shares_count:   aggregated.shares.to_i,
-      total_posts_count:    aggregated.posts.to_i,
+      total_views_count:    views_sum.to_i,
+      total_likes_count:    final_total_likes,
+      total_comments_count: comments_sum.to_i,
+      total_shares_count:   shares_sum.to_i,
+      total_posts_count:    posts_count.to_i,
       snapshot_at:          snapshot_at || Time.current
     }
 
