@@ -21,7 +21,7 @@
         <% end %>
       </div>
     </div>
-    <input type="hidden" name="<%= name %>" value="<%= selected %>" class="custom-select-hidden-input">
+    <input type="hidden" name="<%= name %>" value="<%= selected %>" class="custom-select-hidden-input" <%= 'required' if local_assigns[:required] %>>
   </div>
 </div>
 

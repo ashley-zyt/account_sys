@@ -22,26 +22,27 @@
     </div>
     <div>
       <div class="admin-field-label">
-        账号主页链接
+        账号主页链接 <span style="color: #ef4444;">*</span>
       </div>
-      <%= f.text_field :source_url, class: "admin-input", placeholder: "请输入账号主页 URL" %>
+      <%= f.text_field :source_url, class: "admin-input", placeholder: "请输入账号主页 URL", required: true %>
     </div>
     <div>
       <div class="admin-field-label">
-        主题
+        主题 <span style="color: #ef4444;">*</span>
       </div>
       <%= render 'admin/shared/searchable_theme_select', 
         name: 'account[theme]', 
         themes: themes, 
         selected: account.theme, 
         placeholder: '请选择主题',
-        include_blank: '请选择主题' %>
+        include_blank: '请选择主题',
+        required: true %>
     </div>
     <div>
       <div class="admin-field-label">
-        平台
+        平台 <span style="color: #ef4444;">*</span>
       </div>
-      <%= f.select :platform, Account.platforms.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+      <%= f.select :platform, Account.platforms.keys.map { |k| [k, k] }, {}, class: "admin-input", required: true %>
     </div>
     <div>
       <div class="admin-field-label">
@@ -51,9 +52,9 @@
     </div>
     <div>
       <div class="admin-field-label">
-        工作模式
+        工作模式 <span style="color: #ef4444;">*</span>
       </div>
-      <%= f.select :work_type, Account.work_types.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+      <%= f.select :work_type, Account.work_types.keys.map { |k| [k, k] }, {}, class: "admin-input", required: true %>
     </div>
     <div>
       <div class="admin-field-label">
