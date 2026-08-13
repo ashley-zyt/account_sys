@@ -140,4 +140,76 @@ class Util
 
     { success: assigned_task.status == "success", message: msg, task: assigned_task }
   end
+
+  # ===== 临时方法：获取指定账号的发文数据 =====
+  # 使用方式：
+  #   1. 按账号 ID：Util.fetch_account_post_data(account_id: 123)
+  #   2. 按账号名：Util.fetch_account_post_data(account_name: 'xxx')
+  # 流程：
+  #   - 校验账号存在、绑定浏览器、浏览器有 machine_ip
+  #   - 复用 PostDatas.fetch 的端点 http://<machine_ip>:8080/accounts/fetch_posts
+  #   - 仅推送该账号所属浏览器，active_accounts 中只包含这一个账号
+  # @return [Hash] { success: bool, message: string, response: string_or_nil }
+  def self.fetch_account_post_data(account_id: nil, account_name: nil)
+    logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'util_fetch_post_data.log'))
+    logger.formatter = Rails.logger.formatter
+    Rails.logger = logger
+
+    account = if account_id.present?
+                Account.find_by(id: account_id)
+              elsif account_name.present?
+                Account.find_by(account_name: account_name)
+              end
+
+    unless account
+      msg = "账号不存在：account_id=#{account_id}, account_name=#{account_name}"
+      Rails.logger.error "[Util] #{msg}"
+      return { success: false, message: msg, response: nil }
+    end
+
+    unless account.browser.present?
+      msg = "账号 #{account.account_name} 未绑定浏览器，无法采集发文数据"
+      Rails.logger.error "[Util] #{msg}"
+      return { success: false, message: msg, response: nil }
+    end
+
+    machine_ip = account.browser.machine_ip
+    unless machine_ip.present?
+      msg = "账号 #{account.account_name} 绑定的浏览器 #{account.browser.profile_name} 未设置 machine_ip，无法采集"
+      Rails.logger.error "[Util] #{msg}"
+      return { success: false, message: msg, response: nil }
+    end
+
+    payload = {
+      id: account.browser.id,
+      profile_name: account.browser.profile_name,
+      active_accounts: [
+        {
+          id: account.id,
+          platform: account.platform,
+          source_url: account.source_url,
+          work_type: account.work_type
+        }
+      ]
+    }
+
+    endpoint = "http://#{machine_ip}:8080/accounts/fetch_posts"
+    Rails.logger.info "[Util] 账号 #{account.account_name} 开始采集发文数据 → #{endpoint}"
+
+    result = PostDatas.push_to_external_with_retry(payload, endpoint)
+
+    if result[:success]
+      msg = "账号 #{account.account_name} 采集发文数据成功"
+      Rails.logger.info "[Util] #{msg}"
+      { success: true, message: msg, response: result[:response] }
+    else
+      msg = "账号 #{account.account_name} 采集发文数据失败: #{result[:error]}"
+      Rails.logger.error "[Util] #{msg}"
+      { success: false, message: msg, response: nil }
+    end
+  rescue => e
+    msg = "账号采集发文数据异常: #{e.message}"
+    Rails.logger.error "[Util] #{msg}"
+    { success: false, message: msg, response: nil }
+  end
 end
