@@ -216,14 +216,18 @@
               </td>
               <td><%= a.theme %></td>
               <td>
-                <% case a.platform %>
-                <% when "facebook"  then %><span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><%= a.platform %></span>
-                <% when "twitter"   then %><span class="admin-pill-status" style="background: rgba(6, 182, 212, 0.1);  color: #06b6d4;"><%= a.platform %></span>
-                <% when "tiktok"    then %><span class="admin-pill-status" style="background: rgba(236, 72, 153, 0.1); color: #ec4899;"><%= a.platform %></span>
-                <% when "youtube"   then %><span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1);  color: #ef4444;"><%= a.platform %></span>
-                <% when "instagram" then %><span class="admin-pill-status" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;"><%= a.platform %></span>
-                <% else %><span><%= a.platform %></span>
-                <% end %>
+                <% platform_color = case a.platform
+                                    when "facebook"  then "#3b82f6"
+                                    when "twitter"   then "#06b6d4"
+                                    when "tiktok"    then "#ec4899"
+                                    when "youtube"   then "#ef4444"
+                                    when "instagram" then "#a855f7"
+                                    else "#6b7280"
+                                    end
+                                   platform_bg = platform_color + "1A" %>
+                <span class="admin-pill-status" style="background: <%= platform_bg %>; color: <%= platform_color %>;">
+                  <%= a.platform %>
+                </span>
               </td>
               <td><%= a.work_type %></td>
               <td class="admin-table-num"><%= number_with_delimiter(stat.followers_count) %></td>
