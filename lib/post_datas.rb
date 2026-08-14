@@ -265,6 +265,7 @@ class PostDatas
 
   # 将 posts 数组批量 upsert 到 post_stats
   # url 已存在则更新计数，不存在则新建
+  # 兼容API返回的多种字段名（url/link, post_date/publish_time/date, likes_count/likes 等）
   # @return [Integer] 实际保存（新建+更新）的条数
   def self.upsert_posts_for_account!(account_id, posts)
     account = Account.find_by(id: account_id)
@@ -274,21 +275,28 @@ class PostDatas
     posts.each do |post|
       next unless post.is_a?(Hash)
 
-      url = dig_value(post, :url, 'url')
+      # URL 字段：兼容 :url / :link / 'url' / 'link'，并清理反引号和空白
+      raw_url = dig_value(post, :url, 'url', :link, 'link')
+      next if raw_url.blank?
+      url = raw_url.to_s.gsub('`', '').strip
       next if url.blank?
+
+      # 发布日期：兼容 :post_date / :publish_time / :date / 'post_date' / 'publish_time' / 'date'
+      raw_date = dig_value(post, :post_date, 'post_date', :publish_time, 'publish_time', :date, 'date', :publishTime, 'publishTime')
+      post_date = begin
+                    Date.parse(raw_date.to_s)
+                  rescue
+                    Date.today
+                  end
 
       attrs = {
         account_id: account.id,
-        post_date:  begin
-                      Date.parse(dig_value(post, :post_date, 'post_date', :date, 'date').to_s)
-                    rescue
-                      Date.today
-                    end,
-        title:           dig_value(post, :title, 'title'),
-        likes_count:     (dig_value(post, :likes_count, 'likes_count', :likes, 'likes') || 0).to_i,
-        views_count:     (dig_value(post, :views_count, 'views_count', :views, 'views') || 0).to_i,
-        comments_count:  (dig_value(post, :comments_count, 'comments_count', :comments, 'comments') || 0).to_i,
-        shares_count:    (dig_value(post, :shares_count, 'shares_count', :shares, 'shares') || 0).to_i,
+        post_date:  post_date,
+        title:      dig_value(post, :title, 'title'),
+        likes_count:     (dig_value(post, :likes_count, 'likes_count', :likes, 'likes', :like_count, 'like_count') || 0).to_i,
+        views_count:     (dig_value(post, :views_count, 'views_count', :views, 'views', :view_count, 'view_count') || 0).to_i,
+        comments_count:  (dig_value(post, :comments_count, 'comments_count', :comments, 'comments', :comment_count, 'comment_count') || 0).to_i,
+        shares_count:    (dig_value(post, :shares_count, 'shares_count', :shares, 'shares', :share_count, 'share_count') || 0).to_i,
         data_updated_at: Time.current
       }
 
