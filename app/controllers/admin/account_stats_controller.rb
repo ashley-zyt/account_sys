@@ -3,10 +3,12 @@ class Admin::AccountStatsController < Admin::BaseController
   # 核心功能：每个账号最新累计快照 + 粉丝变化趋势（日增/7日增/30日走势图）
   def index
     params[:q] ||= {}
+    # 清除空字符串参数，避免 ransack 用空字符串过滤返回空结果
+    params[:q].reject! { |_, v| v.blank? }
 
     # 1) 获取筛选范围内的账号ID集合
     @q = Account.ransack(params[:q])
-    filtered_accounts = @q.result
+    filtered_accounts = @q.result(distinct: true)
     account_ids = filtered_accounts.pluck(:id)
 
     # 无账号时直接返回空数据
@@ -232,8 +234,9 @@ class Admin::AccountStatsController < Admin::BaseController
   # 导出当前筛选的账号快照清单为 CSV
   def export
     params[:q] ||= {}
+    params[:q].reject! { |_, v| v.blank? }
     @q = Account.ransack(params[:q])
-    account_ids = @q.result.pluck(:id)
+    account_ids = @q.result(distinct: true).pluck(:id)
 
     today = Date.today
     date_30 = today - 29
@@ -299,9 +302,9 @@ class Admin::AccountStatsController < Admin::BaseController
 
   def set_filter_options
     @work_types = Account.work_types.map { |k, v| [k, v] }
-    @platforms  = Account.platforms.map { |k, v| [k, v] }
+    @platforms  = Account.platforms.map { |k, v| [k.to_s.titleize, v] }
     @themes     = Theme.pluck(:name)
-    @statuses   = Account.statuses.keys
+    @statuses   = Account.statuses.map { |k, v| [k, v] }
   end
 
   def empty_summary

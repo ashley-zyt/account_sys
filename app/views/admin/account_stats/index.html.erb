@@ -19,30 +19,35 @@
       <div class="admin-card-subtitle">按账号属性（主题/平台/工作模式/状态）过滤</div>
     </div>
     <div class="admin-card-header-right">
-      <%= link_to "导出CSV", export_admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq])), class: "admin-button-secondary" %>
+      <%= link_to "导出CSV", export_admin_account_stats_path(request.params.except(:controller, :action)), class: "admin-button-secondary" %>
     </div>
   </div>
 
-  <%= form_with url: admin_account_stats_path, method: :get, class: "admin-filter-form", data: { turbo: false } do %>
+  <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
     <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
       <div>
         <div class="admin-filter-label">主题</div>
-        <%= select_tag "q[theme_eq]", options_for_select(@themes.map { |n| [n, n] }, params.dig(:q, :theme_eq)), include_blank: "所有主题", class: "admin-input admin-filter-input" %>
+        <%= render 'admin/shared/searchable_theme_select', 
+          name: 'q[theme_eq]', 
+          themes: @themes, 
+          selected: params.dig(:q, :theme_eq), 
+          placeholder: '所有主题',
+          include_blank: '所有主题' %>
       </div>
       <div>
         <div class="admin-filter-label">平台</div>
-        <%= select_tag "q[platform_eq]", options_for_select(@platforms, params.dig(:q, :platform_eq)), include_blank: "所有平台", class: "admin-input admin-filter-input" %>
+        <%= f.select :platform_eq, @platforms, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
       <div>
         <div class="admin-filter-label">工作模式</div>
-        <%= select_tag "q[work_type_eq]", options_for_select(@work_types, params.dig(:q, :work_type_eq)), include_blank: "所有模式", class: "admin-input admin-filter-input" %>
+        <%= f.select :work_type_eq, @work_types, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
       </div>
       <div>
         <div class="admin-filter-label">账号状态</div>
-        <%= select_tag "q[status_eq]", options_for_select(@statuses.map { |s| [s, s] }, params.dig(:q, :status_eq)), include_blank: "所有状态", class: "admin-input admin-filter-input" %>
+        <%= f.select :status_eq, @statuses, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="display: flex; gap: 8px;">
-        <%= submit_tag "筛选", class: "admin-button-primary" %>
+        <%= f.submit "筛选", class: "admin-button-primary" %>
         <%= link_to "重置", admin_account_stats_path, class: "admin-button-secondary" %>
       </div>
     </div>
@@ -210,15 +215,15 @@
               <th class="<%= sortable ? 'admin-table-sortable' : '' %>">
                 <% if sortable %>
                   <% if @current_sort == sortable && @current_direction == 'desc' %>
-                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'asc', page: nil)), class: "admin-link-quiet" do %>
+                    <%= link_to request.params.merge(sort: sortable, direction: 'asc', page: nil), class: "admin-link-quiet" do %>
                       <%= label %> ↓
                     <% end %>
                   <% elsif @current_sort == sortable && @current_direction == 'asc' %>
-                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'desc', page: nil)), class: "admin-link-quiet" do %>
+                    <%= link_to request.params.merge(sort: sortable, direction: 'desc', page: nil), class: "admin-link-quiet" do %>
                       <%= label %> ↑
                     <% end %>
                   <% else %>
-                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'desc', page: nil)), class: "admin-link-quiet" do %>
+                    <%= link_to request.params.merge(sort: sortable, direction: 'desc', page: nil), class: "admin-link-quiet" do %>
                       <%= label %>
                     <% end %>
                   <% end %>
