@@ -188,8 +188,8 @@ class PostDatas
     { success: false, error: e.message }
   end
 
-  # 解析运营机器返回体，提取每个账号的 total_followers / total_posts
-  # 落库到 account_stat 当天日维度快照
+  # 解析运营机器返回体，将 posts 数组落库到 post_stats，
+  # 然后基于 post_stats 聚合 + API返回的 total_followers/total_posts 生成 account_stat 日快照
   #
   # 返回体示例：
   #   {
@@ -200,18 +200,20 @@ class PostDatas
   #         "account_id": 2,
   #         "platform": "youtube",
   #         "total_followers": 1234,
-  #         "total_posts": 56,           # 总发帖量（API返回）
-  #         "posts": [...]
+  #         "total_posts": 56,
+  #         "posts": [
+  #           { "url": "...", "title": "...", "post_date": "2025-08-01",
+  #             "likes_count": 100, "views_count": 2000, "comments_count": 10, "shares_count": 5 }
+  #         ]
   #       }
   #     ]
   #   }
   #
-  # 说明：
-  # - 仅 results 中的 account_id 在本次推送列表里才会落库（避免误写其他账号）
+  # 字段策略：
   # - total_followers：所有平台均使用API返回值
-  # - total_posts：仅 YouTube/Instagram 使用API返回值，其他平台由 upsert_from_post_stats! 内部从 post_stats COUNT(*) 聚合
-  # - total_likes：不使用API返回值，由 upsert_from_post_stats! 内部从 post_stats 聚合计算
-  # - total_views/total_comments/total_shares：均从 post_stats 聚合计算
+  # - total_posts：仅 YouTube/Instagram 使用API返回值，其他平台由 post_stats COUNT(*) 聚合
+  # - posts 数组按 url upsert（已存在则更新计数，不存在则新建）
+  # - total_likes/total_views/total_comments/total_shares：始终从 post_stats 聚合
   def self.snapshot_from_response!(response_body, browser_data)
     return unless response_body.present?
 
@@ -223,14 +225,19 @@ class PostDatas
     pushed_account_ids = browser_data[:active_accounts].map { |a| a[:id] }.compact
 
     results.each do |item|
-      account_id = item['account_id'] || item[:account_id]
+      account_id = dig_value(item, :account_id, 'account_id')
       next unless account_id.present?
       next unless pushed_account_ids.include?(account_id)
 
-      total_followers = item['total_followers'] || item[:total_followers]
-      total_posts     = item['total_posts']     || item[:total_posts]
+      total_followers = dig_value(item, :total_followers, 'total_followers')
+      total_posts     = dig_value(item, :total_posts, 'total_posts')
+      posts           = dig_value(item, :posts, 'posts') || []
 
       begin
+        # 1. 先将 posts 数组落库到 post_stats（url 唯一，存在则更新，不存在则创建）
+        saved_count = upsert_posts_for_account!(account_id, posts) if posts.is_a?(Array)
+
+        # 2. 再生成 account_stat 日快照（此时 post_stats 已包含最新数据）
         AccountStat.upsert_from_post_stats!(
           account_id,
           Date.today,
@@ -238,12 +245,61 @@ class PostDatas
           total_posts:     total_posts,
           snapshot_at:     Time.current
         )
-        Rails.logger.info "[PostDatas] 账号 #{account_id} account_stat 快照已更新 (followers=#{total_followers}, total_posts=#{total_posts})"
+        Rails.logger.info "[PostDatas] 账号 #{account_id} 快照已更新 (posts_saved=#{saved_count || 0}, followers=#{total_followers}, total_posts=#{total_posts})"
       rescue => e
-        Rails.logger.error "[PostDatas] 账号 #{account_id} account_stat 快照失败: #{e.message}"
+        Rails.logger.error "[PostDatas] 账号 #{account_id} 快照失败: #{e.message}"
       end
     end
   rescue JSON::ParserError => e
     Rails.logger.error "[PostDatas] 返回体 JSON 解析失败，跳过快照: #{e.message}"
+  end
+
+  # 从 Hash 中按优先级取多个可能的 key（兼容 symbol/string）
+  def self.dig_value(hash, *keys)
+    keys.each do |k|
+      val = hash[k]
+      return val if val.present?
+    end
+    nil
+  end
+
+  # 将 posts 数组批量 upsert 到 post_stats
+  # url 已存在则更新计数，不存在则新建
+  # @return [Integer] 实际保存（新建+更新）的条数
+  def self.upsert_posts_for_account!(account_id, posts)
+    account = Account.find_by(id: account_id)
+    return 0 unless account
+
+    saved_count = 0
+    posts.each do |post|
+      next unless post.is_a?(Hash)
+
+      url = dig_value(post, :url, 'url')
+      next if url.blank?
+
+      attrs = {
+        account_id: account.id,
+        post_date:  begin
+                      Date.parse(dig_value(post, :post_date, 'post_date', :date, 'date').to_s)
+                    rescue
+                      Date.today
+                    end,
+        title:           dig_value(post, :title, 'title'),
+        likes_count:     (dig_value(post, :likes_count, 'likes_count', :likes, 'likes') || 0).to_i,
+        views_count:     (dig_value(post, :views_count, 'views_count', :views, 'views') || 0).to_i,
+        comments_count:  (dig_value(post, :comments_count, 'comments_count', :comments, 'comments') || 0).to_i,
+        shares_count:    (dig_value(post, :shares_count, 'shares_count', :shares, 'shares') || 0).to_i,
+        data_updated_at: Time.current
+      }
+
+      existing = PostStat.find_by(url: url)
+      if existing
+        existing.update!(attrs)
+      else
+        PostStat.create!(attrs.merge(url: url))
+      end
+      saved_count += 1
+    end
+    saved_count
   end
 end
