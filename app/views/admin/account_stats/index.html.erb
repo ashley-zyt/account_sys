@@ -2,7 +2,7 @@
   账号数据统计
 <% end %>
 <% content_for :page_subtitle do %>
-  每个账号的最新累计总量快照，用于横向对比表现
+  账号粉丝变化趋势与增长分析
 <% end %>
 
 <% content_for :head do %>
@@ -50,120 +50,139 @@
 </div>
 
 <%# =========================================================== %>
-<%# 总体 KPI 卡（7 项）                                            %>
+<%# 粉丝趋势 KPI 卡（4 项）                                         %>
 <%# =========================================================== %>
 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 20px;">
+  <%# 总粉丝 %>
   <div class="admin-card" style="padding: 18px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <span class="admin-field-label">账号总数</span>
-      <span style="font-size: 18px;">👥</span>
+      <span class="admin-field-label">总粉丝（最新）</span>
+      <span style="font-size: 20px;">👑</span>
     </div>
-    <div style="font-size: 24px; font-weight: 600; color: #6366f1;"><%= number_with_delimiter(@summary[:account_count]) %></div>
-  </div>
-  <div class="admin-card" style="padding: 18px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <span class="admin-field-label">总粉丝数</span>
-      <span style="font-size: 18px;">👑</span>
+    <div style="font-size: 26px; font-weight: 600; color: #6366f1;"><%= number_with_delimiter(@summary[:total_followers]) %></div>
+    <div style="margin-top: 6px; font-size: 13px;">
+      <% if @summary[:daily_growth] > 0 %>
+        <span style="color: #22c55e;">▲ 日增 +<%= number_with_delimiter(@summary[:daily_growth]) %></span>
+      <% elsif @summary[:daily_growth] < 0 %>
+        <span style="color: #ef4444;">▼ 日增 <%= number_with_delimiter(@summary[:daily_growth]) %></span>
+      <% else %>
+        <span class="admin-label-muted">日增 -</span>
+      <% end %>
     </div>
-    <div style="font-size: 24px; font-weight: 600; color: #f59e0b;"><%= number_with_delimiter(@summary[:total_followers]) %></div>
   </div>
-  <div class="admin-card" style="padding: 18px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <span class="admin-field-label">总浏览量</span>
-      <span style="font-size: 18px;">👁️</span>
-    </div>
-    <div style="font-size: 24px; font-weight: 600; color: #3b82f6;"><%= number_with_delimiter(@summary[:total_views_count]) %></div>
-  </div>
-  <div class="admin-card" style="padding: 18px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <span class="admin-field-label">总点赞数</span>
-      <span style="font-size: 18px;">❤️</span>
-    </div>
-    <div style="font-size: 24px; font-weight: 600; color: #ec4899;"><%= number_with_delimiter(@summary[:total_likes_count]) %></div>
-  </div>
-</div>
 
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px;">
+  <%# 7日净增 %>
   <div class="admin-card" style="padding: 18px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <span class="admin-field-label">总评论数</span>
-      <span style="font-size: 18px;">💬</span>
+      <span class="admin-field-label">7日净增</span>
+      <span style="font-size: 20px;">📈</span>
     </div>
-    <div style="font-size: 22px; font-weight: 600; color: #8b5cf6;"><%= number_with_delimiter(@summary[:total_comments_count]) %></div>
+    <div style="font-size: 26px; font-weight: 600; color: #22c55e;">
+      <% if @summary[:weekly_growth] >= 0 %>
+        +<%= number_with_delimiter(@summary[:weekly_growth]) %>
+      <% else %>
+        <%= number_with_delimiter(@summary[:weekly_growth]) %>
+      <% end %>
+    </div>
+    <div style="margin-top: 6px; font-size: 13px;">
+      <% if @summary[:weekly_pct] %>
+        <span style="color: <%= @summary[:weekly_pct] >= 0 ? '#22c55e' : '#ef4444' %>;">
+          周环比 <%= @summary[:weekly_pct] >= 0 ? '+' : '' %><%= @summary[:weekly_pct] %>%
+        </span>
+      <% else %>
+        <span class="admin-label-muted">数据不足</span>
+      <% end %>
+    </div>
   </div>
+
+  <%# 增长账号 %>
   <div class="admin-card" style="padding: 18px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <span class="admin-field-label">总转发数</span>
-      <span style="font-size: 18px;">🔄</span>
+      <span class="admin-field-label">增长账号</span>
+      <span style="font-size: 20px;">👥</span>
     </div>
-    <div style="font-size: 22px; font-weight: 600; color: #22c55e;"><%= number_with_delimiter(@summary[:total_shares_count]) %></div>
+    <div style="font-size: 26px; font-weight: 600; color: #3b82f6;">
+      <%= @summary[:growing_accounts] %> / <%= @summary[:account_count] %>
+    </div>
+    <div style="margin-top: 6px; font-size: 13px;">
+      <% if @summary[:declining_accounts] > 0 %>
+        <span style="color: #ef4444;"><%= @summary[:declining_accounts] %> 个下跌</span>
+      <% else %>
+        <span class="admin-label-muted">无下跌账号</span>
+      <% end %>
+      <% if @summary[:flat_accounts] > 0 %>
+        <span class="admin-label-muted" style="margin-left: 8px;"><%= @summary[:flat_accounts] %> 个持平</span>
+      <% end %>
+    </div>
   </div>
+
+  <%# Top增长主题 %>
   <div class="admin-card" style="padding: 18px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <span class="admin-field-label">累计发帖</span>
-      <span style="font-size: 18px;">📝</span>
+      <span class="admin-field-label">Top增长主题</span>
+      <span style="font-size: 20px;">🏆</span>
     </div>
-    <div style="font-size: 22px; font-weight: 600; color: #06b6d4;"><%= number_with_delimiter(@summary[:total_posts_count]) %></div>
+    <% if @summary[:top_theme] && @summary[:top_theme][:growth] > 0 %>
+      <div style="font-size: 18px; font-weight: 600; color: #f59e0b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        <%= @summary[:top_theme][:theme] %>
+      </div>
+      <div style="margin-top: 6px; font-size: 13px;">
+        <span style="color: #22c55e;">▲ 7日 +<%= number_with_delimiter(@summary[:top_theme][:growth]) %> 粉</span>
+      </div>
+    <% else %>
+      <div style="font-size: 18px; font-weight: 600; color: #9ca3af;">暂无数据</div>
+      <div style="margin-top: 6px; font-size: 13px;" class="admin-label-muted">需积累7天以上快照</div>
+    <% end %>
   </div>
 </div>
 
 <%# =========================================================== %>
-<%# 图表区：双栏布局（平台分布 + 主题Top N 柱状图）                 %>
+<%# 趋势图表区：整体趋势 + Top5 对比                                %>
 <%# =========================================================== %>
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px;">
-  <%# 平台分布（饼图）：默认按粉丝数占比 %>
+  <%# 整体粉丝增长趋势 %>
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
-        <div class="admin-card-title">平台分布</div>
-        <div class="admin-card-subtitle">各平台粉丝数占比</div>
-      </div>
-      <div class="admin-card-header-right">
-        <button type="button" class="platform-dist-btn" data-dist-metric="views">浏览</button>
-        <button type="button" class="platform-dist-btn active" data-dist-metric="followers">粉丝</button>
-        <button type="button" class="platform-dist-btn" data-dist-metric="likes">点赞</button>
+        <div class="admin-card-title">整体粉丝增长趋势</div>
+        <div class="admin-card-subtitle">近30天全账号粉丝总量变化</div>
       </div>
     </div>
-    <% if @by_platform.present? %>
-      <div style="position: relative; height: 340px; padding: 12px;">
-        <canvas id="platformPieChart"></canvas>
+    <% if @overall_trend[:labels].present? %>
+      <div style="position: relative; height: 280px; padding: 12px;">
+        <canvas id="overallTrendChart"></canvas>
       </div>
     <% else %>
-      <div class="admin-empty-state">暂无数据</div>
+      <div class="admin-empty-state">暂无趋势数据</div>
     <% end %>
   </div>
 
-  <%# 主题 Top N（横向柱状图）：默认按粉丝数排名 %>
+  <%# Top5 账号增长对比 %>
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
-        <div class="admin-card-title">主题排名 Top <%= [@by_theme.size, 10].min %></div>
-        <div class="admin-card-subtitle">按粉丝数降序</div>
-      </div>
-      <div class="admin-card-header-right">
-        <button type="button" class="theme-rank-btn" data-rank-metric="views">浏览</button>
-        <button type="button" class="theme-rank-btn active" data-rank-metric="followers">粉丝</button>
-        <button type="button" class="theme-rank-btn" data-rank-metric="likes">点赞</button>
+        <div class="admin-card-title">Top5 账号增长对比</div>
+        <div class="admin-card-subtitle">近30天粉丝增长最快的5个账号</div>
       </div>
     </div>
-    <% if @by_theme.present? %>
-      <div style="position: relative; height: 340px; padding: 12px;">
-        <canvas id="themeBarChart"></canvas>
+    <% if @top5_trend[:datasets].present? %>
+      <div style="position: relative; height: 280px; padding: 12px;">
+        <canvas id="top5TrendChart"></canvas>
       </div>
     <% else %>
-      <div class="admin-empty-state">暂无数据</div>
+      <div class="admin-empty-state">暂无趋势数据</div>
     <% end %>
   </div>
 </div>
 
 <%# =========================================================== %>
-<%# 每个账号的最新快照列表                                           %>
+<%# 账号快照明细表（含日增/7日增/sparkline）                        %>
 <%# =========================================================== %>
 <div class="admin-card" style="margin-top: 20px;">
   <div class="admin-card-header">
     <div>
-      <div class="admin-card-title">账号最新快照明细</div>
-      <div class="admin-card-subtitle">共 <%= number_with_delimiter(@summary[:account_count]) %> 个账号，展示每个账号最近一次采集的累计总量</div>
+      <div class="admin-card-title">账号最新快照</div>
+      <div class="admin-card-subtitle">共 <%= number_with_delimiter(@summary[:account_count]) %> 个账号，默认按粉丝数降序，点击列头可切换排序</div>
     </div>
   </div>
 
@@ -172,31 +191,34 @@
       <table class="admin-table">
         <thead>
           <tr>
-            <% [
-              ['账号名', nil],
-              ['主题', nil],
-              ['平台', nil],
-              ['工作模式', nil],
-              ['粉丝数', 'followers_count'],
-              ['总浏览', 'total_views_count'],
-              ['总点赞', 'total_likes_count'],
-              ['总评论', 'total_comments_count'],
-              ['总转发', 'total_shares_count'],
-              ['总发帖', 'total_posts_count'],
-              ['快照日期', 'stat_date']
-            ].each do |label, sortable| %>
-              <th>
+            <%
+              columns = [
+                ['账号名', nil],
+                ['主题', nil],
+                ['平台', nil],
+                ['粉丝数', 'followers_count'],
+                ['日增', 'daily_growth'],
+                ['7日增', 'weekly_growth'],
+                ['30日走势', nil],
+                ['总浏览', 'total_views_count'],
+                ['总点赞', 'total_likes_count'],
+                ['总发帖', 'total_posts_count'],
+                ['快照日期', 'stat_date']
+              ]
+            %>
+            <% columns.each do |label, sortable| %>
+              <th class="<%= sortable ? 'admin-table-sortable' : '' %>">
                 <% if sortable %>
                   <% if @current_sort == sortable && @current_direction == 'desc' %>
-                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'asc', page: params[:page])), class: "admin-link-quiet" do %>
+                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'asc', page: nil)), class: "admin-link-quiet" do %>
                       <%= label %> ↓
                     <% end %>
                   <% elsif @current_sort == sortable && @current_direction == 'asc' %>
-                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'desc', page: params[:page])), class: "admin-link-quiet" do %>
+                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'desc', page: nil)), class: "admin-link-quiet" do %>
                       <%= label %> ↑
                     <% end %>
                   <% else %>
-                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'desc', page: params[:page])), class: "admin-link-quiet" do %>
+                    <%= link_to admin_account_stats_path(params.permit(q: [:theme_eq, :platform_eq, :work_type_eq, :status_eq]).merge(sort: sortable, direction: 'desc', page: nil)), class: "admin-link-quiet" do %>
                       <%= label %>
                     <% end %>
                   <% end %>
@@ -210,9 +232,11 @@
         <tbody>
           <% @account_stats.each do |stat| %>
             <% a = stat.account %>
+            <% growth = @account_growth_map[a.id] || {} %>
+            <% spark = @account_sparklines[a.id] || [] %>
             <tr>
               <td>
-                <%= link_to a.account_name, admin_account_path(a), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <%= link_to a.account_name, admin_account_path(a), class: "admin-link-quiet", style: "color: var(--accent); font-weight: 500;" %>
               </td>
               <td><%= a.theme %></td>
               <td>
@@ -229,15 +253,69 @@
                   <%= a.platform %>
                 </span>
               </td>
-              <td><%= a.work_type %></td>
-              <td class="admin-table-num"><%= number_with_delimiter(stat.followers_count) %></td>
+              <td class="admin-table-num" style="font-weight: 600;"><%= number_with_delimiter(stat.followers_count) %></td>
+              <td class="admin-table-num">
+                <% if growth[:daily] %>
+                  <% if growth[:daily] > 0 %>
+                    <span style="color: #22c55e; font-weight: 500;">+<%= number_with_delimiter(growth[:daily]) %></span>
+                  <% elsif growth[:daily] < 0 %>
+                    <span style="color: #ef4444; font-weight: 500;"><%= number_with_delimiter(growth[:daily]) %></span>
+                  <% else %>
+                    <span style="color: #9ca3af;">0</span>
+                  <% end %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td class="admin-table-num">
+                <% if growth[:weekly] %>
+                  <% if growth[:weekly] > 0 %>
+                    <span style="color: #22c55e;">+<%= number_with_delimiter(growth[:weekly]) %></span>
+                  <% elsif growth[:weekly] < 0 %>
+                    <span style="color: #ef4444;"><%= number_with_delimiter(growth[:weekly]) %></span>
+                  <% else %>
+                    <span style="color: #9ca3af;">0</span>
+                  <% end %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td style="width: 100px; padding: 6px 8px;">
+                <% if spark.present? && spark.compact.size > 1 %>
+                  <%
+                    sp = spark.compact
+                    sp_min = sp.min.to_f
+                    sp_max = sp.max.to_f
+                    sp_range = sp_max - sp_min
+                    sp_range = 1 if sp_range == 0
+                    svg_w = 80
+                    svg_h = 28
+                    pad = 2
+                    sp_points = sp.each_with_index.map { |v, i|
+                      x = pad + (svg_w - 2*pad) * i.to_f / (sp.size - 1)
+                      y = svg_h - pad - (svg_h - 2*pad) * (v.to_f - sp_min) / sp_range
+                      "#{x.round(1)},#{y.round(1)}"
+                    }.join(" ")
+                    trend_up = sp.last >= sp.first
+                    sp_color = trend_up ? '#22c55e' : '#ef4444'
+                    sp_arrow = trend_up ? '▲' : (sp.last < sp.first ? '▼' : '→')
+                    sp_arrow_color = trend_up ? '#22c55e' : '#ef4444'
+                  %>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <svg width="<%= svg_w %>" height="<%= svg_h %>" viewBox="0 0 <%= svg_w %> <%= svg_h %>" style="flex-shrink: 0;">
+                      <polyline fill="none" stroke="<%= sp_color %>" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="<%= sp_points %>"/>
+                    </svg>
+                    <span style="font-size: 11px; color: <%= sp_arrow_color %>; font-weight: 600;"><%= sp_arrow %></span>
+                  </div>
+                <% else %>
+                  <span class="admin-label-muted" style="font-size: 12px;">暂无</span>
+                <% end %>
+              </td>
               <td class="admin-table-num"><%= number_with_delimiter(stat.total_views_count) %></td>
               <td class="admin-table-num"><%= number_with_delimiter(stat.total_likes_count) %></td>
-              <td class="admin-table-num"><%= number_with_delimiter(stat.total_comments_count) %></td>
-              <td class="admin-table-num"><%= number_with_delimiter(stat.total_shares_count) %></td>
               <td class="admin-table-num"><%= number_with_delimiter(stat.total_posts_count) %></td>
               <td>
-                <span class="admin-label-muted">
+                <span class="admin-label-muted" style="font-size: 12px;">
                   <%= stat.stat_date.strftime("%Y-%m-%d") %>
                 </span>
               </td>
@@ -258,29 +336,13 @@
 </div>
 
 <style>
-.platform-dist-btn, .theme-rank-btn {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  padding: 5px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-left: 4px;
-}
-.platform-dist-btn:hover, .theme-rank-btn:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-.platform-dist-btn.active, .theme-rank-btn.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
 .admin-table-num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+.admin-table-sortable {
+  cursor: pointer;
+  user-select: none;
 }
 </style>
 
@@ -292,139 +354,117 @@
     else if (attempts < 50) setTimeout(function(){ waitForChart(callback, attempts + 1); }, 100);
   }
 
-  var platformConfig = {
-    'facebook':  { label: 'Facebook',  color: '#3b82f6' },
-    'twitter':   { label: 'Twitter',   color: '#06b6d4' },
-    'tiktok':    { label: 'TikTok',    color: '#ec4899' },
-    'youtube':   { label: 'YouTube',   color: '#ef4444' },
-    'instagram': { label: 'Instagram', color: '#a855f7' }
-  };
+  var textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#64748b';
+  var textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1e293b';
+  var gridColor = 'rgba(148, 163, 184, 0.12)';
 
-  var byPlatform = <%= @by_platform.to_json.html_safe %>;
-  var byTheme    = <%= @by_theme.first(10).to_json.html_safe %>;
-
-  var pieChart, barChart;
-
-  function buildPieData(metric) {
-    var data = byPlatform.map(function(p) { return p[metric] || 0; });
-    var labels = byPlatform.map(function(p) {
-      return (platformConfig[p.platform] || {}).label || p.platform;
-    });
-    var colors = byPlatform.map(function(p) {
-      return (platformConfig[p.platform] || {}).color || '#94a3b8';
-    });
-    return { labels: labels, data: data, colors: colors };
-  }
-
-  function buildBarData(metric) {
-    var sorted = byTheme.slice().sort(function(a, b) { return (b[metric] || 0) - (a[metric] || 0); }).slice(0, 10);
-    return {
-      labels: sorted.map(function(t) { return t.theme || '未设置'; }),
-      data:   sorted.map(function(t) { return t[metric] || 0; })
-    };
-  }
+  var overallData = <%= @overall_trend.to_json.html_safe %>;
+  var top5Data = <%= @top5_trend.to_json.html_safe %>;
 
   waitForChart(function() {
-    var pieCtx = document.getElementById('platformPieChart');
-    var barCtx = document.getElementById('themeBarChart');
-
-    // 饼图
-    if (pieCtx) {
-      var p0 = buildPieData('followers');
-      pieChart = new Chart(pieCtx, {
-        type: 'doughnut',
+    // 整体粉丝增长趋势（面积折线图）
+    var overallCtx = document.getElementById('overallTrendChart');
+    if (overallCtx && overallData.labels.length > 0) {
+      new Chart(overallCtx, {
+        type: 'line',
         data: {
-          labels: p0.labels,
+          labels: overallData.labels,
           datasets: [{
-            data: p0.data,
-            backgroundColor: p0.colors,
-            borderColor: 'rgba(255,255,255,0.08)',
-            borderWidth: 2
+            label: '总粉丝',
+            data: overallData.data,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.08)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.35,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#6366f1'
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12, color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1f2937' } },
-            tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + Number(ctx.parsed).toLocaleString(); } } }
-          }
-        }
-      });
-    }
-
-    // 柱状图（横向，Top N）
-    if (barCtx) {
-      var b0 = buildBarData('followers');
-      barChart = new Chart(barCtx, {
-        type: 'bar',
-        data: {
-          labels: b0.labels,
-          datasets: [{
-            data: b0.data,
-            backgroundColor: [
-              'rgba(99, 102, 241, 0.85)',
-              'rgba(59, 130, 246, 0.85)',
-              'rgba(6, 182, 212, 0.85)',
-              'rgba(34, 197, 94, 0.85)',
-              'rgba(245, 158, 11, 0.85)',
-              'rgba(236, 72, 153, 0.85)',
-              'rgba(139, 92, 246, 0.85)',
-              'rgba(168, 85, 247, 0.85)',
-              'rgba(239, 68, 68, 0.85)',
-              'rgba(107, 114, 128, 0.85)'
-            ],
-            borderRadius: 6
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: function(ctx) { return ' ' + Number(ctx.parsed.x).toLocaleString(); } } }
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return '粉丝数: ' + Number(ctx.parsed.y).toLocaleString(); }
+              }
+            }
           },
           scales: {
             x: {
-              grid:  { color: 'rgba(148, 163, 184, 0.15)' },
-              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#6b7280' }
+              grid: { display: false },
+              ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 10 }
             },
             y: {
-              grid:  { display: false },
-              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1f2937', font: { size: 12 } }
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                font: { size: 11 },
+                callback: function(v) { return Number(v).toLocaleString(); }
+              }
             }
           }
         }
       });
     }
 
-    // 饼图指标切换
-    document.querySelectorAll('.platform-dist-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('.platform-dist-btn').forEach(function(b){ b.classList.remove('active'); });
-        btn.classList.add('active');
-        var metric = btn.getAttribute('data-dist-metric');
-        var next = buildPieData(metric);
-        pieChart.data.labels = next.labels;
-        pieChart.data.datasets[0].data = next.data;
-        pieChart.data.datasets[0].backgroundColor = next.colors;
-        pieChart.update();
+    // Top5 账号增长对比（多线折线图）
+    var top5Ctx = document.getElementById('top5TrendChart');
+    if (top5Ctx && top5Data.datasets.length > 0) {
+      new Chart(top5Ctx, {
+        type: 'line',
+        data: {
+          labels: top5Data.labels,
+          datasets: top5Data.datasets.map(function(ds) {
+            return {
+              label: ds.label,
+              data: ds.data,
+              borderColor: ds.borderColor,
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              tension: 0.35,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              pointHoverBackgroundColor: ds.borderColor
+            };
+          })
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: textColor, font: { size: 11 }, boxWidth: 14, padding: 10, usePointStyle: true, pointStyle: 'line' }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return ctx.dataset.label + ': ' + Number(ctx.parsed.y).toLocaleString(); }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 8 }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                font: { size: 11 },
+                callback: function(v) { return Number(v).toLocaleString(); }
+              }
+            }
+          }
+        }
       });
-    });
-
-    // 柱状图指标切换
-    document.querySelectorAll('.theme-rank-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('.theme-rank-btn').forEach(function(b){ b.classList.remove('active'); });
-        btn.classList.add('active');
-        var metric = btn.getAttribute('data-rank-metric');
-        var next = buildBarData(metric);
-        barChart.data.labels = next.labels;
-        barChart.data.datasets[0].data = next.data;
-        barChart.update();
-      });
-    });
+    }
   });
 })();
 </script>
