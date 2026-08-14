@@ -215,6 +215,71 @@ class PostDatas
   # - total_posts：仅 YouTube/Instagram 使用API返回值，其他平台由 post_stats COUNT(*) 聚合
   # - posts 数组按 url upsert（已存在则更新计数，不存在则新建）
   # - total_likes/total_views/total_comments/total_shares：始终从 post_stats 聚合
+
+  # 批量更新账号统计数据（公开接口，供外部API直接调用）
+  # 仅更新粉丝数和发帖数，发文数据通过原接口（post_stats接口）录入
+  # 总浏览/总点赞/总评论/总分享始终从 post_stats 表现有数据聚合计算
+  #
+  # @param results [Array<Hash>] 账号数据数组，每个元素格式：
+  #   {
+  #     account_id: Integer,        # 账号ID（必填）
+  #     total_followers: Integer,   # 粉丝数（必填，所有平台均使用此值）
+  #     total_posts: Integer        # 总发帖量（可选，YouTube/Instagram使用此值，其他平台从post_stats聚合）
+  #   }
+  # @return [Hash] { success: [account_ids], failed: [{account_id, error}] }
+  def self.update_account_stats!(results)
+    return { success: [], failed: [] } if results.blank? || !results.is_a?(Array)
+
+    success_ids = []
+    failed_items = []
+
+    Rails.logger.info "[PostDatas] update_account_stats! 开始处理，共 #{results.size} 个账号"
+
+    results.each do |item|
+      raw_account_id = dig_value(item, :account_id, 'account_id')
+      account_id = raw_account_id.to_i
+
+      unless account_id > 0
+        failed_items << { account_id: raw_account_id, error: "account_id 无效" }
+        next
+      end
+
+      total_followers = dig_value(item, :total_followers, 'total_followers')
+      total_posts     = dig_value(item, :total_posts, 'total_posts')
+      Rails.logger.info "[PostDatas] update_account_stats! 处理账号 #{account_id}: total_followers=#{total_followers.inspect}, total_posts=#{total_posts.inspect}"
+
+      begin
+        # 直接基于现有 post_stats 数据生成当日快照
+        # 总浏览/总点赞/总评论/总分享从post_stats聚合，不处理发文明细
+        AccountStat.upsert_from_post_stats!(
+          account_id,
+          Date.today,
+          followers_count: total_followers,
+          total_posts:     total_posts,
+          snapshot_at:     Time.current
+        )
+        success_ids << account_id
+        Rails.logger.info "[PostDatas] update_account_stats! 账号 #{account_id} 更新成功 (followers=#{total_followers}, total_posts=#{total_posts})"
+      rescue => e
+        failed_items << { account_id: account_id, error: e.message }
+        Rails.logger.error "[PostDatas] update_account_stats! 账号 #{account_id} 更新失败: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+      end
+    end
+
+    Rails.logger.info "[PostDatas] update_account_stats! 处理完成: 成功=#{success_ids.size}, 失败=#{failed_items.size}"
+    { success: success_ids, failed: failed_items }
+  end
+
+  # 从采集接口返回体中提取数据并落库（内部方法，供 fetch 和 util 调用）
+  #
+  # response_body 结构示例：
+  #   { type: "success", profile_id: "...", results: [ { account_id, platform, posts: [...], total_followers, total_posts, ... } ] }
+  #
+  # 字段策略：
+  # - total_followers：所有平台均使用API返回值
+  # - total_posts：仅 YouTube/Instagram 使用API返回值，其他平台由 post_stats COUNT(*) 聚合
+  # - posts 数组按 url upsert（已存在则更新计数，不存在则新建）
+  # - total_likes/total_views/total_comments/total_shares：始终从 post_stats 聚合
   def self.snapshot_from_response!(response_body, browser_data)
     return unless response_body.present?
 
@@ -235,18 +300,20 @@ class PostDatas
     results.each do |item|
       raw_account_id = dig_value(item, :account_id, 'account_id')
       account_id = raw_account_id.to_i
-      Rails.logger.info "[PostDatas] 处理返回账号: raw_account_id=#{raw_account_id.inspect}(#{raw_account_id.class}), account_id=#{account_id}, in_whitelist=#{pushed_account_ids.include?(account_id)}"
 
-      next unless account_id > 0
+      unless account_id > 0
+        Rails.logger.warn "[PostDatas] account_id无效(原始值=#{raw_account_id.inspect})，跳过"
+        next
+      end
       unless pushed_account_ids.include?(account_id)
-        Rails.logger.warn "[PostDatas] 账号 #{account_id} 不在本次推送白名单 #{pushed_account_ids.inspect} 中，跳过"
+        Rails.logger.warn "[PostDatas] 账号 #{account_id}(原始值=#{raw_account_id.inspect}) 不在本次推送白名单 #{pushed_account_ids.inspect} 中，跳过"
         next
       end
 
       total_followers = dig_value(item, :total_followers, 'total_followers')
       total_posts     = dig_value(item, :total_posts, 'total_posts')
       posts           = dig_value(item, :posts, 'posts') || []
-      Rails.logger.info "[PostDatas] 账号 #{account_id} 提取字段: total_followers=#{total_followers.inspect}(#{total_followers.class}), total_posts=#{total_posts.inspect}(#{total_posts.class}), posts数量=#{posts.is_a?(Array) ? posts.size : 'N/A'}"
+      Rails.logger.info "[PostDatas] 处理账号 #{account_id}: total_followers=#{total_followers.inspect}, total_posts=#{total_posts.inspect}, posts数量=#{posts.is_a?(Array) ? posts.size : 'N/A'}"
 
       begin
         # 1. 先将 posts 数组落库到 post_stats（url 唯一，存在则更新，不存在则创建）

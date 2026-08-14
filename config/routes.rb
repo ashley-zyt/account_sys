@@ -116,6 +116,8 @@ Rails.application.routes.draw do
       get "accounts/:id", to: "accounts#show"
       get "accounts/by_name", to: "accounts#by_name"
       get "accounts/themes", to: "accounts#themes"
+      # 账号统计数据批量更新接口（粉丝量/发帖量/发文聚合数据）
+      post "account_stats/batch_update", to: "account_stats#batch_update"
       # 运营任务接口
       get "operation_tasks/fetch", to: "tasks#fetch_operation_task"
       post "operation_tasks/report", to: "tasks#report"
