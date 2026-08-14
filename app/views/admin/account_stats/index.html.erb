@@ -23,7 +23,7 @@
     </div>
   </div>
 
-  <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+  <%= search_form_for @q, url: admin_account_stats_path, method: :get, class: "admin-filter-form" do |f| %>
     <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
       <div>
         <div class="admin-filter-label">主题</div>
