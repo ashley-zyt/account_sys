@@ -12,9 +12,11 @@
 #   AccountStatsSnapshot.snapshot_accounts!(account_ids, stats_map: { 123 => { followers_count: 9876, total_posts: 56 } })
 #
 # 设计说明：
-#   - 总浏览/点赞/评论/转发量 从已存在的 post_stats 表聚合得到，避免采集端重复上报。
-#   - 总发帖量 total_posts 优先使用采集端返回值，未传入时从 post_stats COUNT(*) 计算。
-#   - 粉丝数 followers_count 只能由采集端返回，因此参数可选传入；
+#   - 总浏览/点赞/评论/转发量：所有平台均从 post_stats 表聚合得到，避免采集端重复上报。
+#   - 总发帖量 total_posts_count：
+#       * YouTube / Instagram 平台优先使用采集端返回的 total_posts
+#       * 其他平台始终从 post_stats COUNT(*) 聚合
+#   - 粉丝数 followers_count：所有平台均优先使用采集端返回值；
 #     如果采集端某次没有返回，则自动沿用该账号最近一次快照的粉丝数，保持累计值稳定。
 #   - 使用 (account_id, stat_date) 唯一索引 + find_or_initialize_by，
 #     同一天重复调用不会产生重复记录，而是用最新采集值覆盖。

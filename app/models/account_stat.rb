@@ -98,15 +98,17 @@ class AccountStat < ApplicationRecord
   # 采集端返回的 total_followers / total_posts 可直接传入，缺失则用历史数据聚合
   #
   # 字段处理策略：
-  # - followers_count (总粉丝数)：只能由采集端返回。传入则用，没传则复用最近一条快照值。
-  # - total_posts_count (总发帖量)：采集端返回 total_posts 优先使用，否则用 post_stats COUNT(*)
-  # - total_likes_count (总点赞数)：始终用 post_stats 聚合的累计点赞数，不使用API返回值
+  # - followers_count (总粉丝数)：所有平台均使用采集端返回值。传入则用，没传则复用最近一条快照值。
+  # - total_posts_count (总发帖量)：
+  #     * YouTube / Instagram 平台：使用采集端返回的 total_posts
+  #     * 其他平台（Facebook/Twitter/TikTok）：始终用 post_stats COUNT(*) 聚合
+  # - total_likes_count (总点赞数)：所有平台始终用 post_stats 聚合，不使用API返回值
   # - 其他累计字段（views/comments/shares）始终用 post_stats 聚合
   #
   # @param account_id      [Integer]
   # @param stat_date       [Date]
   # @param followers_count [Integer, nil] 采集端 total_followers
-  # @param total_posts     [Integer, nil] 采集端 total_posts（总发帖量）
+  # @param total_posts     [Integer, nil] 采集端 total_posts（仅 YouTube/Instagram 使用）
   # @param snapshot_at     [DateTime, nil]
   # @return [AccountStat, nil]
   def self.upsert_from_post_stats!(account_id, stat_date = Date.today, followers_count: nil, total_posts: nil, snapshot_at: nil)
@@ -124,7 +126,7 @@ class AccountStat < ApplicationRecord
     )
     posts_count, views_sum, likes_sum, comments_sum, shares_sum = aggregated
 
-    # 粉丝数：采集端返回优先，否则复用上次快照
+    # 粉丝数：所有平台均使用采集端返回值，否则复用上次快照
     final_followers =
       if followers_count.present?
         followers_count.to_i
@@ -133,15 +135,16 @@ class AccountStat < ApplicationRecord
         prev ? prev.followers_count.to_i : 0
       end
 
-    # 总发帖量：采集端返回 total_posts 优先，否则用 post_stats COUNT(*)
+    # 总发帖量：YouTube/Instagram 用API返回值，其他平台用 post_stats COUNT(*)
+    use_api_total_posts = account.youtube? || account.instagram?
     final_total_posts =
-      if total_posts.present?
+      if use_api_total_posts && total_posts.present?
         total_posts.to_i
       else
         posts_count.to_i
       end
 
-    # 总点赞：始终用 post_stats 聚合，不使用API返回的 total_likes
+    # 总点赞：所有平台始终用 post_stats 聚合，不使用API返回值
     final_total_likes = likes_sum.to_i
 
     attrs = {

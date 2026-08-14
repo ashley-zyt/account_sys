@@ -195,8 +195,8 @@ class Account < ApplicationRecord
 	end
 
 	# 生成/更新当日快照（从 post_stats 聚合）
-	# @param followers_count [Integer, nil] 采集端返回的总粉丝数，可空
-	# @param total_posts     [Integer, nil] 采集端返回的总发帖量，可空
+	# @param followers_count [Integer, nil] 采集端返回的总粉丝数（所有平台通用），可空
+	# @param total_posts     [Integer, nil] 采集端返回的总发帖量（仅 YouTube/Instagram 使用），可空
 	# @return [AccountStat, nil]
 	def snapshot_today!(followers_count: nil, total_posts: nil, snapshot_at: nil)
 		AccountStat.upsert_from_post_stats!(

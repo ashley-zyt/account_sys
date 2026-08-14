@@ -198,7 +198,7 @@ class PostDatas
   #     "results": [
   #       {
   #         "account_id": 2,
-  #         "platform": "tiktok",
+  #         "platform": "youtube",
   #         "total_followers": 1234,
   #         "total_posts": 56,           # 总发帖量（API返回）
   #         "posts": [...]
@@ -208,9 +208,10 @@ class PostDatas
   #
   # 说明：
   # - 仅 results 中的 account_id 在本次推送列表里才会落库（避免误写其他账号）
-  # - total_followers 使用API返回值
-  # - total_posts 使用API返回值（总发帖量）
-  # - total_likes 不使用API返回值，由 upsert_from_post_stats! 内部从 post_stats 聚合计算
+  # - total_followers：所有平台均使用API返回值
+  # - total_posts：仅 YouTube/Instagram 使用API返回值，其他平台由 upsert_from_post_stats! 内部从 post_stats COUNT(*) 聚合
+  # - total_likes：不使用API返回值，由 upsert_from_post_stats! 内部从 post_stats 聚合计算
+  # - total_views/total_comments/total_shares：均从 post_stats 聚合计算
   def self.snapshot_from_response!(response_body, browser_data)
     return unless response_body.present?
 
