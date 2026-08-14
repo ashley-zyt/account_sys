@@ -127,8 +127,9 @@ class AccountStat < ApplicationRecord
     posts_count, views_sum, likes_sum, comments_sum, shares_sum = aggregated
 
     # 粉丝数：所有平台均使用采集端返回值，否则复用上次快照
+    # 使用 !nil? 判断（而非 present?），确保粉丝数为 0 时也能正确覆盖
     final_followers =
-      if followers_count.present?
+      if !followers_count.nil?
         followers_count.to_i
       else
         prev = AccountStat.by_account(account_id).order_by_date.first
@@ -138,7 +139,7 @@ class AccountStat < ApplicationRecord
     # 总发帖量：YouTube/Instagram 用API返回值，其他平台用 post_stats COUNT(*)
     use_api_total_posts = account.youtube? || account.instagram?
     final_total_posts =
-      if use_api_total_posts && total_posts.present?
+      if use_api_total_posts && !total_posts.nil?
         total_posts.to_i
       else
         posts_count.to_i
