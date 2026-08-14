@@ -35,7 +35,7 @@ class Admin::AccountStatsController < Admin::BaseController
       total_posts_count:   rows.sum { |r| r.total_posts_count.to_i }
     }
 
-    # 5) 按平台聚合（饼图 + 排行榜用）
+    # 5) 按平台聚合（饼图 + 排行榜用）—— 默认按粉丝数排序
     @by_platform = rows.group_by { |r| r.account.platform }
                             .map do |platform, list|
       {
@@ -48,9 +48,9 @@ class Admin::AccountStatsController < Admin::BaseController
         shares:          list.sum { |r| r.total_shares_count.to_i },
         posts:           list.sum { |r| r.total_posts_count.to_i }
       }
-    end.sort_by { |x| -x[:views] }
+    end.sort_by { |x| -x[:followers] }
 
-    # 6) 按主题聚合（排行榜用）
+    # 6) 按主题聚合（排行榜用）—— 默认按粉丝数排序
     @by_theme = rows.group_by { |r| r.account.theme }
                          .map do |theme, list|
       {
@@ -61,10 +61,11 @@ class Admin::AccountStatsController < Admin::BaseController
         likes:         list.sum { |r| r.total_likes_count.to_i },
         posts:         list.sum { |r| r.total_posts_count.to_i }
       }
-    end.sort_by { |x| -x[:views] }
+    end.sort_by { |x| -x[:followers] }
 
     # 7) 每个账号最新快照的明细（用于列表，支持按指标排序 + 分页）
-    sort_column = %w[followers_count total_views_count total_likes_count total_comments_count total_shares_count total_posts_count stat_date].include?(params[:sort]) ? params[:sort] : 'total_views_count'
+    #    默认按粉丝数（followers_count）从高到低
+    sort_column = %w[followers_count total_views_count total_likes_count total_comments_count total_shares_count total_posts_count stat_date].include?(params[:sort]) ? params[:sort] : 'followers_count'
     sort_direction = params[:direction] == 'asc' ? 'asc' : 'desc'
 
     @account_stats = base.order("account_stats.#{sort_column} #{sort_direction}")

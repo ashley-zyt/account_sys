@@ -111,16 +111,16 @@
 <%# 图表区：双栏布局（平台分布 + 主题Top N 柱状图）                 %>
 <%# =========================================================== %>
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px;">
-  <%# 平台分布（饼图）：按浏览量占比 %>
+  <%# 平台分布（饼图）：默认按粉丝数占比 %>
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">平台分布</div>
-        <div class="admin-card-subtitle">各平台浏览量占比</div>
+        <div class="admin-card-subtitle">各平台粉丝数占比</div>
       </div>
       <div class="admin-card-header-right">
-        <button type="button" class="platform-dist-btn active" data-dist-metric="views">浏览</button>
-        <button type="button" class="platform-dist-btn" data-dist-metric="followers">粉丝</button>
+        <button type="button" class="platform-dist-btn" data-dist-metric="views">浏览</button>
+        <button type="button" class="platform-dist-btn active" data-dist-metric="followers">粉丝</button>
         <button type="button" class="platform-dist-btn" data-dist-metric="likes">点赞</button>
       </div>
     </div>
@@ -133,16 +133,16 @@
     <% end %>
   </div>
 
-  <%# 主题 Top N（横向柱状图）：按浏览量排名 %>
+  <%# 主题 Top N（横向柱状图）：默认按粉丝数排名 %>
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">主题排名 Top <%= [@by_theme.size, 10].min %></div>
-        <div class="admin-card-subtitle">按浏览量降序</div>
+        <div class="admin-card-subtitle">按粉丝数降序</div>
       </div>
       <div class="admin-card-header-right">
-        <button type="button" class="theme-rank-btn active" data-rank-metric="views">浏览</button>
-        <button type="button" class="theme-rank-btn" data-rank-metric="followers">粉丝</button>
+        <button type="button" class="theme-rank-btn" data-rank-metric="views">浏览</button>
+        <button type="button" class="theme-rank-btn active" data-rank-metric="followers">粉丝</button>
         <button type="button" class="theme-rank-btn" data-rank-metric="likes">点赞</button>
       </div>
     </div>
@@ -330,7 +330,7 @@
 
     // 饼图
     if (pieCtx) {
-      var p0 = buildPieData('views');
+      var p0 = buildPieData('followers');
       pieChart = new Chart(pieCtx, {
         type: 'doughnut',
         data: {
@@ -355,7 +355,7 @@
 
     // 柱状图（横向，Top N）
     if (barCtx) {
-      var b0 = buildBarData('views');
+      var b0 = buildBarData('followers');
       barChart = new Chart(barCtx, {
         type: 'bar',
         data: {
