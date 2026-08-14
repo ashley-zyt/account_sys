@@ -1,12 +1,16 @@
 module Api
   module V1
-    class AccountStatsController < BaseController
+    # 账号统计数据接收接口
+    # 接收外部系统推送的账号粉丝量、发帖量，自动基于现有 post_stats 聚合浏览/点赞/评论/分享
+    class AccountStatsController < ApplicationController
+      skip_before_action :verify_authenticity_token
+
       # POST /api/v1/account_stats/batch_update
       #
       # 批量接收账号粉丝量、发帖量，自动基于现有 post_stats 数据聚合总浏览/总点赞/总评论/总分享
-      # 注意：发文明细数据通过原 post_stats 接口录入，本接口只更新统计快照
+      # 注意：发文明细数据通过 post_stats 接口录入，本接口只更新统计快照
       #
-      # 规则同 PostDatas.fetch：
+      # 规则：
       #   - total_followers（粉丝数）：所有平台均使用传入值
       #   - total_posts（发帖量）：YouTube/Instagram 使用传入值，其他平台从 post_stats COUNT(*) 聚合
       #   - 总浏览/总点赞/总评论/总分享：始终从 post_stats 表现有数据聚合计算
@@ -39,33 +43,34 @@ module Api
         results = extract_results(params_hash)
 
         unless results.is_a?(Array) && results.any?
-          return render_error(msg: "参数错误：results 数组不能为空", code: 400)
+          return render json: { code: 400, msg: "参数错误：results 数组不能为空" }, status: :bad_request
         end
 
         # 参数校验：每个 item 必须有有效的 account_id
         invalid_items = results.reject { |item| (item[:account_id] || item['account_id']).to_i > 0 }
         if invalid_items.any?
-          return render_error(msg: "参数错误：每个账号数据必须包含有效的 account_id（正整数）", code: 400)
+          return render json: { code: 400, msg: "参数错误：每个账号数据必须包含有效的 account_id（正整数）" }, status: :bad_request
         end
 
         result = PostDatas.update_account_stats!(results)
 
-        render_success(
+        render json: {
+          code: 200,
+          msg: "处理完成",
           data: {
             total: results.size,
             success_count: result[:success].size,
             failed_count: result[:failed].size,
             success: result[:success],
             failed: result[:failed]
-          },
-          msg: "处理完成"
-        )
+          }
+        }
       rescue JSON::ParserError => e
         Rails.logger.error "[Api::V1::AccountStats] JSON 解析失败: #{e.message}"
-        render_error(msg: "JSON 格式错误: #{e.message}", code: 400)
+        render json: { code: 400, msg: "JSON 格式错误: #{e.message}" }, status: :bad_request
       rescue => e
         Rails.logger.error "[Api::V1::AccountStats] 批量更新异常: #{e.message}\n#{e.backtrace.first(10).join("\n")}"
-        render_error(msg: "服务器内部错误: #{e.message}", code: 500, status: :internal_server_error)
+        render json: { code: 500, msg: "服务器内部错误: #{e.message}" }, status: :internal_server_error
       end
 
       private
