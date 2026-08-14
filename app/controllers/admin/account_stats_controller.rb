@@ -15,6 +15,7 @@ class Admin::AccountStatsController < Admin::BaseController
     if account_ids.empty?
       @summary = empty_summary
       @overall_trend = { labels: [], data: [] }
+      @top5_title = "Top5 账号增长对比"
       @top5_trend = { labels: [], datasets: [] }
       @account_stats = Kaminari.paginate_array([]).page(params[:page]).per(15)
       @by_platform = []
@@ -138,20 +139,42 @@ class Admin::AccountStatsController < Admin::BaseController
     }
 
     # 7) Top5 账号增长对比（近30天，按30日增长取Top5）
+    # 动态标题：筛选了平台则显示单平台Top5，否则显示全平台Top5
+    selected_platform = params.dig(:q, :platform_eq)
+    @top5_title = if selected_platform.present?
+                    platform_label = Account.platforms.key(selected_platform.to_i) || selected_platform
+                    "#{platform_label.to_s.titleize} Top5 账号增长对比"
+                  else
+                    "全平台 Top5 账号增长对比"
+                  end
+
+    # 平台颜色映射（与视图中表格标签颜色一致）
+    platform_colors = {
+      'facebook'  => '#3b82f6',
+      'twitter'   => '#06b6d4',
+      'tiktok'    => '#ec4899',
+      'youtube'   => '#ef4444',
+      'instagram' => '#a855f7'
+    }
+    fallback_colors = ['#6366f1', '#22c55e', '#f59e0b', '#14b8a6', '#f97316']
+
     top5_ids = account_data_map.values
                   .sort_by { |d| -(d[:monthly_growth] || -999999) }
                   .first(5)
                   .map { |d| d[:stat].account_id }
     top5_datasets = []
-    top5_colors = ['#6366f1', '#3b82f6', '#22c55e', '#f59e0b', '#ec4899']
     top5_ids.each_with_index do |aid, i|
       d = account_data_map[aid]
       next unless d
+      account = d[:stat].account
+      # 优先用平台颜色，平台颜色不够时用备选颜色
+      color = platform_colors[account.platform] || fallback_colors[i % fallback_colors.length]
       top5_datasets << {
-        label: d[:stat].account.account_name,
+        label: "#{account.account_name} (#{account.platform})",
         data: d[:sparkline],
-        borderColor: top5_colors[i],
-        backgroundColor: 'transparent'
+        borderColor: color,
+        backgroundColor: 'transparent',
+        platform: account.platform
       }
     end
     @top5_trend = {

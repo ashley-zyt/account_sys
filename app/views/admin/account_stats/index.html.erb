@@ -166,8 +166,8 @@
   <div class="admin-card">
     <div class="admin-card-header">
       <div>
-        <div class="admin-card-title">Top5 账号增长对比</div>
-        <div class="admin-card-subtitle">近30天粉丝增长最快的5个账号</div>
+        <div class="admin-card-title"><%= @top5_title %></div>
+        <div class="admin-card-subtitle">近30天粉丝增长最快的5个账号（按30日净增排序）</div>
       </div>
     </div>
     <% if @top5_trend[:datasets].present? %>
