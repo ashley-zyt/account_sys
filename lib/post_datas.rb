@@ -119,12 +119,9 @@ class PostDatas
 
               if response[:success]
                 machine_success += 1
-                Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送成功 (第 #{index + 1} 个, 目标: #{endpoint})"
-                Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} API返回结果: #{response[:response].to_s[0..5000]}"
-
-                # 推送成功后解析返回体，提取每个账号的 total_followers / total_posts
-                # 落库到 post_stats + account_stat 表（当天日维度快照）
-                snapshot_from_response!(response[:response], browser_data)
+                Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 采集指令推送成功 (第 #{index + 1} 个, 目标: #{endpoint})"
+                # 打印返回结果（仅记录，落库由采集端通过 API 接口完成）
+                Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 返回: #{response[:response].to_s[0..2000]}"
               else
                 machine_fail += 1
                 Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{endpoint})"

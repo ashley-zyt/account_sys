@@ -141,15 +141,15 @@ class Util
     { success: assigned_task.status == "success", message: msg, task: assigned_task }
   end
 
-  # ===== 临时方法：获取指定账号的发文数据 =====
+  # ===== 获取指定账号的发文数据 =====
   # 使用方式：
   #   1. 按账号 ID：Util.fetch_account_post_data(account_id: 123)
   #   2. 按账号名：Util.fetch_account_post_data(account_name: 'xxx')
   # 流程：
   #   - 校验账号存在、绑定浏览器、浏览器有 machine_ip
-  #   - 复用 PostDatas.fetch 的端点 http://<machine_ip>:8080/accounts/fetch_posts
-  #   - 仅推送该账号所属浏览器，active_accounts 中只包含这一个账号
-  #   - 获取成功后自动将 posts 数组落库到 post_stats，并更新 account_stat 当日快照
+  #   - 向运营机器推送采集指令 http://<machine_ip>:8080/accounts/fetch_posts
+  #   - 采集端收到指令后会自行采集数据，并通过 API 接口回传结果
+  #   - 本方法仅负责推送指令，不处理返回数据的落库
   # @return [Hash] { success: bool, message: string, response: string_or_nil }
   def self.fetch_account_post_data(account_id: nil, account_name: nil)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'util_fetch_post_data.log'))
@@ -181,7 +181,7 @@ class Util
       return { success: false, message: msg, response: nil }
     end
 
-    browser_data = {
+    payload = {
       id: account.browser.id,
       profile_name: account.browser.profile_name,
       active_accounts: [
@@ -195,31 +195,17 @@ class Util
     }
 
     endpoint = "http://#{machine_ip}:8080/accounts/fetch_posts"
-    Rails.logger.info "[Util] 账号 #{account.account_name}(#{account.platform}) 开始采集发文数据 → #{endpoint}"
+    Rails.logger.info "[Util] 账号 #{account.account_name}(#{account.platform}) 推送采集指令 → #{endpoint}"
 
-    result = PostDatas.push_to_external_with_retry(
-      { id: browser_data[:id], profile_name: browser_data[:profile_name], active_accounts: browser_data[:active_accounts] },
-      endpoint
-    )
+    result = PostDatas.push_to_external_with_retry(payload, endpoint)
 
     if result[:success]
-      # 打印API返回结果
-      Rails.logger.info "[Util] 账号 #{account.account_name} API返回结果: #{result[:response].to_s[0..5000]}"
-
-      # 解析返回体，将 posts 落库到 post_stats，并更新 account_stat 快照
-      begin
-        PostDatas.snapshot_from_response!(result[:response], browser_data)
-        msg = "账号 #{account.account_name} 采集发文数据成功，posts已落库，account_stat快照已更新"
-        Rails.logger.info "[Util] #{msg}"
-      rescue => e
-        msg = "账号 #{account.account_name} 采集成功但数据落库失败: #{e.message}"
-        Rails.logger.error "[Util] #{msg}"
-        return { success: false, message: msg, response: result[:response] }
-      end
-
+      # 打印API返回结果（仅记录，落库由采集端通过API接口完成）
+      Rails.logger.info "[Util] 账号 #{account.account_name} 采集指令推送成功，返回: #{result[:response].to_s[0..2000]}"
+      msg = "账号 #{account.account_name} 采集指令推送成功"
       { success: true, message: msg, response: result[:response] }
     else
-      msg = "账号 #{account.account_name} 采集发文数据失败: #{result[:error]}"
+      msg = "账号 #{account.account_name} 采集指令推送失败: #{result[:error]}"
       Rails.logger.error "[Util] #{msg}"
       { success: false, message: msg, response: nil }
     end
