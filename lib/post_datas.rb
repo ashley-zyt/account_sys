@@ -218,21 +218,35 @@ class PostDatas
   def self.snapshot_from_response!(response_body, browser_data)
     return unless response_body.present?
 
+    Rails.logger.info "[PostDatas] snapshot_from_response! 开始处理，browser=#{browser_data[:profile_name]}, active_accounts数量=#{browser_data[:active_accounts]&.size}"
+
     parsed = response_body.is_a?(Hash) ? response_body : JSON.parse(response_body.to_s)
     results = parsed.is_a?(Hash) ? parsed['results'] : nil
-    return if results.blank? || !results.is_a?(Array)
 
-    # 本次推送涉及的 account_id 集合（白名单）
-    pushed_account_ids = browser_data[:active_accounts].map { |a| a[:id] }.compact
+    if results.blank? || !results.is_a?(Array)
+      Rails.logger.warn "[PostDatas] 返回体中无 results 数组或格式异常，跳过快照"
+      return
+    end
+
+    # 本次推送涉及的 account_id 集合（白名单），统一转为 Integer 确保类型匹配
+    pushed_account_ids = browser_data[:active_accounts].map { |a| a[:id].to_i }.compact.uniq
+    Rails.logger.info "[PostDatas] 白名单 account_ids=#{pushed_account_ids.inspect}"
 
     results.each do |item|
-      account_id = dig_value(item, :account_id, 'account_id')
-      next unless account_id.present?
-      next unless pushed_account_ids.include?(account_id)
+      raw_account_id = dig_value(item, :account_id, 'account_id')
+      account_id = raw_account_id.to_i
+      Rails.logger.info "[PostDatas] 处理返回账号: raw_account_id=#{raw_account_id.inspect}(#{raw_account_id.class}), account_id=#{account_id}, in_whitelist=#{pushed_account_ids.include?(account_id)}"
+
+      next unless account_id > 0
+      unless pushed_account_ids.include?(account_id)
+        Rails.logger.warn "[PostDatas] 账号 #{account_id} 不在本次推送白名单 #{pushed_account_ids.inspect} 中，跳过"
+        next
+      end
 
       total_followers = dig_value(item, :total_followers, 'total_followers')
       total_posts     = dig_value(item, :total_posts, 'total_posts')
       posts           = dig_value(item, :posts, 'posts') || []
+      Rails.logger.info "[PostDatas] 账号 #{account_id} 提取字段: total_followers=#{total_followers.inspect}(#{total_followers.class}), total_posts=#{total_posts.inspect}(#{total_posts.class}), posts数量=#{posts.is_a?(Array) ? posts.size : 'N/A'}"
 
       begin
         # 1. 先将 posts 数组落库到 post_stats（url 唯一，存在则更新，不存在则创建）
@@ -246,9 +260,9 @@ class PostDatas
           total_posts:     total_posts,
           snapshot_at:     Time.current
         )
-        Rails.logger.info "[PostDatas] 账号 #{account_id} 快照已更新 (posts_saved=#{saved_count || 0}, followers=#{total_followers}, total_posts=#{total_posts})"
+        Rails.logger.info "[PostDatas] 账号 #{account_id} 快照更新成功! (posts_saved=#{saved_count || 0}, followers=#{total_followers}, total_posts=#{total_posts})"
       rescue => e
-        Rails.logger.error "[PostDatas] 账号 #{account_id} 快照失败: #{e.message}"
+        Rails.logger.error "[PostDatas] 账号 #{account_id} 快照失败: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
       end
     end
   rescue JSON::ParserError => e
