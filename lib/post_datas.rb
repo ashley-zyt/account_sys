@@ -120,9 +120,10 @@ class PostDatas
               if response[:success]
                 machine_success += 1
                 Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送成功 (第 #{index + 1} 个, 目标: #{endpoint})"
+                Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} API返回结果: #{response[:response].to_s[0..5000]}"
 
                 # 推送成功后解析返回体，提取每个账号的 total_followers / total_posts
-                # 落库到 account_stat 表（当天日维度快照）
+                # 落库到 post_stats + account_stat 表（当天日维度快照）
                 snapshot_from_response!(response[:response], browser_data)
               else
                 machine_fail += 1
@@ -255,10 +256,15 @@ class PostDatas
   end
 
   # 从 Hash 中按优先级取多个可能的 key（兼容 symbol/string）
+  # 使用 key? 判断 key 是否存在（而非 present?），确保 0、false、空字符串、空数组等合法值不被跳过
+  # 仅当 key 不存在或值为 nil 时才继续尝试下一个 key
   def self.dig_value(hash, *keys)
+    return nil unless hash.is_a?(Hash)
     keys.each do |k|
-      val = hash[k]
-      return val if val.present?
+      if hash.key?(k)
+        val = hash[k]
+        return val unless val.nil?
+      end
     end
     nil
   end
