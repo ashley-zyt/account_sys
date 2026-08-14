@@ -174,6 +174,28 @@
       <div style="position: relative; height: 280px; padding: 12px;">
         <canvas id="top5TrendChart"></canvas>
       </div>
+      <% if @top5_accounts.present? %>
+        <div style="padding: 0 16px 16px 16px; border-top: 1px solid rgba(148, 163, 184, 0.15); padding-top: 12px;">
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">💡 点击账号名查看详情</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+            <% @top5_accounts.each_with_index do |acc, i| %>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 12px; height: 2px; background: <%= acc[:color] %>; border-radius: 2px;"></span>
+                <span style="font-size: 12px; color: var(--text-secondary);">#<%= i + 1 %></span>
+                <%= link_to acc[:account_name], admin_account_path(acc[:id]), style: "color: var(--accent); font-size: 13px; font-weight: 500; text-decoration: none;" %>
+                <span style="font-size: 11px; padding: 2px 6px; background: <%= acc[:color] %>1A; color: <%= acc[:color] %>; border-radius: 4px;">
+                  <%= acc[:platform] %>
+                </span>
+                <% if acc[:monthly_growth] %>
+                  <span style="font-size: 11px; color: <%= acc[:monthly_growth] >= 0 ? '#22c55e' : '#ef4444' %>;">
+                    <%= acc[:monthly_growth] >= 0 ? '+' : '' %><%= number_with_delimiter(acc[:monthly_growth]) %>
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
     <% else %>
       <div class="admin-empty-state">暂无趋势数据</div>
     <% end %>

@@ -17,6 +17,7 @@ class Admin::AccountStatsController < Admin::BaseController
       @overall_trend = { labels: [], data: [] }
       @top5_title = "Top5 账号增长对比"
       @top5_trend = { labels: [], datasets: [] }
+      @top5_accounts = []
       @account_stats = Kaminari.paginate_array([]).page(params[:page]).per(15)
       @by_platform = []
       @by_theme = []
@@ -163,6 +164,7 @@ class Admin::AccountStatsController < Admin::BaseController
                   .first(5)
                   .map { |d| d[:stat].account_id }
     top5_datasets = []
+    @top5_accounts = []  # 提供给视图生成可点击链接
     top5_ids.each_with_index do |aid, i|
       d = account_data_map[aid]
       next unless d
@@ -175,6 +177,13 @@ class Admin::AccountStatsController < Admin::BaseController
         borderColor: color,
         backgroundColor: 'transparent',
         platform: account.platform
+      }
+      @top5_accounts << {
+        id: account.id,
+        account_name: account.account_name,
+        platform: account.platform,
+        color: color,
+        monthly_growth: d[:monthly_growth]
       }
     end
     @top5_trend = {
