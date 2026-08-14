@@ -95,22 +95,21 @@ class AccountStat < ApplicationRecord
   # === 数据落库入口 ===
 
   # 从 post_stats 表反推一个账号当日的累计快照
-  # 采集端返回的 total_followers / total_likes 可直接传入，缺失则用历史数据聚合
+  # 采集端返回的 total_followers / total_posts 可直接传入，缺失则用历史数据聚合
   #
   # 字段处理策略：
   # - followers_count (总粉丝数)：只能由采集端返回。传入则用，没传则复用最近一条快照值。
-  # - total_likes_count (总点赞数)：
-  #     * tiktok 平台采集端会返回真实总数（total_likes > 0）→ 直接使用
-  #     * 其他平台采集端返回 0 → 自动用 post_stats 聚合的累计点赞数 fallback
-  # - 其他累计字段（views/comments/shares/posts）始终用 post_stats 聚合
+  # - total_posts_count (总发帖量)：采集端返回 total_posts 优先使用，否则用 post_stats COUNT(*)
+  # - total_likes_count (总点赞数)：始终用 post_stats 聚合的累计点赞数，不使用API返回值
+  # - 其他累计字段（views/comments/shares）始终用 post_stats 聚合
   #
   # @param account_id      [Integer]
   # @param stat_date       [Date]
   # @param followers_count [Integer, nil] 采集端 total_followers
-  # @param total_likes     [Integer, nil] 采集端 total_likes（仅 tiktok > 0）
+  # @param total_posts     [Integer, nil] 采集端 total_posts（总发帖量）
   # @param snapshot_at     [DateTime, nil]
   # @return [AccountStat, nil]
-  def self.upsert_from_post_stats!(account_id, stat_date = Date.today, followers_count: nil, total_likes: nil, snapshot_at: nil)
+  def self.upsert_from_post_stats!(account_id, stat_date = Date.today, followers_count: nil, total_posts: nil, snapshot_at: nil)
     account = Account.find_by(id: account_id)
     return nil unless account
 
@@ -134,13 +133,16 @@ class AccountStat < ApplicationRecord
         prev ? prev.followers_count.to_i : 0
       end
 
-    # 总点赞：tiktok 采集端 > 0 时直接用；否则用 post_stats 聚合
-    final_total_likes =
-      if total_likes.present? && total_likes.to_i > 0
-        total_likes.to_i
+    # 总发帖量：采集端返回 total_posts 优先，否则用 post_stats COUNT(*)
+    final_total_posts =
+      if total_posts.present?
+        total_posts.to_i
       else
-        likes_sum.to_i
+        posts_count.to_i
       end
+
+    # 总点赞：始终用 post_stats 聚合，不使用API返回的 total_likes
+    final_total_likes = likes_sum.to_i
 
     attrs = {
       followers_count:      final_followers,
@@ -148,7 +150,7 @@ class AccountStat < ApplicationRecord
       total_likes_count:    final_total_likes,
       total_comments_count: comments_sum.to_i,
       total_shares_count:   shares_sum.to_i,
-      total_posts_count:    posts_count.to_i,
+      total_posts_count:    final_total_posts,
       snapshot_at:          snapshot_at || Time.current
     }
 

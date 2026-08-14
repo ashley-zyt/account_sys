@@ -121,7 +121,7 @@ class PostDatas
                 machine_success += 1
                 Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送成功 (第 #{index + 1} 个, 目标: #{endpoint})"
 
-                # 推送成功后解析返回体，提取每个账号的 total_followers / total_likes
+                # 推送成功后解析返回体，提取每个账号的 total_followers / total_posts
                 # 落库到 account_stat 表（当天日维度快照）
                 snapshot_from_response!(response[:response], browser_data)
               else
@@ -188,7 +188,7 @@ class PostDatas
     { success: false, error: e.message }
   end
 
-  # 解析运营机器返回体，提取每个账号的 total_followers / total_likes
+  # 解析运营机器返回体，提取每个账号的 total_followers / total_posts
   # 落库到 account_stat 当天日维度快照
   #
   # 返回体示例：
@@ -200,7 +200,7 @@ class PostDatas
   #         "account_id": 2,
   #         "platform": "tiktok",
   #         "total_followers": 1234,
-  #         "total_likes": 5678,        # 仅 tiktok > 0，其他平台为 0
+  #         "total_posts": 56,           # 总发帖量（API返回）
   #         "posts": [...]
   #       }
   #     ]
@@ -208,7 +208,9 @@ class PostDatas
   #
   # 说明：
   # - 仅 results 中的 account_id 在本次推送列表里才会落库（避免误写其他账号）
-  # - total_likes = 0 会在 upsert_from_post_stats! 内部 fallback 到 post_stats 聚合
+  # - total_followers 使用API返回值
+  # - total_posts 使用API返回值（总发帖量）
+  # - total_likes 不使用API返回值，由 upsert_from_post_stats! 内部从 post_stats 聚合计算
   def self.snapshot_from_response!(response_body, browser_data)
     return unless response_body.present?
 
@@ -225,17 +227,17 @@ class PostDatas
       next unless pushed_account_ids.include?(account_id)
 
       total_followers = item['total_followers'] || item[:total_followers]
-      total_likes     = item['total_likes']     || item[:total_likes]
+      total_posts     = item['total_posts']     || item[:total_posts]
 
       begin
         AccountStat.upsert_from_post_stats!(
           account_id,
           Date.today,
           followers_count: total_followers,
-          total_likes:     total_likes,
+          total_posts:     total_posts,
           snapshot_at:     Time.current
         )
-        Rails.logger.info "[PostDatas] 账号 #{account_id} account_stat 快照已更新 (followers=#{total_followers}, total_likes=#{total_likes})"
+        Rails.logger.info "[PostDatas] 账号 #{account_id} account_stat 快照已更新 (followers=#{total_followers}, total_posts=#{total_posts})"
       rescue => e
         Rails.logger.error "[PostDatas] 账号 #{account_id} account_stat 快照失败: #{e.message}"
       end
