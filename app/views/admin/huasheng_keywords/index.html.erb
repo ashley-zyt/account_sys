@@ -48,6 +48,7 @@
         <table class="admin-table">
           <thead>
             <tr>
+              <th>ID</th>
               <th>主题</th>
               <th>关键词</th>
               <th>状态</th>
@@ -58,6 +59,9 @@
           <tbody>
             <% @huasheng_keywords.each do |kw| %>
               <tr>
+                <td>
+                  <span class="admin-label-muted"><%= kw.id %></span>
+                </td>
                 <td>
                   <span class="admin-label-muted"><%= kw.theme %></span>
                 </td>
