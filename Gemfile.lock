@@ -62,6 +62,13 @@ GEM
       zeitwerk (~> 2.3)
     addressable (2.8.8)
       public_suffix (>= 2.0.2, < 8.0)
+    aliyun-oss (0.7.0.1397365150)
+      builder
+      mime-types
+      xml-simple
+    aliyun-sdk (0.8.0)
+      nokogiri (~> 1.6)
+      rest-client (~> 2.0)
     annotate (3.2.0)
       activerecord (>= 3.2, < 8.0)
       rake (>= 10.4, < 14.0)
@@ -85,6 +92,7 @@ GEM
     chronic (0.10.2)
     concurrent-ruby (1.3.4)
     crass (1.0.6)
+    csv (3.3.5)
     date (3.5.1)
     debug (1.11.1)
       irb (~> 1.10)
@@ -96,6 +104,10 @@ GEM
       responders
       warden (~> 1.2.3)
     domain_name (0.6.20240107)
+    dotenv (3.2.0)
+    dotenv-rails (3.2.0)
+      dotenv (= 3.2.0)
+      railties (>= 6.1)
     erb (4.0.4)
       cgi (>= 0.3.3)
     erubi (1.13.1)
@@ -105,6 +117,10 @@ GEM
     http-accept (1.7.0)
     http-cookie (1.1.0)
       domain_name (~> 0.5)
+    httparty (0.24.2)
+      csv
+      mini_mime (>= 1.0.0)
+      multi_xml (>= 0.5.2)
     i18n (1.14.8)
       concurrent-ruby (~> 1.0)
     importmap-rails (2.0.3)
@@ -153,6 +169,7 @@ GEM
     mini_portile2 (2.8.9)
     minitest (5.26.1)
     msgpack (1.8.0)
+    multi_xml (0.6.0)
     mysql2 (0.5.7)
       bigdecimal
     net-imap (0.3.9)
@@ -169,6 +186,7 @@ GEM
     nokogiri (1.15.7)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
+    openai (0.3.0)
     orm_adapter (0.5.0)
     pp (0.6.3)
       prettyprint
@@ -280,6 +298,8 @@ GEM
     websocket-extensions (0.1.5)
     whenever (1.1.2)
       chronic (>= 0.6.3)
+    xml-simple (1.1.9)
+      rexml
     xpath (3.2.0)
       nokogiri (~> 1.8)
     zeitwerk (2.6.18)
@@ -288,17 +308,22 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  aliyun-oss
+  aliyun-sdk (~> 0.8.0)
   annotate
   bootsnap
   capybara
   concurrent-ruby (= 1.3.4)
   debug
   devise
+  dotenv-rails
   ffi (~> 1.15.0)
+  httparty
   importmap-rails
   jbuilder
   kaminari
   mysql2 (~> 0.5)
+  openai
   puma (>= 5.0)
   rails
   ransack
@@ -313,7 +338,7 @@ DEPENDENCIES
   whenever
 
 RUBY VERSION
-   ruby 2.7.2p137
+   ruby 3.1.0p0
 
 BUNDLED WITH
    2.1.4
