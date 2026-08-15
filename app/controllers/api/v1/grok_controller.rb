@@ -12,7 +12,7 @@ class Api::V1::GrokController < ApplicationController
     # 获取未被使用的图片资源，按id升序排序，取第一个
     grok_image = GrokImageResource
                   .where.not(id: used_image_ids)
-                  .order(id: :asc)
+                  .order(id: :desc)
                   .first
 
     if grok_image.blank?

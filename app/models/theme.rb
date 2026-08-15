@@ -41,4 +41,12 @@ class Theme < ApplicationRecord
   def self.all_names
     pluck(:name)
   end
+
+  def self.ransackable_attributes(auth_object = nil)
+    %w[id name oss_directory titles prompts remark created_at updated_at]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    []
+  end
 end

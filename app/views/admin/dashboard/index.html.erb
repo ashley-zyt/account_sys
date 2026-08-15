@@ -294,6 +294,105 @@
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
+          低库存资源预警
+        </div>
+        <div class="admin-card-subtitle">
+          仅展示可用天数不足 10 天（含无库存/无法估算）的工作模式 × 主题 × 平台组合，按紧急程度排序
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <% total_alerts = @low_stock_alerts.sum { |g| g[:themes].sum { |t| t[:platforms].size } } %>
+        <span class="admin-tag admin-tag-danger">
+          <%= total_alerts %> 项预警
+        </span>
+      </div>
+    </div>
+
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>工作模式</th>
+            <th>主题</th>
+            <th>平台</th>
+            <th style="text-align: center;">正常账号</th>
+            <th style="text-align: center;">剩余资源</th>
+            <th style="text-align: center;">可用天数</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% has_alerts = @low_stock_alerts.any? { |g| g[:themes].any? } %>
+          <% if has_alerts %>
+            <% @low_stock_alerts.each do |group| %>
+              <% next if group[:themes].empty? %>
+              <% total_rows = group[:themes].sum { |t| t[:platforms].size } %>
+              <% group[:themes].each_with_index do |theme_group, theme_idx| %>
+                <% theme_rowspan = theme_group[:platforms].size %>
+                <% theme_group[:platforms].each_with_index do |row, platform_idx| %>
+                  <tr>
+                    <% if theme_idx == 0 && platform_idx == 0 %>
+                      <td rowspan="<%= total_rows %>" style="vertical-align: top; font-weight: 600;">
+                        <%= group[:work_type] %>
+                      </td>
+                    <% end %>
+                    <% if platform_idx == 0 %>
+                      <td rowspan="<%= theme_rowspan %>" style="vertical-align: top;">
+                        <span class="admin-label-muted"><%= theme_group[:theme] || '-' %></span>
+                      </td>
+                    <% end %>
+                    <td>
+                      <span class="admin-label-muted"><%= row[:platform]&.capitalize || '-' %></span>
+                    </td>
+                    <td style="text-align: center; font-weight: 600;">
+                      <% if row[:active_accounts] == 0 %>
+                        <span style="color: var(--danger);" title="该主题×平台组合下无正常账号，无法消耗资源">
+                          0
+                        </span>
+                      <% else %>
+                        <span style="color: var(--success);"><%= row[:active_accounts] %></span>
+                      <% end %>
+                    </td>
+                    <td style="text-align: center; font-weight: 600;">
+                      <%= row[:pending] %>
+                    </td>
+                    <td style="text-align: center; font-weight: 600;">
+                      <% if row[:pending] == 0 %>
+                        <span style="color: var(--danger);" title="该主题×平台组合无待分配资源，需立即补充">
+                          无库存
+                        </span>
+                      <% elsif row[:available_days] <= 3 %>
+                        <span style="color: var(--danger);" title="剩余可用不足3天，建议尽快补充资源">
+                          <%= row[:available_days] %> 天
+                        </span>
+                      <% else %>
+                        <span style="color: var(--warning);" title="剩余可用不足10天">
+                          <%= row[:available_days] %> 天
+                        </span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              <% end %>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="6" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+                所有工作模式资源充足，暂无低库存预警
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="admin-grid-full">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
           近1周报错次数排行榜
         </div>
         <div class="admin-card-subtitle">

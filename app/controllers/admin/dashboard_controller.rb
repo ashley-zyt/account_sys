@@ -78,6 +78,80 @@ class Admin::DashboardController < Admin::BaseController
 		@total_errors_count = TaskLog.failed.count
 
 		@abnormal_accounts = fetch_abnormal_accounts(3)
+
+		# 低库存预警：仅展示可用天数 < 10 天（含无库存/无法估算）的工作模式×主题×平台组合
+		@low_stock_alerts = fetch_low_stock_alerts
+	end
+
+	# 资源剩余可用天数统计配置（跳过人工运营，排除 Heygen）
+	RESOURCE_DAYS_CONFIGS = [
+		{ work_type: "视频搬运", task_model: MoveTask },
+		{ work_type: "Grok", task_model: GrokTask },
+		{ work_type: "剪映", task_model: JianyingTask }
+	].freeze
+
+	# 预警阈值：可用天数 < 此值才会在仪表盘展示
+	LOW_STOCK_DAY_THRESHOLD = 10
+
+	# 低库存预警：按工作模式 → 主题 → 平台 三级聚合，仅保留需要预警的项
+	# 计算基准：每个正常状态的账号每天固定发布 1 条（理论消耗速率，不看历史实际发布）
+	#   日均消耗 = 正常账号数
+	#   可用天数 = 剩余资源 / 正常账号数
+	# 预警条件（满足任一即展示）：
+	#   - 剩余资源 = 0（无库存，需补货）
+	#   - 可用天数 < 阈值
+	# 注：无正常账号的组合直接跳过（没有账号则不需要计算资源消耗）
+	# @return [Array<Hash>] 工作模式维度聚合的预警列表
+	def fetch_low_stock_alerts
+		RESOURCE_DAYS_CONFIGS.map do |config|
+			task_model = config[:task_model]
+			work_type = config[:work_type]
+
+			# 按 theme + platform 双维度统计 pending 数
+			pending_counts = task_model.where(status: :pending).group(:theme, :platform).count
+
+			# 该工作模式下 (theme, platform) → 正常状态账号数 的映射
+			account_counts = Account.active
+			                        .where(work_type: work_type)
+			                        .group(:theme, :platform)
+			                        .count
+
+			# 仅遍历有正常账号的组合（无账号的组合无意义，直接跳过）
+			platform_rows = account_counts.map do |(theme, platform), active_accounts|
+				pending = pending_counts[[theme, platform]].to_i
+
+				# 日均消耗 = 正常账号数（每个账号每天固定发1条）
+				available_days = (pending.to_f / active_accounts).round(1)
+
+				# 不需要预警：有库存且可用天数充足
+				next nil if pending > 0 && available_days >= LOW_STOCK_DAY_THRESHOLD
+
+				{
+					theme: theme,
+					platform: platform,
+					pending: pending,
+					active_accounts: active_accounts,
+					available_days: available_days
+				}
+			end.compact
+
+			# 按 theme 分组，按可用天数升序（紧急的在前）
+			grouped_by_theme = platform_rows.group_by { |row| row[:theme] }
+			                                .map do |theme, rows|
+				sorted_rows = rows.sort_by do |row|
+					# 权重：无库存=0（最紧急），有可用天数=days 本身
+					row[:pending] == 0 ? 0 : row[:available_days]
+				end
+				{ theme: theme, platforms: sorted_rows }
+			end.sort_by do |group|
+				group[:platforms].map { |row| row[:pending] == 0 ? 0 : row[:available_days] }.min
+			end
+
+			{
+				work_type: work_type,
+				themes: grouped_by_theme
+			}
+		end
 	end
 
 	private

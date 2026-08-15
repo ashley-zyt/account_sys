@@ -1,0 +1,497 @@
+<% content_for :page_title do %>
+  账号数据统计
+<% end %>
+<% content_for :page_subtitle do %>
+  账号粉丝变化趋势与增长分析
+<% end %>
+
+<% content_for :head do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" data-turbo-track="reload"></script>
+<% end %>
+
+<%# =========================================================== %>
+<%# 筛选栏                                                         %>
+<%# =========================================================== %>
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">筛选</div>
+      <div class="admin-card-subtitle">按账号属性（主题/平台/工作模式/状态）过滤</div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "导出CSV", export_admin_account_stats_path(request.params.except(:controller, :action)), class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <%= search_form_for @q, url: admin_account_stats_path, method: :get, class: "admin-filter-form" do |f| %>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+      <div>
+        <div class="admin-filter-label">主题</div>
+        <%= render 'admin/shared/searchable_theme_select', 
+          name: 'q[theme_eq]', 
+          themes: @themes, 
+          selected: params.dig(:q, :theme_eq), 
+          placeholder: '所有主题',
+          include_blank: '所有主题' %>
+      </div>
+      <div>
+        <div class="admin-filter-label">平台</div>
+        <%= f.select :platform_eq, @platforms, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div>
+        <div class="admin-filter-label">工作模式</div>
+        <%= f.select :work_type_eq, @work_types, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div>
+        <div class="admin-filter-label">账号状态</div>
+        <%= f.select :status_eq, @statuses, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_account_stats_path, class: "admin-button-secondary" %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<%# =========================================================== %>
+<%# 粉丝趋势 KPI 卡（4 项）                                         %>
+<%# =========================================================== %>
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 20px;">
+  <%# 总粉丝 %>
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">总粉丝（最新）</span>
+      <span style="font-size: 20px;">👑</span>
+    </div>
+    <div style="font-size: 26px; font-weight: 600; color: #6366f1;"><%= number_with_delimiter(@summary[:total_followers]) %></div>
+    <div style="margin-top: 6px; font-size: 13px;">
+      <% if @summary[:daily_growth] > 0 %>
+        <span style="color: #22c55e;">▲ 日增 +<%= number_with_delimiter(@summary[:daily_growth]) %></span>
+      <% elsif @summary[:daily_growth] < 0 %>
+        <span style="color: #ef4444;">▼ 日增 <%= number_with_delimiter(@summary[:daily_growth]) %></span>
+      <% else %>
+        <span class="admin-label-muted">日增 -</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%# 7日净增 %>
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">7日净增</span>
+      <span style="font-size: 20px;">📈</span>
+    </div>
+    <div style="font-size: 26px; font-weight: 600; color: #22c55e;">
+      <% if @summary[:weekly_growth] >= 0 %>
+        +<%= number_with_delimiter(@summary[:weekly_growth]) %>
+      <% else %>
+        <%= number_with_delimiter(@summary[:weekly_growth]) %>
+      <% end %>
+    </div>
+    <div style="margin-top: 6px; font-size: 13px;">
+      <% if @summary[:weekly_pct] %>
+        <span style="color: <%= @summary[:weekly_pct] >= 0 ? '#22c55e' : '#ef4444' %>;">
+          周环比 <%= @summary[:weekly_pct] >= 0 ? '+' : '' %><%= @summary[:weekly_pct] %>%
+        </span>
+      <% else %>
+        <span class="admin-label-muted">数据不足</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%# 增长账号 %>
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">增长账号</span>
+      <span style="font-size: 20px;">👥</span>
+    </div>
+    <div style="font-size: 26px; font-weight: 600; color: #3b82f6;">
+      <%= @summary[:growing_accounts] %> / <%= @summary[:account_count] %>
+    </div>
+    <div style="margin-top: 6px; font-size: 13px;">
+      <% if @summary[:declining_accounts] > 0 %>
+        <span style="color: #ef4444;"><%= @summary[:declining_accounts] %> 个下跌</span>
+      <% else %>
+        <span class="admin-label-muted">无下跌账号</span>
+      <% end %>
+      <% if @summary[:flat_accounts] > 0 %>
+        <span class="admin-label-muted" style="margin-left: 8px;"><%= @summary[:flat_accounts] %> 个持平</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Top增长主题 %>
+  <div class="admin-card" style="padding: 18px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span class="admin-field-label">Top增长主题</span>
+      <span style="font-size: 20px;">🏆</span>
+    </div>
+    <% if @summary[:top_theme] && @summary[:top_theme][:growth] > 0 %>
+      <div style="font-size: 18px; font-weight: 600; color: #f59e0b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        <%= @summary[:top_theme][:theme] %>
+      </div>
+      <div style="margin-top: 6px; font-size: 13px;">
+        <span style="color: #22c55e;">▲ 7日 +<%= number_with_delimiter(@summary[:top_theme][:growth]) %> 粉</span>
+      </div>
+    <% else %>
+      <div style="font-size: 18px; font-weight: 600; color: #9ca3af;">暂无数据</div>
+      <div style="margin-top: 6px; font-size: 13px;" class="admin-label-muted">需积累7天以上快照</div>
+    <% end %>
+  </div>
+</div>
+
+<%# =========================================================== %>
+<%# 趋势图表区：整体趋势 + Top5 对比                                %>
+<%# =========================================================== %>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px;">
+  <%# 整体粉丝增长趋势 %>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">整体粉丝增长趋势</div>
+        <div class="admin-card-subtitle">近30天全账号粉丝总量变化</div>
+      </div>
+    </div>
+    <% if @overall_trend[:labels].present? %>
+      <div style="position: relative; height: 280px; padding: 12px;">
+        <canvas id="overallTrendChart"></canvas>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">暂无趋势数据</div>
+    <% end %>
+  </div>
+
+  <%# Top5 账号增长对比 %>
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title"><%= @top5_title %></div>
+        <div class="admin-card-subtitle">近30天粉丝增长最快的5个账号（按30日净增排序）</div>
+      </div>
+    </div>
+    <% if @top5_trend[:datasets].present? %>
+      <div style="position: relative; height: 280px; padding: 12px;">
+        <canvas id="top5TrendChart"></canvas>
+      </div>
+      <% if @top5_accounts.present? %>
+        <div style="padding: 0 16px 16px 16px; border-top: 1px solid rgba(148, 163, 184, 0.15); padding-top: 12px;">
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">💡 点击账号名查看详情</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+            <% @top5_accounts.each_with_index do |acc, i| %>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 12px; height: 2px; background: <%= acc[:color] %>; border-radius: 2px;"></span>
+                <span style="font-size: 12px; color: var(--text-secondary);">#<%= i + 1 %></span>
+                <%= link_to acc[:account_name], admin_account_path(acc[:id]), style: "color: var(--accent); font-size: 13px; font-weight: 500; text-decoration: none;" %>
+                <span style="font-size: 11px; padding: 2px 6px; background: <%= acc[:color] %>1A; color: <%= acc[:color] %>; border-radius: 4px;">
+                  <%= acc[:platform] %>
+                </span>
+                <% if acc[:monthly_growth] %>
+                  <span style="font-size: 11px; color: <%= acc[:monthly_growth] >= 0 ? '#22c55e' : '#ef4444' %>;">
+                    <%= acc[:monthly_growth] >= 0 ? '+' : '' %><%= number_with_delimiter(acc[:monthly_growth]) %>
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="admin-empty-state">暂无趋势数据</div>
+    <% end %>
+  </div>
+</div>
+
+<%# =========================================================== %>
+<%# 账号快照明细表（含日增/7日增/sparkline）                        %>
+<%# =========================================================== %>
+<div class="admin-card" style="margin-top: 20px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">账号最新快照</div>
+      <div class="admin-card-subtitle">共 <%= number_with_delimiter(@summary[:account_count]) %> 个账号，默认按粉丝数降序，点击列头可切换排序</div>
+    </div>
+  </div>
+
+  <% if @account_stats.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <%
+              columns = [
+                ['账号名', nil],
+                ['主题', nil],
+                ['平台', nil],
+                ['粉丝数', 'followers_count'],
+                ['日增', 'daily_growth'],
+                ['7日增', 'weekly_growth'],
+                ['30日走势', nil],
+                ['总浏览', 'total_views_count'],
+                ['总点赞', 'total_likes_count'],
+                ['总发帖', 'total_posts_count'],
+                ['快照日期', 'stat_date']
+              ]
+            %>
+            <% columns.each do |label, sortable| %>
+              <th class="<%= sortable ? 'admin-table-sortable' : '' %>">
+                <% if sortable %>
+                  <% if @current_sort == sortable && @current_direction == 'desc' %>
+                    <%= link_to request.params.merge(sort: sortable, direction: 'asc', page: nil), class: "admin-link-quiet" do %>
+                      <%= label %> ↓
+                    <% end %>
+                  <% elsif @current_sort == sortable && @current_direction == 'asc' %>
+                    <%= link_to request.params.merge(sort: sortable, direction: 'desc', page: nil), class: "admin-link-quiet" do %>
+                      <%= label %> ↑
+                    <% end %>
+                  <% else %>
+                    <%= link_to request.params.merge(sort: sortable, direction: 'desc', page: nil), class: "admin-link-quiet" do %>
+                      <%= label %>
+                    <% end %>
+                  <% end %>
+                <% else %>
+                  <%= label %>
+                <% end %>
+              </th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @account_stats.each do |stat| %>
+            <% a = stat.account %>
+            <% growth = @account_growth_map[a.id] || {} %>
+            <% spark = @account_sparklines[a.id] || [] %>
+            <tr>
+              <td>
+                <%= link_to a.account_name, admin_account_path(a), class: "admin-link-quiet", style: "color: var(--accent); font-weight: 500;" %>
+              </td>
+              <td><%= a.theme %></td>
+              <td>
+                <% platform_color = case a.platform
+                                    when "facebook"  then "#3b82f6"
+                                    when "twitter"   then "#06b6d4"
+                                    when "tiktok"    then "#ec4899"
+                                    when "youtube"   then "#ef4444"
+                                    when "instagram" then "#a855f7"
+                                    else "#6b7280"
+                                    end
+                                   platform_bg = platform_color + "1A" %>
+                <span class="admin-pill-status" style="background: <%= platform_bg %>; color: <%= platform_color %>;">
+                  <%= a.platform %>
+                </span>
+              </td>
+              <td class="admin-table-num" style="font-weight: 600;"><%= number_with_delimiter(stat.followers_count) %></td>
+              <td class="admin-table-num">
+                <% if growth[:daily] %>
+                  <% if growth[:daily] > 0 %>
+                    <span style="color: #22c55e; font-weight: 500;">+<%= number_with_delimiter(growth[:daily]) %></span>
+                  <% elsif growth[:daily] < 0 %>
+                    <span style="color: #ef4444; font-weight: 500;"><%= number_with_delimiter(growth[:daily]) %></span>
+                  <% else %>
+                    <span style="color: #9ca3af;">0</span>
+                  <% end %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td class="admin-table-num">
+                <% if growth[:weekly] %>
+                  <% if growth[:weekly] > 0 %>
+                    <span style="color: #22c55e;">+<%= number_with_delimiter(growth[:weekly]) %></span>
+                  <% elsif growth[:weekly] < 0 %>
+                    <span style="color: #ef4444;"><%= number_with_delimiter(growth[:weekly]) %></span>
+                  <% else %>
+                    <span style="color: #9ca3af;">0</span>
+                  <% end %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td style="width: 100px; padding: 6px 8px;">
+                <% if spark.present? && spark.compact.size > 1 %>
+                  <%
+                    sp = spark.compact
+                    sp_min = sp.min.to_f
+                    sp_max = sp.max.to_f
+                    sp_range = sp_max - sp_min
+                    sp_range = 1 if sp_range == 0
+                    svg_w = 80
+                    svg_h = 28
+                    pad = 2
+                    sp_points = sp.each_with_index.map { |v, i|
+                      x = pad + (svg_w - 2*pad) * i.to_f / (sp.size - 1)
+                      y = svg_h - pad - (svg_h - 2*pad) * (v.to_f - sp_min) / sp_range
+                      "#{x.round(1)},#{y.round(1)}"
+                    }.join(" ")
+                    trend_up = sp.last >= sp.first
+                    sp_color = trend_up ? '#22c55e' : '#ef4444'
+                    sp_arrow = trend_up ? '▲' : (sp.last < sp.first ? '▼' : '→')
+                    sp_arrow_color = trend_up ? '#22c55e' : '#ef4444'
+                  %>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <svg width="<%= svg_w %>" height="<%= svg_h %>" viewBox="0 0 <%= svg_w %> <%= svg_h %>" style="flex-shrink: 0;">
+                      <polyline fill="none" stroke="<%= sp_color %>" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="<%= sp_points %>"/>
+                    </svg>
+                    <span style="font-size: 11px; color: <%= sp_arrow_color %>; font-weight: 600;"><%= sp_arrow %></span>
+                  </div>
+                <% else %>
+                  <span class="admin-label-muted" style="font-size: 12px;">暂无</span>
+                <% end %>
+              </td>
+              <td class="admin-table-num"><%= number_with_delimiter(stat.total_views_count) %></td>
+              <td class="admin-table-num"><%= number_with_delimiter(stat.total_likes_count) %></td>
+              <td class="admin-table-num"><%= number_with_delimiter(stat.total_posts_count) %></td>
+              <td>
+                <span class="admin-label-muted" style="font-size: 12px;">
+                  <%= stat.stat_date.strftime("%Y-%m-%d") %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding: 16px;">
+      <%= paginate @account_stats %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      <div style="font-size: 48px; margin-bottom: 12px;">📊</div>
+      <div>暂无账号快照数据，请先运行 <code>PostDatas.fetch</code> 触发采集</div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.admin-table-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.admin-table-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+</style>
+
+<script data-turbo-eval="true">
+(function() {
+  function waitForChart(callback, attempts) {
+    attempts = attempts || 0;
+    if (typeof Chart !== 'undefined') callback();
+    else if (attempts < 50) setTimeout(function(){ waitForChart(callback, attempts + 1); }, 100);
+  }
+
+  var textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#64748b';
+  var textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1e293b';
+  var gridColor = 'rgba(148, 163, 184, 0.12)';
+
+  var overallData = <%= @overall_trend.to_json.html_safe %>;
+  var top5Data = <%= @top5_trend.to_json.html_safe %>;
+
+  waitForChart(function() {
+    // 整体粉丝增长趋势（面积折线图）
+    var overallCtx = document.getElementById('overallTrendChart');
+    if (overallCtx && overallData.labels.length > 0) {
+      new Chart(overallCtx, {
+        type: 'line',
+        data: {
+          labels: overallData.labels,
+          datasets: [{
+            label: '总粉丝',
+            data: overallData.data,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.08)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.35,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#6366f1'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return '粉丝数: ' + Number(ctx.parsed.y).toLocaleString(); }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 10 }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                font: { size: 11 },
+                callback: function(v) { return Number(v).toLocaleString(); }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Top5 账号增长对比（多线折线图）
+    var top5Ctx = document.getElementById('top5TrendChart');
+    if (top5Ctx && top5Data.datasets.length > 0) {
+      new Chart(top5Ctx, {
+        type: 'line',
+        data: {
+          labels: top5Data.labels,
+          datasets: top5Data.datasets.map(function(ds) {
+            return {
+              label: ds.label,
+              data: ds.data,
+              borderColor: ds.borderColor,
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              tension: 0.35,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              pointHoverBackgroundColor: ds.borderColor
+            };
+          })
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: textColor, font: { size: 11 }, boxWidth: 14, padding: 10, usePointStyle: true, pointStyle: 'line' }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return ctx.dataset.label + ': ' + Number(ctx.parsed.y).toLocaleString(); }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 8 }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                font: { size: 11 },
+                callback: function(v) { return Number(v).toLocaleString(); }
+              }
+            }
+          }
+        }
+      });
+    }
+  });
+})();
+</script>

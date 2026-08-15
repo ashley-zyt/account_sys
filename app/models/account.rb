@@ -41,6 +41,8 @@ class Account < ApplicationRecord
 	has_many :conversations, dependent: :destroy
 	# 账号可有多条发文数据记录
 	has_many :post_stats, dependent: :destroy
+	# 账号日维度总量快照（粉丝/浏览/点赞/发帖累计）
+	has_many :account_stats, dependent: :destroy
 
 	# 回调：当账号状态变更时，同步更新浏览器的“无效”状态
 	after_save :sync_browser_status, if: :saved_change_to_status?
@@ -110,6 +112,22 @@ class Account < ApplicationRecord
 		update!(last_used_at: Time.current)
 	end
 
+	# 检查账号过去3天（不含今天）的发文浏览量是否均为0
+	# 用于发布调度时跳过长期零浏览量的账号（冷却3天后再恢复）
+	# - 过去3天无发文记录：返回 false（允许发布）
+	# - 过去3天有发文记录且全部浏览量为0：返回 true（暂停分配）
+	# - 过去3天有任意一条浏览量>0：返回 false（允许发布）
+	#
+	# 说明：通过滑动3天窗口实现「停3天再发布」效果——
+	#       账号连续0浏览量时会被持续跳过，直到窗口滑出那些0浏览量的发文。
+	def zero_views_in_past_3_days?
+		range_start = Date.today - 3
+		range_end   = Date.today - 1
+		recent_stats = post_stats.where(post_date: range_start..range_end)
+		return false if recent_stats.none?
+		recent_stats.where('views_count > 0').none?
+	end
+
 	# 根据工作模式返回对应的任务模型类
 	def task_model_for_work_type
 		case work_type
@@ -167,6 +185,32 @@ class Account < ApplicationRecord
 
 	def warmup_due?
 		warmup_profile&.warmup_due? || false
+	end
+
+	# ===== 账号总量快照便捷方法（account_stats） =====
+
+	# 最新一条日快照（用于详情页展示"当前累计"）
+	def latest_account_stat
+		@latest_account_stat ||= account_stats.order_by_date.first
+	end
+
+	# 生成/更新当日快照（从 post_stats 聚合）
+	# @param followers_count [Integer, nil] 采集端返回的总粉丝数（所有平台通用），可空
+	# @param total_posts     [Integer, nil] 采集端返回的总发帖量（仅 YouTube/Instagram 使用），可空
+	# @return [AccountStat, nil]
+	def snapshot_today!(followers_count: nil, total_posts: nil, snapshot_at: nil)
+		AccountStat.upsert_from_post_stats!(
+			id,
+			Date.today,
+			followers_count: followers_count,
+			total_posts:     total_posts,
+			snapshot_at:     snapshot_at
+		)
+	end
+
+	# 取指定时间范围的快照序列（按日期升序，折线图用）
+	def account_stats_trend(start_date, end_date)
+		account_stats.trend_for_account(id, start_date, end_date)
 	end
 
 	private
