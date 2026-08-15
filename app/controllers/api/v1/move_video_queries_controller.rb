@@ -12,7 +12,7 @@ module Api
           return render_error(msg: "start_id 和 end_id 必须为正整数，且 start_id <= end_id")
         end
 
-        videos = MoveVideo.where(id: start_id..end_id).order(:id)
+        videos = MoveVideo.where({id: start_id..end_id, status: MoveVideo.statuses[:pending_process]}).order(:id)
 
         data = videos.map do |v|
           {
