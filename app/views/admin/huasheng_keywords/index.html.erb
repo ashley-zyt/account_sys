@@ -1,0 +1,240 @@
+<% content_for :page_title do %>
+  花生视频储备
+<% end %>
+<% content_for :page_subtitle do %>
+  管理花生视频关键词采集任务
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        关键词列表
+      </div>
+      <div class="admin-card-subtitle">
+        管理关键词及对应的采集任务
+      </div>
+    </div>
+    <div class="admin-card-header-right" style="display: flex; gap: 8px;">
+      <button type="button" id="batch_add_btn" class="admin-button-primary">批量添加关键词</button>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">主题</label>
+        <%= f.select :theme_eq,
+              options_for_select(@themes, @q.theme_eq),
+              { include_blank: "全部主题" },
+              { class: "admin-input admin-filter-input" } %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status_eq,
+              options_for_select(HuashengKeyword::STATUS_NAMES.invert.to_a, @q.status_eq),
+              { include_blank: "全部状态" },
+              { class: "admin-input admin-filter-input" } %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_huasheng_keywords_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @huasheng_keywords.any? %>
+      <div class="admin-table-wrapper admin-table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>主题</th>
+              <th>关键词</th>
+              <th>状态</th>
+              <th>创建时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @huasheng_keywords.each do |kw| %>
+              <tr>
+                <td>
+                  <span class="admin-label-muted"><%= kw.id %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= kw.theme %></span>
+                </td>
+                <td>
+                  <%= link_to kw.keyword, admin_huasheng_keyword_path(kw), class: "admin-label-muted", style: "text-decoration: none; cursor: pointer;" %>
+                </td>
+                <td>
+                  <%= status_badge(kw.status) %>
+                </td>
+                <td>
+                  <span class="admin-label-muted">
+                    <%= kw.created_at&.strftime('%Y-%m-%d %H:%M') %>
+                  </span>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <%= link_to "详情", admin_huasheng_keyword_path(kw),
+                          class: "admin-link-quiet",
+                          style: "font-size: 11px; color: #60a5fa;" %>
+                    <%= link_to "删除", admin_huasheng_keyword_path(kw),
+                          data: { turbo_method: :delete, turbo_confirm: "确定删除该关键词吗？" },
+                          class: "admin-link-quiet",
+                          style: "color: #ef4444; font-size: 11px;" if kw.status == 0 %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 12px;">
+        <div class="admin-pagination">
+          <%= paginate @huasheng_keywords %>
+        </div>
+      </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无关键词数据。
+    </div>
+  <% end %>
+</div>
+
+<!-- 批量添加关键词弹窗 -->
+<div id="batch_add_modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content" style="max-width: 560px; width: 94%;">
+    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>批量添加关键词</h3>
+      <button type="button" id="modal_close_btn" style="background: transparent; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; line-height: 1;">×</button>
+    </div>
+    <div class="modal-body">
+      <%= form_tag admin_huasheng_keywords_path, method: :post, id: "batch_add_form" do %>
+        <div class="admin-form-group">
+          <label class="admin-form-label">
+            选择主题 <span style="color: #ef4444;">*</span>
+          </label>
+          <%= render "admin/shared/searchable_theme_select",
+                name: "theme",
+                themes: @themes,
+                selected: nil,
+                placeholder: "请选择主题",
+                include_blank: "请选择主题" %>
+        </div>
+
+        <div class="admin-form-group">
+          <label class="admin-form-label">
+            关键词列表 <span style="color: #ef4444;">*</span>
+          </label>
+          <textarea name="keywords_text" id="keywords_text" rows="8" class="admin-input"
+                    placeholder="每行一个关键词&#10;例如：&#10;城市：上海&#10;城市：北京"
+                    style="width: 100%; resize: vertical; font-size: 13px; line-height: 1.6;"></textarea>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
+            每行输入一个关键词
+          </div>
+        </div>
+
+        <div class="admin-form-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; padding-top: 16px; border-top: 1px solid #334155;">
+          <button type="button" id="modal_cancel_btn" class="admin-button-secondary">取消</button>
+          <button type="submit" class="admin-button-primary">确认添加</button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-content {
+    background: #1e293b;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 480px;
+  }
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #334155;
+  }
+  .modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    color: #f1f5f9;
+  }
+  .modal-body {
+    padding: 24px 20px;
+  }
+  .admin-form-group {
+    margin-bottom: 16px;
+  }
+  .admin-form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #94a3b8;
+  }
+  .admin-form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #334155;
+  }
+</style>
+
+<script>
+(function() {
+  function init() {
+    var batchAddBtn = document.getElementById('batch_add_btn');
+    var batchAddModal = document.getElementById('batch_add_modal');
+    if (batchAddBtn && batchAddModal) {
+      var newBatchBtn = batchAddBtn.cloneNode(true);
+      batchAddBtn.parentNode.replaceChild(newBatchBtn, batchAddBtn);
+      newBatchBtn.addEventListener('click', function() {
+        batchAddModal.style.display = 'flex';
+      });
+      ['modal_close_btn', 'modal_cancel_btn'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+          var newEl = el.cloneNode(true);
+          el.parentNode.replaceChild(newEl, el);
+          newEl.addEventListener('click', function() { batchAddModal.style.display = 'none'; });
+        }
+      });
+      batchAddModal.addEventListener('click', function(e) {
+        if (e.target === batchAddModal) batchAddModal.style.display = 'none';
+      });
+    }
+
+    if (!document.getElementById('_huasheng_esc_bound')) {
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.modal-overlay').forEach(function(m) { m.style.display = 'none'; });
+        }
+      });
+      var escMarker = document.createElement('div');
+      escMarker.id = '_huasheng_esc_bound';
+      escMarker.style.display = 'none';
+      document.body.appendChild(escMarker);
+    }
+  }
+
+  document.addEventListener('turbo:load', init);
+  document.addEventListener('turbo:render', init);
+  init();
+})();
+</script>
