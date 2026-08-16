@@ -98,7 +98,9 @@ class PostDatas
     # 每台机器并行推送其下所有浏览器
     success_count = 0
     fail_count = 0
+    failed_items = []
     success_mutex = Mutex.new
+    fail_mutex = Mutex.new
 
     threads = machine_ips.map do |ip|
       Thread.new do
@@ -106,6 +108,7 @@ class PostDatas
           browser_items = grouped_by_machine[ip]
           machine_success = 0
           machine_fail = 0
+          machine_failed = []
 
           browser_items.each_with_index do |browser_data, index|
             begin
@@ -124,11 +127,31 @@ class PostDatas
                 Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 返回: #{response[:response].to_s[0..2000]}"
               else
                 machine_fail += 1
-                Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送失败: #{response[:error]} (第 #{index + 1} 个, 目标: #{endpoint})"
+                error_msg = response[:error].to_s
+                account_infos = browser_data[:active_accounts].map { |a| "##{a[:id]}" }
+                fail_info = {
+                  machine_ip: ip,
+                  browser_id: browser_data[:id],
+                  browser_name: browser_data[:profile_name],
+                  account_ids: browser_data[:active_accounts].map { |a| a[:id] },
+                  endpoint: endpoint,
+                  error: error_msg
+                }
+                machine_failed << fail_info
+                Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送失败: #{error_msg} (第 #{index + 1} 个, 涉及账号: #{account_infos.join(', ')})"
               end
             rescue => e
               machine_fail += 1
-              Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 执行异常: #{e.message}"
+              account_infos = browser_data[:active_accounts].map { |a| "##{a[:id]}" }
+              fail_info = {
+                machine_ip: ip,
+                browser_id: browser_data[:id],
+                browser_name: browser_data[:profile_name],
+                account_ids: browser_data[:active_accounts].map { |a| a[:id] },
+                error: "异常: #{e.message}"
+              }
+              machine_failed << fail_info
+              Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 执行异常: #{e.message} (涉及账号: #{account_infos.join(', ')})"
             end
 
             sleep(REQUEST_INTERVAL) unless index == browser_items.size - 1
@@ -136,7 +159,10 @@ class PostDatas
 
           success_mutex.synchronize do
             success_count += machine_success
+          end
+          fail_mutex.synchronize do
             fail_count += machine_fail
+            failed_items.concat(machine_failed)
           end
         end
       end
@@ -144,10 +170,16 @@ class PostDatas
     threads.each(&:join)
 
     Rails.logger.info "[PostDatas] 采集完成: 成功 #{success_count} 个, 失败 #{fail_count} 个"
-    { success_count: success_count, fail_count: fail_count, total: data.size }
+    if failed_items.any?
+      Rails.logger.error "[PostDatas] 失败详情:"
+      failed_items.each do |f|
+        Rails.logger.error "[PostDatas]   - 机器 #{f[:machine_ip]}, 浏览器 #{f[:browser_name]}(ID=#{f[:browser_id]}), 账号IDs: #{f[:account_ids].join(', ')}, 原因: #{f[:error]}"
+      end
+    end
+    { success_count: success_count, fail_count: fail_count, total: data.size, failed_items: failed_items }
   rescue => e
     Rails.logger.error "[PostDatas] 执行异常: #{e.message}"
-    { success_count: 0, fail_count: 0, total: 0, error: e.message }
+    { success_count: 0, fail_count: 0, total: 0, failed_items: [], error: e.message }
   end
 
   def self.push_to_external_with_retry(browser_data, endpoint)
