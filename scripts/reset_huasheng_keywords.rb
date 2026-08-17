@@ -27,7 +27,7 @@ unless answer&.downcase == 'y'
 end
 
 time = Benchmark.measure do
-  updated = HuashengKeyword.where(id: 15..26).update_all(
+  updated = HuashengKeyword.where(id: [4,6,7]).update_all(
     status: 0,
     task_id: nil,
     result_data: nil,
