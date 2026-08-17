@@ -130,6 +130,10 @@ Rails.application.routes.draw do
       post "auth/login", to: "auth#login"
       # RedNote接口
       post "red_note/keywords", to: "red_note#keywords"
+      # 花生视频储备接口
+      get  "huasheng/pending_keywords", to: "huasheng#pending_keywords"
+      post "huasheng/update_status",    to: "huasheng#update_status"
+      post "huasheng/report_result",    to: "huasheng#report_result"
       # 剪映任务批量接收
       post "jianying_tasks/batch", to: "jianying_tasks#batch"
       # 搬运视频按ID范围查询
