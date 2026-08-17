@@ -216,49 +216,53 @@ class Util
   end
 
   # ===== 获取今日未更新数据的账号 =====
-  # 账号范围与 PostDatas.fetch 保持一致：状态为"正常"且非 Facebook 平台
-  # 找出以下两类账号：
-  #   1. post_stats 中 data_updated_at 不是今天的账号（发文数据今日未更新）
-  #   2. account_stat 中今日无快照的账号（粉丝/发帖量快照今日未生成）
-  # @return [Hash] { post_stats_stale: [account_ids...], stat_stale: [account_ids...], all_stale: [account_ids...], total: N }
+  # 账号范围：系统中状态为"正常"的所有账号
+  # 判断逻辑：
+  #   - post_stats 最新一条记录的 data_updated_at 日期不是今天（或无记录）
+  #   - account_stat 最新一条记录的 stat_date 不是今天（或无记录）
+  # @return [Hash] {
+  #   post_stats_stale: [account_ids...],   # post_stats最新更新不是今天的账号
+  #   stat_stale: [account_ids...],         # account_stat最新快照不是今天的账号
+  #   both_stale: [account_ids...],         # 两者都不是今天的账号（交集）
+  #   total: N                               # 正常状态账号总数
+  # }
   def self.get_stale_accounts
     today = Date.today
     today_start = today.beginning_of_day
     today_end = today.end_of_day
 
-    account_scope = Account.where(status: Account.statuses['正常'])
-                          .where.not(platform: Account.platforms['facebook'])
-    all_account_ids = account_scope.pluck(:id).uniq
+    # 所有状态为"正常"的账号
+    all_account_ids = Account.where(status: Account.statuses['正常']).where.not(platform: Account.platforms['facebook']).pluck(:id).uniq
 
-    # 1. 今日有更新post_stats的账号ID（data_updated_at 在今天范围内）
-    post_updated_ids = PostStat.where(data_updated_at: today_start..today_end)
-                               .where(account_id: all_account_ids)
-                               .distinct
-                               .pluck(:account_id)
-    post_stats_stale = all_account_ids - post_updated_ids
+    # 1. post_stats 最新 data_updated_at 是今天的账号ID
+    post_updated_today = PostStat.where(account_id: all_account_ids)
+                                 .group(:account_id)
+                                 .having("MAX(data_updated_at) >= ? AND MAX(data_updated_at) <= ?", today_start, today_end)
+                                 .pluck(:account_id)
+    post_stats_stale = all_account_ids - post_updated_today
 
-    # 2. 今日有account_stat快照的账号ID（stat_date 是今天）
-    stat_updated_ids = AccountStat.where(stat_date: today)
-                                  .where(account_id: all_account_ids)
-                                  .distinct
-                                  .pluck(:account_id)
-    stat_stale = all_account_ids - stat_updated_ids
+    # 2. account_stat 最新 stat_date 是今天的账号ID
+    stat_updated_today = AccountStat.where(account_id: all_account_ids)
+                                    .group(:account_id)
+                                    .having("MAX(stat_date) = ?", today)
+                                    .pluck(:account_id)
+    stat_stale = all_account_ids - stat_updated_today
 
-    # 3. 合并两类（去重）：今天发文数据未更新 OR 快照未生成的账号
-    all_stale = (post_stats_stale + stat_stale).uniq
+    # 3. 两者都不是今天的账号（交集）
+    both_stale = post_stats_stale & stat_stale
 
-    Rails.logger.info "[Util] 未更新账号统计 - 总账号数: #{all_account_ids.size}, " \
-                      "post_stats未更新: #{post_stats_stale.size}, " \
-                      "account_stat未更新: #{stat_stale.size}, " \
-                      "合计未更新: #{all_stale.size}"
+    Rails.logger.info "[Util] 未更新账号统计 - 正常账号总数: #{all_account_ids.size}, " \
+                      "post_stats最新不是今天: #{post_stats_stale.size}, " \
+                      "account_stat最新不是今天: #{stat_stale.size}, " \
+                      "两者都不是今天: #{both_stale.size}"
 
     {
       post_stats_stale: post_stats_stale.sort,
       stat_stale: stat_stale.sort,
-      all_stale: all_stale.sort,
+      both_stale: both_stale.sort,
       total: all_account_ids.size,
-      post_updated_count: post_updated_ids.size,
-      stat_updated_count: stat_updated_ids.size
+      post_updated_count: post_updated_today.size,
+      stat_updated_count: stat_updated_today.size
     }
   end
 end
