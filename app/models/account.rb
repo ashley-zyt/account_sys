@@ -83,7 +83,7 @@ class Account < ApplicationRecord
 		"剪映": 2,
 		"人工运营": 3,
 		"Grok": 4,
-		"Heygen": 5，
+		"Heygen": 5,
 		"花生": 6
 	}
 
