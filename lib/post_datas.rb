@@ -1,16 +1,19 @@
 # 抓取所有发文的详细数据
-# 每日定期获取绑定正常账号的浏览器列表，推送到该浏览器所属运营机器采集发文数据
+# 每日定期获取绑定正常账号（非Facebook），按单个账号依次推送到运营机器采集
 #
 # 调度模型：
-#   - 按浏览器所属运营机器 IP（browser.machine_ip）分组
-#   - 每台机器一个 Thread 并行推送，互不影响
-#   - 端点动态生成：http://<browser.machine_ip>:8080/accounts/fetch_posts（端口固定 8080）
-#   - 一个浏览器只属于一台机器，其下所有账号（不论 work_type）统一推送到该机器
+#   - 查询所有状态为"正常"且非Facebook的账号（包含特殊账号）
+#   - 仅处理绑定了浏览器且设置了machine_ip的账号
+#   - 账号按浏览器"混开"排序（类似发牌，轮流从不同浏览器取账号，避免同一浏览器连续打开）
+#   - 依次调用 Util.fetch_account_post_data 推送单个账号采集指令
+#   - 每个账号执行完间隔 15 秒
 class PostDatas
 
   RETRY_COUNT = 2
   RETRY_DELAY = 20
   REQUEST_INTERVAL = 2
+  ACCOUNT_INTERVAL = 15  # 单个账号之间的间隔（秒）
+  STALE_ALERT_THRESHOLD = 10  # 未更新账号超过此数量则发送钉钉告警
 
   # 运营机器发文数据采集服务固定端口
   FETCH_PORT = 8080
@@ -22,164 +25,165 @@ class PostDatas
 
     special_account_ids = [213, 241, 253, 234, 233, 232, 231]
 
-    browsers = Browser
-                 .joins(:accounts)
-                 .where(accounts: { status: Account.statuses['正常'] })
-                 .where.not(accounts: { platform: Account.platforms['facebook'] })
-                 .distinct
-                 .order(created_at: :desc)
-    data = browsers.map do |browser|
-      active_accounts = browser.accounts
-                          .where(status: Account.statuses['正常'])
-                          .where.not(platform: Account.platforms['facebook'])
-      {
-        id: browser.id,
-        profile_name: browser.profile_name,
-        machine_ip: browser.machine_ip,
-        active_accounts: active_accounts.map do |acc|
-          {
-            id: acc.id,
-            platform: acc.platform,
-            source_url: acc.source_url,
-            work_type: acc.work_type
-          }
-        end
-      }
-    end
+    # 1. 查询所有状态为"正常"且非Facebook的账号，必须绑定浏览器
+    accounts = Account
+                 .where(status: Account.statuses['正常'])
+                 .where.not(platform: Account.platforms['facebook'])
+                 .where.not(browser_id: nil)
+                 .includes(:browser)
+                 .to_a
 
-    special_accounts = Account.where(id: special_account_ids).where.not(browser_id: nil)
-    special_accounts.group_by(&:browser_id).each do |browser_id, accounts|
-      browser = Browser.find_by(id: browser_id)
-      next unless browser
+    # 加入特殊账号（去重）
+    special_accounts = Account.where(id: special_account_ids)
+                                .where.not(browser_id: nil)
+                                .includes(:browser)
+                                .to_a
+    accounts = (accounts + special_accounts).uniq { |a| a.id }
 
-      existing_item = data.find { |item| item[:id] == browser.id }
-      if existing_item
-        existing_item[:active_accounts] += accounts.map do |acc|
-          {
-            id: acc.id,
-            platform: acc.platform,
-            source_url: acc.source_url,
-            work_type: acc.work_type
-          }
-        end
-        existing_item[:active_accounts].uniq! { |acc| acc[:id] }
-      else
-        data << {
-          id: browser.id,
-          profile_name: browser.profile_name,
-          machine_ip: browser.machine_ip,
-          active_accounts: accounts.map do |acc|
-            {
-              id: acc.id,
-              platform: acc.platform,
-              source_url: acc.source_url,
-              work_type: acc.work_type
-            }
-          end
-        }
-      end
-    end
+    # 2. 过滤掉未设置machine_ip的浏览器
+    accounts = accounts.select { |a| a.browser.present? && a.browser.machine_ip.present? }
 
-    Rails.logger.info "[PostDatas] 共 #{data.size} 个浏览器需要采集发文数据（包含 #{special_accounts.size} 个特殊账号）"
+    total = accounts.size
+    Rails.logger.info "[PostDatas] 共筛选出 #{total} 个待采集账号（非Facebook、正常状态、绑定浏览器且有IP）"
 
-    # 按运营机器 IP 分组：一个浏览器只属于一台机器，其下所有账号统一推送到该机器
-    grouped_by_machine = data.group_by { |item| item[:machine_ip] }
-    machine_ips = grouped_by_machine.keys.compact.reject(&:blank?).sort
-    orphan_count = data.count { |item| item[:machine_ip].blank? }
+    return { success_count: 0, fail_count: 0, total: 0, failed_items: [] } if accounts.empty?
 
-    if orphan_count > 0
-      Rails.logger.warn "[PostDatas] 有 #{orphan_count} 个浏览器未设置 machine_ip，本轮跳过，请在浏览器页面补全机器IP"
-    end
+    # 3. 按浏览器"混开"排序（发牌算法：轮流从不同浏览器取账号）
+    shuffled_accounts = shuffle_accounts_by_browser(accounts)
 
-    Rails.logger.info "[PostDatas] 发现 #{machine_ips.size} 台运营机器: #{machine_ips.join(', ')}"
+    # 打印排序后的浏览器顺序，便于验证混开效果
+    browser_sequence = shuffled_accounts.map { |a| "#{a.browser.profile_name}(##{a.id})" }
+    Rails.logger.info "[PostDatas] 采集顺序（浏览器混开）: #{browser_sequence.join(' → ')}"
 
-    return { success_count: 0, fail_count: 0, total: data.size } if machine_ips.empty?
-
-    # 每台机器并行推送其下所有浏览器
+    # 4. 依次循环调用 Util.fetch_account_post_data，每个账号间隔15秒
     success_count = 0
     fail_count = 0
     failed_items = []
-    success_mutex = Mutex.new
-    fail_mutex = Mutex.new
 
-    threads = machine_ips.map do |ip|
-      Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection do
-          browser_items = grouped_by_machine[ip]
-          machine_success = 0
-          machine_fail = 0
-          machine_failed = []
+    shuffled_accounts.each_with_index do |account, index|
+      begin
+        Rails.logger.info "[PostDatas] [#{index + 1}/#{total}] 开始采集账号 #{account.account_name}(ID=#{account.id}, 平台=#{account.platform}, 浏览器=#{account.browser.profile_name}, IP=#{account.browser.machine_ip})"
 
-          browser_items.each_with_index do |browser_data, index|
-            begin
-              payload = {
-                id: browser_data[:id],
-                profile_name: browser_data[:profile_name],
-                active_accounts: browser_data[:active_accounts]
-              }
-              endpoint = "http://#{ip}:#{FETCH_PORT}/accounts/fetch_posts"
-              response = push_to_external_with_retry(payload, endpoint)
+        result = Util.fetch_account_post_data(account_id: account.id)
 
-              if response[:success]
-                machine_success += 1
-                Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 采集指令推送成功 (第 #{index + 1} 个, 目标: #{endpoint})"
-                # 打印返回结果（仅记录，落库由采集端通过 API 接口完成）
-                Rails.logger.info "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 返回: #{response[:response].to_s[0..2000]}"
-              else
-                machine_fail += 1
-                error_msg = response[:error].to_s
-                account_infos = browser_data[:active_accounts].map { |a| "##{a[:id]}" }
-                fail_info = {
-                  machine_ip: ip,
-                  browser_id: browser_data[:id],
-                  browser_name: browser_data[:profile_name],
-                  account_ids: browser_data[:active_accounts].map { |a| a[:id] },
-                  endpoint: endpoint,
-                  error: error_msg
-                }
-                machine_failed << fail_info
-                Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 推送失败: #{error_msg} (第 #{index + 1} 个, 涉及账号: #{account_infos.join(', ')})"
-              end
-            rescue => e
-              machine_fail += 1
-              account_infos = browser_data[:active_accounts].map { |a| "##{a[:id]}" }
-              fail_info = {
-                machine_ip: ip,
-                browser_id: browser_data[:id],
-                browser_name: browser_data[:profile_name],
-                account_ids: browser_data[:active_accounts].map { |a| a[:id] },
-                error: "异常: #{e.message}"
-              }
-              machine_failed << fail_info
-              Rails.logger.error "[PostDatas] 机器 #{ip} 浏览器 #{browser_data[:profile_name]} 执行异常: #{e.message} (涉及账号: #{account_infos.join(', ')})"
-            end
-
-            sleep(REQUEST_INTERVAL) unless index == browser_items.size - 1
-          end
-
-          success_mutex.synchronize do
-            success_count += machine_success
-          end
-          fail_mutex.synchronize do
-            fail_count += machine_fail
-            failed_items.concat(machine_failed)
-          end
+        if result[:success]
+          success_count += 1
+          Rails.logger.info "[PostDatas] [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}) 采集指令推送成功"
+        else
+          fail_count += 1
+          fail_info = {
+            account_id: account.id,
+            account_name: account.account_name,
+            browser_name: account.browser.profile_name,
+            machine_ip: account.browser.machine_ip,
+            error: result[:message]
+          }
+          failed_items << fail_info
+          Rails.logger.error "[PostDatas] [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}) 推送失败: #{result[:message]}"
         end
+      rescue => e
+        fail_count += 1
+        fail_info = {
+          account_id: account.id,
+          account_name: account.account_name,
+          browser_name: account.browser&.profile_name,
+          machine_ip: account.browser&.machine_ip,
+          error: "异常: #{e.message}"
+        }
+        failed_items << fail_info
+        Rails.logger.error "[PostDatas] [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}) 执行异常: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
+      end
+
+      # 最后一个账号不需要sleep
+      if index < shuffled_accounts.size - 1
+        Rails.logger.info "[PostDatas] [#{index + 1}/#{total}] 等待 #{ACCOUNT_INTERVAL} 秒后继续下一个账号..."
+        sleep(ACCOUNT_INTERVAL)
       end
     end
-    threads.each(&:join)
 
-    Rails.logger.info "[PostDatas] 采集完成: 成功 #{success_count} 个, 失败 #{fail_count} 个"
+    Rails.logger.info "[PostDatas] 采集完成: 成功 #{success_count} 个, 失败 #{fail_count} 个, 总计 #{total} 个"
     if failed_items.any?
       Rails.logger.error "[PostDatas] 失败详情:"
       failed_items.each do |f|
-        Rails.logger.error "[PostDatas]   - 机器 #{f[:machine_ip]}, 浏览器 #{f[:browser_name]}(ID=#{f[:browser_id]}), 账号IDs: #{f[:account_ids].join(', ')}, 原因: #{f[:error]}"
+        Rails.logger.error "[PostDatas]   - 账号 #{f[:account_name]}(ID=#{f[:account_id]}), 浏览器=#{f[:browser_name]}, IP=#{f[:machine_ip]}, 原因: #{f[:error]}"
       end
     end
-    { success_count: success_count, fail_count: fail_count, total: data.size, failed_items: failed_items }
+
+    # 5. 采集完成后检查未更新数据的账号数量，超过阈值则发送钉钉告警
+    check_stale_accounts_and_alert(total, success_count, fail_count)
+
+    { success_count: success_count, fail_count: fail_count, total: total, failed_items: failed_items }
   rescue => e
-    Rails.logger.error "[PostDatas] 执行异常: #{e.message}"
+    Rails.logger.error "[PostDatas] 执行异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
     { success_count: 0, fail_count: 0, total: 0, failed_items: [], error: e.message }
+  end
+
+  # 检查未更新数据的账号，超过阈值发送钉钉告警
+  def self.check_stale_accounts_and_alert(total_fetched, success_count, fail_count)
+    begin
+      stale_info = Util.get_stale_accounts
+      post_stale_count = stale_info[:post_stats_stale]&.size || 0
+      stat_stale_count = stale_info[:stat_stale]&.size || 0
+      total_stale = stale_info[:total] || 0
+
+      Rails.logger.info "[PostDatas] 采集后数据更新检查 - 纳入统计账号: #{total_stale}, " \
+                        "发文数据未更新: #{post_stale_count} 个, " \
+                        "账号快照未更新: #{stat_stale_count} 个"
+
+      alerts = []
+      if post_stale_count > STALE_ALERT_THRESHOLD
+        alerts << "发文数据(post_stats)未更新账号过多: #{post_stale_count} 个（阈值: #{STALE_ALERT_THRESHOLD}）"
+      end
+      if stat_stale_count > STALE_ALERT_THRESHOLD
+        alerts << "账号数据(account_stat)未更新账号过多: #{stat_stale_count} 个（阈值: #{STALE_ALERT_THRESHOLD}）"
+      end
+
+      if alerts.any?
+        title = "【数据采集告警】发文/账号数据异常过多"
+        content = "### 采集执行情况\n\n" \
+                  "- 本次尝试采集账号: #{total_fetched} 个\n" \
+                  "- 采集推送成功: #{success_count} 个\n" \
+                  "- 采集推送失败: #{fail_count} 个\n\n" \
+                  "### 未更新数据检测\n\n" \
+                  "- 纳入统计的活跃账号总数: #{total_stale} 个\n" \
+                  "- 发文数据未更新(post_stats): #{post_stale_count} 个\n" \
+                  "- 账号快照未更新(account_stat): #{stat_stale_count} 个\n\n" \
+                  "### 告警项\n\n" \
+                  "#{alerts.map { |a| "- ⚠️ #{a}" }.join("\n")}\n\n" \
+                  "**时间**: #{Time.current.strftime('%Y-%m-%d %H:%M:%S')}"
+
+        Rails.logger.warn "[PostDatas] 检测到数据异常，发送钉钉告警: #{alerts.join('; ')}"
+        TaskReportHelper.send_dingding_alert(title, content)
+      else
+        Rails.logger.info "[PostDatas] 未更新账号数量在正常范围内（post_stats=#{post_stale_count}, account_stat=#{stat_stale_count}, 阈值=#{STALE_ALERT_THRESHOLD}）"
+      end
+    rescue => e
+      Rails.logger.error "[PostDatas] 检查stale账号或发送告警时异常: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
+    end
+  end
+
+  # 按浏览器"混开"排序（发牌算法）
+  # 将账号按browser_id分组，然后轮流从每个浏览器队列中取账号，尽量避免同一浏览器连续出现
+  # @param accounts [Array<Account>] 账号列表
+  # @return [Array<Account>] 混排后的账号列表
+  def self.shuffle_accounts_by_browser(accounts)
+    # 按browser_id分组
+    grouped = accounts.group_by { |a| a.browser_id }
+
+    # 每个组转成队列（数组），按浏览器ID排序保证确定性
+    queues = grouped.keys.sort.map { |browser_id| grouped[browser_id].dup }
+
+    result = []
+    # 发牌：轮流从每个队列头部取一个账号
+    until queues.empty?
+      queues.each do |queue|
+        result << queue.shift unless queue.empty?
+      end
+      # 移除空队列
+      queues.reject!(&:empty?)
+    end
+
+    result
   end
 
   def self.push_to_external_with_retry(browser_data, endpoint)
