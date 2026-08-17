@@ -4,6 +4,9 @@
 <% content_for :page_subtitle do %>
   <%= @account.account_name %> 的基础信息与近期任务
 <% end %>
+<% content_for :head do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" data-turbo-track="reload"></script>
+<% end %>
 
 <div class="admin-grid">
   <div class="admin-card">
@@ -123,6 +126,20 @@
           </div>
           <div class="admin-field-value">
             <%= @account.browser.cloud_id %>
+          </div>
+        </div>
+        <div>
+          <div class="admin-field-label">
+            运营机器 IP
+          </div>
+          <div class="admin-field-value">
+            <% if @account.browser.machine_ip.present? %>
+              <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                <%= @account.browser.machine_ip %>
+              </span>
+            <% else %>
+              <span class="admin-label-muted">未设置</span>
+            <% end %>
           </div>
         </div>
       </div>
@@ -319,6 +336,35 @@
   </div>
 </div>
 
+<%# 粉丝量/发帖量历史趋势 %>
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        粉丝量历史趋势
+      </div>
+      <div class="admin-card-subtitle">
+        近 30 天粉丝数与发帖数变化
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <% if @follower_history.any? %>
+        <span class="admin-label-muted">最新粉丝：<strong style="color: var(--text-primary);"><%= number_with_delimiter(@follower_history.last.followers_count || 0) %></strong></span>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @follower_history.any? %>
+    <div style="position: relative; height: 260px; padding: 12px;">
+      <canvas id="followerHistoryChart"></canvas>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无历史数据，请先运行采集。
+    </div>
+  <% end %>
+</div>
+
 <div class="admin-card" style="margin-top: 16px;">
   <div class="admin-card-header">
     <div>
@@ -494,4 +540,119 @@
     </div>
   <% end %>
 </div>
+
+<% if @follower_history.any? %>
+<script data-turbo-track="reload">
+document.addEventListener('DOMContentLoaded', function() {
+  const ctx = document.getElementById('followerHistoryChart');
+  if (!ctx) return;
+
+  const labels = <%= raw @follower_history.pluck(:stat_date).map { |d| d.strftime('%m-%d') }.to_json %>;
+  const followersData = <%= raw @follower_history.pluck(:followers_count).map { |v| v || 0 }.to_json %>;
+  const postsData = <%= raw @follower_history.pluck(:total_posts_count).map { |v| v || 0 }.to_json %>;
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: '粉丝数',
+          data: followersData,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.3,
+          yAxisID: 'y',
+          pointRadius: 3,
+          pointHoverRadius: 5
+        },
+        {
+          label: '发帖数',
+          data: postsData,
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34, 197, 94, 0.05)',
+          fill: false,
+          tension: 0.3,
+          yAxisID: 'y1',
+          pointRadius: 3,
+          pointHoverRadius: 5
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            usePointStyle: true,
+            padding: 20
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          padding: 12,
+          cornerRadius: 8,
+          titleFont: { size: 13, weight: '600' },
+          bodyFont: { size: 12 }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: '#64748b',
+            font: { size: 11 }
+          }
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: {
+            display: true,
+            text: '粉丝数',
+            color: '#3b82f6',
+            font: { size: 11, weight: '500' }
+          },
+          grid: {
+            color: 'rgba(226, 232, 240, 0.5)'
+          },
+          ticks: {
+            color: '#64748b',
+            font: { size: 11 }
+          }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: {
+            display: true,
+            text: '发帖数',
+            color: '#22c55e',
+            font: { size: 11, weight: '500' }
+          },
+          grid: {
+            drawOnChartArea: false
+          },
+          ticks: {
+            color: '#64748b',
+            font: { size: 11 }
+          }
+        }
+      }
+    }
+  });
+});
+</script>
+<% end %>
 

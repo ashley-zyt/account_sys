@@ -38,6 +38,10 @@ class Admin::AccountsController < Admin::BaseController
 		@recent_post_stats = @account.post_stats
 		                             .order(post_date: :desc)
 		                             .limit(10)
+		# 粉丝量/发帖量历史数据（近30天，用于趋势图）
+		@follower_history = @account.account_stats
+		                            .where("stat_date >= ?", 30.days.ago.to_date)
+		                            .order(stat_date: :asc)
 	end
 
 	def edit
