@@ -236,7 +236,7 @@ class Util
     # 账号范围：
     #   1. 状态为"正常"的账号
     #   2. 在 task_logs 中有成功执行记录的账号
-    normal_account_ids = Account.where(status: Account.statuses['正常']).pluck(:id).uniq
+    normal_account_ids = Account.where(status: Account.statuses['正常']).where.not(platform: 1).pluck(:id).uniq
     task_success_ids = TaskLog.where(status: TaskLog.statuses['success'])
                               .where.not(account_id: nil)
                               .distinct
