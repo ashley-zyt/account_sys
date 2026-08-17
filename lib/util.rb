@@ -216,7 +216,9 @@ class Util
   end
 
   # ===== 获取今日未更新数据的账号 =====
-  # 账号范围：系统中状态为"正常"的所有账号
+  # 账号范围（同时满足）：
+  #   1. 系统中状态为"正常"的账号
+  #   2. 在 task_logs 中存在 status=success 的记录（即有过成功执行记录的活跃账号）
   # 判断逻辑：
   #   - post_stats 最新一条记录的 data_updated_at 日期不是今天（或无记录）
   #   - account_stat 最新一条记录的 stat_date 不是今天（或无记录）
@@ -231,8 +233,15 @@ class Util
     today_start = today.beginning_of_day
     today_end = today.end_of_day
 
-    # 所有状态为"正常"的账号
-    all_account_ids = Account.where(status: Account.statuses['正常']).where.not(platform: Account.platforms['facebook']).pluck(:id).uniq
+    # 账号范围：
+    #   1. 状态为"正常"的账号
+    #   2. 在 task_logs 中有成功执行记录的账号
+    normal_account_ids = Account.where(status: Account.statuses['正常']).pluck(:id).uniq
+    task_success_ids = TaskLog.where(status: TaskLog.statuses['success'])
+                              .where.not(account_id: nil)
+                              .distinct
+                              .pluck(:account_id)
+    all_account_ids = normal_account_ids & task_success_ids
 
     # 1. post_stats 最新 data_updated_at 是今天的账号ID
     post_updated_today = PostStat.where(account_id: all_account_ids)
@@ -251,7 +260,9 @@ class Util
     # 3. 两者都不是今天的账号（交集）
     both_stale = post_stats_stale & stat_stale
 
-    Rails.logger.info "[Util] 未更新账号统计 - 正常账号总数: #{all_account_ids.size}, " \
+    Rails.logger.info "[Util] 未更新账号统计 - 正常账号: #{normal_account_ids.size}, " \
+                      "有成功task_log: #{task_success_ids.size}, " \
+                      "纳入统计: #{all_account_ids.size}, " \
                       "post_stats最新不是今天: #{post_stats_stale.size}, " \
                       "account_stat最新不是今天: #{stat_stale.size}, " \
                       "两者都不是今天: #{both_stale.size}"
@@ -261,6 +272,8 @@ class Util
       stat_stale: stat_stale.sort,
       both_stale: both_stale.sort,
       total: all_account_ids.size,
+      normal_count: normal_account_ids.size,
+      task_success_count: task_success_ids.size,
       post_updated_count: post_updated_today.size,
       stat_updated_count: stat_updated_today.size
     }
