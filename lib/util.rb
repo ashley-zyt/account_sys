@@ -225,8 +225,8 @@ class Util
   # @return [Hash] {
   #   post_stats_stale: [account_ids...],   # post_stats最新更新不是今天的账号
   #   stat_stale: [account_ids...],         # account_stat最新快照不是今天的账号
-  #   both_stale: [account_ids...],         # 两者都不是今天的账号（交集）
-  #   total: N                               # 正常状态账号总数
+  #   all_stale: [account_ids...],          # 上述两类合并去重（并集）
+  #   total: N                               # 纳入统计的账号总数
   # }
   def self.get_stale_accounts
     today = Date.today
@@ -257,20 +257,20 @@ class Util
                                     .pluck(:account_id)
     stat_stale = all_account_ids - stat_updated_today
 
-    # 3. 两者都不是今天的账号（交集）
-    both_stale = post_stats_stale & stat_stale
+    # 3. 合并两类（并集去重）：post_stats最新不是今天 OR account_stat最新不是今天
+    all_stale = (post_stats_stale + stat_stale).uniq
 
     Rails.logger.info "[Util] 未更新账号统计 - 正常账号: #{normal_account_ids.size}, " \
                       "有成功task_log: #{task_success_ids.size}, " \
                       "纳入统计: #{all_account_ids.size}, " \
                       "post_stats最新不是今天: #{post_stats_stale.size}, " \
                       "account_stat最新不是今天: #{stat_stale.size}, " \
-                      "两者都不是今天: #{both_stale.size}"
+                      "合计未更新: #{all_stale.size}"
 
     {
       post_stats_stale: post_stats_stale.sort,
       stat_stale: stat_stale.sort,
-      both_stale: both_stale.sort,
+      all_stale: all_stale.sort,
       total: all_account_ids.size,
       normal_count: normal_account_ids.size,
       task_success_count: task_success_ids.size,
