@@ -214,4 +214,51 @@ class Util
     Rails.logger.error "[Util] #{msg}"
     { success: false, message: msg, response: nil }
   end
+
+  # ===== 获取今日未更新数据的账号 =====
+  # 账号范围与 PostDatas.fetch 保持一致：状态为"正常"且非 Facebook 平台
+  # 找出以下两类账号：
+  #   1. post_stats 中 data_updated_at 不是今天的账号（发文数据今日未更新）
+  #   2. account_stat 中今日无快照的账号（粉丝/发帖量快照今日未生成）
+  # @return [Hash] { post_stats_stale: [account_ids...], stat_stale: [account_ids...], all_stale: [account_ids...], total: N }
+  def self.get_stale_accounts
+    today = Date.today
+    today_start = today.beginning_of_day
+    today_end = today.end_of_day
+
+    account_scope = Account.where(status: Account.statuses['正常'])
+                          .where.not(platform: Account.platforms['facebook'])
+    all_account_ids = account_scope.pluck(:id).uniq
+
+    # 1. 今日有更新post_stats的账号ID（data_updated_at 在今天范围内）
+    post_updated_ids = PostStat.where(data_updated_at: today_start..today_end)
+                               .where(account_id: all_account_ids)
+                               .distinct
+                               .pluck(:account_id)
+    post_stats_stale = all_account_ids - post_updated_ids
+
+    # 2. 今日有account_stat快照的账号ID（stat_date 是今天）
+    stat_updated_ids = AccountStat.where(stat_date: today)
+                                  .where(account_id: all_account_ids)
+                                  .distinct
+                                  .pluck(:account_id)
+    stat_stale = all_account_ids - stat_updated_ids
+
+    # 3. 合并两类（去重）：今天发文数据未更新 OR 快照未生成的账号
+    all_stale = (post_stats_stale + stat_stale).uniq
+
+    Rails.logger.info "[Util] 未更新账号统计 - 总账号数: #{all_account_ids.size}, " \
+                      "post_stats未更新: #{post_stats_stale.size}, " \
+                      "account_stat未更新: #{stat_stale.size}, " \
+                      "合计未更新: #{all_stale.size}"
+
+    {
+      post_stats_stale: post_stats_stale.sort,
+      stat_stale: stat_stale.sort,
+      all_stale: all_stale.sort,
+      total: all_account_ids.size,
+      post_updated_count: post_updated_ids.size,
+      stat_updated_count: stat_updated_ids.size
+    }
+  end
 end
