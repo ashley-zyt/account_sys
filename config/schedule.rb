@@ -112,8 +112,8 @@ end
 # 按 browser.machine_ip 分组，多台机器并行运行、互不影响
 # - 每台机器独立 5 小时时间窗口
 # - 机器IP在浏览器页面动态管理，无需改代码
-set :output, "log/warmup_scheduler.log"
-every :day, at: '21:00' do
-  runner 'WarmupScheduler.run'
-end
+# set :output, "log/warmup_scheduler.log"
+# every :day, at: '21:00' do
+#   runner 'WarmupScheduler.run'
+# end
 
