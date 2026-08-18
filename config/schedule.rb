@@ -102,18 +102,18 @@ end
 
 # ==================== 花生资源队列推送 ====================
 # 每小时扫描已完成（status=3）且未推送的花生关键词，推送到花生资源队列
-set :output, "log/huasheng_queue_scheduler.log"
-every 1.hour do
-  runner 'HuashengQueueScheduler.run'
-end
+# set :output, "log/huasheng_queue_scheduler.log"
+# every 1.hour do
+#   runner 'HuashengQueueScheduler.run'
+# end
 
 
 # ==================== 养号任务配置 ====================
 # 按 browser.machine_ip 分组，多台机器并行运行、互不影响
 # - 每台机器独立 5 小时时间窗口
 # - 机器IP在浏览器页面动态管理，无需改代码
-# set :output, "log/warmup_scheduler.log"
-# every :day, at: '21:00' do
-#   runner 'WarmupScheduler.run'
-# end
+set :output, "log/warmup_scheduler.log"
+every :day, at: '21:00' do
+  runner 'WarmupScheduler.run'
+end
 
