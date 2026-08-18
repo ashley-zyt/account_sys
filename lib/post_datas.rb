@@ -125,10 +125,19 @@ class PostDatas
       post_stale_count = stale_info[:post_stats_stale]&.size || 0
       stat_stale_count = stale_info[:stat_stale]&.size || 0
       total_stale = stale_info[:total] || 0
+      all_stale_ids = stale_info[:all_stale] || []
 
       Rails.logger.info "[PostDatas] 采集后数据更新检查 - 纳入统计账号: #{total_stale}, " \
                         "发文数据未更新: #{post_stale_count} 个, " \
-                        "账号快照未更新: #{stat_stale_count} 个"
+                        "账号快照未更新: #{stat_stale_count} 个, " \
+                        "合计未更新(all_stale): #{all_stale_ids.size} 个"
+
+      # all_stale 超过阈值时，对这些账号重试一次采集推送
+      retry_result = nil
+      if all_stale_ids.size > STALE_ALERT_THRESHOLD
+        Rails.logger.warn "[PostDatas] 合计未更新账号 #{all_stale_ids.size} 个超过阈值 #{STALE_ALERT_THRESHOLD}，开始重试采集"
+        retry_result = retry_fetch_for_stale_accounts(all_stale_ids)
+      end
 
       alerts = []
       if post_stale_count > STALE_ALERT_THRESHOLD
@@ -140,6 +149,15 @@ class PostDatas
 
       if alerts.any?
         title = "【数据采集告警】发文/账号数据异常过多"
+        retry_section = if retry_result
+                          "### 自动重试采集\n\n" \
+                          "- 重试账号数: #{retry_result[:total]} 个\n" \
+                          "- 重试成功: #{retry_result[:success_count]} 个\n" \
+                          "- 重试失败: #{retry_result[:fail_count]} 个\n\n"
+                        else
+                          ""
+                        end
+
         content = "### 采集执行情况\n\n" \
                   "- 本次尝试采集账号: #{total_fetched} 个\n" \
                   "- 采集推送成功: #{success_count} 个\n" \
@@ -148,6 +166,7 @@ class PostDatas
                   "- 纳入统计的活跃账号总数: #{total_stale} 个\n" \
                   "- 发文数据未更新(post_stats): #{post_stale_count} 个\n" \
                   "- 账号快照未更新(account_stat): #{stat_stale_count} 个\n\n" \
+                  "#{retry_section}" \
                   "### 告警项\n\n" \
                   "#{alerts.map { |a| "- ⚠️ #{a}" }.join("\n")}\n\n" \
                   "**时间**: #{Time.current.strftime('%Y-%m-%d %H:%M:%S')}"
@@ -160,6 +179,62 @@ class PostDatas
     rescue => e
       Rails.logger.error "[PostDatas] 检查stale账号或发送告警时异常: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
     end
+  end
+
+  # 对未更新数据的账号重试一次采集推送
+  # all_stale 超过阈值时由 check_stale_accounts_and_alert 触发：
+  #   - 取出账号并过滤掉无浏览器/无 machine_ip 的
+  #   - 按浏览器"混开"排序，避免连续打开同一 profile 导致 lock
+  #   - 依次调用 Util.fetch_account_post_data(account_id:)，账号间隔 ACCOUNT_INTERVAL 秒
+  # @param stale_account_ids [Array<Integer>] 未更新数据的账号ID列表
+  # @return [Hash] { total: Integer, success_count: Integer, fail_count: Integer }
+  def self.retry_fetch_for_stale_accounts(stale_account_ids)
+    return { total: 0, success_count: 0, fail_count: 0 } if stale_account_ids.blank?
+
+    accounts = Account.where(id: stale_account_ids)
+                      .where.not(browser_id: nil)
+                      .includes(:browser)
+                      .to_a
+                      .select { |a| a.browser.present? && a.browser.machine_ip.present? }
+
+    if accounts.empty?
+      Rails.logger.warn "[PostDatas] 重试：未找到有效的未更新账号（传入 #{stale_account_ids.size} 个ID），跳过重试"
+      return { total: 0, success_count: 0, fail_count: 0 }
+    end
+
+    shuffled = shuffle_accounts_by_browser(accounts)
+    total = shuffled.size
+
+    Rails.logger.info "[PostDatas] 重试采集开始，共 #{total} 个有效账号（浏览器混开排序）"
+
+    success_count = 0
+    fail_count = 0
+
+    shuffled.each_with_index do |account, index|
+      begin
+        Rails.logger.info "[PostDatas] 重试 [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}, 平台=#{account.platform}, 浏览器=#{account.browser.profile_name})"
+        result = Util.fetch_account_post_data(account_id: account.id)
+
+        if result[:success]
+          success_count += 1
+          Rails.logger.info "[PostDatas] 重试 [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}) 推送成功"
+        else
+          fail_count += 1
+          Rails.logger.error "[PostDatas] 重试 [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}) 推送失败: #{result[:message]}"
+        end
+      rescue => e
+        fail_count += 1
+        Rails.logger.error "[PostDatas] 重试 [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}) 异常: #{e.message}"
+      end
+
+      # 最后一个账号不需要sleep
+      if index < total - 1
+        sleep(ACCOUNT_INTERVAL)
+      end
+    end
+
+    Rails.logger.info "[PostDatas] 重试采集完成: 成功 #{success_count} 个, 失败 #{fail_count} 个, 总计 #{total} 个"
+    { total: total, success_count: success_count, fail_count: fail_count }
   end
 
   # 按浏览器"混开"排序（发牌算法）
