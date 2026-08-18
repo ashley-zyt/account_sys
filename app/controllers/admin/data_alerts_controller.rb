@@ -32,21 +32,22 @@ class Admin::DataAlertsController < Admin::BaseController
 	# ===== 预警一：最近连续3次发文浏览量均为0的账号 =====
 	# 按账号取最近 N 条发文（post_date 倒序），从最新一条向后数连续 views_count=0 的条数，
 	# 达到 ZERO_VIEWS_STREAK 即预警
+	# 注：服务器 MySQL < 8.0 不支持窗口函数（ROW_NUMBER OVER），
+	#     改为先筛出发文数达标的运营中账号，再逐账号按 account_id 索引取最近 N 条
 	def fetch_zero_views_accounts
-		sub = PostStat.select(
-			"account_id, views_count, post_date, " \
-			"ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY post_date DESC, created_at DESC, id DESC) AS rn"
-		).to_sql
+		candidate_ids = PostStat.where(account_id: Account.where(status: OPERATING_STATUSES))
+			.group(:account_id)
+			.having("COUNT(*) >= ?", ZERO_VIEWS_STREAK)
+			.pluck(:account_id)
 
-		rows = PostStat.from("(#{sub}) AS recent_posts")
-			.where("rn <= ?", ZERO_VIEWS_LOOKBACK)
-			.where(account_id: Account.where(status: OPERATING_STATUSES))
-			.order("account_id, rn")
+		accounts = accounts_by_id(candidate_ids)
 
-		grouped = rows.group_by(&:account_id)
-		accounts = accounts_by_id(grouped.keys)
+		candidate_ids.filter_map do |account_id|
+			posts = PostStat.where(account_id: account_id)
+				.order(post_date: :desc, id: :desc)
+				.limit(ZERO_VIEWS_LOOKBACK)
+				.to_a
 
-		grouped.filter_map do |account_id, posts|
 			streak = posts.take_while { |post| post.views_count.to_i == 0 }.size
 			next nil if streak < ZERO_VIEWS_STREAK
 
@@ -99,26 +100,24 @@ class Admin::DataAlertsController < Admin::BaseController
 	end
 
 	# ===== 预警四：最近连续发布失败的账号 =====
-	# 回溯近14天任务日志，按账号取最近 N 条（run_at 倒序），
+	# 回溯近14天任务日志，按账号取最近 N 条（run_at 倒序，MySQL DESC 排序时 NULL 排在末尾），
 	# 从最新一条向后数连续 failed 的条数，达到 FAIL_STREAK 即预警
+	# 注：同样避开窗口函数，先筛出回溯期内有日志的运营中账号，再逐账号取最近 N 条
 	def fetch_fail_streak_accounts
-		sub = TaskLog.select(
-			"account_id, status, error_msg, run_at, " \
-			"ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY run_at DESC NULLS LAST, id DESC) AS rn"
-		)
-			.where("account_id IS NOT NULL")
+		candidate_ids = TaskLog.where(account_id: Account.where(status: OPERATING_STATUSES))
 			.where("run_at >= ?", FAIL_LOOKBACK_DAYS.days.ago)
-			.to_sql
+			.distinct
+			.pluck(:account_id)
 
-		rows = TaskLog.from("(#{sub}) AS recent_logs")
-			.where("rn <= ?", FAIL_LOOKBACK_COUNT)
-			.where(account_id: Account.where(status: OPERATING_STATUSES))
-			.order("account_id, rn")
+		accounts = accounts_by_id(candidate_ids)
 
-		grouped = rows.group_by(&:account_id)
-		accounts = accounts_by_id(grouped.keys)
+		candidate_ids.filter_map do |account_id|
+			logs = TaskLog.where(account_id: account_id)
+				.where("run_at >= ?", FAIL_LOOKBACK_DAYS.days.ago)
+				.order(run_at: :desc, id: :desc)
+				.limit(FAIL_LOOKBACK_COUNT)
+				.to_a
 
-		grouped.filter_map do |account_id, logs|
 			streak = logs.take_while { |log| log.status == "failed" }.size
 			next nil if streak < FAIL_STREAK
 
