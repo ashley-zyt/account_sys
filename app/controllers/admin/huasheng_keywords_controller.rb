@@ -58,8 +58,17 @@ class Admin::HuashengKeywordsController < Admin::BaseController
     render json: { success: false, error: e.message }, status: :unprocessable_entity
   end
 
+  # huasheng-ld bucket 与 voice_video_pipeline 上传时使用的 OSS 凭证一致。
+  # 参考 scripts/update_jianying_tasks.rb#oss_v1_sign_url，生成 V1 GET 签名 URL。
+  HUASHENG_OSS_BUCKET = "huasheng-ld".freeze
+  HUASHENG_OSS_REGION = "cn-hangzhou".freeze
+  HUASHENG_OSS_ACCESS_KEY_ID = "gZL8z938T19mSUHf".freeze
+  HUASHENG_OSS_ACCESS_KEY_SECRET = "A9fSDa9cH5YAExpEUR4QSizkFQEcrS".freeze
+  HUASHENG_OSS_SIGNED_URL_TTL = 31_536_000 # 1 年
+
   def show
     @huasheng_keyword = HuashengKeyword.find(params[:id])
+    @video_url = build_huasheng_video_url(@huasheng_keyword.result_data)
     render layout: false if request.xhr?
   end
 
@@ -96,5 +105,38 @@ class Admin::HuashengKeywordsController < Admin::BaseController
 
   def huasheng_keyword_params
     params.require(:huasheng_keyword).permit(:theme, :keyword)
+  end
+
+  # 解析 result_data JSON，从中取出 oss_url（实为 object key，如 "video/video_xxx.mp4"），
+  # 返回 1 年有效的 OSS V1 GET 签名 URL。失败返回 nil。
+  def build_huasheng_video_url(result_data)
+    return nil if result_data.blank?
+    result = JSON.parse(result_data) rescue {}
+    object_key = result["oss_url"].to_s.strip.gsub(/^`|`$/, "").strip
+    return nil if object_key.blank?
+    huasheng_oss_v1_sign_url(object_key)
+  end
+
+  # OSS V1 GET 签名 URL（参考 scripts/update_jianying_tasks.rb#oss_v1_sign_url）
+  def huasheng_oss_v1_sign_url(key)
+    require "openssl"
+    require "base64"
+
+    key = key.sub(%r{^/}, "")
+    expires = (Time.now.to_i + HUASHENG_OSS_SIGNED_URL_TTL).to_s
+    string_to_sign = "GET\n\n\n#{expires}\n/#{HUASHENG_OSS_BUCKET}/#{key}"
+    signature = Base64.strict_encode64(
+      OpenSSL::HMAC.digest("sha1", HUASHENG_OSS_ACCESS_KEY_SECRET, string_to_sign)
+    ).strip
+
+    encoded_key = key.split("/").map { |seg| percent_encode_oss(seg) }.join("/")
+    "https://#{HUASHENG_OSS_BUCKET}.oss-#{HUASHENG_OSS_REGION}.aliyuncs.com/#{encoded_key}?" \
+      "OSSAccessKeyId=#{HUASHENG_OSS_ACCESS_KEY_ID}" \
+      "&Expires=#{expires}" \
+      "&Signature=#{percent_encode_oss(signature)}"
+  end
+
+  def percent_encode_oss(str)
+    URI.encode_www_form_component(str.to_s).gsub("+", "%20")
   end
 end
