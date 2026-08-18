@@ -147,7 +147,11 @@ class PublishScheduler
                          .where("account_id IS NOT NULL")
                          .includes(:browser)
 
-    tasks = operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a + jianying_tasks.to_a + move_tasks.to_a
+    huasheng_tasks = HuashengTask.where(status: :waiting_publish)
+                               .where("account_id IS NOT NULL")
+                               .includes(:browser)
+
+    tasks = operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a + jianying_tasks.to_a + move_tasks.to_a + huasheng_tasks.to_a
     tasks = tasks.select { |t| t.platform == platform } if platform.present?
     tasks
   end
@@ -238,14 +242,16 @@ class PublishScheduler
       'jianying'
     elsif task.is_a?(MoveTask)
       'move'
+    elsif task.is_a?(HuashengTask)
+      'huasheng'
     else
       'operation'
     end
   end
 
   def self.build_request_data(task)
-    # 运营/剪映/搬运 任务均使用 oss_url 作为视频地址；Grok/Heygen 使用 video_url
-    video_url = if task.is_a?(OperationTask) || task.is_a?(JianyingTask) || task.is_a?(MoveTask)
+    # 运营/剪映/搬运/花生 任务均使用 oss_url 作为视频地址；Grok/Heygen 使用 video_url
+    video_url = if task.is_a?(OperationTask) || task.is_a?(JianyingTask) || task.is_a?(MoveTask) || task.is_a?(HuashengTask)
                   task.oss_url
                 else
                   task.video_url

@@ -79,6 +79,7 @@ class Util
       "Grok"     => GrokTask,
       "Heygen"   => HeygenTask,
       "剪映"     => JianyingTask,
+      "花生"     => HuashengTask,
       "coze"     => nil
     }
     task_model = task_model_map[work_type]

@@ -33,6 +33,7 @@ class Account < ApplicationRecord
 	has_many :operation_tasks, dependent: :nullify
 	has_many :grok_tasks, dependent: :nullify
 	has_many :heygen_tasks, dependent: :nullify
+	has_many :huasheng_tasks, dependent: :nullify
 	has_many :warmup_tasks, dependent: :nullify
 	has_one :warmup_profile, dependent: :destroy
 	# 通过 task_logs.account_id 快照反查该账号的所有执行日志（兼容运营任务被释放资源的场景）
@@ -142,6 +143,8 @@ class Account < ApplicationRecord
 			GrokTask
 		when "Heygen"
 			HeygenTask
+		when "花生"
+			HuashengTask
 		end
 	end
 
