@@ -1,0 +1,391 @@
+<% content_for :page_title do %>
+  数据预警
+<% end %>
+<% content_for :page_subtitle do %>
+  账号数据异常集中监控：零浏览、封禁、浏览量骤降、连续发布失败
+<% end %>
+
+<div class="admin-grid-full">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          预警总览
+        </div>
+        <div class="admin-card-subtitle">
+          各类预警项当前触发数量
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-metric-row">
+      <a href="#zero-views" class="admin-metric admin-link-card">
+        <div class="admin-metric-label">
+          连续3次0浏览
+        </div>
+        <div class="admin-metric-value" style="color: <%= @zero_views_accounts.any? ? 'var(--danger)' : 'var(--success)' %>;">
+          <%= @zero_views_accounts.size %>
+        </div>
+        <div class="admin-metric-trend <%= @zero_views_accounts.any? ? 'admin-metric-trend-down' : 'admin-metric-trend-up' %>">
+          <%= @zero_views_accounts.any? ? "需关注" : "正常" %>
+        </div>
+      </a>
+      <a href="#banned" class="admin-metric admin-link-card">
+        <div class="admin-metric-label">
+          最近封禁
+        </div>
+        <div class="admin-metric-value" style="color: <%= @recent_banned_accounts.any? ? 'var(--danger)' : 'var(--success)' %>;">
+          <%= @recent_banned_accounts.size %>
+        </div>
+        <div class="admin-metric-trend <%= @recent_banned_accounts.any? ? 'admin-metric-trend-down' : 'admin-metric-trend-up' %>">
+          <%= @recent_banned_accounts.any? ? "不可用" : "正常" %>
+        </div>
+      </a>
+      <a href="#views-drop" class="admin-metric admin-link-card">
+        <div class="admin-metric-label">
+          浏览量骤降
+        </div>
+        <div class="admin-metric-value" style="color: <%= @views_drop_accounts.any? ? 'var(--warning)' : 'var(--success)' %>;">
+          <%= @views_drop_accounts.size %>
+        </div>
+        <div class="admin-metric-trend <%= @views_drop_accounts.any? ? 'admin-metric-trend-down' : 'admin-metric-trend-up' %>">
+          <%= @views_drop_accounts.any? ? "需关注" : "正常" %>
+        </div>
+      </a>
+      <a href="#fail-streak" class="admin-metric admin-link-card">
+        <div class="admin-metric-label">
+          连续发布失败
+        </div>
+        <div class="admin-metric-value" style="color: <%= @fail_streak_accounts.any? ? 'var(--danger)' : 'var(--success)' %>;">
+          <%= @fail_streak_accounts.size %>
+        </div>
+        <div class="admin-metric-trend <%= @fail_streak_accounts.any? ? 'admin-metric-trend-down' : 'admin-metric-trend-up' %>">
+          <%= @fail_streak_accounts.any? ? "需排查" : "正常" %>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="admin-grid-full" id="zero-views">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          连续3次浏览量为0的账号
+        </div>
+        <div class="admin-card-subtitle">
+          运营中账号最近连续 <%= Admin::DataAlertsController::ZERO_VIEWS_STREAK %> 条发文浏览量均为0（疑似限流/降权），按连续条数降序
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <span class="admin-tag admin-tag-accent">
+          <%= @zero_views_accounts.size %> 个账号
+        </span>
+      </div>
+    </div>
+
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>账号名</th>
+            <th>平台</th>
+            <th>主题</th>
+            <th>工作模式</th>
+            <th>状态</th>
+            <th>连续0浏览</th>
+            <th>最近发文日期</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @zero_views_accounts.any? %>
+            <% @zero_views_accounts.each do |item| %>
+              <tr>
+                <td>
+                  <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].theme || '-' %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].work_type.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].status %></span>
+                </td>
+                <td>
+                  <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;">
+                    <%= item[:streak] %> 条
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:recent_posts].map { |p| p.post_date.strftime("%m-%d") }.join(" / ") %></span>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 8px;">
+                    <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to "发文数据", admin_post_stats_path(q: { account_id_eq: item[:account].id }), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+                暂无连续0浏览的账号
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="admin-grid-full" id="banned">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          最近被封禁账号
+        </div>
+        <div class="admin-card-subtitle">
+          状态为「封禁/停用」的账号，按状态更新时间倒序（最多 <%= Admin::DataAlertsController::BANNED_LIST_LIMIT %> 条）
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <span class="admin-tag admin-tag-accent">
+          <%= @recent_banned_accounts.size %> 个账号
+        </span>
+      </div>
+    </div>
+
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>账号名</th>
+            <th>平台</th>
+            <th>主题</th>
+            <th>工作模式</th>
+            <th>运营人员</th>
+            <th>封禁时间</th>
+            <th>备注</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @recent_banned_accounts.any? %>
+            <% @recent_banned_accounts.each do |account| %>
+              <tr>
+                <td>
+                  <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= account.platform.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= account.theme || '-' %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= account.work_type.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= account.operator || '-' %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted" style="color: var(--danger);"><%= account.updated_at.strftime("%Y-%m-%d %H:%M") %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= account.remark %>">
+                    <%= account.remark || '-' %>
+                  </span>
+                </td>
+                <td>
+                  <%= link_to "详情", admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+                暂无被封禁的账号
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="admin-grid-full" id="views-drop">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          发文浏览量骤降的账号
+        </div>
+        <div class="admin-card-subtitle">
+          近7天单篇平均浏览量 较 前7天 降幅 ≥ 50%，且前7天均值 ≥ <%= Admin::DataAlertsController::VIEWS_DROP_BASELINE %>，按降幅降序
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <span class="admin-tag admin-tag-accent">
+          <%= @views_drop_accounts.size %> 个账号
+        </span>
+      </div>
+    </div>
+
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>账号名</th>
+            <th>平台</th>
+            <th>主题</th>
+            <th>工作模式</th>
+            <th>前7天单篇均浏览</th>
+            <th>近7天单篇均浏览</th>
+            <th>降幅</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @views_drop_accounts.any? %>
+            <% @views_drop_accounts.each do |item| %>
+              <tr>
+                <td>
+                  <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].theme || '-' %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].work_type.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted" style="font-weight: 600;"><%= item[:prev_avg] %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted" style="font-weight: 600;"><%= item[:recent_avg] %></span>
+                </td>
+                <td>
+                  <span class="admin-pill-status" style="background: rgba(234, 179, 8, 0.1); color: #eab308; font-weight: 600;">
+                    -<%= item[:drop_percent] %>%
+                  </span>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 8px;">
+                    <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to "发文数据", admin_post_stats_path(q: { account_id_eq: item[:account].id }), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+                暂无浏览量骤降的账号
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="admin-grid-full" id="fail-streak">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          连续发布失败的账号
+        </div>
+        <div class="admin-card-subtitle">
+          近 <%= Admin::DataAlertsController::FAIL_LOOKBACK_DAYS %> 天内最近连续 <%= Admin::DataAlertsController::FAIL_STREAK %> 次及以上任务执行失败的运营中账号，按连续失败次数降序
+        </div>
+      </div>
+      <div class="admin-card-header-right">
+        <span class="admin-tag admin-tag-accent">
+          <%= @fail_streak_accounts.size %> 个账号
+        </span>
+      </div>
+    </div>
+
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>账号名</th>
+            <th>平台</th>
+            <th>工作模式</th>
+            <th>状态</th>
+            <th>连续失败</th>
+            <th>最近失败时间</th>
+            <th>最近错误信息</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @fail_streak_accounts.any? %>
+            <% @fail_streak_accounts.each do |item| %>
+              <tr>
+                <td>
+                  <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].work_type.to_s.titleize %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:account].status %></span>
+                </td>
+                <td>
+                  <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;">
+                    <%= item[:streak] %> 次
+                  </span>
+                </td>
+                <td>
+                  <span class="admin-label-muted"><%= item[:last_failed_at]&.strftime("%m-%d %H:%M") || '-' %></span>
+                </td>
+                <td>
+                  <span class="admin-label-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= item[:last_error] %>">
+                    <%= item[:last_error] || '-' %>
+                  </span>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 8px;">
+                    <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to "日志", admin_task_logs_path(q: { account_id_eq: item[:account].id, status_eq: 1 }), class: "admin-link-quiet", style: "color: var(--danger);" %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+                暂无连续发布失败的账号
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
