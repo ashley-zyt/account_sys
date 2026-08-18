@@ -32,7 +32,7 @@ class HuashengKeyword < ApplicationRecord
   scope :by_status, ->(status) { where(status: status) if status.present? }
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id theme keyword status task_id created_at updated_at]
+    %w[id theme keyword status task_id pushed created_at updated_at]
   end
 
   def status_name

@@ -120,6 +120,72 @@ class HuashengTask < ApplicationRecord
       "&Signature=#{percent_encode(signature)}"
   end
 
+  # 将已完成的 HuashengKeyword 推送到花生资源队列：每条关键词生成 5 条任务（每平台一条）。
+  #
+  # 字段映射规则（result_data.Script 含 title/caption）：
+  #   - youtube：huasheng_task.title   = Script.title  （截断 100 字符）
+  #             huasheng_task.description = Script.caption（截断 280 字符）
+  #   - 其他平台：huasheng_task.title      = Script.caption（截断 280 字符）
+  #              huasheng_task.description = ""（空）
+  #
+  # 入参 huasheng_keyword 必须是 status=3（执行完成）且 result_data 中含有
+  # oss_url（object key）和 Script。
+  # 幂等：同一 huasheng_keyword 重复调用不会重复创建（按 huasheng_keyword_id 去重）。
+  # 返回 [created_count, error_message]
+  def self.create_from_huasheng_keyword!(huasheng_keyword)
+    return [0, "huasheng_keyword 不能为空"] if huasheng_keyword.nil?
+    return [0, "花生关键词未完成，无法入库"] unless huasheng_keyword.status == 3
+
+    # 已存在则跳过（幂等）
+    if where(huasheng_keyword_id: huasheng_keyword.id).exists?
+      return [0, "该关键词已入库资源队列"]
+    end
+
+    result = (JSON.parse(huasheng_keyword.result_data) rescue {})
+    object_key = result["oss_url"].to_s.strip.gsub(/^`|`$/, "").strip
+    return [0, "result_data 中缺少 oss_url"] if object_key.blank?
+
+    # Script 结构：{ topic, script, title, caption, tags }
+    script = result["Script"].is_a?(Hash) ? result["Script"] : (result["script"].is_a?(Hash) ? result["script"] : {})
+    title_text = script["title"].to_s.strip
+    caption    = script["caption"].to_s.strip
+
+    theme    = huasheng_keyword.theme.to_s
+    keyword  = huasheng_keyword.keyword.to_s
+
+    signed_url = oss_v1_sign_url(object_key)
+    group_id   = SecureRandom.uuid
+
+    created = 0
+    ALL_PLATFORMS.each do |platform_name|
+      if platform_name == "youtube"
+        # youtube: title = Script.title（限 100），description = Script.caption（限 280）
+        task_title = title_text[0...100]
+        task_desc  = caption[0...280]
+      else
+        # 其他平台: title = Script.caption（限 280），description 为空
+        task_title = caption[0...280]
+        task_desc  = ""
+      end
+
+      task = new(
+        huasheng_keyword_id: huasheng_keyword.id,
+        keyword:     keyword,
+        theme:       theme,
+        full_oss_url: object_key,
+        oss_url:     signed_url,
+        platform:    platform_name,
+        status:      :pending,
+        group_id:    group_id,
+        title:       task_title,
+        description: task_desc
+      )
+      created += 1 if task.save
+    end
+
+    [created, nil]
+  end
+
   private
 
   def generate_task_uuid
