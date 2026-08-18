@@ -3,6 +3,7 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root to: "dashboard#index"
+    resources :data_alerts, only: [:index]
     resources :accounts, only: [:index, :show, :new, :create, :edit, :update] do
       member do
         post :toggle_warmup
