@@ -30,14 +30,18 @@ class Admin::AccountStatsController < Admin::BaseController
     today = Date.today
     date_30 = today - 29  # 近30天（含今天）
 
-    # 2) 一次性加载筛选范围内所有账号近30天的快照（用于趋势计算和sparkline）
-    all_stats = AccountStat
+    # 2) 一次性加载筛选范围内所有账号的全部快照（用于找到每个账号的第一条记录作为基准）
+    #    同时加载近30天数据用于其他计算
+    all_stats_full = AccountStat
                   .where(account_id: account_ids)
-                  .where('stat_date >= ?', date_30)
                   .order(account_id: :asc, stat_date: :asc)
                   .to_a
 
     # 按 account_id 分组: { account_id => [AccountStat, ...] (按日期升序) }
+    stats_by_account_full = all_stats_full.group_by(&:account_id)
+
+    # 近30天数据用于原有逻辑
+    all_stats = all_stats_full.select { |s| s.stat_date >= date_30 }
     stats_by_account = all_stats.group_by(&:account_id)
 
     # 3) 获取每个账号的最新快照
@@ -139,7 +143,7 @@ class Admin::AccountStatsController < Admin::BaseController
       data: sorted_dates.map { |d| daily_totals[d] }
     }
 
-    # 7) Top5 账号增长对比（近30天，按30日增长取Top5）
+    # 7) Top5 账号增长对比（以每个账号第一条account_stat为基准，计算累计增幅）
     # 动态标题：筛选了平台则显示单平台Top5，否则显示全平台Top5
     selected_platform = params.dig(:q, :platform_eq)
     @top5_title = if selected_platform.present?
@@ -159,23 +163,94 @@ class Admin::AccountStatsController < Admin::BaseController
     }
     fallback_colors = ['#6366f1', '#22c55e', '#f59e0b', '#14b8a6', '#f97316']
 
-    top5_ids = account_data_map.values
-                  .sort_by { |d| -(d[:monthly_growth] || -999999) }
+    # 计算每个账号相对于自己第一条记录的增长数据
+    top5_growth_data = {}
+    earliest_date = today  # 追踪所有账号中最早的第一条记录日期
+
+    latest_stats.each do |stat|
+      aid = stat.account_id
+      full_history = stats_by_account_full[aid] || []
+      next if full_history.empty?
+
+      # 按日期索引所有历史记录
+      history_by_date_full = full_history.index_by(&:stat_date)
+
+      # 第一条记录作为基准
+      first_stat = full_history.first
+      baseline_followers = first_stat.followers_count.to_i
+      baseline_date = first_stat.stat_date
+
+      # 更新最早日期
+      earliest_date = baseline_date if baseline_date < earliest_date
+
+      # 构建从基准日到今天的每日增幅数组（当日粉丝数 - 基准粉丝数）
+      # 先收集所有有记录的日期的增幅
+      growth_by_date = {}
+      full_history.each do |s|
+        growth_by_date[s.stat_date] = s.followers_count.to_i - baseline_followers
+      end
+
+      # 总增幅（今天 - 基准日）
+      total_growth = (stat.followers_count.to_i - baseline_followers)
+
+      top5_growth_data[aid] = {
+        stat: stat,
+        first_stat: first_stat,
+        baseline_followers: baseline_followers,
+        baseline_date: baseline_date,
+        total_growth: total_growth,
+        growth_by_date: growth_by_date
+      }
+    end
+
+    # 按总增幅排序取Top5
+    top5_ids = top5_growth_data.values
+                  .sort_by { |d| -d[:total_growth] }
                   .first(5)
                   .map { |d| d[:stat].account_id }
+
+    # 确定X轴日期范围：从Top5账号中最早的基准日开始，到今天结束
+    top5_start_date = today
+    top5_ids.each do |aid|
+      d = top5_growth_data[aid]
+      top5_start_date = d[:baseline_date] if d && d[:baseline_date] < top5_start_date
+    end
+
     top5_datasets = []
     @top5_accounts = []  # 提供给视图生成可点击链接
+    top5_labels = (top5_start_date..today).map { |d| d.strftime('%-m/%-d') }
+
     top5_ids.each_with_index do |aid, i|
-      d = account_data_map[aid]
+      d = top5_growth_data[aid]
       next unless d
       account = d[:stat].account
+
+      # 构建完整的增幅序列，缺失日期用前一天的值填充
+      growth_series = []
+      last_growth = 0
+      (top5_start_date..today).each do |date|
+        if date < d[:baseline_date]
+          # 基准日之前没有数据，用nil
+          growth_series << nil
+        elsif d[:growth_by_date].key?(date)
+          last_growth = d[:growth_by_date][date]
+          growth_series << last_growth
+        else
+          # 缺失日期用前一天的值填充
+          growth_series << last_growth
+        end
+      end
+
       # 优先用平台颜色，平台颜色不够时用备选颜色
       color = platform_colors[account.platform] || fallback_colors[i % fallback_colors.length]
       top5_datasets << {
         label: "#{account.account_name} (#{account.platform})",
-        data: d[:sparkline],
+        data: growth_series,
         borderColor: color,
         backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.3,
+        spanGaps: true,  # 连接跨越null值的点
         platform: account.platform
       }
       @top5_accounts << {
@@ -183,11 +258,13 @@ class Admin::AccountStatsController < Admin::BaseController
         account_name: account.account_name,
         platform: account.platform,
         color: color,
-        monthly_growth: d[:monthly_growth]
+        total_growth: d[:total_growth],
+        baseline_followers: d[:baseline_followers],
+        baseline_date: d[:baseline_date]
       }
     end
     @top5_trend = {
-      labels: sorted_dates.map { |d| d.strftime('%-m/%-d') },
+      labels: top5_labels,
       datasets: top5_datasets
     }
 
