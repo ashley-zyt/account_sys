@@ -15,6 +15,11 @@ Rails.application.routes.draw do
         delete :batch_destroy
       end
     end
+    resources :huasheng_tasks, only: [:index, :show, :destroy] do
+      collection do
+        delete :batch_destroy
+      end
+    end
     resources :operation_tasks, only: [:index, :show, :new, :create, :destroy] do
       collection do
         get :oss_signature

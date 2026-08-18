@@ -101,7 +101,7 @@ module Api
               keyword:     kw.keyword,
               status:      kw.status,
               status_name: kw.status_name,
-              task_id:     kw.task_id,
+              task_id:      kw.task_id,
               updated_at:  kw.updated_at&.strftime("%Y-%m-%d %H:%M:%S")
             },
             msg: status == 3 ? "任务已标记为执行完成" : "任务已标记为失败"

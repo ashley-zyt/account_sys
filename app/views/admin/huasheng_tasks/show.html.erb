@@ -1,0 +1,136 @@
+<% content_for :page_title do %>
+  花生任务详情
+<% end %>
+<% content_for :page_subtitle do %>
+  任务 <%= @huasheng_task.id %> · <%= @huasheng_task.platform %>
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">基本信息</div>
+      <div class="admin-card-subtitle">任务配置与状态</div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "返回列表", admin_huasheng_tasks_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px 40px; padding-bottom: 16px;">
+    <div class="info-item">
+      <span class="info-label">主题</span>
+      <span class="info-value"><%= @huasheng_task.theme %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">平台</span>
+      <span class="info-value"><%= @huasheng_task.platform %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">关键词</span>
+      <span class="info-value"><%= @huasheng_task.keyword.presence || "-" %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">状态</span>
+      <span class="info-value">
+        <% case @huasheng_task.status %>
+        <% when "pending" %>
+          <span class="admin-pill-status admin-pill-status-pending"><span class="admin-pill-status-dot"></span>待分配</span>
+        <% when "waiting_publish", "executing" %>
+          <span class="admin-pill-status admin-pill-status-pending"><span class="admin-pill-status-dot"></span>队列中</span>
+        <% when "success" %>
+          <span class="admin-pill-status admin-pill-status-success"><span class="admin-pill-status-dot"></span>成功</span>
+        <% when "failed" %>
+          <span class="admin-pill-status admin-pill-status-failed"><span class="admin-pill-status-dot"></span>失败</span>
+        <% end %>
+      </span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">任务UUID</span>
+      <span class="info-value" style="font-family: monospace; font-size: 12px;"><%= @huasheng_task.task_uuid %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">任务组ID</span>
+      <span class="info-value" style="font-family: monospace; font-size: 12px;"><%= @huasheng_task.group_id || "-" %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">创建时间</span>
+      <span class="info-value"><%= @huasheng_task.created_at&.strftime("%Y-%m-%d %H:%M") %></span>
+    </div>
+  </div>
+
+  <div class="info-item" style="padding-bottom: 16px;">
+    <span class="info-label">发布标题</span>
+    <span class="info-value" style="font-size: 13px; color: #cbd5e1;"><%= @huasheng_task.title %></span>
+  </div>
+
+  <div class="info-item" style="padding-bottom: 16px;">
+    <span class="info-label">视频描述</span>
+    <span class="info-value" style="font-size: 13px; color: #cbd5e1;"><%= @huasheng_task.description.presence || "-" %></span>
+  </div>
+</div>
+
+<!-- 视频下载 -->
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">视频文件</div>
+      <div class="admin-card-subtitle"><%= @huasheng_task.full_oss_url %></div>
+    </div>
+    <div class="admin-card-header-right">
+      <% if @video_url %>
+        <a href="<%= @video_url %>" class="admin-button-primary" style="text-decoration: none;">下载视频</a>
+        <button class="admin-button-secondary hs-copy-btn" data-url="<%= @video_url %>" style="margin-left: 8px;">复制链接</button>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @huasheng_task.full_oss_url.present? %>
+    <div style="padding: 12px 16px; border-top: 1px solid #334155;">
+      <div class="info-item">
+        <span class="info-label">完整下载链接（有效期1年）</span>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <code style="flex: 1; font-size: 11px; color: #94a3b8; background: rgba(15,23,42,0.8); padding: 6px 10px; border-radius: 4px; word-break: break-all;"><%= @huasheng_task.full_oss_url %></code>
+          <button class="copy-link-btn" data-url="<%= @huasheng_task.full_oss_url %>" style="flex-shrink: 0; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25); color: #60a5fa; border-radius: 4px; padding: 6px 10px; cursor: pointer; white-space: nowrap;" title="复制链接">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  <% if @video_url %>
+    <div style="padding-top: 12px;">
+      <video src="<%= @video_url %>" controls preload="metadata"
+             style="width: 33%; max-height: 960px; border-radius: 8px; background: #000;"></video>
+      <div style="font-size: 11px; color: #64748b; margin-top: 6px;">如画面全黑有声音，请点击上方"下载视频"按钮下载后播放</div>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无视频数据</div>
+  <% end %>
+</div>
+
+<style>
+  .info-item { display: flex; flex-direction: column; gap: 2px; }
+  .info-label { color: #64748b; font-size: 12px; }
+  .info-value { color: #e2e8f0; font-size: 14px; }
+</style>
+
+<script>
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.hs-copy-btn') || e.target.closest('.copy-link-btn');
+  if (!btn) return;
+  var url = btn.getAttribute('data-url') || '';
+  var ta = document.createElement('textarea');
+  ta.value = url;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    var orig = btn.textContent;
+    btn.textContent = '已复制';
+    setTimeout(function() { btn.textContent = orig; }, 1500);
+  } catch(err) {}
+  document.body.removeChild(ta);
+});
+</script>
