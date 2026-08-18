@@ -36,6 +36,13 @@
               { include_blank: "全部状态" },
               { class: "admin-input admin-filter-input" } %>
       </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">推送状态</label>
+        <%= f.select :pushed_eq,
+              options_for_select([["已推送", true], ["未推送", false]], @q.pushed_eq),
+              { include_blank: "全部" },
+              { class: "admin-input admin-filter-input" } %>
+      </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
         <%= link_to "重置", admin_huasheng_keywords_path, class: "admin-button-secondary" %>
@@ -52,6 +59,7 @@
               <th>主题</th>
               <th>关键词</th>
               <th>状态</th>
+              <th>推送状态</th>
               <th>创建时间</th>
               <th>操作</th>
             </tr>
@@ -70,6 +78,19 @@
                 </td>
                 <td>
                   <%= status_badge(kw.status) %>
+                </td>
+                <td>
+                  <% if kw.pushed %>
+                    <span class="admin-pill-status admin-pill-status-success">
+                      <span class="admin-pill-status-dot"></span>
+                      已推送
+                    </span>
+                  <% else %>
+                    <span class="admin-pill-status admin-pill-status-pending">
+                      <span class="admin-pill-status-dot"></span>
+                      未推送
+                    </span>
+                  <% end %>
                 </td>
                 <td>
                   <span class="admin-label-muted">
