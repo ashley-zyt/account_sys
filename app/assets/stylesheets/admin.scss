@@ -1139,6 +1139,13 @@ body.admin {
   box-shadow: inset 0 -1px 0 rgba(31, 41, 55, 0.95);
 }
 
+/* 数据预警页每个 section 只有一张卡片，覆盖全局两列布局为单列满宽 */
+.data-alerts-page .admin-grid-full {
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
 /* ===== 数据预警页自适应 ===== */
 /* 列超宽时横向滚动兜底（覆盖 admin-table-wrapper 的 overflow: hidden） */
 .data-alerts-page .alert-table-scroll {
