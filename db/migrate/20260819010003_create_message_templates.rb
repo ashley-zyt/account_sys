@@ -1,4 +1,4 @@
-class CreateMessageTemplates < ActiveRecord::Migration[6.1]
+class CreateMessageTemplatesV2 < ActiveRecord::Migration[6.1]
   def change
     create_table :message_templates do |t|
       t.string :name, null: false, comment: "模板名称"

@@ -1,4 +1,4 @@
-class CreateKols < ActiveRecord::Migration[6.1]
+class CreateKolsV2 < ActiveRecord::Migration[6.1]
   def change
     create_table :kols do |t|
       t.string :name, null: false, comment: "KOL名称/常用用户名"
