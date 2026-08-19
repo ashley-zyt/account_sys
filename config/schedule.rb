@@ -102,10 +102,10 @@ end
 
 # ==================== 花生资源队列推送 ====================
 # 每小时扫描已完成（status=3）且未推送的花生关键词，推送到花生资源队列
-# set :output, "log/huasheng_queue_scheduler.log"
-# every 1.hour do
-#   runner 'HuashengQueueScheduler.run'
-# end
+set :output, "log/huasheng_queue_scheduler.log"
+every 1.hour do
+  runner 'HuashengQueueScheduler.run'
+end
 
 
 # ==================== 养号任务配置 ====================
