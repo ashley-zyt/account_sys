@@ -15,10 +15,10 @@ class CreateKolContacts < ActiveRecord::Migration[6.1]
       t.datetime :last_used_at, comment: "最后使用时间"
 
       t.timestamps
-    end
+    end unless table_exists?(:kol_contacts)
 
-    add_index :kol_contacts, :platform
-    add_index :kol_contacts, :priority
-    add_index :kol_contacts, :status
+    add_index :kol_contacts, :platform unless index_exists?(:kol_contacts, :platform)
+    add_index :kol_contacts, :priority unless index_exists?(:kol_contacts, :priority)
+    add_index :kol_contacts, :status unless index_exists?(:kol_contacts, :status)
   end
 end
