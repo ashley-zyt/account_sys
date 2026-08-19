@@ -1140,21 +1140,44 @@ body.admin {
 }
 
 /* ===== 数据预警页自适应 ===== */
-/* 表格列超宽时横向滚动而不是被裁切（覆盖 admin-table-wrapper 的 overflow: hidden） */
+/* 列超宽时横向滚动兜底（覆盖 admin-table-wrapper 的 overflow: hidden） */
 .data-alerts-page .alert-table-scroll {
-  overflow-x: auto;
+	overflow-x: auto;
 }
 
-/* 给 8 列表格一个舒适的最小宽度，窄屏靠横向滚动查看 */
-.data-alerts-page .admin-table {
-  min-width: 860px;
+/* 单元格允许按内容换行，列宽自适应容器，窄窗口下不再强制横向滚动 */
+.data-alerts-page .admin-table th,
+.data-alerts-page .admin-table td {
+	white-space: normal;
+	padding: 7px 8px;
+	vertical-align: top;
 }
 
-/* 指标卡（Tab）等宽排布，窄屏自动换行：4 → 2 → 1 */
+/* 不宜折行的列（日期/操作/短数值）保持单行 */
+.data-alerts-page .admin-table td.alert-nowrap {
+	white-space: nowrap;
+}
+
+/* 状态胶囊不折行 */
+.data-alerts-page .admin-pill-status {
+	white-space: nowrap;
+}
+
+/* 长账号名省略号截断，避免撑爆列宽（悬停有 title 提示全名） */
+.data-alerts-page .alert-ellipsis {
+	display: inline-block;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	vertical-align: bottom;
+}
+
+/* 指标卡（Tab）窄屏自动换行：4 → 2 → 1 */
 .data-alerts-page .admin-metric-row {
-  flex-wrap: wrap;
+	flex-wrap: wrap;
 }
 
 .data-alerts-page .alert-tab {
-  flex: 1 1 180px;
+	flex: 1 1 180px;
 }

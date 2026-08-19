@@ -129,7 +129,7 @@
               <% @zero_views_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -148,10 +148,10 @@
                       <%= item[:streak] %> 条
                     </span>
                   </td>
-                  <td>
+                  <td class="alert-nowrap">
                     <span class="admin-label-muted"><%= item[:recent_posts].map { |p| p.post_date.strftime("%m-%d") }.join(" / ") %></span>
                   </td>
-                  <td>
+                  <td class="alert-nowrap">
                     <div style="display: flex; gap: 8px;">
                       <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
                       <%= link_to "发文数据", admin_post_stats_path(q: { account_id_eq: item[:account].id }), class: "admin-link-quiet", style: "color: var(--accent);" %>
@@ -210,7 +210,7 @@
               <% @recent_banned_accounts.each do |account| %>
                 <tr>
                   <td>
-                    <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: account.account_name %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= account.platform.to_s.titleize %></span>
@@ -224,7 +224,7 @@
                   <td>
                     <span class="admin-label-muted"><%= account.operator || '-' %></span>
                   </td>
-                  <td>
+                  <td class="alert-nowrap">
                     <span class="admin-label-muted" style="color: var(--danger);"><%= account.updated_at.strftime("%Y-%m-%d %H:%M") %></span>
                   </td>
                   <td>
@@ -232,7 +232,7 @@
                       <%= account.remark || '-' %>
                     </span>
                   </td>
-                  <td>
+                  <td class="alert-nowrap">
                     <%= link_to "详情", admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
                   </td>
                 </tr>
@@ -288,7 +288,7 @@
               <% @views_drop_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -310,7 +310,7 @@
                       -<%= item[:drop_percent] %>%
                     </span>
                   </td>
-                  <td>
+                  <td class="alert-nowrap">
                     <div style="display: flex; gap: 8px;">
                       <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
                       <%= link_to "发文数据", admin_post_stats_path(q: { account_id_eq: item[:account].id }), class: "admin-link-quiet", style: "color: var(--accent);" %>
@@ -369,7 +369,7 @@
               <% @fail_streak_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -385,7 +385,7 @@
                       <%= item[:streak] %> 次
                     </span>
                   </td>
-                  <td>
+                  <td class="alert-nowrap">
                     <span class="admin-label-muted"><%= item[:last_failed_at]&.strftime("%m-%d %H:%M") || '-' %></span>
                   </td>
                   <td>
@@ -393,7 +393,7 @@
                       <%= item[:last_error] || '-' %>
                     </span>
                   </td>
-                  <td>
+                  <td class="alert-nowrap">
                     <div style="display: flex; gap: 8px;">
                       <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
                       <%= link_to "日志", admin_task_logs_path(q: { account_id_eq: item[:account].id, status_eq: 1 }), class: "admin-link-quiet", style: "color: var(--danger);" %>
