@@ -27,9 +27,6 @@ class CreateKolMessages < ActiveRecord::Migration[6.1]
       t.timestamps
     end
 
-    add_index :kol_messages, :kol_id
-    add_index :kol_messages, :kol_contact_id
-    add_index :kol_messages, :account_id
     add_index :kol_messages, :status
     add_index :kol_messages, :direction
     add_index :kol_messages, :occurred_at

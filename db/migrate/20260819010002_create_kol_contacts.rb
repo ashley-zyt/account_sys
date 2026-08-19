@@ -17,7 +17,6 @@ class CreateKolContacts < ActiveRecord::Migration[6.1]
       t.timestamps
     end
 
-    add_index :kol_contacts, :kol_id
     add_index :kol_contacts, :platform
     add_index :kol_contacts, :priority
     add_index :kol_contacts, :status
