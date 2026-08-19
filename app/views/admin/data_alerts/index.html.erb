@@ -165,8 +165,8 @@
                   </td>
                   <td class="alert-nowrap">
                     <div style="display: flex; gap: 10px;">
-                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">详情</span>
-                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">发文数据</span>
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">详情</span>
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">发文数据</span>
                     </div>
                   </td>
                 </tr>
@@ -233,7 +233,7 @@
               <% @recent_banned_accounts.each do |account| %>
                 <tr>
                   <td>
-                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= account.account_name %>" data-action="drawer#open" data-drawer-id-param="<%= account.id %>" data-drawer-tab-param="overview">
+                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= account.account_name %>" data-drawer-trigger data-drawer-id-param="<%= account.id %>" data-drawer-tab-param="overview">
                       <%= account.account_name %>
                     </span>
                   </td>
@@ -264,7 +264,7 @@
                     </span>
                   </td>
                   <td class="alert-nowrap">
-                    <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= account.id %>" data-drawer-tab-param="overview">详情</span>
+                    <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-drawer-trigger data-drawer-id-param="<%= account.id %>" data-drawer-tab-param="overview">详情</span>
                   </td>
                 </tr>
               <% end %>
@@ -331,7 +331,7 @@
               <% @views_drop_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">
+                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">
                       <%= item[:account].account_name %>
                     </span>
                   </td>
@@ -366,8 +366,8 @@
                   </td>
                   <td class="alert-nowrap">
                     <div style="display: flex; gap: 10px;">
-                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">详情</span>
-                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">发文数据</span>
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">详情</span>
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">发文数据</span>
                     </div>
                   </td>
                 </tr>
@@ -434,7 +434,7 @@
               <% @fail_streak_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="logs">
+                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="logs">
                       <%= item[:account].account_name %>
                     </span>
                   </td>
@@ -468,8 +468,8 @@
                   </td>
                   <td class="alert-nowrap">
                     <div style="display: flex; gap: 10px;">
-                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">详情</span>
-                      <span class="admin-link-quiet" style="color: var(--danger); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="logs">日志</span>
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">详情</span>
+                      <span class="admin-link-quiet" style="color: var(--danger); cursor: pointer;" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="logs">日志</span>
                     </div>
                   </td>
                 </tr>
