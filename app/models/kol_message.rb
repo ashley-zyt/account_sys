@@ -2,22 +2,39 @@
 #
 # Table name: kol_messages
 #
-#  id                  :bigint           not null, primary key
-#  account_id          :bigint
-#  content             :text(65535)
-#  direction           :integer          default("outgoing"), not null
-#  error_msg           :text(65535)
-#  is_auto_reply       :boolean          default(FALSE), not null
-#  kol_contact_id      :bigint
-#  kol_id              :bigint           not null
-#  message_template_id :bigint
-#  occurred_at         :datetime
-#  platform            :integer          not null
-#  source              :integer          default("auto"), not null
-#  status              :integer          default("queued")
-#  wait_until          :datetime
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
+#  id                                      :bigint           not null, primary key
+#  content(消息内容)                       :text(65535)
+#  direction(消息方向)                     :integer          default("outgoing"), not null
+#  error_msg(失败原因)                     :text(65535)
+#  is_auto_reply(是否为自动回复（假回复）) :boolean          default(FALSE), not null
+#  occurred_at(消息发生时间)               :datetime
+#  platform(平台/渠道)                     :integer          not null
+#  source(消息来源)                        :integer          default("auto"), not null
+#  status(会话执行状态)                    :integer          default("queued"), not null
+#  wait_until(等待回复截止时间)            :datetime
+#  created_at                              :datetime         not null
+#  updated_at                              :datetime         not null
+#  account_id                              :bigint
+#  kol_contact_id                          :bigint
+#  kol_id                                  :bigint           not null
+#  message_template_id                     :bigint
+#
+# Indexes
+#
+#  index_kol_messages_on_account_id           (account_id)
+#  index_kol_messages_on_direction            (direction)
+#  index_kol_messages_on_kol_contact_id       (kol_contact_id)
+#  index_kol_messages_on_kol_id               (kol_id)
+#  index_kol_messages_on_message_template_id  (message_template_id)
+#  index_kol_messages_on_occurred_at          (occurred_at)
+#  index_kol_messages_on_status               (status)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#  fk_rails_...  (kol_contact_id => kol_contacts.id)
+#  fk_rails_...  (kol_id => kols.id)
+#  fk_rails_...  (message_template_id => message_templates.id)
 #
 class KolMessage < ApplicationRecord
   belongs_to :kol

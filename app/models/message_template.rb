@@ -2,13 +2,17 @@
 #
 # Table name: message_templates
 #
-#  id         :bigint           not null, primary key
-#  content    :text(65535)      not null
-#  language   :string(255)      default("en"), not null
-#  name       :string(255)      not null
-#  scenario   :integer          default("first_contact"), not null
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
+#  id                                :bigint           not null, primary key
+#  content(模板内容（支持变量注入）) :text(65535)      not null
+#  language(语种)                    :string(255)      default("en"), not null
+#  name(模板名称)                    :string(255)      not null
+#  scenario(模板场景)                :integer          default("first_contact"), not null
+#  created_at                        :datetime         not null
+#  updated_at                        :datetime         not null
+#
+# Indexes
+#
+#  index_message_templates_on_scenario_and_language  (scenario,language)
 #
 class MessageTemplate < ApplicationRecord
   has_many :kol_messages, dependent: :nullify

@@ -2,17 +2,28 @@
 #
 # Table name: kol_contacts
 #
-#  id                 :bigint           not null, primary key
-#  kol_id             :bigint           not null
-#  last_used_at       :datetime
-#  messaging_enabled  :boolean          default(FALSE), not null
-#  nickname           :string(255)
-#  platform           :integer          not null
-#  priority           :integer          default(0), not null
-#  status             :integer          default("active")
-#  url                :string(255)
-#  created_at         :datetime         not null
-#  updated_at         :datetime         not null
+#  id                                    :bigint           not null, primary key
+#  last_used_at(最后使用时间)            :datetime
+#  messaging_enabled(是否可作为发信渠道) :boolean          default(FALSE), not null
+#  nickname(平台昵称/账号)               :string(255)
+#  platform(平台或通讯渠道)              :integer          not null
+#  priority(触达优先级（越小越优先）)    :integer          default(0), not null
+#  status(联系方式状态：active/invalid)  :integer          default("active"), not null
+#  url(主页链接或联系方式)               :string(255)
+#  created_at                            :datetime         not null
+#  updated_at                            :datetime         not null
+#  kol_id                                :bigint           not null
+#
+# Indexes
+#
+#  index_kol_contacts_on_kol_id    (kol_id)
+#  index_kol_contacts_on_platform  (platform)
+#  index_kol_contacts_on_priority  (priority)
+#  index_kol_contacts_on_status    (status)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (kol_id => kols.id)
 #
 class KolContact < ApplicationRecord
   belongs_to :kol

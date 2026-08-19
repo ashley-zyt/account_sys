@@ -2,24 +2,26 @@
 #
 # Table name: accounts
 #
-#  id                                                        :bigint           not null, primary key
-#  account_name(账号名)                                      :string(255)
-#  last_used_at(最后一次使用时间)                            :datetime
-#  operator                                                  :string(255)
-#  platform(平台：facebook/twitter/tiktok/youtube/instagram) :integer          default("facebook")
-#  remark(备注信息)                                          :string(255)
-#  source_url(账号主页链接)                                  :string(255)
-#  status(账号状态)                                          :integer          default("正常")
-#  theme(账号主题)                                           :string(255)
-#  work_type(工作运行方式：搬运/coze/其他)                   :integer
-#  created_at                                                :datetime         not null
-#  updated_at                                                :datetime         not null
-#  browser_id(绑定的指纹浏览器ID)                            :bigint
+#  id                                                             :bigint           not null, primary key
+#  account_name(账号名)                                           :string(255)
+#  kol_sleep_until(KOL触达休眠截止时间（内部账号风控后暂停调度）) :datetime
+#  last_used_at(最后一次使用时间)                                 :datetime
+#  operator                                                       :string(255)
+#  platform(平台：facebook/twitter/tiktok/youtube/instagram)      :integer          default("facebook")
+#  remark(备注信息)                                               :string(255)
+#  source_url(账号主页链接)                                       :string(255)
+#  status(账号状态)                                               :integer          default("正常")
+#  theme(账号主题)                                                :string(255)
+#  work_type(工作运行方式：搬运/coze/其他)                        :integer
+#  created_at                                                     :datetime         not null
+#  updated_at                                                     :datetime         not null
+#  browser_id(绑定的指纹浏览器ID)                                 :bigint
 #
 # Indexes
 #
 #  idx_accounts_theme_status_lastused  (theme,status,last_used_at)
 #  index_accounts_on_browser_id        (browser_id)
+#  index_accounts_on_kol_sleep_until   (kol_sleep_until)
 #  index_accounts_on_last_used_at      (last_used_at)
 #  index_accounts_on_platform          (platform)
 #  index_accounts_on_source_url        (source_url)

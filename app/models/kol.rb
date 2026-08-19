@@ -2,21 +2,30 @@
 #
 # Table name: kols
 #
-#  id                 :bigint           not null, primary key
-#  category           :string(255)
-#  country            :string(255)
-#  current_account_id :bigint
-#  current_contact_id :bigint
-#  follower_tier      :string(255)
-#  language           :string(255)      not null
-#  last_contacted_at  :datetime
-#  name               :string(255)      not null
-#  next_action_at     :datetime
-#  notes              :text(65535)
-#  owner              :string(255)      not null
-#  status             :integer          default("reserved")
-#  created_at         :datetime         not null
-#  updated_at         :datetime         not null
+#  id                                                       :bigint           not null, primary key
+#  category(所属领域)                                       :string(255)
+#  country(所在国家/地区)                                   :string(255)
+#  follower_tier(粉丝量级)                                  :string(255)
+#  language(使用语言（必填）)                               :string(255)      not null
+#  last_contacted_at(最后一次触达时间)                      :datetime
+#  name(KOL名称/常用用户名)                                 :string(255)      not null
+#  next_action_at(下次可执行自动化动作的时间（等待期结束）) :datetime
+#  notes(备注)                                              :text(65535)
+#  owner(归属人（负责人）)                                  :string(255)      not null
+#  status(KOL业务生命周期状态)                              :integer          default("reserved"), not null
+#  created_at                                               :datetime         not null
+#  updated_at                                               :datetime         not null
+#  current_account_id(当前分配的内部账号ID)                 :bigint
+#  current_contact_id(当前正在触达的联系方式ID)             :bigint
+#
+# Indexes
+#
+#  index_kols_on_category        (category)
+#  index_kols_on_language        (language)
+#  index_kols_on_name            (name)
+#  index_kols_on_next_action_at  (next_action_at)
+#  index_kols_on_owner           (owner)
+#  index_kols_on_status          (status)
 #
 class Kol < ApplicationRecord
   has_many :kol_contacts, dependent: :destroy
