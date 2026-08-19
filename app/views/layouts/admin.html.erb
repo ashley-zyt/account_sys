@@ -57,6 +57,23 @@
                 </div>
               <% end %>
             </li>
+
+            <% data_alerts_active = controller_path == "admin/data_alerts" %>
+            <li class="admin-nav-item <%= "active" if data_alerts_active %>">
+              <%= link_to admin_data_alerts_path, class: "admin-nav-link", data: { tooltip: "数据预警" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🚨
+                  </div>
+                  <div class="admin-nav-label">
+                    数据预警
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Data Alerts
+                </div>
+              <% end %>
+            </li>
           </ul>
         </div>
 
@@ -301,66 +318,6 @@
                 </div>
                 <div class="admin-nav-meta">
                   Logs
-                </div>
-              <% end %>
-            </li>
-          </ul>
-        </div>
-
-        <div class="admin-sidebar-section" data-section-name="kols" data-sidebar-target="section">
-          <div class="admin-sidebar-section-title"
-               data-action="click->sidebar#toggleSection">
-            <span>KOL管理</span>
-            <span class="section-arrow">▾</span>
-          </div>
-          <ul class="admin-nav">
-            <% kols_active = controller_path == "admin/kols" %>
-            <li class="admin-nav-item <%= "active" if kols_active %>">
-              <%= link_to admin_kols_path, class: "admin-nav-link", data: { tooltip: "KOL列表" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    👥
-                  </div>
-                  <div class="admin-nav-label">
-                    KOL列表
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  KOL
-                </div>
-              <% end %>
-            </li>
-            
-            <% conversations_active = controller_path == "admin/conversations" %>
-            <li class="admin-nav-item <%= "active" if conversations_active %>">
-              <%= link_to admin_conversations_path, class: "admin-nav-link", data: { tooltip: "会话中心" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    💬
-                  </div>
-                  <div class="admin-nav-label">
-                    会话中心
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Conversations
-                </div>
-              <% end %>
-            </li>
-            
-            <% templates_active = controller_path == "admin/message_templates" %>
-            <li class="admin-nav-item <%= "active" if templates_active %>">
-              <%= link_to admin_message_templates_path, class: "admin-nav-link", data: { tooltip: "消息模板" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    📝
-                  </div>
-                  <div class="admin-nav-label">
-                    消息模板
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Templates
                 </div>
               <% end %>
             </li>

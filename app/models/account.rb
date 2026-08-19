@@ -38,8 +38,6 @@ class Account < ApplicationRecord
 	has_one :warmup_profile, dependent: :destroy
 	# 通过 task_logs.account_id 快照反查该账号的所有执行日志（兼容运营任务被释放资源的场景）
 	has_many :task_logs, foreign_key: :account_id, dependent: :nullify
-	# 账号可参与多个会话
-	has_many :conversations, dependent: :destroy
 	# 账号可有多条发文数据记录
 	has_many :post_stats, dependent: :destroy
 	# 账号日维度总量快照（粉丝/浏览/点赞/发帖累计）
