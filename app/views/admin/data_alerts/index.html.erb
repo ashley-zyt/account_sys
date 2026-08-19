@@ -5,7 +5,7 @@
   账号数据异常集中监控：零浏览、封禁、浏览量骤降、连续发布失败
 <% end %>
 
-<div class="data-alerts-page" data-controller="alert-tabs drawer" data-drawer-url-value="<%= account_admin_data_alerts_path %>">
+<div class="data-alerts-page" data-controller="alert-tabs">
   <%# ===== 预警总览（指标卡 = Tab 切换按钮） ===== %>
   <div class="admin-grid-full">
     <div class="admin-card">
@@ -133,7 +133,7 @@
               <% @zero_views_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">
+                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">
                       <%= item[:account].account_name %>
                     </span>
                   </td>
@@ -497,36 +497,131 @@
   </div>
 
   <%# ===== 右侧抽屉 ===== %>
-  <div class="drawer-backdrop" data-drawer-target="backdrop" data-action="click->drawer#close"></div>
-  <div class="drawer-panel" data-drawer-target="drawer">
+  <div class="drawer-backdrop" data-drawer-role="backdrop"></div>
+  <div class="drawer-panel" data-drawer-role="panel">
     <div class="drawer-header">
       <div class="drawer-title">账号详情</div>
-      <button type="button" class="drawer-close" data-action="drawer#close" title="关闭 (ESC)">✕</button>
+      <button type="button" class="drawer-close" data-drawer-role="close" title="关闭 (ESC)">✕</button>
     </div>
     <div class="drawer-tabs">
       <button type="button"
               class="drawer-tab"
-              data-drawer-target="tab"
-              data-drawer-tab-name="overview"
-              data-action="drawer#switchTab"
-              data-drawer-name-param="overview">概览</button>
+              data-drawer-role="tab"
+              data-drawer-tab-name="overview">概览</button>
       <button type="button"
               class="drawer-tab"
-              data-drawer-target="tab"
-              data-drawer-tab-name="posts"
-              data-action="drawer#switchTab"
-              data-drawer-name-param="posts">发文数据</button>
+              data-drawer-role="tab"
+              data-drawer-tab-name="posts">发文数据</button>
       <button type="button"
               class="drawer-tab"
-              data-drawer-target="tab"
-              data-drawer-tab-name="logs"
-              data-action="drawer#switchTab"
-              data-drawer-name-param="logs">任务日志</button>
+              data-drawer-role="tab"
+              data-drawer-tab-name="logs">任务日志</button>
     </div>
-    <div class="drawer-body" data-drawer-target="content">
+    <div class="drawer-body" data-drawer-role="content">
       <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 12px;">
         点击列表中的账号名或操作链接查看详情
       </div>
     </div>
   </div>
 </div>
+
+<script>
+(function() {
+  var DRAWER_URL = '<%= account_admin_data_alerts_path %>';
+  var currentTab = 'overview';
+
+  function $(sel) { return document.querySelector(sel); }
+  function $$(sel) { return Array.from(document.querySelectorAll(sel)); }
+
+  function openDrawer(accountId, tab) {
+    currentTab = tab || 'overview';
+    var panel = $('[data-drawer-role="panel"]');
+    var backdrop = $('[data-drawer-role="backdrop"]');
+    var content = $('[data-drawer-role="content"]');
+
+    // 激活对应 Tab 按钮
+    $$('[data-drawer-role="tab"]').forEach(function(btn) {
+      btn.classList.toggle('drawer-tab-active', btn.dataset.drawerTabName === currentTab);
+    });
+
+    // 显示抽屉
+    panel.classList.add('drawer-open');
+    backdrop.classList.add('drawer-backdrop-visible');
+    document.body.style.overflow = 'hidden';
+
+    // 加载内容
+    content.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: var(--text-muted); font-size: 13px;">加载中...</div>';
+
+    var url = DRAWER_URL + (DRAWER_URL.indexOf('?') >= 0 ? '&' : '?') + 'id=' + encodeURIComponent(accountId);
+    fetch(url, {
+      headers: { 'Accept': 'text/html' },
+      credentials: 'same-origin'
+    })
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.text();
+    })
+    .then(function(html) {
+      content.innerHTML = html;
+      activateTab(currentTab);
+    })
+    .catch(function(e) {
+      content.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: var(--danger); font-size: 13px;">加载失败：' + e.message + '</div>';
+    });
+  }
+
+  function closeDrawer() {
+    var panel = $('[data-drawer-role="panel"]');
+    var backdrop = $('[data-drawer-role="backdrop"]');
+    panel.classList.remove('drawer-open');
+    backdrop.classList.remove('drawer-backdrop-visible');
+    document.body.style.overflow = '';
+  }
+
+  function activateTab(tabName) {
+    currentTab = tabName;
+    $$('[data-drawer-role="tab"]').forEach(function(btn) {
+      btn.classList.toggle('drawer-tab-active', btn.dataset.drawerTabName === tabName);
+    });
+    $$('[data-drawer-panel]').forEach(function(panel) {
+      panel.style.display = panel.dataset.drawerPanel === tabName ? '' : 'none';
+    });
+  }
+
+  // 事件委托：点击触发元素
+  document.addEventListener('click', function(e) {
+    var trigger = e.target.closest('[data-drawer-trigger]');
+    if (trigger) {
+      e.preventDefault();
+      var id = trigger.dataset.drawerIdParam;
+      var tab = trigger.dataset.drawerTabParam || 'overview';
+      openDrawer(id, tab);
+      return;
+    }
+
+    // 关闭按钮
+    if (e.target.closest('[data-drawer-role="close"]')) {
+      closeDrawer();
+      return;
+    }
+
+    // 遮罩点击关闭
+    if (e.target.matches('[data-drawer-role="backdrop"]')) {
+      closeDrawer();
+      return;
+    }
+
+    // Tab 切换
+    var tabBtn = e.target.closest('[data-drawer-role="tab"]');
+    if (tabBtn) {
+      activateTab(tabBtn.dataset.drawerTabName);
+      return;
+    }
+  });
+
+  // ESC 关闭
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDrawer();
+  });
+})();
+</script>

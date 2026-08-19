@@ -8,7 +8,7 @@
 #  nickname(平台昵称/账号)               :string(255)
 #  platform(平台或通讯渠道)              :integer          not null
 #  priority(触达优先级（越小越优先）)    :integer          default(0), not null
-#  status(联系方式状态：active/invalid)  :integer          default("active"), not null
+#  status(联系方式状态：active/disabled)  :integer          default("active"), not null
 #  url(主页链接或联系方式)               :string(255)
 #  created_at                            :datetime         not null
 #  updated_at                            :datetime         not null
@@ -43,7 +43,7 @@ class KolContact < ApplicationRecord
 
   enum status: {
     active: 0,
-    invalid: 1
+    disabled: 1
   }
 
   validates :platform, presence: true
