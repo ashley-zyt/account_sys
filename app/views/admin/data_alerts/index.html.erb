@@ -5,7 +5,8 @@
   账号数据异常集中监控：零浏览、封禁、浏览量骤降、连续发布失败
 <% end %>
 
-<div class="data-alerts-page" data-controller="alert-tabs">
+<div class="data-alerts-page" data-controller="alert-tabs drawer" data-drawer-url-value="<%= account_admin_data_alerts_path %>">
+  <%# ===== 预警总览（指标卡 = Tab 切换按钮） ===== %>
   <div class="admin-grid-full">
     <div class="admin-card">
       <div class="admin-card-header">
@@ -14,7 +15,7 @@
             预警总览
           </div>
           <div class="admin-card-subtitle">
-            点击指标卡切换下方预警列表；数值为当前各类预警触发数量
+            点击指标卡切换下方预警列表；点击账号名或操作链接可查看详情（不跳转页面）
           </div>
         </div>
       </div>
@@ -92,6 +93,7 @@
     </div>
   </div>
 
+  <%# ===== Tab 1: 连续3次0浏览 ===== %>
   <div class="admin-grid-full" data-alert-tabs-target="panel" data-alert-tabs-name="zero-views">
     <div class="admin-card">
       <div class="admin-card-header">
@@ -110,26 +112,30 @@
         </div>
       </div>
 
-      <div class="admin-table-wrapper alert-table-scroll">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>账号名</th>
-              <th>平台</th>
-              <th>主题</th>
-              <th>工作模式</th>
-              <th>状态</th>
-              <th>连续0浏览</th>
-              <th>最近发文日期</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if @zero_views_accounts.any? %>
+      <div data-controller="table-pagination" data-table-pagination-size-value="10">
+        <div class="admin-table-wrapper alert-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>账号名</th>
+                <th>平台</th>
+                <th>主题</th>
+                <th>工作模式</th>
+                <th>状态</th>
+                <th>运营人员</th>
+                <th>连续0浏览</th>
+                <th>最近发文日期</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody data-table-pagination-target="body">
+              <% if @zero_views_accounts.any? %>
               <% @zero_views_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
+                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">
+                      <%= item[:account].account_name %>
+                    </span>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -141,7 +147,13 @@
                     <span class="admin-label-muted"><%= item[:account].work_type.to_s.titleize %></span>
                   </td>
                   <td>
-                    <span class="admin-label-muted"><%= item[:account].status %></span>
+                    <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.12); color: #4ade80; font-weight: 500;">
+                      <span class="admin-pill-status-dot" style="background: var(--success);"></span>
+                      <%= item[:account].status %>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="admin-label-muted"><%= item[:account].operator || '-' %></span>
                   </td>
                   <td>
                     <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;">
@@ -152,27 +164,36 @@
                     <span class="admin-label-muted"><%= item[:recent_posts].map { |p| p.post_date.strftime("%m-%d") }.join(" / ") %></span>
                   </td>
                   <td class="alert-nowrap">
-                    <div style="display: flex; gap: 8px;">
-                      <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                      <%= link_to "发文数据", admin_post_stats_path(q: { account_id_eq: item[:account].id }), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <div style="display: flex; gap: 10px;">
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">详情</span>
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">发文数据</span>
                     </div>
                   </td>
                 </tr>
               <% end %>
             <% else %>
               <tr>
-                <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <td colspan="9" style="padding: 24px; text-align: center;" class="admin-label-muted">
                   <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
                   暂无连续0浏览的账号
                 </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
+        <div class="pg-bar">
+          <div class="pg-info" data-table-pagination-target="info"></div>
+          <div class="pg-actions">
+            <button type="button" class="pg-btn" data-table-pagination-target="prevBtn" data-action="table-pagination#prev">上一页</button>
+            <button type="button" class="pg-btn" data-table-pagination-target="nextBtn" data-action="table-pagination#next">下一页</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  <%# ===== Tab 2: 最近封禁 ===== %>
   <div class="admin-grid-full" data-alert-tabs-target="panel" data-alert-tabs-name="banned">
     <div class="admin-card">
       <div class="admin-card-header">
@@ -191,26 +212,30 @@
         </div>
       </div>
 
-      <div class="admin-table-wrapper alert-table-scroll">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>账号名</th>
-              <th>平台</th>
-              <th>主题</th>
-              <th>工作模式</th>
-              <th>运营人员</th>
-              <th>封禁时间</th>
-              <th>备注</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if @recent_banned_accounts.any? %>
+      <div data-controller="table-pagination" data-table-pagination-size-value="10">
+        <div class="admin-table-wrapper alert-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>账号名</th>
+                <th>平台</th>
+                <th>主题</th>
+                <th>工作模式</th>
+                <th>状态</th>
+                <th>运营人员</th>
+                <th>封禁时间</th>
+                <th>备注</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody data-table-pagination-target="body">
+              <% if @recent_banned_accounts.any? %>
               <% @recent_banned_accounts.each do |account| %>
                 <tr>
                   <td>
-                    <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: account.account_name %>
+                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= account.account_name %>" data-action="drawer#open" data-drawer-id-param="<%= account.id %>" data-drawer-tab-param="overview">
+                      <%= account.account_name %>
+                    </span>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= account.platform.to_s.titleize %></span>
@@ -220,6 +245,12 @@
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= account.work_type.to_s.titleize %></span>
+                  </td>
+                  <td>
+                    <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.12); color: #ef4444; font-weight: 500;">
+                      <span class="admin-pill-status-dot" style="background: var(--danger);"></span>
+                      <%= account.status %>
+                    </span>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= account.operator || '-' %></span>
@@ -233,24 +264,33 @@
                     </span>
                   </td>
                   <td class="alert-nowrap">
-                    <%= link_to "详情", admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= account.id %>" data-drawer-tab-param="overview">详情</span>
                   </td>
                 </tr>
               <% end %>
             <% else %>
               <tr>
-                <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <td colspan="9" style="padding: 24px; text-align: center;" class="admin-label-muted">
                   <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
                   暂无被封禁的账号
                 </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
+        <div class="pg-bar">
+          <div class="pg-info" data-table-pagination-target="info"></div>
+          <div class="pg-actions">
+            <button type="button" class="pg-btn" data-table-pagination-target="prevBtn" data-action="table-pagination#prev">上一页</button>
+            <button type="button" class="pg-btn" data-table-pagination-target="nextBtn" data-action="table-pagination#next">下一页</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  <%# ===== Tab 3: 浏览量骤降 ===== %>
   <div class="admin-grid-full" data-alert-tabs-target="panel" data-alert-tabs-name="views-drop">
     <div class="admin-card">
       <div class="admin-card-header">
@@ -269,26 +309,31 @@
         </div>
       </div>
 
-      <div class="admin-table-wrapper alert-table-scroll">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>账号名</th>
-              <th>平台</th>
-              <th>主题</th>
-              <th>工作模式</th>
-              <th>前7天单篇均浏览</th>
-              <th>近7天单篇均浏览</th>
-              <th>降幅</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if @views_drop_accounts.any? %>
+      <div data-controller="table-pagination" data-table-pagination-size-value="10">
+        <div class="admin-table-wrapper alert-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>账号名</th>
+                <th>平台</th>
+                <th>主题</th>
+                <th>工作模式</th>
+                <th>状态</th>
+                <th>运营人员</th>
+                <th>前7天均浏览</th>
+                <th>近7天均浏览</th>
+                <th>降幅</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody data-table-pagination-target="body">
+              <% if @views_drop_accounts.any? %>
               <% @views_drop_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
+                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">
+                      <%= item[:account].account_name %>
+                    </span>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -298,6 +343,15 @@
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].work_type.to_s.titleize %></span>
+                  </td>
+                  <td>
+                    <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.12); color: #4ade80; font-weight: 500;">
+                      <span class="admin-pill-status-dot" style="background: var(--success);"></span>
+                      <%= item[:account].status %>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="admin-label-muted"><%= item[:account].operator || '-' %></span>
                   </td>
                   <td>
                     <span class="admin-label-muted" style="font-weight: 600;"><%= item[:prev_avg] %></span>
@@ -311,27 +365,36 @@
                     </span>
                   </td>
                   <td class="alert-nowrap">
-                    <div style="display: flex; gap: 8px;">
-                      <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                      <%= link_to "发文数据", admin_post_stats_path(q: { account_id_eq: item[:account].id }), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <div style="display: flex; gap: 10px;">
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">详情</span>
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">发文数据</span>
                     </div>
                   </td>
                 </tr>
               <% end %>
             <% else %>
               <tr>
-                <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <td colspan="10" style="padding: 24px; text-align: center;" class="admin-label-muted">
                   <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
                   暂无浏览量骤降的账号
                 </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
+        <div class="pg-bar">
+          <div class="pg-info" data-table-pagination-target="info"></div>
+          <div class="pg-actions">
+            <button type="button" class="pg-btn" data-table-pagination-target="prevBtn" data-action="table-pagination#prev">上一页</button>
+            <button type="button" class="pg-btn" data-table-pagination-target="nextBtn" data-action="table-pagination#next">下一页</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  <%# ===== Tab 4: 连续发布失败 ===== %>
   <div class="admin-grid-full" data-alert-tabs-target="panel" data-alert-tabs-name="fail-streak">
     <div class="admin-card">
       <div class="admin-card-header">
@@ -350,26 +413,30 @@
         </div>
       </div>
 
-      <div class="admin-table-wrapper alert-table-scroll">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>账号名</th>
-              <th>平台</th>
-              <th>工作模式</th>
-              <th>状态</th>
-              <th>连续失败</th>
-              <th>最近失败时间</th>
-              <th>最近错误信息</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if @fail_streak_accounts.any? %>
+      <div data-controller="table-pagination" data-table-pagination-size-value="10">
+        <div class="admin-table-wrapper alert-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>账号名</th>
+                <th>平台</th>
+                <th>工作模式</th>
+                <th>状态</th>
+                <th>运营人员</th>
+                <th>连续失败</th>
+                <th>最近失败时间</th>
+                <th>最近错误信息</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody data-table-pagination-target="body">
+              <% if @fail_streak_accounts.any? %>
               <% @fail_streak_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
+                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="logs">
+                      <%= item[:account].account_name %>
+                    </span>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -378,7 +445,13 @@
                     <span class="admin-label-muted"><%= item[:account].work_type.to_s.titleize %></span>
                   </td>
                   <td>
-                    <span class="admin-label-muted"><%= item[:account].status %></span>
+                    <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.12); color: #4ade80; font-weight: 500;">
+                      <span class="admin-pill-status-dot" style="background: var(--success);"></span>
+                      <%= item[:account].status %>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="admin-label-muted"><%= item[:account].operator || '-' %></span>
                   </td>
                   <td>
                     <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;">
@@ -394,23 +467,65 @@
                     </span>
                   </td>
                   <td class="alert-nowrap">
-                    <div style="display: flex; gap: 8px;">
-                      <%= link_to "详情", admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
-                      <%= link_to "日志", admin_task_logs_path(q: { account_id_eq: item[:account].id, status_eq: 1 }), class: "admin-link-quiet", style: "color: var(--danger);" %>
+                    <div style="display: flex; gap: 10px;">
+                      <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">详情</span>
+                      <span class="admin-link-quiet" style="color: var(--danger); cursor: pointer;" data-action="drawer#open" data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="logs">日志</span>
                     </div>
                   </td>
                 </tr>
               <% end %>
             <% else %>
               <tr>
-                <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <td colspan="9" style="padding: 24px; text-align: center;" class="admin-label-muted">
                   <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
                   暂无连续发布失败的账号
                 </td>
               </tr>
             <% end %>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
+        <div class="pg-bar">
+          <div class="pg-info" data-table-pagination-target="info"></div>
+          <div class="pg-actions">
+            <button type="button" class="pg-btn" data-table-pagination-target="prevBtn" data-action="table-pagination#prev">上一页</button>
+            <button type="button" class="pg-btn" data-table-pagination-target="nextBtn" data-action="table-pagination#next">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ===== 右侧抽屉 ===== %>
+  <div class="drawer-backdrop" data-drawer-target="backdrop" data-action="click->drawer#close"></div>
+  <div class="drawer-panel" data-drawer-target="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">账号详情</div>
+      <button type="button" class="drawer-close" data-action="drawer#close" title="关闭 (ESC)">✕</button>
+    </div>
+    <div class="drawer-tabs">
+      <button type="button"
+              class="drawer-tab"
+              data-drawer-target="tab"
+              data-drawer-tab-name="overview"
+              data-action="drawer#switchTab"
+              data-drawer-name-param="overview">概览</button>
+      <button type="button"
+              class="drawer-tab"
+              data-drawer-target="tab"
+              data-drawer-tab-name="posts"
+              data-action="drawer#switchTab"
+              data-drawer-name-param="posts">发文数据</button>
+      <button type="button"
+              class="drawer-tab"
+              data-drawer-target="tab"
+              data-drawer-tab-name="logs"
+              data-action="drawer#switchTab"
+              data-drawer-name-param="logs">任务日志</button>
+    </div>
+    <div class="drawer-body" data-drawer-target="content">
+      <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 12px;">
+        点击列表中的账号名或操作链接查看详情
       </div>
     </div>
   </div>

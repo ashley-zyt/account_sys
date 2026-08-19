@@ -20,6 +20,17 @@ class Admin::DataAlertsController < Admin::BaseController
 		@fail_streak_accounts = fetch_fail_streak_accounts
 	end
 
+	# 抽屉内容：账号详情（概览 / 发文数据 / 任务日志）
+	def account
+		@account = Account.find(params[:id])
+		@recent_posts = @account.post_stats.order(post_date: :desc).limit(10)
+		@recent_logs = TaskLog.where(account_id: @account.id)
+			.order(run_at: :desc)
+			.limit(10)
+		@browser = @account.browser
+		render layout: false
+	end
+
 	private
 
 	# 数据类预警仅统计仍在运营中的账号，已封禁账号的数据表现无处置意义

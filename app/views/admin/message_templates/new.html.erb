@@ -1,0 +1,16 @@
+<% content_for :page_title do %>
+  新建消息模板
+<% end %>
+<% content_for :page_subtitle do %>
+  添加自动化触达话术模板
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">新建消息模板</div>
+      <div class="admin-card-subtitle">按场景与语种分类管理</div>
+    </div>
+  </div>
+  <%= render "form", message_template: @template %>
+</div>

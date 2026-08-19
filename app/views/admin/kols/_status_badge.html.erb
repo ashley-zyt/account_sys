@@ -1,0 +1,17 @@
+<%
+  mapping = {
+    "reserved"            => ["储备中", "148,163,184"],
+    "pending"             => ["待触达", "59,130,246"],
+    "contacting"          => ["触达中", "245,158,11"],
+    "replied_unprocessed" => ["已回复·待处理", "168,85,247"],
+    "negotiating"         => ["人工跟进中", "14,165,233"],
+    "cooperating"         => ["已合作", "34,197,94"],
+    "failed"              => ["未能合作", "239,68,68"],
+    "unresponsive"        => ["无响应", "100,116,139"]
+  }
+  label, rgb = mapping[status.to_s] || [status.to_s, "148,163,184"]
+%>
+<span class="admin-pill-status" style="background: rgba(<%= rgb %>, 0.12); color: rgb(<%= rgb %>);">
+  <span class="admin-pill-status-dot"></span>
+  <%= label %>
+</span>

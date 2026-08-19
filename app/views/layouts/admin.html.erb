@@ -324,6 +324,48 @@
           </ul>
         </div>
 
+        <div class="admin-sidebar-section" data-section-name="kol" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>KOL 管理</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% kols_active = controller_path == "admin/kols" %>
+            <li class="admin-nav-item <%= "active" if kols_active %>">
+              <%= link_to admin_kols_path, class: "admin-nav-link", data: { tooltip: "KOL 管理" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    ⭐
+                  </div>
+                  <div class="admin-nav-label">
+                    KOL 管理
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  KOLs
+                </div>
+              <% end %>
+            </li>
+            <% templates_active = controller_path == "admin/message_templates" %>
+            <li class="admin-nav-item <%= "active" if templates_active %>">
+              <%= link_to admin_message_templates_path, class: "admin-nav-link", data: { tooltip: "消息模板" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    💬
+                  </div>
+                  <div class="admin-nav-label">
+                    消息模板
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Templates
+                </div>
+              <% end %>
+            </li>
+          </ul>
+        </div>
+
         <div class="admin-sidebar-section" data-section-name="config" data-sidebar-target="section">
           <div class="admin-sidebar-section-title"
                data-action="click->sidebar#toggleSection">

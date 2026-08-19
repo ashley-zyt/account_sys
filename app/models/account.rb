@@ -42,6 +42,8 @@ class Account < ApplicationRecord
 	has_many :post_stats, dependent: :destroy
 	# 账号日维度总量快照（粉丝/浏览/点赞/发帖累计）
 	has_many :account_stats, dependent: :destroy
+	# KOL 触达消息（账号删除时保留消息记录）
+	has_many :kol_messages, dependent: :nullify
 
 	# 回调：当账号状态变更时，同步更新浏览器的“无效”状态
 	after_save :sync_browser_status, if: :saved_change_to_status?
@@ -187,6 +189,11 @@ class Account < ApplicationRecord
 
 	def warmup_due?
 		warmup_profile&.warmup_due? || false
+	end
+
+	# KOL 触达：内部账号是否处于风控休眠期
+	def kol_sleeping?
+		kol_sleep_until.present? && kol_sleep_until > Time.current
 	end
 
 	# ===== 账号总量快照便捷方法（account_stats） =====

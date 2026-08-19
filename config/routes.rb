@@ -3,7 +3,11 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root to: "dashboard#index"
-    resources :data_alerts, only: [:index]
+    resources :data_alerts, only: [:index] do
+      collection do
+        get :account
+      end
+    end
     resources :accounts, only: [:index, :show, :new, :create, :edit, :update] do
       member do
         post :toggle_warmup
@@ -83,6 +87,20 @@ Rails.application.routes.draw do
       end
     end
     resources :operation_logs, only: [:index]
+
+    # KOL 自动化触达与管理模块
+    resources :kols do
+      member do
+        post :activate
+        post :deactivate
+        post :contact_now
+        post :take_over
+        post :mark_outcome
+        post :mark_auto_reply
+        post :add_message
+      end
+    end
+    resources :message_templates, except: [:show]
   end
 
   namespace :api do

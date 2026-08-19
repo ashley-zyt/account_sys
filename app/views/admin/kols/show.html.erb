@@ -1,0 +1,291 @@
+<% content_for :page_title do %>
+  KOL 详情
+<% end %>
+<% content_for :page_subtitle do %>
+  <%= @kol.name %> 的档案、名片夹与跨渠道对话流
+<% end %>
+
+<style>
+  .kol-platform-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .kol-platform-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px; border: 1px solid rgba(148,163,184,0.25); border-radius: 8px; text-align: center; }
+  .kol-platform-icon { font-size: 26px; }
+  .kol-chat { display: flex; flex-direction: column; gap: 10px; max-height: 560px; overflow-y: auto; padding: 4px; }
+  .kol-chat-row { display: flex; }
+  .kol-chat-row.out { justify-content: flex-end; }
+  .kol-chat-row.in { justify-content: flex-start; }
+  .kol-bubble { max-width: 72%; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.55; }
+  .kol-bubble.out { background: rgba(59,130,246,0.14); border: 1px solid rgba(59,130,246,0.32); color: #e2e8f0; }
+  .kol-bubble.in { background: rgba(148,163,184,0.12); border: 1px solid rgba(148,163,184,0.26); color: #e2e8f0; }
+  .kol-bubble-meta { display: flex; gap: 8px; align-items: center; font-size: 11px; color: #94a3b8; margin-bottom: 4px; flex-wrap: wrap; }
+  .kol-bubble-content { white-space: pre-wrap; word-break: break-word; }
+</style>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        <%= @kol.name %>
+      </div>
+      <div class="admin-card-subtitle">
+        <%= @kol.owner %> 负责 · <%= @kol.language %>
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= render "status_badge", status: @kol.status %>
+      <%= link_to "编辑", edit_admin_kol_path(@kol), class: "admin-button-secondary" %>
+      <%= link_to "删除", admin_kol_path(@kol), data: { turbo_method: :delete, turbo_confirm: "确定要删除该 KOL 吗？" }, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">名称</div>
+      <div class="admin-field-value"><%= @kol.name %></div>
+    </div>
+    <div>
+      <div class="admin-field-label">所属领域</div>
+      <div class="admin-field-value"><%= @kol.category.presence || "-" %></div>
+    </div>
+    <div>
+      <div class="admin-field-label">粉丝量级</div>
+      <div class="admin-field-value"><%= @kol.follower_tier.presence || "-" %></div>
+    </div>
+    <div>
+      <div class="admin-field-label">国家/地区</div>
+      <div class="admin-field-value"><%= @kol.country.presence || "-" %></div>
+    </div>
+    <div>
+      <div class="admin-field-label">使用语言</div>
+      <div class="admin-field-value"><%= @kol.language %></div>
+    </div>
+    <div>
+      <div class="admin-field-label">归属人</div>
+      <div class="admin-field-value"><%= @kol.owner %></div>
+    </div>
+    <div>
+      <div class="admin-field-label">最近触达</div>
+      <div class="admin-field-value"><%= @kol.last_contacted_at&.strftime("%Y-%m-%d %H:%M") || "暂无" %></div>
+    </div>
+    <div>
+      <div class="admin-field-label">下次自动化动作</div>
+      <div class="admin-field-value"><%= @kol.next_action_at&.strftime("%Y-%m-%d %H:%M") || "暂无" %></div>
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <div class="admin-field-label">备注</div>
+      <div class="admin-field-value"><%= @kol.notes.presence || "无" %></div>
+    </div>
+  </div>
+</div>
+
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">多平台名片夹</div>
+      <div class="admin-card-subtitle">点击跳转至 KOL 各平台主页，浏览最新内容调性</div>
+    </div>
+  </div>
+
+  <% if @contacts.any? %>
+    <div class="kol-platform-grid">
+      <% @contacts.each do |c| %>
+        <div class="kol-platform-card">
+          <div class="kol-platform-icon"><%= c.platform_icon %></div>
+          <div style="font-size: 13px; color: #cbd5e1;"><%= c.platform %></div>
+          <div style="font-size: 12px; color: #94a3b8; word-break: break-all;"><%= c.nickname.presence || "-" %></div>
+          <% if c.url.present? %>
+            <%= link_to "打开主页", c.url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent); font-size: 12px;" %>
+          <% else %>
+            <span class="admin-label-muted" style="font-size: 12px;">无链接</span>
+          <% end %>
+          <% if c.messaging_enabled %>
+            <span class="admin-pill-status" style="background: rgba(34,197,94,0.1); color: #22c55e; font-size: 11px;">触达渠道 P<%= c.priority %></span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无平台主页，请在编辑页录入。</div>
+  <% end %>
+</div>
+
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">联系方式与优先级</div>
+      <div class="admin-card-subtitle">自动化将严格按优先级降级触达</div>
+    </div>
+  </div>
+
+  <% if @contacts.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>优先级</th>
+            <th>平台/渠道</th>
+            <th>昵称/账号</th>
+            <th>链接/联系方式</th>
+            <th>可发私信</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @contacts.each do |c| %>
+            <tr>
+              <td><span class="admin-label-muted"><%= c.priority %></span></td>
+              <td><%= c.platform_icon %> <span style="color: #cbd5e1;"><%= c.platform %></span></td>
+              <td><span class="admin-label-muted"><%= c.nickname.presence || "-" %></span></td>
+              <td>
+                <% if c.url.present? %>
+                  <%= link_to truncate(c.url, length: 40), c.url, target: "_blank", class: "admin-link-quiet", style: "color: var(--accent);", title: c.url %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td>
+                <% if c.messaging_enabled %>
+                  <span class="admin-pill-status" style="background: rgba(34,197,94,0.1); color: #22c55e;">是</span>
+                <% else %>
+                  <span class="admin-label-muted">否</span>
+                <% end %>
+              </td>
+              <td>
+                <% if c.invalid? %>
+                  <span class="admin-pill-status" style="background: rgba(239,68,68,0.1); color: #ef4444;">失效</span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(34,197,94,0.1); color: #22c55e;">有效</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无联系方式。</div>
+  <% end %>
+</div>
+
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">跨渠道对话流</div>
+      <div class="admin-card-subtitle">系统消息与对方回复按时间轴交织展示</div>
+    </div>
+    <div class="admin-card-header-right">
+      <% if @kol.replied_unprocessed? && @kol.latest_incoming_reply.present? %>
+        <%= link_to "标记为自动回复", mark_auto_reply_admin_kol_path(@kol), data: { turbo_method: :post, turbo_confirm: "确认对方这条回复是系统自动回复吗？标记后将恢复等待倒计时。" }, class: "admin-button-secondary" %>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @messages.any? %>
+    <div class="kol-chat">
+      <% @messages.each do |m| %>
+        <div class="kol-chat-row <%= m.outgoing? ? "out" : "in" %>">
+          <div class="kol-bubble <%= m.outgoing? ? "out" : "in" %>">
+            <div class="kol-bubble-meta">
+              <span><%= m.kol_contact&.platform_icon %> <%= m.platform %></span>
+              <span><%= m.outgoing? ? (m.account&.account_name || "我方") : "KOL" %></span>
+              <% if m.outgoing? %>
+                <span><%= m.manual? ? "人工" : "自动" %></span>
+              <% end %>
+              <span><%= m.occurred_at&.strftime("%m-%d %H:%M") || m.created_at&.strftime("%m-%d %H:%M") %></span>
+            </div>
+            <div class="kol-bubble-content"><%= m.content %></div>
+            <div style="margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap;">
+              <% if m.sent_failed? %>
+                <span class="admin-pill-status" style="background: rgba(239,68,68,0.1); color: #ef4444; font-size: 11px;">发送失败</span>
+              <% elsif m.ignored? %>
+                <span class="admin-pill-status" style="background: rgba(100,116,139,0.15); color: #94a3b8; font-size: 11px;">已放弃</span>
+              <% elsif m.queued? %>
+                <span class="admin-pill-status" style="background: rgba(156,163,175,0.1); color: #9ca3af; font-size: 11px;">待发送</span>
+              <% elsif m.replied? %>
+                <span class="admin-pill-status" style="background: rgba(168,85,247,0.1); color: #a855f7; font-size: 11px;">已回复</span>
+              <% end %>
+              <% if m.is_auto_reply? %>
+                <span class="admin-pill-status" style="background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px;">自动回复</span>
+              <% end %>
+              <% if m.sent_failed? && m.error_msg.present? %>
+                <span class="admin-label-muted" style="font-size: 11px;" title="<%= m.error_msg %>"><%= truncate(m.error_msg, length: 40) %></span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无对话记录。</div>
+  <% end %>
+</div>
+
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">操作</div>
+      <div class="admin-card-subtitle">人工触发与状态流转</div>
+    </div>
+  </div>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-section-title">立即联系（最高优先级）</div>
+      <div class="admin-section-subtitle">绕过排队，可强制指定渠道与内部账号</div>
+      <%= form_with url: contact_now_admin_kol_path(@kol), method: :post, class: "admin-form" do %>
+        <div style="margin-bottom: 10px;">
+          <div class="admin-field-label">联系渠道</div>
+          <select name="kol_contact_id" class="admin-input">
+            <option value="">自动选择（按优先级）</option>
+            <% @kol.active_contacts.each do |c| %>
+              <option value="<%= c.id %>"><%= c.platform %> / <%= c.nickname.presence || c.url %></option>
+            <% end %>
+          </select>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <div class="admin-field-label">内部账号（可选）</div>
+          <select name="account_id" class="admin-input">
+            <option value="">自动分配（高曝光优先）</option>
+            <% @accounts.each do |a| %>
+              <option value="<%= a.id %>"><%= a.platform %> / <%= a.account_name %></option>
+            <% end %>
+          </select>
+        </div>
+        <button type="submit" class="admin-button-primary">立即联系</button>
+      <% end %>
+    </div>
+
+    <div>
+      <div class="admin-section-title">人工发送消息</div>
+      <div class="admin-section-subtitle">负责人打字回复，进入商务洽谈阶段</div>
+      <%= form_with url: add_message_admin_kol_path(@kol), method: :post, class: "admin-form" do %>
+        <div style="margin-bottom: 10px;">
+          <div class="admin-field-label">联系渠道（可选）</div>
+          <select name="kol_contact_id" class="admin-input">
+            <option value="">当前渠道</option>
+            <% @kol.active_contacts.each do |c| %>
+              <option value="<%= c.id %>"><%= c.platform %> / <%= c.nickname.presence || c.url %></option>
+            <% end %>
+          </select>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <div class="admin-field-label">消息内容</div>
+          <textarea name="content" class="admin-input" rows="3" placeholder="输入要发送的内容..."></textarea>
+        </div>
+        <button type="submit" class="admin-button-primary">发送</button>
+      <% end %>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px;">
+    <% if @kol.reserved? %>
+      <%= link_to "加入触达队列", activate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-primary" %>
+    <% elsif @kol.pending? %>
+      <%= link_to "移出触达队列", deactivate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-secondary" %>
+    <% end %>
+    <% if @kol.replied_unprocessed? %>
+      <%= link_to "人工接管", take_over_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-primary" %>
+    <% end %>
+    <%= link_to "标记已合作", mark_outcome_admin_kol_path(@kol, outcome: "cooperating"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
+    <%= link_to "标记未能合作", mark_outcome_admin_kol_path(@kol, outcome: "failed"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
+  </div>
+</div>

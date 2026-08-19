@@ -1,0 +1,197 @@
+<%# 概览面板：账号基本信息 + 浏览器 + 养号配置 %><div data-drawer-panel="overview">
+  <div class="drawer-section">
+    <div class="drawer-section-title">基本信息</div>
+    <div class="drawer-info-grid">
+      <div class="drawer-info-item">
+        <span class="drawer-info-label">账号名</span>
+        <span class="drawer-info-value"><%= @account.account_name %></span>
+      </div>
+      <div class="drawer-info-item">
+        <span class="drawer-info-label">平台</span>
+        <span class="drawer-info-value"><%= @account.platform.to_s.titleize %></span>
+      </div>
+      <div class="drawer-info-item">
+        <span class="drawer-info-label">主题</span>
+        <span class="drawer-info-value"><%= @account.theme || '-' %></span>
+      </div>
+      <div class="drawer-info-item">
+        <span class="drawer-info-label">工作模式</span>
+        <span class="drawer-info-value"><%= @account.work_type %></span>
+      </div>
+      <div class="drawer-info-item">
+        <span class="drawer-info-label">状态</span>
+        <span class="drawer-info-value">
+          <% status_color = case @account.status; when "正常" then "rgba(34, 197, 94, 0.15)"; when "未登录" then "rgba(234, 179, 8, 0.15)"; else "rgba(239, 68, 68, 0.15)"; end %>
+          <% status_text_color = case @account.status; when "正常" then "#4ade80"; when "未登录" then "#fcd34d"; else "#fca5a5"; end %>
+          <span class="drawer-status-pill" style="background: <%= status_color %>; color: <%= status_text_color %>;">
+            <%= @account.status %>
+          </span>
+        </span>
+      </div>
+      <div class="drawer-info-item">
+        <span class="drawer-info-label">运营人员</span>
+        <span class="drawer-info-value"><%= @account.operator || '-' %></span>
+      </div>
+      <div class="drawer-info-item">
+        <span class="drawer-info-label">主页链接</span>
+        <span class="drawer-info-value">
+          <% if @account.source_url.present? %>
+            <a href="<%= @account.source_url %>" target="_blank" rel="noopener"><%= @account.source_url %></a>
+          <% else %>
+            -
+          <% end %>
+        </span>
+      </div>
+      <div class="drawer-info-item">
+        <span class="drawer-info-label">最后使用</span>
+        <span class="drawer-info-value"><%= @account.last_used_at&.strftime("%Y-%m-%d %H:%M") || '从未使用' %></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-section-title">绑定浏览器</div>
+    <% if @browser %>
+      <div class="drawer-info-grid">
+        <div class="drawer-info-item">
+          <span class="drawer-info-label">浏览器ID</span>
+          <span class="drawer-info-value"><%= @browser.id %></span>
+        </div>
+        <div class="drawer-info-item">
+          <span class="drawer-info-label">状态</span>
+          <span class="drawer-info-value">
+            <% bstatus_color = case @browser.status; when 0 then "rgba(34, 197, 94, 0.15)"; when 1 then "rgba(234, 179, 8, 0.15)"; else "rgba(156, 163, 175, 0.15)"; end %>
+            <% bstatus_text = case @browser.status; when 0 then "#4ade80"; when 1 then "#fcd34d"; else "#9ca3af"; end %>
+            <% bstatus_label = case @browser.status; when 0 then "正常"; when 1 then "网络问题"; else "无效"; end %>
+            <span class="drawer-status-pill" style="background: <%= bstatus_color %>; color: <%= bstatus_text %>;">
+              <%= bstatus_label %>
+            </span>
+          </span>
+        </div>
+        <div class="drawer-info-item">
+          <span class="drawer-info-label">运营机器IP</span>
+          <span class="drawer-info-value"><%= @browser.try(:machine_ip) || '-' %></span>
+        </div>
+        <div class="drawer-info-item">
+          <span class="drawer-info-label">备注</span>
+          <span class="drawer-info-value"><%= @browser.try(:remark) || '-' %></span>
+        </div>
+      </div>
+    <% else %>
+      <div class="drawer-empty">未绑定浏览器</div>
+    <% end %>
+  </div>
+
+  <% if @account.warmup_profile %>
+    <div class="drawer-section">
+      <div class="drawer-section-title">养号配置</div>
+      <div class="drawer-info-grid">
+        <div class="drawer-info-item">
+          <span class="drawer-info-label">养号启用</span>
+          <span class="drawer-info-value">
+            <% if @account.warmup_profile.warmup_enabled %>
+              <span class="drawer-status-pill" style="background: rgba(34, 197, 94, 0.15); color: #4ade80;">已启用</span>
+            <% else %>
+              <span class="drawer-status-pill" style="background: rgba(156, 163, 175, 0.15); color: #9ca3af;">已停用</span>
+            <% end %>
+          </span>
+        </div>
+        <div class="drawer-info-item">
+          <span class="drawer-info-label">上次养号</span>
+          <span class="drawer-info-value"><%= @account.warmup_profile.last_warmup_at&.strftime("%Y-%m-%d %H:%M") || '从未' %></span>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @account.remark.present? %>
+    <div class="drawer-section">
+      <div class="drawer-section-title">备注</div>
+      <div class="drawer-info-value" style="font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+        <%= @account.remark %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<%# 发文数据面板：最近10条发文 %><div data-drawer-panel="posts">
+  <div class="drawer-section" style="margin-bottom: 0;">
+    <div class="drawer-section-title">最近发文数据（近 <%= @recent_posts.size %> 条）</div>
+    <% if @recent_posts.any? %>
+      <div style="max-height: calc(100vh - 220px); overflow-y: auto;">
+        <table class="drawer-mini-table">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>标题</th>
+              <th style="text-align: right;">浏览</th>
+              <th style="text-align: right;">点赞</th>
+              <th style="text-align: right;">评论</th>
+              <th style="text-align: right;">转发</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_posts.each do |post| %>
+              <tr>
+                <td><%= post.post_date.strftime("%m-%d") %></td>
+                <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= post.title %>">
+                  <% if post.url.present? %>
+                    <a href="<%= post.url %>" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;"><%= post.title || '(无标题)' %></a>
+                  <% else %>
+                    <%= post.title || '(无标题)' %>
+                  <% end %>
+                </td>
+                <td style="text-align: right; font-weight: 500;"><%= post.views_count.to_i %></td>
+                <td style="text-align: right;"><%= post.likes_count.to_i %></td>
+                <td style="text-align: right;"><%= post.comments_count.to_i %></td>
+                <td style="text-align: right;"><%= post.shares_count.to_i %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="drawer-empty">暂无发文数据</div>
+    <% end %>
+  </div>
+</div>
+
+<%# 任务日志面板：最近10条执行日志 %><div data-drawer-panel="logs">
+  <div class="drawer-section" style="margin-bottom: 0;">
+    <div class="drawer-section-title">最近任务日志（近 <%= @recent_logs.size %> 条）</div>
+    <% if @recent_logs.any? %>
+      <div style="max-height: calc(100vh - 220px); overflow-y: auto;">
+        <table class="drawer-mini-table">
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>状态</th>
+              <th>任务类型</th>
+              <th>错误信息</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_logs.each do |log| %>
+              <tr>
+                <td style="white-space: nowrap;"><%= log.run_at&.strftime("%m-%d %H:%M") || '-' %></td>
+                <td>
+                  <% if log.status == "success" %>
+                    <span class="drawer-status-pill" style="background: rgba(34, 197, 94, 0.15); color: #4ade80;">成功</span>
+                  <% else %>
+                    <span class="drawer-status-pill" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5;">失败</span>
+                  <% end %>
+                </td>
+                <td><%= log.task_type %></td>
+                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= log.error_msg %>">
+                  <%= log.error_msg || '-' %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="drawer-empty">暂无任务日志</div>
+    <% end %>
+  </div>
+</div>

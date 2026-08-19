@@ -1,0 +1,16 @@
+<% content_for :page_title do %>
+  编辑消息模板
+<% end %>
+<% content_for :page_subtitle do %>
+  更新模板名称、场景、语种与内容
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">编辑消息模板</div>
+      <div class="admin-card-subtitle">模板 #<%= @template.id %></div>
+    </div>
+  </div>
+  <%= render "form", message_template: @template %>
+</div>

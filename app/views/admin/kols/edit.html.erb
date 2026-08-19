@@ -1,0 +1,16 @@
+<% content_for :page_title do %>
+  编辑 KOL
+<% end %>
+<% content_for :page_subtitle do %>
+  更新 KOL 档案与联系方式
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">编辑 KOL</div>
+      <div class="admin-card-subtitle"><%= @kol.name %></div>
+    </div>
+  </div>
+  <%= render "form", kol: @kol %>
+</div>

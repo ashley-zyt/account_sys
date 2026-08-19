@@ -1125,18 +1125,9 @@ body.admin {
   display: none;
 }
 
-/* 长列表在模块内滚动，表头固定，避免整页被撑爆 */
+/* 数据预警页表格：不再做模块内滚动，改用分页 */
 .alert-table-scroll {
-  max-height: calc(100vh - 280px);
-  overflow-y: auto;
-}
-
-.alert-table-scroll .admin-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #0f1729;
-  box-shadow: inset 0 -1px 0 rgba(31, 41, 55, 0.95);
+  overflow-x: auto;
 }
 
 /* 数据预警页每个 section 只有一张卡片，覆盖全局两列布局为单列满宽 */
@@ -1187,4 +1178,264 @@ body.admin {
 
 .data-alerts-page .alert-tab {
 	flex: 1 1 180px;
+}
+
+/* ===== 数据预警页分页 ===== */
+.pg-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 12px;
+	gap: 12px;
+}
+
+.pg-info {
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+.pg-actions {
+	display: flex;
+	gap: 6px;
+}
+
+.pg-btn {
+	padding: 5px 12px;
+	border-radius: 6px;
+	border: 1px solid rgba(31, 41, 55, 0.9);
+	background: rgba(15, 23, 42, 0.8);
+	color: var(--text-secondary);
+	font-size: 11px;
+	cursor: pointer;
+	font-family: inherit;
+	transition: all 0.15s;
+}
+
+.pg-btn:hover:not(:disabled) {
+	border-color: rgba(59, 130, 246, 0.5);
+	color: var(--accent);
+}
+
+.pg-btn:disabled,
+.pg-btn.pg-btn-disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+/* ===== 右侧抽屉 ===== */
+.drawer-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0);
+	pointer-events: none;
+	z-index: 40;
+	transition: background 0.25s ease;
+}
+
+.drawer-backdrop-visible {
+	background: rgba(0, 0, 0, 0.5);
+	pointer-events: auto;
+}
+
+.drawer-panel {
+	position: fixed;
+	top: 0;
+	right: 0;
+	height: 100vh;
+	width: 560px;
+	max-width: 92vw;
+	background: #0a0f1e;
+	border-left: 1px solid var(--border-subtle);
+	box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+	z-index: 50;
+	transform: translateX(100%);
+	transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+	display: flex;
+	flex-direction: column;
+}
+
+.drawer-open {
+	transform: translateX(0);
+}
+
+.drawer-header {
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--border-subtle);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-shrink: 0;
+}
+
+.drawer-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
+.drawer-close {
+	width: 28px;
+	height: 28px;
+	border-radius: 6px;
+	border: 1px solid rgba(31, 41, 55, 0.8);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: inherit;
+	transition: all 0.15s;
+}
+
+.drawer-close:hover {
+	border-color: rgba(239, 68, 68, 0.5);
+	color: var(--danger);
+}
+
+.drawer-tabs {
+	display: flex;
+	gap: 2px;
+	padding: 10px 12px 0;
+	border-bottom: 1px solid var(--border-subtle);
+	flex-shrink: 0;
+}
+
+.drawer-tab {
+	padding: 8px 16px;
+	font-size: 12px;
+	color: var(--text-muted);
+	cursor: pointer;
+	border: none;
+	background: transparent;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+	font-family: inherit;
+	transition: all 0.15s;
+}
+
+.drawer-tab:hover {
+	color: var(--text-secondary);
+}
+
+.drawer-tab-active {
+	color: var(--accent);
+	border-bottom-color: var(--accent);
+	font-weight: 500;
+}
+
+.drawer-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px 20px;
+}
+
+.drawer-body::-webkit-scrollbar {
+	width: 6px;
+}
+
+.drawer-body::-webkit-scrollbar-thumb {
+	background: rgba(75, 85, 99, 0.5);
+	border-radius: 3px;
+}
+
+/* 抽屉内的信息组 */
+.drawer-section {
+	margin-bottom: 20px;
+}
+
+.drawer-section-title {
+	font-size: 11px;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 10px;
+	font-weight: 500;
+}
+
+.drawer-info-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px 16px;
+}
+
+.drawer-info-item {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.drawer-info-label {
+	font-size: 10px;
+	color: var(--text-muted);
+}
+
+.drawer-info-value {
+	font-size: 12px;
+	color: var(--text-primary);
+	word-break: break-all;
+}
+
+.drawer-info-value a {
+	color: var(--accent);
+	text-decoration: none;
+}
+
+.drawer-info-value a:hover {
+	text-decoration: underline;
+}
+
+/* 抽屉内迷你表格 */
+.drawer-mini-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 11px;
+}
+
+.drawer-mini-table th,
+.drawer-mini-table td {
+	padding: 6px 8px;
+	text-align: left;
+	border-bottom: 1px solid rgba(31, 41, 55, 0.6);
+}
+
+.drawer-mini-table th {
+	color: var(--text-muted);
+	font-weight: 500;
+	background: rgba(15, 23, 42, 0.6);
+	position: sticky;
+	top: 0;
+}
+
+.drawer-mini-table td {
+	color: var(--text-secondary);
+}
+
+.drawer-mini-table tr:hover td {
+	background: rgba(30, 64, 175, 0.15);
+}
+
+.drawer-status-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 10px;
+	font-weight: 500;
+}
+
+.drawer-empty {
+	padding: 30px 0;
+	text-align: center;
+	color: var(--text-muted);
+	font-size: 12px;
+}
+
+@media (max-width: 640px) {
+	.drawer-panel {
+		width: 100%;
+		max-width: 100%;
+	}
 }

@@ -117,3 +117,17 @@ every :day, at: '21:00' do
   runner 'WarmupScheduler.run'
 end
 
+
+# ==================== KOL 自动化触达与管理 ====================
+# 每小时扫描 Pending/Contacting 队列，执行下一个触达动作
+# set :output, "log/kol_scheduler.log"
+# every 1.hour do
+#   runner 'KolScheduler.run'
+# end
+
+# 每 6 小时轮询 Contacting 状态会话，检查是否收到回复
+# set :output, "log/kol_reply_poller.log"
+# every 6.hours do
+#   runner 'KolReplyPoller.run'
+# end
+

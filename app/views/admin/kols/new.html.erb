@@ -1,0 +1,16 @@
+<% content_for :page_title do %>
+  录入 KOL
+<% end %>
+<% content_for :page_subtitle do %>
+  新增 KOL 档案与多平台联系方式
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">新增 KOL</div>
+      <div class="admin-card-subtitle">保存前会进行全局查重校验</div>
+    </div>
+  </div>
+  <%= render "form", kol: @kol %>
+</div>

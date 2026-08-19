@@ -1,0 +1,101 @@
+<% content_for :page_title do %>
+  KOL 管理
+<% end %>
+<% content_for :page_subtitle do %>
+  KOL 自动化触达与全生命周期管理
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">KOL 列表</div>
+      <div class="admin-card-subtitle">线索录入 → 智能触达 → 人工跟进</div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">共 <%= @kols.total_count %> 条</span>
+      <%= link_to "录入 KOL", new_admin_kol_path, class: "admin-button-primary" %>
+      <%= link_to "消息模板", admin_message_templates_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">名称</label>
+        <%= f.search_field :name_cont, class: "admin-input admin-filter-input", placeholder: "搜索 KOL 名称..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">领域</label>
+        <%= f.search_field :category_cont, class: "admin-input admin-filter-input", placeholder: "搜索领域..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">归属人</label>
+        <%= f.select :owner_eq, Account::OPERATORS.map { |o| [o, o] }, { include_blank: "所有人员" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status_eq, Kol.statuses.keys.map { |k| [k, k] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">语言</label>
+        <%= f.search_field :language_eq, class: "admin-input admin-filter-input", placeholder: "如 en / zh" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_kols_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @kols.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>名称</th>
+            <th>领域</th>
+            <th>国家/地区</th>
+            <th>语言</th>
+            <th>归属人</th>
+            <th>状态</th>
+            <th>渠道数</th>
+            <th>最近触达</th>
+            <th>下次动作</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @kols.each do |kol| %>
+            <tr>
+              <td><%= kol.id %></td>
+              <td>
+                <%= link_to kol.name, admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--text-primary);" %>
+              </td>
+              <td><span class="admin-label-muted"><%= kol.category.presence || "-" %></span></td>
+              <td><span class="admin-label-muted"><%= kol.country.presence || "-" %></span></td>
+              <td><span class="admin-label-muted"><%= kol.language %></span></td>
+              <td><span class="admin-label-muted"><%= kol.owner %></span></td>
+              <td><%= render "status_badge", status: kol.status %></td>
+              <td><span class="admin-label-muted"><%= kol.kol_contacts.size %></span></td>
+              <td><span class="admin-label-muted"><%= kol.last_contacted_at&.strftime("%m-%d %H:%M") || "-" %></span></td>
+              <td><span class="admin-label-muted"><%= kol.next_action_at&.strftime("%m-%d %H:%M") || "-" %></span></td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "详情", admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "编辑", edit_admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <%= link_to "删除", admin_kol_path(kol), data: { turbo_method: :delete, turbo_confirm: "确定要删除该 KOL 吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @kols %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无 KOL 数据。</div>
+  <% end %>
+</div>

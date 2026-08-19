@@ -1,0 +1,41 @@
+<%= form_with model: [:admin, message_template], class: "admin-form" do |f| %>
+  <% if message_template.errors.any? %>
+    <div class="admin-empty-state" style="margin-bottom: 12px;">
+      <ul class="admin-list">
+        <% message_template.errors.full_messages.each do |msg| %>
+          <li class="admin-list-item">
+            <div class="admin-list-title"><%= msg %></div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">模板名称 <span style="color: #ef4444;">*</span></div>
+      <%= f.text_field :name, class: "admin-input", required: true %>
+    </div>
+    <div>
+      <div class="admin-field-label">场景 <span style="color: #ef4444;">*</span></div>
+      <%= f.select :scenario, [["首次建联", "first_contact"], ["跟进询问", "follow_up"]], {}, class: "admin-input", required: true %>
+    </div>
+    <div>
+      <div class="admin-field-label">语种 <span style="color: #ef4444;">*</span></div>
+      <%= f.text_field :language, class: "admin-input", placeholder: "如 en / zh / es", required: true %>
+    </div>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <div class="admin-field-label">模板内容 <span style="color: #ef4444;">*</span></div>
+    <%= f.text_area :content, class: "admin-input", rows: 8, placeholder: "支持变量：${kol_name}、${account_name}、${sender_account}、${owner}、${nickname}、${platform}", required: true %>
+    <div class="admin-label-muted" style="margin-top: 6px;">
+      发送时按 KOL 档案语言自动匹配模板，并注入变量。
+    </div>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <button type="submit" class="admin-button-primary">保存</button>
+    <%= link_to "取消", admin_message_templates_path, class: "admin-button-secondary" %>
+  </div>
+<% end %>

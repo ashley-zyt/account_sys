@@ -1,0 +1,87 @@
+<% content_for :page_title do %>
+  消息模板
+<% end %>
+<% content_for :page_subtitle do %>
+  多语言消息模板库（首次建联 / 跟进询问）
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">消息模板列表</div>
+      <div class="admin-card-subtitle">按场景与语种维护自动化触达话术</div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">共 <%= @templates.total_count %> 条</span>
+      <%= link_to "新建模板", new_admin_message_template_path, class: "admin-button-primary" %>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">名称</label>
+        <%= f.search_field :name_cont, class: "admin-input admin-filter-input", placeholder: "搜索模板名称..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">场景</label>
+        <%= f.select :scenario_eq, [["所有场景", ""], ["首次建联", "first_contact"], ["跟进询问", "follow_up"]], {}, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">语种</label>
+        <%= f.search_field :language_eq, class: "admin-input admin-filter-input", placeholder: "如 en / zh" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_message_templates_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @templates.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>名称</th>
+            <th>场景</th>
+            <th>语种</th>
+            <th>内容</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @templates.each do |t| %>
+            <tr>
+              <td><%= t.id %></td>
+              <td><span style="color: var(--text-primary);"><%= t.name %></span></td>
+              <td>
+                <% if t.scenario == "first_contact" %>
+                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">首次建联</span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">跟进询问</span>
+                <% end %>
+              </td>
+              <td><span class="admin-label-muted"><%= t.language %></span></td>
+              <td>
+                <span class="admin-label-muted" style="max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;" title="<%= t.content %>"><%= t.content %></span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "编辑", edit_admin_message_template_path(t), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "删除", admin_message_template_path(t), data: { turbo_method: :delete, turbo_confirm: "确定要删除该模板吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @templates %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无消息模板。</div>
+  <% end %>
+</div>
