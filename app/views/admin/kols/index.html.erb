@@ -5,6 +5,8 @@
   KOL 自动化触达与全生命周期管理
 <% end %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
@@ -26,19 +28,43 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">领域</label>
-        <%= f.select :domain_id_eq, @domains.map { |d| [d.name, d.id] }, { include_blank: "所有领域" }, class: "admin-input admin-filter-input" %>
+        <%= render "admin/shared/searchable_select",
+              name: "q[domain_id_eq]",
+              options: @domains.map { |d| [d.name, d.id] },
+              selected: params.dig(:q, :domain_id_eq),
+              selected_label: @domains.find { |d| d.id.to_s == params.dig(:q, :domain_id_eq).to_s }&.name,
+              placeholder: "所有领域",
+              include_blank: "所有领域" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">归属人</label>
-        <%= f.select :owner_eq, Account::OPERATORS.map { |o| [o, o] }, { include_blank: "所有人员" }, class: "admin-input admin-filter-input" %>
+        <%= render "admin/shared/searchable_select",
+              name: "q[owner_eq]",
+              options: Account::OPERATORS.map { |o| [o, o] },
+              selected: params.dig(:q, :owner_eq),
+              selected_label: params.dig(:q, :owner_eq),
+              placeholder: "所有人员",
+              include_blank: "所有人员" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
-        <%= f.select :status_eq, Kol.statuses.keys.map { |k| [k, k] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+        <%= render "admin/shared/searchable_select",
+              name: "q[status_eq]",
+              options: Kol.statuses.keys.map { |k| [k, k] },
+              selected: params.dig(:q, :status_eq),
+              selected_label: params.dig(:q, :status_eq),
+              placeholder: "所有状态",
+              include_blank: "所有状态" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">语言</label>
-        <%= f.select :language_id_eq, @languages.map { |l| [l.name, l.id] }, { include_blank: "所有语言" }, class: "admin-input admin-filter-input" %>
+        <%= render "admin/shared/searchable_select",
+              name: "q[language_id_eq]",
+              options: @languages.map { |l| [l.name, l.id] },
+              selected: params.dig(:q, :language_id_eq),
+              selected_label: @languages.find { |l| l.id.to_s == params.dig(:q, :language_id_eq).to_s }&.name,
+              placeholder: "所有语言",
+              include_blank: "所有语言" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>

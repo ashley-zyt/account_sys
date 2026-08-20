@@ -5,6 +5,8 @@
   多语言消息模板库（首次建联 / 跟进询问）
 <% end %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
@@ -25,15 +27,33 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">场景</label>
-        <%= f.select :scenario_eq, [["所有场景", ""], ["首次建联", "first_contact"], ["跟进询问", "follow_up"]], {}, class: "admin-input admin-filter-input" %>
+        <%= render "admin/shared/searchable_select",
+              name: "q[scenario_eq]",
+              options: MessageTemplate::SCENARIOS.map { |k, v| [v, k] },
+              selected: params.dig(:q, :scenario_eq),
+              selected_label: MessageTemplate::SCENARIOS[params.dig(:q, :scenario_eq)],
+              placeholder: "所有场景",
+              include_blank: "所有场景" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">平台</label>
-        <%= f.select :platform_eq, MessageTemplate.platforms.keys.map { |k| [k, k] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+        <%= render "admin/shared/searchable_select",
+              name: "q[platform_eq]",
+              options: MessageTemplate.platforms.keys.map { |k| [k, k] },
+              selected: params.dig(:q, :platform_eq),
+              selected_label: params.dig(:q, :platform_eq),
+              placeholder: "所有平台",
+              include_blank: "所有平台" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">领域</label>
-        <%= f.select :domain_id_eq, @domains.map { |d| [d.name, d.id] }, { include_blank: "所有领域" }, class: "admin-input admin-filter-input" %>
+        <%= render "admin/shared/searchable_select",
+              name: "q[domain_id_eq]",
+              options: @domains.map { |d| [d.name, d.id] },
+              selected: params.dig(:q, :domain_id_eq),
+              selected_label: @domains.find { |d| d.id.to_s == params.dig(:q, :domain_id_eq).to_s }&.name,
+              placeholder: "所有领域",
+              include_blank: "所有领域" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
@@ -63,11 +83,7 @@
               <td><%= t.id %></td>
               <td><span style="color: var(--text-primary);"><%= t.name %></span></td>
               <td>
-                <% if t.scenario == "first_contact" %>
-                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">首次建联</span>
-                <% else %>
-                  <span class="admin-pill-status" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">跟进询问</span>
-                <% end %>
+                <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><%= t.scenario_label %></span>
               </td>
               <td><span class="admin-label-muted"><%= t.platform || "通用" %></span></td>
               <td><span class="admin-label-muted"><%= t.domain&.name || "通用" %></span></td>

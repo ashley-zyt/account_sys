@@ -33,6 +33,7 @@ class Admin::KolsController < Admin::BaseController
     @kol = Kol.new(kol_params)
     apply_follower_tier(@kol, params.dig(:kol, :follower_tier))
     apply_domain(@kol, params.dig(:kol))
+    apply_language(@kol, params.dig(:kol))
 
     if @kol.save
       sync_variables(@kol, params[:kol_variables])
@@ -51,6 +52,7 @@ class Admin::KolsController < Admin::BaseController
   def update
     apply_follower_tier(@kol, params.dig(:kol, :follower_tier))
     apply_domain(@kol, params.dig(:kol))
+    apply_language(@kol, params.dig(:kol))
 
     if @kol.update(kol_params)
       sync_variables(@kol, params[:kol_variables])
@@ -141,7 +143,7 @@ class Admin::KolsController < Admin::BaseController
 
   def kol_params
     params.require(:kol).permit(
-      :name, :domain_id, :country, :language_id, :owner, :notes, :status,
+      :name, :country, :owner, :notes, :status,
       kol_contacts_attributes: [
         :id, :platform, :nickname, :url, :priority, :messaging_enabled, :_destroy
       ]
@@ -156,16 +158,18 @@ class Admin::KolsController < Admin::BaseController
     kol.follower_max = max_s.present? ? max_s.to_i : nil
   end
 
-  # 领域：优先使用新录入的 domain_name，否则用下拉选择的 domain_id
+  # 领域：combobox 提交名称，同名去重、不存在则创建
   def apply_domain(kol, attrs)
     return if attrs.nil?
-    domain_name = attrs[:domain_name].to_s.strip
-    if domain_name.present?
-      domain = Domain.find_or_create_by_name(domain_name)
-      kol.domain_id = domain.id if domain
-    elsif attrs[:domain_id].present?
-      kol.domain_id = attrs[:domain_id]
-    end
+    name = attrs[:domain_name].to_s.strip
+    kol.domain_id = name.present? ? Domain.find_or_create_by_name(name)&.id : nil
+  end
+
+  # 语言：combobox 提交名称，同名去重、不存在则创建
+  def apply_language(kol, attrs)
+    return if attrs.nil?
+    name = attrs[:language_name].to_s.strip
+    kol.language_id = name.present? ? Language.find_or_create_by_name(name)&.id : nil
   end
 
   # 同步 KOL 变量值（键值对）；有填写值则清除"待补全"标记

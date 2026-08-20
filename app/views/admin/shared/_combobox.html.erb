@@ -1,0 +1,14 @@
+<%# 可输入 + 可下拉组合框（自由录入 + 搜索已有值）
+    locals: name, value(当前显示值), list_id(唯一 datalist id), options [String], placeholder %>
+<input type="text"
+       name="<%= name %>"
+       value="<%= value %>"
+       list="<%= list_id %>"
+       class="admin-input"
+       placeholder="<%= placeholder %>"
+       autocomplete="off">
+<datalist id="<%= list_id %>">
+  <% options.each do |opt| %>
+    <option value="<%= opt %>"></option>
+  <% end %>
+</datalist>

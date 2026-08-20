@@ -17,7 +17,14 @@ class Language < ApplicationRecord
   has_many :message_template_versions
 
   validates :code, presence: true, uniqueness: true
-  validates :name, presence: true
+  validates :name, presence: true, uniqueness: true
+
+  # 按中文名查找或创建（code 默认与 name 相同）
+  def self.find_or_create_by_name(name)
+    n = name.to_s.strip
+    return nil if n.blank?
+    find_by(name: n) || create!(name: n, code: n)
+  end
 
   def self.ransackable_attributes(auth_object = nil)
     %w[id code name created_at updated_at]

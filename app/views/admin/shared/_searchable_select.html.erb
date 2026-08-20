@@ -1,0 +1,22 @@
+<%# 通用可搜索下拉（单选，不支持自由录入）
+    locals: name, options [[label, value]], selected(value), selected_label, placeholder, include_blank %>
+<div class="custom-select-container">
+  <div class="custom-select" data-placeholder="<%= placeholder %>">
+    <div class="custom-select-trigger" onclick="toggleCustomSelect(this)">
+      <span class="custom-select-value"><%= (selected_label.presence || placeholder) %></span>
+      <span class="custom-select-arrow">▼</span>
+    </div>
+    <div class="custom-select-options" style="display: none;">
+      <input type="text" class="custom-select-search" oninput="filterCustomSelect(this)" placeholder="搜索...">
+      <div class="custom-select-options-list">
+        <% if include_blank %>
+          <div class="custom-select-option" data-value="" onclick="selectCustomOption(this)"><%= include_blank %></div>
+        <% end %>
+        <% options.each do |label, value| %>
+          <div class="custom-select-option" data-value="<%= value %>" onclick="selectCustomOption(this)"><%= label %></div>
+        <% end %>
+      </div>
+    </div>
+    <input type="hidden" name="<%= name %>" value="<%= selected %>" class="custom-select-hidden-input">
+  </div>
+</div>

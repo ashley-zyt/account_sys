@@ -4,6 +4,7 @@
 #   1. 扫描 Pending 状态的 KOL，按渠道优先级启动首次触达
 #   2. 等待期到期的 Contacting KOL，切换至下一优先级渠道继续触达
 #   3. 提供人工干预入口：立即联系（manual_contact）与人工打字发送（manual_send）
+#   4. 模板匹配 + 变量校验：自动触达缺变量时跳过并标记；人工触达缺变量时阻断
 class KolScheduler
   WAIT_DAYS_MIN = 1
   WAIT_DAYS_MAX = 2
@@ -11,7 +12,6 @@ class KolScheduler
   RETRY_HOURS = 1
 
   class << self
-    # 定时入口：自动化触达扫描
     def run
       setup_logger("kol_scheduler.log")
       Rails.logger.info "[KolScheduler] 开始自动化触达扫描"
@@ -20,14 +20,12 @@ class KolScheduler
       Rails.logger.info "[KolScheduler] 自动化触达扫描完成"
     end
 
-    # 扫描待触达队列
     def process_pending
       Kol.pending_queue.find_each do |kol|
         safely(kol) { run_outreach(kol, scenario: :first_contact) }
       end
     end
 
-    # 处理等待期到期的触达中 KOL
     def process_due_contacting
       Kol.where(status: :contacting)
          .where("next_action_at IS NULL OR next_action_at <= ?", Time.current)
@@ -36,7 +34,7 @@ class KolScheduler
       end
     end
 
-    # 从指定起点起，按优先级遍历所有有效渠道尝试发送
+    # 从起点起按优先级遍历所有有效渠道尝试发送
     def run_outreach(kol, scenario:, skip_contact_ids: [])
       contacts = kol.kol_contacts
         .where(status: KolContact.statuses[:active])
@@ -48,7 +46,7 @@ class KolScheduler
         outcome = send_on_contact(kol, contact, scenario: scenario)
         case outcome
         when :success then return true
-        when :suspended then return false   # 无可用账号/临时失败，保留渠道下次重试
+        when :suspended then return false   # 无可用账号/缺变量/临时失败，停止本次
         when :exhausted then next           # 渠道失效，切换下一渠道
         end
       end
@@ -57,7 +55,6 @@ class KolScheduler
       false
     end
 
-    # 等待期到期：当前渠道标记为已放弃，切换下一渠道
     def advance(kol)
       current = kol.current_contact
       if current
@@ -81,6 +78,13 @@ class KolScheduler
 
       account ||= KolAccountAllocator.allocate(contact.platform)
       return { ok: false, error: "该平台暂无可用的内部账号（可能已达每日上限或处于风控休眠）" } if account.nil?
+
+      # 未提供自定义内容时，走模板 + 变量校验
+      if content.blank?
+        template = find_template(kol, contact, :first_contact)
+        missing = template ? kol.missing_variables(template.required_variable_keys) : []
+        return { ok: false, error: "缺少模板变量：#{missing.join('、')}" } if missing.any?
+      end
 
       result = deliver_message(kol, contact, account, content: content.presence, source: :manual, scenario: :first_contact)
 
@@ -145,9 +149,10 @@ class KolScheduler
 
         case result
         when :success then return :success
+        when :missing_variables then return :suspended
         when :account_risk then next
         when :target_invalid
-          contact.update!(status: :invalid)
+          contact.update!(status: :disabled)
           return :exhausted
         else
           kol.update!(status: :pending, next_action_at: RETRY_HOURS.hours.from_now)
@@ -156,10 +161,24 @@ class KolScheduler
       end
     end
 
-    # 发送单条消息并落库，返回 :success / :account_risk / :target_invalid / :other
+    # 发送单条消息并落库，返回 :success / :missing_variables / :account_risk / :target_invalid / :other
     def deliver_message(kol, contact, account, content: nil, source: :auto, scenario: nil)
-      content ||= render_content(kol, contact, account, scenario || :first_contact)
-      template = scenario ? MessageTemplate.for(scenario: scenario, language: kol.language) : nil
+      scenario ||= :first_contact
+
+      # 模板匹配 + 变量校验（仅在未提供自定义内容时）
+      template = nil
+      if content.blank?
+        template = find_template(kol, contact, scenario)
+        missing = template ? kol.missing_variables(template.required_variable_keys) : []
+        if missing.any?
+          if source.to_s == "auto"
+            kol.update!(variables_incomplete: true)
+            Rails.logger.warn "[KolScheduler] KOL##{kol.id} 缺少变量 #{missing.join('、')}，标记待补全并跳过"
+          end
+          return :missing_variables
+        end
+        content = template ? template.render_for(kol) : fallback_content(kol)
+      end
 
       message = KolMessage.create!(
         kol: kol,
@@ -186,7 +205,6 @@ class KolScheduler
         message.update!(status: :sent_success, wait_until: deadline, occurred_at: Time.current)
         contact.update!(last_used_at: Time.current)
 
-        # 自动化触达时推进 KOL 业务状态；人工发送时由上层决定状态流转
         unless source.to_s == "manual"
           kol.update!(
             status: :contacting,
@@ -210,9 +228,12 @@ class KolScheduler
       end
     end
 
-    def render_content(kol, contact, account, scenario)
-      template = MessageTemplate.for(scenario: scenario, language: kol.language)
-      template ? template.render_with(kol: kol, account: account, contact: contact) : fallback_content(kol)
+    def find_template(kol, contact, scenario)
+      MessageTemplate.match_for(
+        scenario: scenario,
+        platform: contact.platform,
+        domain_id: kol.domain_id
+      ).includes(:message_template_versions, :message_variables).order(:id).first
     end
 
     def fallback_content(kol)

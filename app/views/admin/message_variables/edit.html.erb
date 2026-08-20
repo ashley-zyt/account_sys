@@ -1,0 +1,16 @@
+<% content_for :page_title do %>
+  编辑变量
+<% end %>
+<% content_for :page_subtitle do %>
+  更新变量标识符、中文名与说明
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">编辑变量</div>
+      <div class="admin-card-subtitle">变量 #<%= @variable.id %></div>
+    </div>
+  </div>
+  <%= render "form", variable: @variable %>
+</div>

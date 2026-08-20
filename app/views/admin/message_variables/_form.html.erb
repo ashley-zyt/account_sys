@@ -1,0 +1,33 @@
+<%= form_with model: [:admin, variable], class: "admin-form" do |f| %>
+  <% if variable.errors.any? %>
+    <div class="admin-empty-state" style="margin-bottom: 12px;">
+      <ul class="admin-list">
+        <% variable.errors.full_messages.each do |msg| %>
+          <li class="admin-list-item">
+            <div class="admin-list-title"><%= msg %></div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">标识符 <span style="color: #ef4444;">*</span></div>
+      <%= f.text_field :identifier, class: "admin-input", placeholder: "如 name / email / company", required: true %>
+    </div>
+    <div>
+      <div class="admin-field-label">中文名 <span style="color: #ef4444;">*</span></div>
+      <%= f.text_field :name, class: "admin-input", placeholder: "如 称呼/姓名", required: true %>
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <div class="admin-field-label">说明</div>
+      <%= f.text_field :description, class: "admin-input", placeholder: "该变量的用途说明（可选）" %>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <button type="submit" class="admin-button-primary">保存</button>
+    <%= link_to "取消", admin_message_variables_path, class: "admin-button-secondary" %>
+  </div>
+<% end %>

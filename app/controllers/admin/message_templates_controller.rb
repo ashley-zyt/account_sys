@@ -65,6 +65,13 @@ class Admin::MessageTemplatesController < Admin::BaseController
     )
     # 平台为空（"通用"）时置 nil，避免 enum 解析空字符串报错
     p[:platform] = nil if p[:platform].blank?
+    # 场景为空时置 nil，由 presence 校验拦截
+    p[:scenario] = nil if p[:scenario].blank?
+
+    # 领域用 combobox 提交名称，解析为 domain_id（同名去重，不存在则创建）
+    domain_name = params.dig(:message_template, :domain_name).to_s.strip
+    p[:domain_id] = domain_name.present? ? Domain.find_or_create_by_name(domain_name)&.id : nil
+
     p
   end
 end

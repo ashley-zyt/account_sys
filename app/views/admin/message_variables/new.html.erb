@@ -1,0 +1,16 @@
+<% content_for :page_title do %>
+  新增变量
+<% end %>
+<% content_for :page_subtitle do %>
+  新增消息模板全局变量
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">新增变量</div>
+      <div class="admin-card-subtitle">定义后即可在模板「所需变量」里勾选</div>
+    </div>
+  </div>
+  <%= render "form", variable: @variable %>
+</div>

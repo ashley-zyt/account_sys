@@ -1,7 +1,14 @@
 <div style="display: grid; grid-template-columns: 200px 1fr 70px; gap: 10px; align-items: start; padding: 12px; border: 1px solid rgba(148,163,184,0.25); border-radius: 8px; margin-bottom: 10px; background: rgba(148,163,184,0.04);">
   <div>
     <div class="admin-field-label">语言</div>
-    <%= f.select :language_id, @languages.map { |l| [l.name, l.id] }, { include_blank: "选择语言" }, class: "admin-input" %>
+    <% selected_language = @languages.find { |l| l.id.to_s == f.object.language_id.to_s } %>
+    <%= render "admin/shared/searchable_select",
+          name: "#{f.object_name}[language_id]",
+          options: @languages.map { |l| [l.name, l.id] },
+          selected: f.object.language_id,
+          selected_label: selected_language&.name,
+          placeholder: "选择语言",
+          include_blank: "选择语言" %>
   </div>
   <div>
     <div class="admin-field-label">内容（支持 ${变量}）</div>

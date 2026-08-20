@@ -1,3 +1,5 @@
+<%= render "admin/shared/select_widgets" %>
+
 <%= form_with model: [:admin, kol], class: "admin-form" do |f| %>
   <% if kol.errors.any? %>
     <div class="admin-empty-state" style="margin-bottom: 12px;">
@@ -18,8 +20,12 @@
     </div>
     <div>
       <div class="admin-field-label">所属领域</div>
-      <%= f.select :domain_id, @domains.map { |d| [d.name, d.id] }, { include_blank: "请选择领域" }, class: "admin-input" %>
-      <%= text_field_tag "kol[domain_name]", "", class: "admin-input", style: "margin-top: 6px;", placeholder: "或直接录入新领域（同名自动去重）" %>
+      <%= render "admin/shared/combobox",
+            name: "kol[domain_name]",
+            value: kol.domain&.name,
+            list_id: "kol-domain-list",
+            options: @domains.map(&:name),
+            placeholder: "选择或输入领域（不存在则创建）" %>
     </div>
     <div>
       <div class="admin-field-label">粉丝量级</div>
@@ -34,15 +40,31 @@
     </div>
     <div>
       <div class="admin-field-label">使用语言</div>
-      <%= f.select :language_id, @languages.map { |l| [l.name, l.id] }, { include_blank: "请选择语言" }, class: "admin-input" %>
+      <%= render "admin/shared/combobox",
+            name: "kol[language_name]",
+            value: kol.language&.name,
+            list_id: "kol-language-list",
+            options: @languages.map(&:name),
+            placeholder: "选择或输入语言（不存在则创建）" %>
     </div>
     <div>
       <div class="admin-field-label">归属人（负责人） <span style="color: #ef4444;">*</span></div>
-      <%= f.select :owner, Account::OPERATORS.map { |o| [o, o] }, { include_blank: "请选择负责人" }, class: "admin-input", required: true %>
+      <%= render "admin/shared/searchable_select",
+            name: "kol[owner]",
+            options: Account::OPERATORS.map { |o| [o, o] },
+            selected: kol.owner,
+            selected_label: kol.owner,
+            placeholder: "请选择负责人",
+            include_blank: "请选择负责人" %>
     </div>
     <div>
       <div class="admin-field-label">当前状态</div>
-      <%= f.select :status, Kol.statuses.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+      <%= render "admin/shared/searchable_select",
+            name: "kol[status]",
+            options: Kol.statuses.keys.map { |k| [k, k] },
+            selected: kol.status,
+            selected_label: kol.status,
+            placeholder: "选择状态" %>
     </div>
     <div>
       <div class="admin-field-label">备注</div>
@@ -89,7 +111,7 @@
       <% end %>
     </div>
   <% else %>
-    <div class="admin-empty-state">暂无全局变量字典，请先在消息模板中定义变量。</div>
+    <div class="admin-empty-state">暂无全局变量字典，请先在「变量管理」中定义。</div>
   <% end %>
 
   <div style="margin-top: 16px;">

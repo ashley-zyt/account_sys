@@ -1,3 +1,5 @@
+<%= render "admin/shared/select_widgets" %>
+
 <%= form_with model: [:admin, message_template], class: "admin-form" do |f| %>
   <% if message_template.errors.any? %>
     <div class="admin-empty-state" style="margin-bottom: 12px;">
@@ -18,15 +20,32 @@
     </div>
     <div>
       <div class="admin-field-label">场景 <span style="color: #ef4444;">*</span></div>
-      <%= f.select :scenario, [["首次建联", "first_contact"], ["跟进询问", "follow_up"]], {}, class: "admin-input", required: true %>
+      <%= render "admin/shared/searchable_select",
+            name: "message_template[scenario]",
+            options: MessageTemplate::SCENARIOS.map { |k, v| [v, k] },
+            selected: message_template.scenario,
+            selected_label: message_template.scenario_label,
+            placeholder: "选择场景",
+            include_blank: "选择场景" %>
     </div>
     <div>
       <div class="admin-field-label">适用平台（空 = 通用）</div>
-      <%= f.select :platform, MessageTemplate.platforms.keys.map { |k| [k, k] }, { include_blank: "通用" }, class: "admin-input" %>
+      <%= render "admin/shared/searchable_select",
+            name: "message_template[platform]",
+            options: MessageTemplate.platforms.keys.map { |k| [k, k] },
+            selected: message_template.platform,
+            selected_label: message_template.platform,
+            placeholder: "通用",
+            include_blank: "通用" %>
     </div>
     <div>
       <div class="admin-field-label">适用领域（空 = 通用）</div>
-      <%= f.select :domain_id, @domains.map { |d| [d.name, d.id] }, { include_blank: "通用" }, class: "admin-input" %>
+      <%= render "admin/shared/combobox",
+            name: "message_template[domain_name]",
+            value: message_template.domain&.name,
+            list_id: "template-domain-list",
+            options: @domains.map(&:name),
+            placeholder: "通用（可输入新领域）" %>
     </div>
   </div>
 

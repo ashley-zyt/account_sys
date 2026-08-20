@@ -28,9 +28,25 @@ class MessageTemplate < ApplicationRecord
   accepts_nested_attributes_for :message_template_versions, allow_destroy: true, reject_if: :all_blank
 
   enum scenario: {
-    first_contact: 0,
-    follow_up: 1
+    first_contact: 0,        # 首次建联
+    follow_up: 1,            # 跟进询问
+    follow_up_again: 2,      # 再次跟进
+    cooperation_quote: 3,    # 合作邀请/报价
+    relationship_maintain: 4 # 关系维护/感谢
   }
+
+  # 场景中文标签（下拉与展示共用）
+  SCENARIOS = {
+    "first_contact"        => "首次建联",
+    "follow_up"            => "跟进询问",
+    "follow_up_again"      => "再次跟进",
+    "cooperation_quote"    => "合作邀请/报价",
+    "relationship_maintain" => "关系维护/感谢"
+  }.freeze
+
+  def scenario_label
+    SCENARIOS[scenario] || scenario.to_s
+  end
 
   # 平台（空 = 通用）
   enum platform: {
@@ -45,6 +61,7 @@ class MessageTemplate < ApplicationRecord
   }
 
   validates :name, presence: true
+  validates :scenario, presence: true
 
   # 取指定语言的版本，找不到则回退到任意版本
   def version_for(language_id)

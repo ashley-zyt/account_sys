@@ -1,0 +1,73 @@
+<% content_for :page_title do %>
+  变量管理
+<% end %>
+<% content_for :page_subtitle do %>
+  消息模板全局变量字典（identifier / 中文名 / 说明）
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">变量列表</div>
+      <div class="admin-card-subtitle">模板通过「所需变量」引用这里的变量，KOL 表单按此列出输入框</div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">共 <%= @variables.total_count %> 条</span>
+      <%= link_to "新增变量", new_admin_message_variable_path, class: "admin-button-primary" %>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">标识符</label>
+        <%= f.search_field :identifier_cont, class: "admin-input admin-filter-input", placeholder: "如 name / email" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">中文名</label>
+        <%= f.search_field :name_cont, class: "admin-input admin-filter-input", placeholder: "如 称呼/姓名" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_message_variables_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @variables.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>标识符</th>
+            <th>中文名</th>
+            <th>说明</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @variables.each do |v| %>
+            <tr>
+              <td><%= v.id %></td>
+              <td><code style="color: var(--accent);"><%= v.identifier %></code></td>
+              <td><span style="color: var(--text-primary);"><%= v.name %></span></td>
+              <td><span class="admin-label-muted"><%= v.description.presence || "-" %></span></td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "编辑", edit_admin_message_variable_path(v), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "删除", admin_message_variable_path(v), data: { turbo_method: :delete, turbo_confirm: "确定要删除该变量吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @variables %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无变量，点击右上角「新增变量」。</div>
+  <% end %>
+</div>
