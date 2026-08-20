@@ -26,7 +26,7 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">领域</label>
-        <%= f.search_field :category_cont, class: "admin-input admin-filter-input", placeholder: "搜索领域..." %>
+        <%= f.select :domain_id_eq, @domains.map { |d| [d.name, d.id] }, { include_blank: "所有领域" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">归属人</label>
@@ -38,7 +38,7 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">语言</label>
-        <%= f.search_field :language_eq, class: "admin-input admin-filter-input", placeholder: "如 en / zh" %>
+        <%= f.select :language_id_eq, @languages.map { |l| [l.name, l.id] }, { include_blank: "所有语言" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
@@ -71,10 +71,13 @@
               <td><%= kol.id %></td>
               <td>
                 <%= link_to kol.name, admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--text-primary);" %>
+                <% if kol.variables_incomplete? %>
+                  <span class="admin-pill-status" style="background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px; margin-left: 6px;">待补全</span>
+                <% end %>
               </td>
-              <td><span class="admin-label-muted"><%= kol.category.presence || "-" %></span></td>
+              <td><span class="admin-label-muted"><%= kol.domain&.name || "-" %></span></td>
               <td><span class="admin-label-muted"><%= kol.country.presence || "-" %></span></td>
-              <td><span class="admin-label-muted"><%= kol.language %></span></td>
+              <td><span class="admin-label-muted"><%= kol.language&.name || "-" %></span></td>
               <td><span class="admin-label-muted"><%= kol.owner %></span></td>
               <td><%= render "status_badge", status: kol.status %></td>
               <td><span class="admin-label-muted"><%= kol.kol_contacts.size %></span></td>

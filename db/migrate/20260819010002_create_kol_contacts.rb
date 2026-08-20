@@ -11,7 +11,7 @@ class CreateKolContacts < ActiveRecord::Migration[6.1]
       # 触达优先级：数值越小越优先
       t.integer :priority, null: false, default: 0, comment: "触达优先级（越小越优先）"
       t.boolean :messaging_enabled, null: false, default: false, comment: "是否可作为发信渠道"
-      t.integer :status, null: false, default: 0, comment: "联系方式状态：active/invalid"
+      t.integer :status, null: false, default: 0, comment: "联系方式状态：active/disabled"
       t.datetime :last_used_at, comment: "最后使用时间"
 
       t.timestamps

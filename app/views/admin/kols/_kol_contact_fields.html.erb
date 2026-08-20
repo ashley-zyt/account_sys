@@ -1,4 +1,4 @@
-<div class="admin-contact-row" style="display: grid; grid-template-columns: 140px 1fr 1.4fr 90px 110px 90px 70px; gap: 10px; align-items: end; padding: 12px; border: 1px solid rgba(148,163,184,0.25); border-radius: 8px; margin-bottom: 10px; background: rgba(148,163,184,0.04);">
+<div class="admin-contact-row" style="display: grid; grid-template-columns: 140px 1fr 1.4fr 90px 120px 70px; gap: 10px; align-items: end; padding: 12px; border: 1px solid rgba(148,163,184,0.25); border-radius: 8px; margin-bottom: 10px; background: rgba(148,163,184,0.04);">
   <div>
     <div class="admin-field-label">平台/渠道</div>
     <%= f.select :platform, KolContact.platforms.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
@@ -18,10 +18,6 @@
   <div>
     <div class="admin-field-label">可发私信</div>
     <%= f.check_box :messaging_enabled, style: "width: 18px; height: 18px; margin-top: 8px;" %>
-  </div>
-  <div>
-    <div class="admin-field-label">状态</div>
-    <%= f.select :status, KolContact.statuses.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
   </div>
   <div>
     <% if f.object.persisted? %>

@@ -21,21 +21,63 @@
       <%= f.select :scenario, [["首次建联", "first_contact"], ["跟进询问", "follow_up"]], {}, class: "admin-input", required: true %>
     </div>
     <div>
-      <div class="admin-field-label">语种 <span style="color: #ef4444;">*</span></div>
-      <%= f.text_field :language, class: "admin-input", placeholder: "如 en / zh / es", required: true %>
+      <div class="admin-field-label">适用平台（空 = 通用）</div>
+      <%= f.select :platform, MessageTemplate.platforms.keys.map { |k| [k, k] }, { include_blank: "通用" }, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">适用领域（空 = 通用）</div>
+      <%= f.select :domain_id, @domains.map { |d| [d.name, d.id] }, { include_blank: "通用" }, class: "admin-input" %>
     </div>
   </div>
 
-  <div style="margin-top: 12px;">
-    <div class="admin-field-label">模板内容 <span style="color: #ef4444;">*</span></div>
-    <%= f.text_area :content, class: "admin-input", rows: 8, placeholder: "支持变量：${kol_name}、${account_name}、${sender_account}、${owner}、${nickname}、${platform}", required: true %>
-    <div class="admin-label-muted" style="margin-top: 6px;">
-      发送时按 KOL 档案语言自动匹配模板，并注入变量。
-    </div>
+  <div class="admin-section-title" style="margin-top: 16px;">所需变量</div>
+  <div class="admin-section-subtitle">模板正文里用到哪些变量就勾选哪些（发送时若 KOL 缺值会按场景阻断/跳过）</div>
+  <div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 0;">
+    <% @message_variables.each do |mv| %>
+      <label style="display: flex; align-items: center; gap: 6px; color: #cbd5e1; font-size: 13px;">
+        <input type="checkbox"
+               name="message_variable_ids[]"
+               value="<%= mv.id %>"
+               <%= "checked" if message_template.message_variable_ids.include?(mv.id) %>>
+        <%= mv.name %>（<%= mv.identifier %>）
+      </label>
+    <% end %>
   </div>
+
+  <div class="admin-section-title" style="margin-top: 16px;">多语言版本</div>
+  <div class="admin-section-subtitle">每个语言一条内容；发送时优先选与 KOL 语言一致的版本</div>
+
+  <div id="template-versions">
+    <%= f.fields_for :message_template_versions do |vf| %>
+      <%= render "message_template_version_fields", f: vf %>
+    <% end %>
+  </div>
+
+  <button type="button" id="add-template-version" class="admin-button-secondary" style="margin-bottom: 16px;">+ 添加语言版本</button>
+
+  <template id="template-version-template">
+    <%= f.fields_for :message_template_versions, MessageTemplateVersion.new, child_index: "NEW_RECORD" do |vf| %>
+      <%= render "message_template_version_fields", f: vf %>
+    <% end %>
+  </template>
 
   <div style="margin-top: 16px;">
     <button type="submit" class="admin-button-primary">保存</button>
     <%= link_to "取消", admin_message_templates_path, class: "admin-button-secondary" %>
   </div>
 <% end %>
+
+<script>
+  (function () {
+    var container = document.getElementById('template-versions');
+    var addBtn = document.getElementById('add-template-version');
+    var template = document.getElementById('template-version-template');
+    if (!container || !addBtn || !template) return;
+
+    addBtn.addEventListener('click', function () {
+      var idx = new Date().getTime();
+      var html = template.innerHTML.replace(/NEW_RECORD/g, idx);
+      container.insertAdjacentHTML('beforeend', html);
+    });
+  })();
+</script>

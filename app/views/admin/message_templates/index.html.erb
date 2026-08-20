@@ -9,7 +9,7 @@
   <div class="admin-card-header">
     <div>
       <div class="admin-card-title">消息模板列表</div>
-      <div class="admin-card-subtitle">按场景与语种维护自动化触达话术</div>
+      <div class="admin-card-subtitle">按场景 / 平台 / 领域 / 语言维护自动化触达话术</div>
     </div>
     <div class="admin-card-header-right">
       <span class="admin-tag">共 <%= @templates.total_count %> 条</span>
@@ -28,8 +28,12 @@
         <%= f.select :scenario_eq, [["所有场景", ""], ["首次建联", "first_contact"], ["跟进询问", "follow_up"]], {}, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">语种</label>
-        <%= f.search_field :language_eq, class: "admin-input admin-filter-input", placeholder: "如 en / zh" %>
+        <label class="admin-filter-label">平台</label>
+        <%= f.select :platform_eq, MessageTemplate.platforms.keys.map { |k| [k, k] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">领域</label>
+        <%= f.select :domain_id_eq, @domains.map { |d| [d.name, d.id] }, { include_blank: "所有领域" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
@@ -46,8 +50,10 @@
             <th>ID</th>
             <th>名称</th>
             <th>场景</th>
-            <th>语种</th>
-            <th>内容</th>
+            <th>平台</th>
+            <th>领域</th>
+            <th>所需变量</th>
+            <th>语言版本</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -63,10 +69,10 @@
                   <span class="admin-pill-status" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">跟进询问</span>
                 <% end %>
               </td>
-              <td><span class="admin-label-muted"><%= t.language %></span></td>
-              <td>
-                <span class="admin-label-muted" style="max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;" title="<%= t.content %>"><%= t.content %></span>
-              </td>
+              <td><span class="admin-label-muted"><%= t.platform || "通用" %></span></td>
+              <td><span class="admin-label-muted"><%= t.domain&.name || "通用" %></span></td>
+              <td><span class="admin-label-muted"><%= t.message_variables.pluck(:identifier).join("、").presence || "-" %></span></td>
+              <td><span class="admin-label-muted"><%= t.message_template_versions.map { |v| v.language&.name }.compact.join(" / ").presence || "-" %></span></td>
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "编辑", edit_admin_message_template_path(t), class: "admin-link-quiet", style: "color: var(--accent);" %>

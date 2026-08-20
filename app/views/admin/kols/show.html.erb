@@ -27,7 +27,7 @@
         <%= @kol.name %>
       </div>
       <div class="admin-card-subtitle">
-        <%= @kol.owner %> 负责 · <%= @kol.language %>
+        <%= @kol.owner %> 负责 · <%= @kol.language&.name %>
       </div>
     </div>
     <div class="admin-card-header-right">
@@ -44,11 +44,11 @@
     </div>
     <div>
       <div class="admin-field-label">所属领域</div>
-      <div class="admin-field-value"><%= @kol.category.presence || "-" %></div>
+      <div class="admin-field-value"><%= @kol.domain&.name || "-" %></div>
     </div>
     <div>
       <div class="admin-field-label">粉丝量级</div>
-      <div class="admin-field-value"><%= @kol.follower_tier.presence || "-" %></div>
+      <div class="admin-field-value"><%= @kol.follower_tier_label || "-" %></div>
     </div>
     <div>
       <div class="admin-field-label">国家/地区</div>
@@ -56,7 +56,7 @@
     </div>
     <div>
       <div class="admin-field-label">使用语言</div>
-      <div class="admin-field-value"><%= @kol.language %></div>
+      <div class="admin-field-value"><%= @kol.language&.name || "-" %></div>
     </div>
     <div>
       <div class="admin-field-label">归属人</div>
@@ -75,6 +75,27 @@
       <div class="admin-field-value"><%= @kol.notes.presence || "无" %></div>
     </div>
   </div>
+</div>
+
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">变量值</div>
+      <div class="admin-card-subtitle">消息模板中 ${变量} 的实际取值</div>
+    </div>
+  </div>
+  <% if @kol.kol_variables.any? %>
+    <div class="admin-two-column">
+      <% @kol.kol_variables.each do |kv| %>
+        <div>
+          <div class="admin-field-label"><%= kv.variable_key %></div>
+          <div class="admin-field-value"><%= kv.value %></div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无变量值。</div>
+  <% end %>
 </div>
 
 <div class="admin-card" style="margin-top: 16px;">

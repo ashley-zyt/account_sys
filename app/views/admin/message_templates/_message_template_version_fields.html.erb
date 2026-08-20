@@ -1,0 +1,16 @@
+<div style="display: grid; grid-template-columns: 200px 1fr 70px; gap: 10px; align-items: start; padding: 12px; border: 1px solid rgba(148,163,184,0.25); border-radius: 8px; margin-bottom: 10px; background: rgba(148,163,184,0.04);">
+  <div>
+    <div class="admin-field-label">语言</div>
+    <%= f.select :language_id, @languages.map { |l| [l.name, l.id] }, { include_blank: "选择语言" }, class: "admin-input" %>
+  </div>
+  <div>
+    <div class="admin-field-label">内容（支持 ${变量}）</div>
+    <%= f.text_area :content, class: "admin-input", rows: 3 %>
+  </div>
+  <div>
+    <% if f.object.persisted? %>
+      <div class="admin-field-label">删除</div>
+      <%= f.check_box :_destroy, style: "width: 18px; height: 18px; margin-top: 8px;" %>
+    <% end %>
+  </div>
+</div>

@@ -1,59 +1,80 @@
-# == Schema Information
-#
-# Table name: message_templates
-#
-#  id                                :bigint           not null, primary key
-#  content(模板内容（支持变量注入）) :text(65535)      not null
-#  language(语种)                    :string(255)      default("en"), not null
-#  name(模板名称)                    :string(255)      not null
-#  scenario(模板场景)                :integer          default("first_contact"), not null
-#  created_at                        :datetime         not null
-#  updated_at                        :datetime         not null
-#
-# Indexes
-#
-#  index_message_templates_on_scenario_and_language  (scenario,language)
-#
 class MessageTemplate < ApplicationRecord
-  has_many :kol_messages, dependent: :nullify
+  belongs_to :domain, optional: true
 
-  # 场景分类：首次建联 / 跟进询问
+  has_many :message_template_versions, dependent: :destroy
+  has_many :message_template_variables, dependent: :destroy
+  has_many :message_variables, through: :message_template_variables
+
+  accepts_nested_attributes_for :message_template_versions, allow_destroy: true, reject_if: :all_blank
+
   enum scenario: {
     first_contact: 0,
     follow_up: 1
   }
 
-  validates :name, presence: true
-  validates :language, presence: true
-  validates :content, presence: true
+  # 平台（空 = 通用）
+  enum platform: {
+    facebook: 1,
+    twitter: 2,
+    tiktok: 3,
+    youtube: 4,
+    instagram: 5,
+    email: 6,
+    telegram: 7,
+    whatsapp: 8
+  }
 
-  # 按场景 + 语种匹配模板（取最早创建的一条，语种大小写不敏感）
-  def self.for(scenario:, language:)
-    where(scenario: scenario)
-      .where("LOWER(language) = ?", language.to_s.downcase)
-      .order(:id)
-      .first
+  validates :name, presence: true
+
+  # 取指定语言的版本，找不到则回退到任意版本
+  def version_for(language_id)
+    message_template_versions.find_by(language_id: language_id) || message_template_versions.first
   end
 
-  # 变量注入：发送时替换为真实数据
-  # 支持变量：${kol_name} / ${account_name} / ${sender_account} / ${owner} / ${nickname} / ${platform}
-  def render_with(kol: nil, account: nil, contact: nil)
-    text = content.to_s
-    text = text.gsub(/\$\{kol_name\}/, kol&.name.to_s)
-    # 约定：${account_name} 指被触达方的称呼（KOL 名称）
-    text = text.gsub(/\$\{account_name\}/, kol&.name.to_s)
-    text = text.gsub(/\$\{sender_account\}/, account&.account_name.to_s)
-    text = text.gsub(/\$\{owner\}/, kol&.owner.to_s)
-    text = text.gsub(/\$\{nickname\}/, contact&.nickname.to_s)
-    text = text.gsub(/\$\{platform\}/, contact&.platform.to_s)
-    text
+  # 模板所需变量标识符列表
+  def required_variable_keys
+    message_variables.map(&:identifier)
+  end
+
+  # 用 KOL 变量值渲染模板（按 KOL 语言选版本）
+  def render_for(kol)
+    version_for(kol.language_id)&.render_content(kol)
+  end
+
+  # 匹配主模板：scenario + platform（空=通用）+ domain（空=通用）
+  def self.match_for(scenario:, platform: nil, domain_id: nil)
+    scope = where(scenario: scenario)
+
+    if platform.present?
+      pval = platform_value(platform)
+      scope = scope.where("platform IS NULL OR platform = ?", pval)
+    else
+      scope = scope.where(platform: nil)
+    end
+
+    scope = scope.where("domain_id IS NULL OR domain_id = ?", domain_id) if domain_id.present?
+    scope
+  end
+
+  # 录入 KOL 时按「平台 + 领域」软提示可能需要的变量（取并集）
+  def self.suggested_variables(scenario:, platforms: [], domain_id: nil)
+    pvals = Array(platforms).map { |p| platform_value(p) }.compact
+    scope = where(scenario: scenario)
+    scope = scope.where("platform IS NULL OR platform IN (?)", pvals) if pvals.any?
+    scope = scope.where("domain_id IS NULL OR domain_id = ?", domain_id) if domain_id.present?
+    scope.includes(:message_variables).flat_map { |t| t.message_variables.map(&:identifier) }.uniq
+  end
+
+  def self.platform_value(platform)
+    return platform if platform.is_a?(Integer)
+    platforms[platform.to_s]
   end
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id name scenario language content created_at updated_at]
+    %w[id name scenario platform domain_id created_at updated_at]
   end
 
   def self.ransackable_associations(auth_object = nil)
-    %w[kol_messages]
+    %w[domain message_template_versions message_variables]
   end
 end

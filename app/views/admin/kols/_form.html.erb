@@ -18,19 +18,23 @@
     </div>
     <div>
       <div class="admin-field-label">所属领域</div>
-      <%= f.text_field :category, class: "admin-input", placeholder: "如 美妆 / 数码 / 游戏" %>
+      <%= f.select :domain_id, @domains.map { |d| [d.name, d.id] }, { include_blank: "请选择领域" }, class: "admin-input" %>
+      <%= text_field_tag "kol[domain_name]", "", class: "admin-input", style: "margin-top: 6px;", placeholder: "或直接录入新领域（同名自动去重）" %>
     </div>
     <div>
       <div class="admin-field-label">粉丝量级</div>
-      <%= f.text_field :follower_tier, class: "admin-input", placeholder: "如 10万-50万" %>
+      <% selected_tier = (kol.follower_min.present? || kol.follower_max.present?) ? "#{kol.follower_min},#{kol.follower_max}" : nil %>
+      <%= select_tag "kol[follower_tier]",
+            options_for_select(Kol::FOLLOWER_TIERS.map { |t| [t[:label], "#{t[:min]},#{t[:max]}"] }, selected_tier),
+            include_blank: "未设置", class: "admin-input" %>
     </div>
     <div>
       <div class="admin-field-label">所在国家/地区</div>
       <%= f.text_field :country, class: "admin-input" %>
     </div>
     <div>
-      <div class="admin-field-label">使用语言 <span style="color: #ef4444;">*</span></div>
-      <%= f.text_field :language, class: "admin-input", placeholder: "如 en / zh / es", required: true %>
+      <div class="admin-field-label">使用语言</div>
+      <%= f.select :language_id, @languages.map { |l| [l.name, l.id] }, { include_blank: "请选择语言" }, class: "admin-input" %>
     </div>
     <div>
       <div class="admin-field-label">归属人（负责人） <span style="color: #ef4444;">*</span></div>
@@ -62,6 +66,31 @@
       <%= render "kol_contact_fields", f: cf %>
     <% end %>
   </template>
+
+  <div class="admin-section-title" style="margin-top: 16px;">变量值（可选）</div>
+  <div class="admin-section-subtitle">
+    <% if @suggested_variables.present? && @suggested_variables.any? %>
+      根据当前平台 / 领域 / 语言，建议填写：<%= @suggested_variables.join("、") %>。这些内容录入之前，不会自动发消息。
+    <% else %>
+      这些内容录入之前，不会自动发消息。
+    <% end %>
+  </div>
+
+  <% if @message_variables.any? %>
+    <div class="admin-two-column">
+      <% @message_variables.each do |mv| %>
+        <div>
+          <div class="admin-field-label">
+            <%= mv.name %>（<%= mv.identifier %>）
+            <% if @suggested_variables&.include?(mv.identifier) %><span style="color: var(--warning);">建议</span><% end %>
+          </div>
+          <%= text_field_tag "kol_variables[#{mv.identifier}]", kol.variable_value(mv.identifier), class: "admin-input", placeholder: mv.description %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无全局变量字典，请先在消息模板中定义变量。</div>
+  <% end %>
 
   <div style="margin-top: 16px;">
     <button type="submit" class="admin-button-primary">保存</button>
