@@ -15,7 +15,7 @@
             预警总览
           </div>
           <div class="admin-card-subtitle">
-            点击指标卡切换下方预警列表；点击账号名或操作链接可查看详情（不跳转页面）
+            点击指标卡切换下方预警列表；点击账号名跳转账号详情页；操作列链接打开侧边栏查看详情
           </div>
         </div>
       </div>
@@ -133,9 +133,7 @@
               <% @zero_views_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="overview">
-                      <%= item[:account].account_name %>
-                    </span>
+                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -233,9 +231,7 @@
               <% @recent_banned_accounts.each do |account| %>
                 <tr>
                   <td>
-                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= account.account_name %>" data-drawer-trigger data-drawer-id-param="<%= account.id %>" data-drawer-tab-param="overview">
-                      <%= account.account_name %>
-                    </span>
+                    <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: account.account_name %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= account.platform.to_s.titleize %></span>
@@ -331,9 +327,7 @@
               <% @views_drop_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="posts">
-                      <%= item[:account].account_name %>
-                    </span>
+                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -434,9 +428,7 @@
               <% @fail_streak_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <span class="admin-link-quiet alert-ellipsis" style="color: var(--accent); cursor: pointer;" title="<%= item[:account].account_name %>" data-drawer-trigger data-drawer-id-param="<%= item[:account].id %>" data-drawer-tab-param="logs">
-                      <%= item[:account].account_name %>
-                    </span>
+                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -519,7 +511,7 @@
     </div>
     <div class="drawer-body" data-drawer-role="content">
       <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 12px;">
-        点击列表中的账号名或操作链接查看详情
+        点击操作列链接查看详情
       </div>
     </div>
   </div>
