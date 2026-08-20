@@ -31,6 +31,14 @@ class Admin::KolsController < Admin::BaseController
     @messages = @kol.kol_messages
                     .includes(:account, :kol_contact)
                     .order(Arel.sql("occurred_at IS NULL ASC, occurred_at ASC, id ASC"))
+    @contacts = @kol.kol_contacts.order(priority: :asc, id: :asc)
+
+    # 默认选中：当前正在联系 > 最近有消息的渠道 > 第一个渠道
+    latest_contact_id = @messages
+      .reject { |m| m.kol_contact_id.nil? }
+      .max_by { |m| m.occurred_at || m.created_at }
+      &.kol_contact_id
+    @active_contact_id = @kol.current_contact_id || latest_contact_id || @contacts.first&.id
     render layout: false
   end
 
