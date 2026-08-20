@@ -9,8 +9,8 @@
     <div class="custom-select-options" style="display: none;">
       <input type="text" class="custom-select-search" oninput="filterCustomSelect(this)" placeholder="搜索...">
       <div class="custom-select-options-list">
-        <% if include_blank %>
-          <div class="custom-select-option" data-value="" onclick="selectCustomOption(this)"><%= include_blank %></div>
+        <% if local_assigns[:include_blank] %>
+          <div class="custom-select-option" data-value="" onclick="selectCustomOption(this)"><%= local_assigns[:include_blank] %></div>
         <% end %>
         <% options.each do |label, value| %>
           <div class="custom-select-option" data-value="<%= value %>" onclick="selectCustomOption(this)"><%= label %></div>
