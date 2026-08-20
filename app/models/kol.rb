@@ -44,7 +44,7 @@ class Kol < ApplicationRecord
   belongs_to :domain, optional: true
   belongs_to :language, optional: true
 
-  accepts_nested_attributes_for :kol_contacts, allow_destroy: true, reject_if: proc { |attrs| attrs["platform"].blank? }
+  accepts_nested_attributes_for :kol_contacts, allow_destroy: true, reject_if: proc { |attrs| attrs["platform"].blank? && attrs["url"].blank? }
 
   # 第一层：KOL 业务生命周期状态
   enum status: {
@@ -62,7 +62,7 @@ class Kol < ApplicationRecord
   STATUS_LABELS = {
     "reserved"            => "储备",
     "pending"             => "待联系",
-    "contacting"          => "联系中",
+    "contacting"          => "已联系等回复",
     "replied_unprocessed" => "已回复待处理",
     "negotiating"         => "人工跟进中",
     "cooperating"         => "已合作",
@@ -85,6 +85,7 @@ class Kol < ApplicationRecord
 
   validates :name, presence: true
   validates :owner, presence: true
+  validates :domain, presence: { message: "所属领域不能为空" }
 
   validate :check_duplicate, on: :create
 
@@ -148,17 +149,11 @@ class Kol < ApplicationRecord
     where(status: :pending).where(variables_incomplete: false).order(created_at: :asc)
   }
 
-  # 全局查重：基于精确用户名 / 平台主页链接 / 邮箱
-  def self.find_duplicate(name:, contact_urls: [], contact_emails: [], exclude_id: nil)
+  # 全局查重：主要依据联系方式中的主页链接 / 邮箱（同名 KOL 允许存在）
+  def self.find_duplicate(contact_urls: [], contact_emails: [], exclude_id: nil)
     urls = Array(contact_urls).map(&:to_s).map(&:strip).reject(&:blank?).uniq
     emails = Array(contact_emails).map(&:to_s).map(&:strip).reject(&:blank?).uniq
     kol_ids = []
-
-    if name.present?
-      scope = Kol.where(name: name)
-      scope = scope.where.not(id: exclude_id) if exclude_id.present?
-      kol_ids.concat(scope.pluck(:id))
-    end
 
     kol_ids.concat(KolContact.where("url IN (?)", urls).pluck(:kol_id)) if urls.any?
 
@@ -197,7 +192,7 @@ class Kol < ApplicationRecord
       .flat_map { |c| [c.url, c.nickname] }
       .map(&:to_s).map(&:strip).reject(&:blank?)
 
-    dup = Kol.find_duplicate(name: name, contact_urls: urls, contact_emails: emails)
+    dup = Kol.find_duplicate(contact_urls: urls, contact_emails: emails)
     return if dup.nil?
 
     errors.add(:base, "该 KOL 已存在（归属人：#{dup.owner}，ID：#{dup.id}），请勿重复录入")
