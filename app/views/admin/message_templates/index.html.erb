@@ -86,7 +86,7 @@
                 <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><%= t.scenario_label %></span>
               </td>
               <td><span class="admin-label-muted"><%= t.platform || "通用" %></span></td>
-              <td><span class="admin-label-muted"><%= t.domain&.name || "通用" %></span></td>
+              <td><span class="admin-label-muted"><%= t.domain&.name %></span></td>
               <td><span class="admin-label-muted"><%= t.message_variables.pluck(:identifier).join("、").presence || "-" %></span></td>
               <td><span class="admin-label-muted"><%= t.message_template_versions.map { |v| v.language&.name }.compact.join(" / ").presence || "-" %></span></td>
               <td>

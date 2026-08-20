@@ -19,7 +19,7 @@
 #  fk_rails_...  (domain_id => domains.id)
 #
 class MessageTemplate < ApplicationRecord
-  belongs_to :domain, optional: true
+  belongs_to :domain
 
   has_many :message_template_versions, dependent: :destroy
   has_many :message_template_variables, dependent: :destroy
@@ -89,7 +89,7 @@ class MessageTemplate < ApplicationRecord
       scope = scope.where(platform: nil)
     end
 
-    scope = scope.where("domain_id IS NULL OR domain_id = ?", domain_id) if domain_id.present?
+    scope = scope.where(domain_id: domain_id) if domain_id.present?
     scope
   end
 
@@ -98,7 +98,7 @@ class MessageTemplate < ApplicationRecord
     pvals = Array(platforms).map { |p| platform_value(p) }.compact
     scope = where(scenario: scenario)
     scope = scope.where("platform IS NULL OR platform IN (?)", pvals) if pvals.any?
-    scope = scope.where("domain_id IS NULL OR domain_id = ?", domain_id) if domain_id.present?
+    scope = scope.where(domain_id: domain_id) if domain_id.present?
     scope.includes(:message_variables).flat_map { |t| t.message_variables.map(&:identifier) }.uniq
   end
 
