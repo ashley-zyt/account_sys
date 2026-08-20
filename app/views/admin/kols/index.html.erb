@@ -98,7 +98,7 @@
               <td>
                 <%= link_to kol.name, admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--text-primary);" %>
                 <% if kol.variables_incomplete? %>
-                  <span class="admin-pill-status" style="background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px; margin-left: 6px;">待补全</span>
+                  <span class="admin-pill-status" style="background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px; margin-left: 6px;">待补全变量</span>
                 <% end %>
               </td>
               <td><span class="admin-label-muted"><%= kol.domain&.name || "-" %></span></td>

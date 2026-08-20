@@ -251,7 +251,7 @@
   <div class="admin-two-column">
     <div>
       <div class="admin-section-title">立即联系（最高优先级）</div>
-      <div class="admin-section-subtitle">绕过排队，可强制指定渠道与内部账号</div>
+      <div class="admin-section-subtitle">绕过排队，可强制指定渠道与内部账号；按「首次建联」模板发送，所需变量需已填写</div>
       <%= form_with url: contact_now_admin_kol_path(@kol), method: :post, class: "admin-form" do %>
         <div style="margin-bottom: 10px;">
           <div class="admin-field-label">联系渠道</div>
@@ -299,14 +299,14 @@
 
   <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px;">
     <% if @kol.reserved? %>
-      <%= link_to "加入触达队列", activate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-primary" %>
+      <%= link_to "转为待联系", activate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-primary" %>
     <% elsif @kol.pending? %>
-      <%= link_to "移出触达队列", deactivate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-secondary" %>
+      <%= link_to "转回储备", deactivate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-secondary" %>
     <% end %>
     <% if @kol.replied_unprocessed? %>
       <%= link_to "人工接管", take_over_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-primary" %>
     <% end %>
     <%= link_to "标记已合作", mark_outcome_admin_kol_path(@kol, outcome: "cooperating"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
-    <%= link_to "标记未能合作", mark_outcome_admin_kol_path(@kol, outcome: "failed"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
+    <%= link_to "标记拒绝合作", mark_outcome_admin_kol_path(@kol, outcome: "failed"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
   </div>
 </div>

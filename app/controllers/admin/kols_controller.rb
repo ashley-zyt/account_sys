@@ -72,14 +72,16 @@ class Admin::KolsController < Admin::BaseController
     redirect_to admin_kols_path, notice: "KOL 已删除"
   end
 
+  # 加入自动化触达队列（Reserved → Pending）
   def activate
     @kol.enqueue!
-    redirect_to admin_kol_path(@kol), notice: "已加入自动化触达队列"
+    redirect_to admin_kol_path(@kol), notice: "已转为待联系"
   end
 
+  # 移出队列（Pending → Reserved）
   def deactivate
     @kol.dequeue!
-    redirect_to admin_kol_path(@kol), notice: "已移出触达队列，转入储备池"
+    redirect_to admin_kol_path(@kol), notice: "已转回储备"
   end
 
   def contact_now
