@@ -1,18 +1,22 @@
 <%= render "admin/shared/select_widgets" %>
 
-<%= form_with model: [:admin, kol], class: "admin-form" do |f| %>
-  <% if kol.errors.any? %>
-    <div class="admin-empty-state" style="margin-bottom: 12px;">
-      <ul class="admin-list">
+<% if kol.errors.any? %>
+  <div id="kol-form-error-overlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #1e293b; border: 1px solid rgba(239,68,68,0.5); border-radius: 12px; max-width: 480px; width: 100%; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);">
+      <div style="font-size: 16px; font-weight: 600; color: #f87171; margin-bottom: 12px;">保存失败，请检查以下问题</div>
+      <ul style="list-style: disc; padding-left: 18px; margin: 0 0 16px; color: #e2e8f0; font-size: 13px; line-height: 1.6;">
         <% kol.errors.full_messages.each do |msg| %>
-          <li class="admin-list-item">
-            <div class="admin-list-title"><%= msg %></div>
-          </li>
+          <li><%= msg %></li>
         <% end %>
       </ul>
+      <div style="text-align: right;">
+        <button type="button" onclick="document.getElementById('kol-form-error-overlay').remove()" style="padding: 8px 18px; background: #3b82f6; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">知道了</button>
+      </div>
     </div>
-  <% end %>
+  </div>
+<% end %>
 
+<%= form_with model: [:admin, kol], class: "admin-form" do |f| %>
   <div class="admin-two-column">
     <div>
       <div class="admin-field-label">KOL 名称 / 常用用户名 <span style="color: #ef4444;">*</span></div>
