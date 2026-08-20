@@ -13,6 +13,8 @@ class Admin::KolsController < Admin::BaseController
               .order(created_at: :desc)
               .page(params[:page])
               .per(15)
+    @status_counts = Kol.group(:status).count
+    @variables_incomplete_count = Kol.where(variables_incomplete: true).count
   end
 
   def show

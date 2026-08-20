@@ -20,14 +20,23 @@
   .kol-bubble-content { white-space: pre-wrap; word-break: break-word; }
 </style>
 
+<% if @kol.variables_incomplete? %>
+  <div style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(251,146,60,0.12); border: 1px solid rgba(251,146,60,0.4); border-radius: 8px; margin-bottom: 16px; color: #fdba74;">
+    <span style="font-size: 16px;">⚠️</span>
+    <span style="font-size: 13px;">该 KOL 缺少模板所需变量，自动触达已暂停。请编辑并补全「需要填写的变量」后重新转为待联系。</span>
+  </div>
+<% end %>
+
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
       <div class="admin-card-title">
         <%= @kol.name %>
       </div>
-      <div class="admin-card-subtitle">
-        <%= @kol.owner %> 负责 · <%= @kol.language&.name %>
+      <div class="admin-card-subtitle" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px;">
+        <% if @kol.domain&.name %><span class="admin-pill-status" style="background: rgba(59,130,246,0.12); color: #60a5fa;"><%= @kol.domain.name %></span><% end %>
+        <% if @kol.language&.name %><span class="admin-pill-status" style="background: rgba(148,163,184,0.12); color: #cbd5e1;"><%= @kol.language.name %></span><% end %>
+        <span class="admin-label-muted"><%= @kol.owner %> 负责</span>
       </div>
     </div>
     <div class="admin-card-header-right">

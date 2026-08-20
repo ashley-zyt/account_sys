@@ -5,6 +5,26 @@
   KOL 自动化触达与全生命周期管理
 <% end %>
 
+<%
+  kol_summary = [
+    { label: "全部 KOL", value: @status_counts.values.sum, color: "#94a3b8" },
+    { label: "待联系", value: (@status_counts[Kol.statuses["pending"]] || 0), color: "#60a5fa" },
+    { label: "联系中", value: (@status_counts[Kol.statuses["contacting"]] || 0), color: "#fbbf24" },
+    { label: "已回复待处理", value: (@status_counts[Kol.statuses["replied_unprocessed"]] || 0), color: "#c084fc" },
+    { label: "人工跟进中", value: (@status_counts[Kol.statuses["negotiating"]] || 0), color: "#22d3ee" },
+    { label: "已合作", value: (@status_counts[Kol.statuses["cooperating"]] || 0), color: "#34d399" },
+    { label: "待补全变量", value: @variables_incomplete_count, color: "#fb923c" }
+  ]
+%>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
+  <% kol_summary.each do |s| %>
+    <div style="background: #0f172a; border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 14px 16px; border-left: 3px solid <%= s[:color] %>;">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;"><%= s[:label] %></div>
+      <div style="font-size: 26px; font-weight: 700; color: <%= s[:color] %>;"><%= s[:value] %></div>
+    </div>
+  <% end %>
+</div>
+
 <%= render "admin/shared/select_widgets" %>
 
 <div class="admin-card">
