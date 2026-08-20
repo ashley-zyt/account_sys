@@ -43,6 +43,18 @@ class KolScheduler
       contacts = contacts.order(priority: :asc, id: :asc).to_a
       contacts = contacts.select { |c| KolAccountAllocator.supported_platform?(c.platform) }
 
+      # 没有任何可触达渠道时，不能判为「无回应」——那是从未真正触达过的场景。
+      # 仅当该 KOL 之前确有发出消息（跟进阶段）才标记「无回应」。
+      if contacts.empty?
+        if kol.kol_messages.where(direction: KolMessage.directions[:outgoing]).exists?
+          kol.update!(status: :unresponsive)
+        else
+          kol.update!(status: :reserved, variables_incomplete: kol.missing_entry_variables.any?)
+          Rails.logger.info "[KolScheduler] KOL##{kol.id} 无可触达渠道，已回落为「储备」"
+        end
+        return false
+      end
+
       contacts.each do |contact|
         outcome = send_on_contact(kol, contact, scenario: scenario)
         case outcome

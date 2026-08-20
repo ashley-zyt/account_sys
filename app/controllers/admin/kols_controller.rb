@@ -48,8 +48,9 @@ class Admin::KolsController < Admin::BaseController
     apply_language(@kol, params.dig(:kol))
 
     if @kol.save
-      sync_variables(@kol, params[:kol_variables])
-      redirect_to admin_kol_path(@kol), notice: "KOL 已成功录入"
+      downgraded = finalize_kol(@kol, params[:kol_variables])
+      notice = downgraded ? "KOL 已保存，因缺少联系方式或必要变量，已自动转为「储备」" : "KOL 已成功录入"
+      redirect_to admin_kol_path(@kol), notice: notice
     else
       @kol.kol_contacts.build if @kol.kol_contacts.empty?
       @suggested_variables = suggested_variables_for(@kol)
@@ -69,8 +70,9 @@ class Admin::KolsController < Admin::BaseController
     apply_language(@kol, params.dig(:kol))
 
     if @kol.update(kol_params)
-      sync_variables(@kol, params[:kol_variables])
-      redirect_to admin_kol_path(@kol), notice: "KOL 信息已更新"
+      downgraded = finalize_kol(@kol, params[:kol_variables])
+      notice = downgraded ? "KOL 已保存，因缺少联系方式或必要变量，已自动转为「储备」" : "KOL 信息已更新"
+      redirect_to admin_kol_path(@kol), notice: notice
     else
       @suggested_variables = suggested_variables_for(@kol)
       prepare_variable_data(@kol)
@@ -85,8 +87,11 @@ class Admin::KolsController < Admin::BaseController
 
   # 加入自动化触达队列（Reserved → Pending）
   def activate
-    @kol.enqueue!
-    redirect_to admin_kol_path(@kol), notice: "已转为待联系"
+    if @kol.enqueue!
+      redirect_to admin_kol_path(@kol), notice: "已转为待联系"
+    else
+      redirect_to admin_kol_path(@kol), alert: "该 KOL 缺少可触达的联系方式或必要变量，无法转入待联系"
+    end
   end
 
   # 移出队列（Pending → Reserved）
@@ -189,12 +194,23 @@ class Admin::KolsController < Admin::BaseController
     kol.language_id = name.present? ? Language.find_or_create_by_name(name)&.id : nil
   end
 
-  # 同步 KOL 变量值（键值对）；有填写值则清除"待补全"标记
-  def sync_variables(kol, variables_hash)
+  # 同步 KOL 变量值，并据实重算「待补全变量」标记；
+  # 若 KOL 处于「待联系」但尚不具备触达条件（无渠道 / 缺变量），自动回落到「储备」。
+  # 返回是否发生了回落。
+  def finalize_kol(kol, variables_hash)
     kol.sync_variables!(variables_hash)
-    if variables_hash.present? && variables_hash.values.any? { |v| v.to_s.strip.present? }
-      kol.update!(variables_incomplete: false)
+
+    incomplete = kol.missing_entry_variables.any?
+    has_contacts = kol.has_outreachable_contacts?
+
+    downgraded = false
+    if kol.status.to_s == "pending" && (!has_contacts || incomplete)
+      kol.update!(status: :reserved)
+      downgraded = true
     end
+
+    kol.update!(variables_incomplete: incomplete)
+    downgraded
   end
 
   def suggested_variables_for(kol)
