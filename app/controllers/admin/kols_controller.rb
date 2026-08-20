@@ -24,9 +24,10 @@ class Admin::KolsController < Admin::BaseController
   end
 
   def new
-    @kol = Kol.new
+    @kol = Kol.new(status: :pending)
     @kol.kol_contacts.build
     @suggested_variables = suggested_variables_for(@kol)
+    prepare_variable_data(@kol)
   end
 
   def create
@@ -41,12 +42,14 @@ class Admin::KolsController < Admin::BaseController
     else
       @kol.kol_contacts.build if @kol.kol_contacts.empty?
       @suggested_variables = suggested_variables_for(@kol)
+      prepare_variable_data(@kol)
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
     @suggested_variables = suggested_variables_for(@kol)
+    prepare_variable_data(@kol)
   end
 
   def update
@@ -59,6 +62,7 @@ class Admin::KolsController < Admin::BaseController
       redirect_to admin_kol_path(@kol), notice: "KOL 信息已更新"
     else
       @suggested_variables = suggested_variables_for(@kol)
+      prepare_variable_data(@kol)
       render :edit, status: :unprocessable_entity
     end
   end
@@ -187,5 +191,26 @@ class Admin::KolsController < Admin::BaseController
       platforms: platforms,
       domain_id: kol.domain_id
     )
+  end
+
+  # 为前端「按领域/平台动态匹配变量」准备数据
+  def prepare_variable_data(kol)
+    @template_var_data = MessageTemplate.where(scenario: :first_contact)
+      .includes(:domain, :message_variables)
+      .map do |t|
+        {
+          domain_name: t.domain&.name,
+          platform: t.platform,
+          variables: t.message_variables.map(&:identifier)
+        }
+      end
+    @all_variables_data = @message_variables.map do |v|
+      {
+        identifier: v.identifier,
+        name: v.name,
+        description: v.description,
+        value: kol.variable_value(v.identifier)
+      }
+    end
   end
 end

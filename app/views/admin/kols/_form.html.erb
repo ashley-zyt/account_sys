@@ -89,30 +89,89 @@
     <% end %>
   </template>
 
-  <div class="admin-section-title" style="margin-top: 16px;">变量值（可选）</div>
-  <div class="admin-section-subtitle">
-    <% if @suggested_variables.present? && @suggested_variables.any? %>
-      根据当前平台 / 领域 / 语言，建议填写：<%= @suggested_variables.join("、") %>。这些内容录入之前，不会自动发消息。
-    <% else %>
-      这些内容录入之前，不会自动发消息。
-    <% end %>
-  </div>
+  <div class="admin-section-title" style="margin-top: 16px;">需要填写的变量</div>
+  <div class="admin-section-subtitle">根据所选领域 / 平台自动匹配；这些内容录入之前，不会自动发消息。</div>
+  <div id="kol-variables-section"></div>
 
-  <% if @message_variables.any? %>
-    <div class="admin-two-column">
-      <% @message_variables.each do |mv| %>
-        <div>
-          <div class="admin-field-label">
-            <%= mv.name %>（<%= mv.identifier %>）
-            <% if @suggested_variables&.include?(mv.identifier) %><span style="color: var(--warning);">建议</span><% end %>
-          </div>
-          <%= text_field_tag "kol_variables[#{mv.identifier}]", kol.variable_value(mv.identifier), class: "admin-input", placeholder: mv.description %>
-        </div>
-      <% end %>
-    </div>
-  <% else %>
-    <div class="admin-empty-state">暂无全局变量字典，请先在「变量管理」中定义。</div>
-  <% end %>
+  <script type="application/json" id="kol-variable-data">
+    <%= raw({ templates: @template_var_data, variables: @all_variables_data }.to_json) %>
+  </script>
+
+  <script>
+    (function () {
+      var dataEl = document.getElementById('kol-variable-data');
+      var section = document.getElementById('kol-variables-section');
+      if (!dataEl || !section) return;
+
+      var data = JSON.parse(dataEl.textContent);
+      var templates = data.templates || [];
+      var variables = data.variables || [];
+      var domainInput = document.querySelector('input[name="kol[domain_name]"]');
+      var contactsContainer = document.getElementById('kol-contacts');
+
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      function currentPlatforms() {
+        var platforms = [];
+        if (contactsContainer) {
+          contactsContainer.querySelectorAll('input[name$="[platform]"]').forEach(function (input) {
+            if (input.value) platforms.push(input.value);
+          });
+        }
+        return platforms;
+      }
+
+      function neededIdentifiers(domainName, platforms) {
+        var needed = {};
+        templates.forEach(function (t) {
+          var domainMatch = !t.domain_name || t.domain_name === domainName;
+          var platformMatch = !t.platform || (platforms.length > 0 && platforms.indexOf(t.platform) !== -1);
+          if (domainMatch && platformMatch) {
+            t.variables.forEach(function (v) { needed[v] = true; });
+          }
+        });
+        return Object.keys(needed);
+      }
+
+      function render() {
+        var domainName = domainInput ? domainInput.value.trim() : '';
+        var needed = neededIdentifiers(domainName, currentPlatforms());
+        var list = variables.filter(function (v) { return needed.indexOf(v.identifier) !== -1; });
+
+        if (list.length === 0) {
+          section.innerHTML = '<div class="admin-empty-state">根据当前领域 / 平台暂无需要填写的变量。</div>';
+          return;
+        }
+
+        var html = '<div class="admin-two-column">';
+        list.forEach(function (v) {
+          html += '<div>' +
+            '<div class="admin-field-label">' + esc(v.name) + '（' + esc(v.identifier) + '）</div>' +
+            '<input type="text" name="kol_variables[' + esc(v.identifier) + ']" class="admin-input" value="' + esc(v.value) + '" placeholder="' + esc(v.description) + '">' +
+            '</div>';
+        });
+        html += '</div>';
+        section.innerHTML = html;
+      }
+
+      if (domainInput) {
+        domainInput.addEventListener('input', render);
+        domainInput.addEventListener('change', render);
+      }
+      if (contactsContainer) {
+        contactsContainer.addEventListener('click', function (e) {
+          if (e.target.closest('.custom-select-option')) {
+            setTimeout(render, 0);
+          }
+        });
+      }
+      render();
+    })();
+  </script>
 
   <div style="margin-top: 16px;">
     <button type="submit" class="admin-button-primary">保存</button>
