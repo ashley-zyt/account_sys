@@ -98,6 +98,7 @@ Rails.application.routes.draw do
         post :mark_outcome
         post :mark_auto_reply
         post :add_message
+        get :conversation
       end
     end
     resources :message_templates, except: [:show]

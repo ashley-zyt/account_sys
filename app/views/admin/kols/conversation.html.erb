@@ -1,0 +1,45 @@
+<style>
+  .kol-chat { display: flex; flex-direction: column; gap: 10px; padding: 4px; }
+  .kol-chat-row { display: flex; }
+  .kol-chat-row.out { justify-content: flex-end; }
+  .kol-chat-row.in { justify-content: flex-start; }
+  .kol-bubble { max-width: 80%; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.55; }
+  .kol-bubble.out { background: rgba(59,130,246,0.14); border: 1px solid rgba(59,130,246,0.32); color: #e2e8f0; }
+  .kol-bubble.in { background: rgba(148,163,184,0.12); border: 1px solid rgba(148,163,184,0.26); color: #e2e8f0; }
+  .kol-bubble-meta { display: flex; gap: 8px; align-items: center; font-size: 11px; color: #94a3b8; margin-bottom: 4px; flex-wrap: wrap; }
+  .kol-bubble-content { white-space: pre-wrap; word-break: break-word; }
+</style>
+
+<div class="kol-chat">
+  <% if @messages.any? %>
+    <% @messages.each do |m| %>
+      <div class="kol-chat-row <%= m.outgoing? ? "out" : "in" %>">
+        <div class="kol-bubble <%= m.outgoing? ? "out" : "in" %>">
+          <div class="kol-bubble-meta">
+            <span><%= m.kol_contact&.platform_icon %> <%= m.platform %></span>
+            <span><%= m.outgoing? ? (m.account&.account_name || "我方") : "KOL" %></span>
+            <% if m.outgoing? %><span><%= m.manual? ? "人工" : "自动" %></span><% end %>
+            <span><%= m.occurred_at&.strftime("%m-%d %H:%M") || m.created_at&.strftime("%m-%d %H:%M") %></span>
+          </div>
+          <div class="kol-bubble-content"><%= m.content %></div>
+          <div style="margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap;">
+            <% if m.sent_failed? %>
+              <span class="admin-pill-status" style="background: rgba(239,68,68,0.1); color: #ef4444; font-size: 11px;">发送失败</span>
+            <% elsif m.ignored? %>
+              <span class="admin-pill-status" style="background: rgba(100,116,139,0.15); color: #94a3b8; font-size: 11px;">已放弃</span>
+            <% elsif m.queued? %>
+              <span class="admin-pill-status" style="background: rgba(156,163,175,0.1); color: #9ca3af; font-size: 11px;">待发送</span>
+            <% elsif m.replied? %>
+              <span class="admin-pill-status" style="background: rgba(168,85,247,0.1); color: #a855f7; font-size: 11px;">已回复</span>
+            <% end %>
+            <% if m.is_auto_reply? %>
+              <span class="admin-pill-status" style="background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px;">自动回复</span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="admin-empty-state">暂无会话记录。</div>
+  <% end %>
+</div>

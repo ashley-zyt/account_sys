@@ -2,7 +2,7 @@ class Admin::KolsController < Admin::BaseController
   before_action :set_kol, only: [
     :show, :edit, :update, :destroy,
     :activate, :deactivate, :contact_now, :take_over,
-    :mark_outcome, :mark_auto_reply, :add_message
+    :mark_outcome, :mark_auto_reply, :add_message, :conversation
   ]
   before_action :load_dictionaries, only: [:index, :new, :create, :edit, :update, :show]
 
@@ -23,6 +23,14 @@ class Admin::KolsController < Admin::BaseController
                     .includes(:account, :kol_contact)
                     .order(Arel.sql("occurred_at IS NULL ASC, occurred_at ASC, id ASC"))
     @accounts = Account.active.order(:platform, :account_name)
+  end
+
+  # 列表页抽屉里的跨渠道会话流（无布局，供 fetch 注入）
+  def conversation
+    @messages = @kol.kol_messages
+                    .includes(:account, :kol_contact)
+                    .order(Arel.sql("occurred_at IS NULL ASC, occurred_at ASC, id ASC"))
+    render layout: false
   end
 
   def new

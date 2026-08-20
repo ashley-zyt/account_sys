@@ -7,21 +7,21 @@
 
 <%
   kol_summary = [
-    { label: "全部 KOL", value: @status_counts.values.sum, color: "#94a3b8" },
-    { label: "待联系", value: (@status_counts[Kol.statuses["pending"]] || 0), color: "#60a5fa" },
-    { label: "联系中", value: (@status_counts[Kol.statuses["contacting"]] || 0), color: "#fbbf24" },
-    { label: "已回复待处理", value: (@status_counts[Kol.statuses["replied_unprocessed"]] || 0), color: "#c084fc" },
-    { label: "人工跟进中", value: (@status_counts[Kol.statuses["negotiating"]] || 0), color: "#22d3ee" },
-    { label: "已合作", value: (@status_counts[Kol.statuses["cooperating"]] || 0), color: "#34d399" },
-    { label: "待补全变量", value: @variables_incomplete_count, color: "#fb923c" }
+    { label: "全部 KOL", value: @status_counts.values.sum, color: "#94a3b8", url: admin_kols_path },
+    { label: "待联系", value: (@status_counts[Kol.statuses["pending"]] || 0), color: "#60a5fa", url: admin_kols_path(q: { status_eq: "pending" }) },
+    { label: "联系中", value: (@status_counts[Kol.statuses["contacting"]] || 0), color: "#fbbf24", url: admin_kols_path(q: { status_eq: "contacting" }) },
+    { label: "已回复待处理", value: (@status_counts[Kol.statuses["replied_unprocessed"]] || 0), color: "#c084fc", url: admin_kols_path(q: { status_eq: "replied_unprocessed" }) },
+    { label: "人工跟进中", value: (@status_counts[Kol.statuses["negotiating"]] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: "negotiating" }) },
+    { label: "已合作", value: (@status_counts[Kol.statuses["cooperating"]] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: "cooperating" }) },
+    { label: "待补全变量", value: @variables_incomplete_count, color: "#fb923c", url: admin_kols_path(q: { variables_incomplete_eq: "true" }) }
   ]
 %>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
   <% kol_summary.each do |s| %>
-    <div style="background: #0f172a; border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 14px 16px; border-left: 3px solid <%= s[:color] %>;">
+    <%= link_to s[:url], style: "display: block; background: #0f172a; border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 14px 16px; border-left: 3px solid #{s[:color]}; text-decoration: none; transition: border-color 0.15s;" do %>
       <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;"><%= s[:label] %></div>
       <div style="font-size: 26px; font-weight: 700; color: <%= s[:color] %>;"><%= s[:value] %></div>
-    </div>
+    <% end %>
   <% end %>
 </div>
 
@@ -117,6 +117,9 @@
               <td><%= kol.id %></td>
               <td>
                 <%= link_to kol.name, admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--text-primary);" %>
+                <% if kol.replied_unprocessed? %>
+                  <span class="admin-pill-status" style="background: rgba(239,68,68,0.15); color: #f87171; font-size: 11px; margin-left: 6px;">待处理回复</span>
+                <% end %>
                 <% if kol.variables_incomplete? %>
                   <span class="admin-pill-status" style="background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px; margin-left: 6px;">待补全变量</span>
                 <% end %>
@@ -130,7 +133,13 @@
               <td><span class="admin-label-muted"><%= kol.last_contacted_at&.strftime("%m-%d %H:%M") || "-" %></span></td>
               <td><span class="admin-label-muted"><%= kol.next_action_at&.strftime("%m-%d %H:%M") || "-" %></span></td>
               <td>
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <button type="button"
+                          class="<%= kol.replied_unprocessed? ? 'admin-button-primary' : 'admin-button-secondary' %>"
+                          style="padding: 4px 10px; font-size: 12px;"
+                          data-kol-drawer-trigger
+                          data-kol-url="<%= conversation_admin_kol_path(kol) %>"
+                          data-kol-name="<%= kol.name %>"><%= kol.replied_unprocessed? ? "查看回复" : "会话" %></button>
                   <%= link_to "详情", admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--accent);" %>
                   <%= link_to "编辑", edit_admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--success);" %>
                   <%= link_to "删除", admin_kol_path(kol), data: { turbo_method: :delete, turbo_confirm: "确定要删除该 KOL 吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
@@ -148,3 +157,58 @@
     <div class="admin-empty-state">暂无 KOL 数据。</div>
   <% end %>
 </div>
+
+<div class="drawer-backdrop" data-drawer-role="backdrop"></div>
+<div class="drawer-panel" data-drawer-role="panel">
+  <div class="drawer-header">
+    <div class="drawer-title" data-drawer-role="title">会话</div>
+    <button type="button" class="drawer-close" data-drawer-role="close">✕</button>
+  </div>
+  <div class="drawer-body" data-drawer-role="content">
+    <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 12px;">点击列表中的「会话」查看对话</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function openKolDrawer(url, name) {
+    var panel = document.querySelector('[data-drawer-role="panel"]');
+    var backdrop = document.querySelector('[data-drawer-role="backdrop"]');
+    var content = document.querySelector('[data-drawer-role="content"]');
+    var title = document.querySelector('[data-drawer-role="title"]');
+    if (title) title.textContent = '会话 · ' + name;
+    panel.classList.add('drawer-open');
+    backdrop.classList.add('drawer-backdrop-visible');
+    document.body.style.overflow = 'hidden';
+    content.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: var(--text-muted); font-size: 13px;">加载中...</div>';
+
+    fetch(url, { headers: { 'Accept': 'text/html' }, credentials: 'same-origin' })
+      .then(function(resp) { if (!resp.ok) throw new Error('HTTP ' + resp.status); return resp.text(); })
+      .then(function(html) { content.innerHTML = html; })
+      .catch(function(e) {
+        content.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: var(--danger); font-size: 13px;">加载失败：' + e.message + '</div>';
+      });
+  }
+
+  function closeKolDrawer() {
+    var panel = document.querySelector('[data-drawer-role="panel"]');
+    var backdrop = document.querySelector('[data-drawer-role="backdrop"]');
+    panel.classList.remove('drawer-open');
+    backdrop.classList.remove('drawer-backdrop-visible');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('click', function(e) {
+    var trigger = e.target.closest('[data-kol-drawer-trigger]');
+    if (trigger) {
+      e.preventDefault();
+      openKolDrawer(trigger.dataset.kolUrl, trigger.dataset.kolName || '');
+      return;
+    }
+    if (e.target.closest('[data-drawer-role="close"]')) { closeKolDrawer(); return; }
+    if (e.target.matches('[data-drawer-role="backdrop"]')) { closeKolDrawer(); return; }
+  });
+
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeKolDrawer(); });
+})();
+</script>
