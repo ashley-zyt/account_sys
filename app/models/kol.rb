@@ -97,7 +97,9 @@ class Kol < ApplicationRecord
   end
 
   def enqueue!
+    return false unless ready_for_outreach?
     update!(status: :pending, next_action_at: nil)
+    true
   end
 
   def dequeue!
@@ -143,6 +145,33 @@ class Kol < ApplicationRecord
   # 批量同步变量值（{ key => value }）
   def sync_variables!(hash)
     (hash || {}).each { |key, value| set_variable!(key, value) }
+  end
+
+  # 首次建联所需变量标识符（录入时按领域匹配；平台在发送时才参与匹配）
+  def required_entry_variable_keys
+    return [] if domain_id.blank?
+    MessageTemplate.suggested_variables(scenario: :first_contact, platforms: [], domain_id: domain_id)
+  end
+
+  # 缺失的首次建联变量标识符列表
+  def missing_entry_variables
+    missing_variables(required_entry_variable_keys)
+  end
+
+  def variables_complete?
+    missing_entry_variables.empty?
+  end
+
+  # 是否存在可被自动化触达的联系方式（有效 + 可发私信 + 已接通平台）
+  def has_outreachable_contacts?
+    kol_contacts.any? do |c|
+      c.active? && c.messaging_enabled? && KolAccountAllocator.supported_platform?(c.platform)
+    end
+  end
+
+  # 是否具备进入自动化触达队列的条件
+  def ready_for_outreach?
+    variables_complete? && has_outreachable_contacts?
   end
 
   scope :pending_queue, -> {
