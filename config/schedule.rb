@@ -119,15 +119,15 @@ end
 
 
 # ==================== KOL 自动化触达与管理 ====================
-# 每小时扫描 Pending/Contacting 队列，执行下一个触达动作
-# set :output, "log/kol_scheduler.log"
-# every 1.hour do
-#   runner 'KolScheduler.run'
-# end
+# 每小时扫描待联系（Pending）队列，确认满足条件后依次调用 API 发送消息
+set :output, "log/kol_scheduler.log"
+every 1.hour do
+  runner 'KolScheduler.run'
+end
 
-# 每 6 小时轮询 Contacting 状态会话，检查是否收到回复
-# set :output, "log/kol_reply_poller.log"
-# every 6.hours do
-#   runner 'KolReplyPoller.run'
-# end
+# 每 3 小时检查联系中（Contacting）的 KOL，确认对方是否回复
+set :output, "log/kol_reply_poller.log"
+every 3.hours do
+  runner 'KolReplyPoller.run'
+end
 

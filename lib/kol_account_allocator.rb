@@ -10,10 +10,18 @@ class KolAccountAllocator
   MAX_CONTACTS_PER_DAY = 5
   MIN_AVG_VIEWS = 10
   SLEEP_HOURS = 24
+  # 当前只接通 twitter；接入其它平台后在此扩展
+  SUPPORTED_PLATFORMS = %w[twitter].freeze
 
   class << self
-    # 分配一个可用账号；无可用账号返回 nil
+    def supported_platform?(platform)
+      SUPPORTED_PLATFORMS.include?(platform.to_s)
+    end
+
+    # 分配一个可用账号；无可用账号或平台未接通时返回 nil
     def allocate(platform, exclude_ids: [])
+      return nil unless supported_platform?(platform)
+
       ordered_candidates(platform).each do |account|
         next if exclude_ids.include?(account.id)
         next if account.kol_sleeping?

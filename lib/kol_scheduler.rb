@@ -34,13 +34,14 @@ class KolScheduler
       end
     end
 
-    # 从起点起按优先级遍历所有有效渠道尝试发送
+    # 从起点起按优先级遍历所有有效渠道尝试发送（仅处理已接通平台）
     def run_outreach(kol, scenario:, skip_contact_ids: [])
       contacts = kol.kol_contacts
         .where(status: KolContact.statuses[:active])
         .where(messaging_enabled: true)
       contacts = contacts.where.not(id: skip_contact_ids) if skip_contact_ids.present?
-      contacts = contacts.order(priority: :asc, id: :asc)
+      contacts = contacts.order(priority: :asc, id: :asc).to_a
+      contacts = contacts.select { |c| KolAccountAllocator.supported_platform?(c.platform) }
 
       contacts.each do |contact|
         outcome = send_on_contact(kol, contact, scenario: scenario)
