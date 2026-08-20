@@ -67,7 +67,7 @@ class KolOutreachApi
         url,
         headers: { "Content-Type" => "application/json" },
         body: body.to_json,
-        timeout: 60
+        timeout: 300 # 接口为同步调用，最长等待 5 分钟
       )
     end
 
