@@ -10,11 +10,17 @@
 #  titles        :text(65535)
 #  created_at    :datetime         not null
 #  updated_at    :datetime         not null
+#  domain_id     :bigint
 #
 # Indexes
 #
+#  index_themes_on_domain_id      (domain_id)
 #  index_themes_on_name           (name) UNIQUE
 #  index_themes_on_oss_directory  (oss_directory) UNIQUE
+#
+# Foreign Keys
+#
+#  fk_rails_...  (domain_id => domains.id)
 #
 class Theme < ApplicationRecord
   belongs_to :domain, optional: true

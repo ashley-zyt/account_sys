@@ -1,3 +1,23 @@
+# == Schema Information
+#
+# Table name: message_templates
+#
+#  id                             :bigint           not null, primary key
+#  name(模板名称)                 :string(255)      not null
+#  platform(适用平台（空为通用）) :integer
+#  scenario(模板场景)             :integer          default("first_contact"), not null
+#  created_at                     :datetime         not null
+#  updated_at                     :datetime         not null
+#  domain_id                      :bigint
+#
+# Indexes
+#
+#  index_message_templates_on_domain_id  (domain_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (domain_id => domains.id)
+#
 class MessageTemplate < ApplicationRecord
   belongs_to :domain, optional: true
 

@@ -1,3 +1,39 @@
+# == Schema Information
+#
+# Table name: kols
+#
+#  id                                                       :bigint           not null, primary key
+#  country(所在国家/地区)                                   :string(255)
+#  follower_max(粉丝量级上限（不含，空为以上）)             :bigint
+#  follower_min(粉丝量级下限（含）)                         :bigint
+#  last_contacted_at(最后一次触达时间)                      :datetime
+#  name(KOL名称/常用用户名)                                 :string(255)      not null
+#  next_action_at(下次可执行自动化动作的时间（等待期结束）) :datetime
+#  notes(备注)                                              :text(65535)
+#  owner(归属人（负责人）)                                  :string(255)      not null
+#  status(KOL业务生命周期状态)                              :integer          default("reserved"), not null
+#  variables_incomplete(变量待补全)                         :boolean          default(FALSE), not null
+#  created_at                                               :datetime         not null
+#  updated_at                                               :datetime         not null
+#  current_account_id(当前分配的内部账号ID)                 :bigint
+#  current_contact_id(当前正在触达的联系方式ID)             :bigint
+#  domain_id                                                :bigint
+#  language_id                                              :bigint
+#
+# Indexes
+#
+#  index_kols_on_domain_id       (domain_id)
+#  index_kols_on_language_id     (language_id)
+#  index_kols_on_name            (name)
+#  index_kols_on_next_action_at  (next_action_at)
+#  index_kols_on_owner           (owner)
+#  index_kols_on_status          (status)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (domain_id => domains.id)
+#  fk_rails_...  (language_id => languages.id)
+#
 class Kol < ApplicationRecord
   has_many :kol_contacts, dependent: :destroy
   has_many :kol_messages, dependent: :destroy
