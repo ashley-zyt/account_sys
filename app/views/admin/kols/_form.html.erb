@@ -61,9 +61,9 @@
       <div class="admin-field-label">当前状态</div>
       <%= render "admin/shared/searchable_select",
             name: "kol[status]",
-            options: Kol.statuses.keys.map { |k| [k, k] },
+            options: Kol::STATUS_LABELS.map { |k, v| [v, k] },
             selected: kol.status,
-            selected_label: kol.status,
+            selected_label: kol.status_label,
             placeholder: "选择状态" %>
     </div>
     <div>

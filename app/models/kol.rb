@@ -58,6 +58,22 @@ class Kol < ApplicationRecord
     unresponsive: 7           # 无响应
   }
 
+  # KOL 业务状态中文标签（表单下拉与展示共用）
+  STATUS_LABELS = {
+    "reserved"            => "储备",
+    "pending"             => "待联系",
+    "contacting"          => "联系中",
+    "replied_unprocessed" => "已回复待处理",
+    "negotiating"         => "人工跟进中",
+    "cooperating"         => "已合作",
+    "failed"              => "拒绝合作",
+    "unresponsive"        => "无回应"
+  }.freeze
+
+  def status_label
+    STATUS_LABELS[status] || status.to_s
+  end
+
   # 粉丝量级区间（左闭右开）
   FOLLOWER_TIERS = [
     { label: "0万-10万",     min: 0,           max: 100_000 },

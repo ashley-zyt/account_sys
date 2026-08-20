@@ -50,9 +50,9 @@
         <label class="admin-filter-label">状态</label>
         <%= render "admin/shared/searchable_select",
               name: "q[status_eq]",
-              options: Kol.statuses.keys.map { |k| [k, k] },
+              options: Kol::STATUS_LABELS.map { |k, v| [v, k] },
               selected: params.dig(:q, :status_eq),
-              selected_label: params.dig(:q, :status_eq),
+              selected_label: Kol::STATUS_LABELS[params.dig(:q, :status_eq)],
               placeholder: "所有状态",
               include_blank: "所有状态" %>
       </div>
