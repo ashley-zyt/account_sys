@@ -23,13 +23,14 @@
       <%= f.text_field :name, class: "admin-input", required: true %>
     </div>
     <div>
-      <div class="admin-field-label">所属领域</div>
+      <div class="admin-field-label">所属领域 <span style="color: #ef4444;">*</span></div>
       <%= render "admin/shared/combobox",
             name: "kol[domain_name]",
             value: kol.domain&.name,
             list_id: "kol-domain-list",
             options: @domains.map(&:name),
-            placeholder: "选择或输入领域（不存在则创建）" %>
+            placeholder: "选择或输入领域（不存在则创建）",
+            required: true %>
     </div>
     <div>
       <div class="admin-field-label">粉丝量级</div>

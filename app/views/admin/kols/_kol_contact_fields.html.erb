@@ -1,6 +1,6 @@
 <div class="admin-contact-row" style="display: grid; grid-template-columns: 140px 1fr 1.4fr 90px 120px 70px; gap: 10px; align-items: end; padding: 12px; border: 1px solid rgba(148,163,184,0.25); border-radius: 8px; margin-bottom: 10px; background: rgba(148,163,184,0.04);">
   <div>
-    <div class="admin-field-label">平台/渠道</div>
+    <div class="admin-field-label">平台/渠道 <span style="color: #ef4444;">*</span></div>
     <%= render "admin/shared/searchable_select",
           name: "#{f.object_name}[platform]",
           options: KolContact.platforms.keys.map { |k| [k, k] },
