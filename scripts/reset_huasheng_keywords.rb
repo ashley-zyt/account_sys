@@ -11,7 +11,7 @@ puts "批量重置花生视频储备关键词状态脚本"
 puts "ID 范围: 15 ~ 26"
 puts "=" * 60
 
-ids = [150, 151]
+ids = [150, 151,152,153]
 
 count = HuashengKeyword.where(id: ids).count
 puts "范围内记录数: #{count}"
@@ -33,6 +33,7 @@ time = Benchmark.measure do
     status: 0,
     task_id: nil,
     result_data: nil,
+    pushed: false,
     updated_at: Time.current
   )
   puts "成功更新 #{updated} 条记录"
