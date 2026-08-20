@@ -6,8 +6,8 @@
 #   3. 提供人工干预入口：立即联系（manual_contact）与人工打字发送（manual_send）
 #   4. 模板匹配 + 变量校验：自动触达缺变量时跳过并标记；人工触达缺变量时阻断
 class KolScheduler
-  WAIT_DAYS_MIN = 1
-  WAIT_DAYS_MAX = 2
+  # 发出消息后等待对方回复的固定时长：48 小时
+  REPLY_WAIT_HOURS = 48
   SUSPEND_HOURS = 24
   RETRY_HOURS = 1
 
@@ -232,7 +232,7 @@ class KolScheduler
     end
 
     def next_wait_time
-      rand(WAIT_DAYS_MIN.days..WAIT_DAYS_MAX.days)
+      Time.current + REPLY_WAIT_HOURS.hours
     end
 
     def safely(kol)
