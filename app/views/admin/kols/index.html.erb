@@ -8,11 +8,11 @@
 <%
   kol_summary = [
     { label: "全部 KOL", value: @status_counts.values.sum, color: "#94a3b8", url: admin_kols_path },
-    { label: "待联系", value: (@status_counts[Kol.statuses["pending"]] || 0), color: "#60a5fa", url: admin_kols_path(q: { status_eq: "pending" }) },
-    { label: "联系中", value: (@status_counts[Kol.statuses["contacting"]] || 0), color: "#fbbf24", url: admin_kols_path(q: { status_eq: "contacting" }) },
-    { label: "已回复待处理", value: (@status_counts[Kol.statuses["replied_unprocessed"]] || 0), color: "#c084fc", url: admin_kols_path(q: { status_eq: "replied_unprocessed" }) },
-    { label: "人工跟进中", value: (@status_counts[Kol.statuses["negotiating"]] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: "negotiating" }) },
-    { label: "已合作", value: (@status_counts[Kol.statuses["cooperating"]] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: "cooperating" }) },
+    { label: "待联系", value: (@status_counts["pending"] || 0), color: "#60a5fa", url: admin_kols_path(q: { status_eq: "pending" }) },
+    { label: "联系中", value: (@status_counts["contacting"] || 0), color: "#fbbf24", url: admin_kols_path(q: { status_eq: "contacting" }) },
+    { label: "已回复待处理", value: (@status_counts["replied_unprocessed"] || 0), color: "#c084fc", url: admin_kols_path(q: { status_eq: "replied_unprocessed" }) },
+    { label: "人工跟进中", value: (@status_counts["negotiating"] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: "negotiating" }) },
+    { label: "已合作", value: (@status_counts["cooperating"] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: "cooperating" }) },
     { label: "待补全变量", value: @variables_incomplete_count, color: "#fb923c", url: admin_kols_path(q: { variables_incomplete_eq: "true" }) }
   ]
 %>

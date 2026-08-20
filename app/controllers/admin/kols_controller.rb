@@ -13,7 +13,8 @@ class Admin::KolsController < Admin::BaseController
               .order(created_at: :desc)
               .page(params[:page])
               .per(15)
-    @status_counts = Kol.group(:status).count
+    @status_counts = {}
+    Kol.statuses.each_key { |key| @status_counts[key] = Kol.where(status: key).count }
     @variables_incomplete_count = Kol.where(variables_incomplete: true).count
   end
 
