@@ -101,7 +101,11 @@ Rails.application.routes.draw do
       end
     end
     resources :message_templates, except: [:show]
-    resources :message_variables, except: [:show]
+    resources :message_variables, except: [:show] do
+      collection do
+        get :new_modal
+      end
+    end
   end
 
   namespace :api do

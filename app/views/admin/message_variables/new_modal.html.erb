@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+    }
+    .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #f1f5f9; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: #94a3b8; margin-bottom: 6px; }
+    .form-hint { font-size: 11px; color: #64748b; margin-bottom: 6px; }
+    .form-input {
+      width: 100%; padding: 10px 12px; font-size: 14px;
+      background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; outline: none;
+    }
+    .form-input:focus { border-color: #3b82f6; }
+    .form-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .btn { padding: 10px 20px; font-size: 14px; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .btn-secondary:hover { background: #475569; }
+    .error-message { color: #f87171; font-size: 13px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="modal-title">新增变量</div>
+  <div id="variable-error" class="error-message" style="display: none;"></div>
+
+  <form id="variable-form">
+    <div class="form-group">
+      <label class="form-label">标识符 <span style="color: #f87171;">*</span></label>
+      <div class="form-hint">模板正文里的占位符，如 name / email / company</div>
+      <input type="text" name="message_variable[identifier]" class="form-input" placeholder="如 name" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">中文名 <span style="color: #f87171;">*</span></label>
+      <input type="text" name="message_variable[name]" class="form-input" placeholder="如 称呼/姓名" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">说明</label>
+      <input type="text" name="message_variable[description]" class="form-input" placeholder="该变量的用途说明（可选）">
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button type="submit" class="btn btn-primary">创建</button>
+    </div>
+  </form>
+
+  <script>
+    document.getElementById('variable-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const form = this;
+      const formData = new FormData(form);
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+      const errorDiv = document.getElementById('variable-error');
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
+
+      fetch('<%= admin_message_variables_path %>', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'Accept': 'application/json'
+        },
+        body: formData
+      })
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        if (data.success) {
+          if (window.parent && window.parent.closeVariableModal) {
+            window.parent.closeVariableModal(true);
+          }
+        } else {
+          errorDiv.textContent = data.message || '创建失败';
+          errorDiv.style.display = 'block';
+        }
+      })
+      .catch(function(error) {
+        errorDiv.textContent = '创建失败，请重试';
+        errorDiv.style.display = 'block';
+      });
+    });
+
+    function closeModal() {
+      if (window.parent && window.parent.closeVariableModal) {
+        window.parent.closeVariableModal(false);
+      }
+    }
+  </script>
+</body>
+</html>
