@@ -205,6 +205,18 @@
       openKolDrawer(trigger.dataset.kolUrl, trigger.dataset.kolName || '');
       return;
     }
+
+    var contactTab = e.target.closest('.kol-contact-tab');
+    if (contactTab) {
+      var id = contactTab.dataset.contactId;
+      document.querySelectorAll('.kol-contact-tab').forEach(function(t){ t.classList.remove('active'); });
+      document.querySelectorAll('[data-contact-panel]').forEach(function(p){
+        p.classList.toggle('active', p.getAttribute('data-contact-panel') === id);
+      });
+      contactTab.classList.add('active');
+      return;
+    }
+
     if (e.target.closest('[data-drawer-role="close"]')) { closeKolDrawer(); return; }
     if (e.target.matches('[data-drawer-role="backdrop"]')) { closeKolDrawer(); return; }
   });
