@@ -100,6 +100,17 @@
     </div>
 
     <div class="form-group">
+      <label class="form-label">领域</label>
+      <div class="form-hint">可输入新领域（同名去重）或从已有领域中选择</div>
+      <input type="text" name="theme[domain_name]" class="form-input" list="theme-domain-list" placeholder="选择或输入领域">
+      <datalist id="theme-domain-list">
+        <% @domains.each do |d| %>
+          <option value="<%= d.name %>"></option>
+        <% end %>
+      </datalist>
+    </div>
+
+    <div class="form-group">
       <label class="form-label">待选标题列表</label>
       <div class="form-hint">每行一个标题</div>
       <textarea name="theme[titles]" class="form-input" placeholder="标题1&#10;标题2&#10;标题3"></textarea>

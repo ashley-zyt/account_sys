@@ -12,6 +12,7 @@ class Admin::ThemesController < Admin::BaseController
 
   def create
     @theme = Theme.new(theme_params)
+    apply_domain(@theme)
 
     respond_to do |format|
       if @theme.save
@@ -25,6 +26,8 @@ class Admin::ThemesController < Admin::BaseController
   end
 
   def update
+    apply_domain(@theme)
+
     respond_to do |format|
       if @theme.update(theme_params)
         format.html { redirect_to admin_themes_path, notice: '主题更新成功' }
@@ -59,5 +62,11 @@ class Admin::ThemesController < Admin::BaseController
 
   def theme_params
     params.require(:theme).permit(:name, :oss_directory, :titles, :prompts, :remark)
+  end
+
+  # 领域：combobox 提交名称，同名去重、不存在则创建
+  def apply_domain(theme)
+    name = params.dig(:theme, :domain_name).to_s.strip
+    theme.domain_id = name.present? ? Domain.find_or_create_by_name(name)&.id : nil
   end
 end
