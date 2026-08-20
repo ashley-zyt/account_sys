@@ -21,34 +21,44 @@ class KolReplyPoller
       result = KolOutreachApi.check_reply(platform: contact.platform, account: account, contact: contact)
       return unless result[:has_reply]
 
-      content = extract_reply_content(result)
+      created = 0
+      Array(result[:replies]).each do |reply|
+        content = reply["content"].to_s.strip
+        next if content.blank?
+        next if already_stored?(kol, content)
 
-      KolMessage.create!(
-        kol: kol,
-        kol_contact: contact,
-        account: nil,
-        platform: contact.platform,
-        direction: :incoming,
-        source: :auto,
-        content: content,
-        status: :replied,
-        occurred_at: Time.current
-      )
+        KolMessage.create!(
+          kol: kol,
+          kol_contact: contact,
+          account: nil,
+          platform: contact.platform,
+          direction: :incoming,
+          source: :auto,
+          content: content,
+          status: :replied,
+          occurred_at: parse_time(reply["observed_at"]) || Time.current
+        )
+        created += 1
+      end
+
+      return if created.zero?
 
       # 暂停自动化，等待负责人人工审阅
       kol.update!(status: :replied_unprocessed, next_action_at: nil)
-      Rails.logger.info "[KolReplyPoller] KOL##{kol.id} 收到回复，已转入待人工处理"
+      Rails.logger.info "[KolReplyPoller] KOL##{kol.id} 收到 #{created} 条回复，已转入待人工处理"
     end
 
     private
 
-    def extract_reply_content(result)
-      raw = result[:raw]
-      if raw.is_a?(Hash)
-        raw["content"] || raw.dig("data", "content") || raw.dig("data", "text") || "（收到回复）"
-      else
-        "（收到回复）"
-      end
+    # 按内容去重，避免重复轮询重复入库
+    def already_stored?(kol, content)
+      KolMessage.exists?(kol_id: kol.id, direction: KolMessage.directions[:incoming], content: content)
+    end
+
+    def parse_time(str)
+      Time.zone.parse(str)
+    rescue
+      nil
     end
 
     def safely(kol)

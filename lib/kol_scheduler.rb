@@ -99,10 +99,8 @@ class KolScheduler
           next_action_at: deadline
         )
         { ok: true }
-      when :target_invalid
-        { ok: false, error: "目标渠道无效，请更换联系渠道" }
       when :account_risk
-        { ok: false, error: "内部账号风控受限（已自动休眠），请更换账号后重试" }
+        { ok: false, error: "内部账号异常（已自动休眠），请更换账号后重试" }
       else
         { ok: false, error: "发送失败，请稍后重试" }
       end
@@ -122,10 +120,8 @@ class KolScheduler
       when :success
         kol.update!(status: :negotiating) if kol.replied_unprocessed?
         { ok: true }
-      when :target_invalid
-        { ok: false, error: "目标渠道无效，请更换联系渠道" }
       when :account_risk
-        { ok: false, error: "内部账号风控受限（已自动休眠），请更换账号后重试" }
+        { ok: false, error: "内部账号异常（已自动休眠），请更换账号后重试" }
       else
         { ok: false, error: "发送失败，请稍后重试" }
       end
@@ -151,9 +147,6 @@ class KolScheduler
         when :success then return :success
         when :missing_variables then return :suspended
         when :account_risk then next
-        when :target_invalid
-          contact.update!(status: :disabled)
-          return :exhausted
         else
           kol.update!(status: :pending, next_action_at: RETRY_HOURS.hours.from_now)
           return :suspended
@@ -216,12 +209,9 @@ class KolScheduler
         end
         :success
       elsif result[:reason] == "account_risk"
-        message.update!(status: :sent_failed, error_msg: "内部账号风控/受限")
+        message.update!(status: :sent_failed, error_msg: "内部账号异常")
         KolAccountAllocator.sleep_account(account)
         :account_risk
-      elsif result[:reason] == "target_invalid"
-        message.update!(status: :sent_failed, error_msg: "目标账号无效/隐私受限")
-        :target_invalid
       else
         message.update!(status: :sent_failed, error_msg: result[:error] || result[:reason] || "发送失败")
         :other
