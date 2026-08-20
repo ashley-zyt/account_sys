@@ -19,7 +19,7 @@ class KolOutreachApi
     def send_single_message(platform:, account:, contact:, content:)
       url = "#{base_url(account)}/accounts/send_single_message"
       body = {
-        profile_name: account&.browser&.name,
+        profile_name: account&.browser&.profile_name,
         platform: platform.to_s,
         account_name: contact&.url.to_s,
         message_content: content,
@@ -40,7 +40,7 @@ class KolOutreachApi
     def check_reply(platform:, account:, contact:)
       url = "#{base_url(account)}/accounts/check_reply"
       body = {
-        profile_name: account&.browser&.name,
+        profile_name: account&.browser&.profile_name,
         platform: platform.to_s,
         account_name: contact&.url.to_s,
         account_id: account&.id,
