@@ -94,10 +94,10 @@ every 30.minutes do
 end
 
 # RedNote 随机创建任务（每3小时，从未启动中随机取1~4条）
-set :output, "log/red_note_random_tasks.log"
-every 3.hours do
-  runner 'RedNoteApiService.random_create_tasks'
-end
+# set :output, "log/red_note_random_tasks.log"
+# every 3.hours do
+#   runner 'RedNoteApiService.random_create_tasks'
+# end
 
 
 # ==================== 花生资源队列推送 ====================
