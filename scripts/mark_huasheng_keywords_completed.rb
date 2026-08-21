@@ -26,7 +26,7 @@ HuashengKeyword.where(id: ids).each do |kw|
   puts "  ID #{kw.id}: #{kw.keyword} (当前状态: #{kw.status_name})"
 end
 
-print "确认将这些记录状态更新为"执行完成"？(y/N): "
+print "确认将这些记录状态更新为执行完成？(y/N): "
 answer = STDIN.gets&.strip
 unless answer&.downcase == 'y'
   puts "已取消操作"
