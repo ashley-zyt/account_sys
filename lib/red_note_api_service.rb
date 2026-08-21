@@ -156,7 +156,7 @@ class RedNoteApiService
       logger.formatter = Rails.logger.formatter
       Rails.logger = logger
 
-      keywords = RedNoteKeyword.where(status: 0).to_a.sample(rand(4..7))
+      keywords = RedNoteKeyword.where(status: 0).to_a.sample(rand(1..4))
       return if keywords.empty?
 
       Rails.logger.info "[RedNoteApi] 随机创建任务：抽中 #{keywords.size} 条未启动关键词"
