@@ -46,11 +46,13 @@ class Admin::ThemesController < Admin::BaseController
 
   def new_modal
     @theme = Theme.new
+    @domains = Domain.order(:name)
     render layout: false
   end
 
   def edit_modal
     @theme = Theme.find(params[:id])
+    @domains = Domain.order(:name)
     render layout: false
   end
 

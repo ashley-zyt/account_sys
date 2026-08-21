@@ -175,7 +175,10 @@ class Kol < ApplicationRecord
   end
 
   scope :pending_queue, -> {
-    where(status: :pending).where(variables_incomplete: false).order(created_at: :asc)
+    where(status: :pending)
+      .where(variables_incomplete: false)
+      .where("next_action_at IS NULL OR next_action_at <= ?", Time.current)
+      .order(created_at: :asc)
   }
 
   # 全局查重：主要依据联系方式中的主页链接 / 邮箱（同名 KOL 允许存在）
