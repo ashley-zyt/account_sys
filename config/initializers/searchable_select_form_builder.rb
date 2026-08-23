@@ -30,6 +30,14 @@ module SearchableSelectFormBuilder
   end
 end
 
-Rails.application.config.after_initialize do
+# 普通表单（form_with）：ActionView 加载完成后挂载
+ActiveSupport.on_load(:action_view) do
   ActionView::Helpers::FormBuilder.prepend(SearchableSelectFormBuilder)
+end
+
+# Ransack 搜索表单（search_form_for）：每次请求前确保已挂载（开发模式下代码会重载）
+Rails.application.config.to_prepare do
+  if defined?(Ransack::Helpers::FormBuilder)
+    Ransack::Helpers::FormBuilder.prepend(SearchableSelectFormBuilder)
+  end
 end
