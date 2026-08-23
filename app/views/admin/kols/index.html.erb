@@ -224,3 +224,79 @@
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeKolDrawer(); });
 })();
 </script>
+
+<script>
+  // 会话抽屉里的快捷回复 / 改状态 / 备注（inline onclick 调用，需全局）
+  function kolCsrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+  }
+
+  function kolRefresh(kolId) {
+    var content = document.querySelector('[data-drawer-role="content"]');
+    content.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px;">刷新中...</div>';
+    fetch('/admin/kols/' + kolId + '/conversation', { headers: { 'Accept': 'text/html' }, credentials: 'same-origin' })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function(html) { content.innerHTML = html; })
+      .catch(function(e) { content.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: var(--danger); font-size: 13px;">刷新失败：' + e.message + '</div>'; });
+  }
+
+  function kolPost(url, body, cb) {
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': kolCsrfToken(),
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(body || {}),
+      credentials: 'same-origin'
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(data) { cb(data); })
+      .catch(function(e) { alert('操作失败：' + e.message); });
+  }
+
+  function kolApplyTemplate(kolId) {
+    var hidden = document.querySelector('input[name="reply_template_id"]');
+    var tid = hidden ? hidden.value : '';
+    var dataEl = document.getElementById('kol-reply-templates');
+    var textarea = document.getElementById('kol-reply-content');
+    if (!tid || !dataEl || !textarea) return;
+    var templates = JSON.parse(dataEl.textContent);
+    var found = templates.find(function(t) { return String(t.id) === String(tid); });
+    if (found) textarea.value = found.content;
+  }
+
+  function kolReply(kolId) {
+    var textarea = document.getElementById('kol-reply-content');
+    var hidden = document.querySelector('input[name="reply_template_id"]');
+    var content = textarea ? textarea.value : '';
+    var tid = hidden ? hidden.value : '';
+    if (!content.trim()) { alert('回复内容不能为空'); return; }
+    kolPost('/admin/kols/' + kolId + '/reply_message', { content: content, template_id: tid }, function(data) {
+      if (data.success) { kolRefresh(kolId); } else { alert(data.message || '发送失败'); }
+    });
+  }
+
+  function kolQuickStatus(kolId, status) {
+    kolPost('/admin/kols/' + kolId + '/quick_status', { status: status }, function(data) {
+      if (data.success) { kolRefresh(kolId); } else { alert(data.message || '更新失败'); }
+    });
+  }
+
+  function kolSaveNote(kolId) {
+    var input = document.getElementById('kol-note-input');
+    var note = input ? input.value : '';
+    if (!note.trim()) { alert('请输入备注'); return; }
+    kolPost('/admin/kols/' + kolId + '/quick_status', { note: note }, function(data) {
+      if (data.success) { kolRefresh(kolId); } else { alert(data.message || '保存失败'); }
+    });
+  }
+
+  function kolMarkAutoReply(kolId) {
+    kolPost('/admin/kols/' + kolId + '/mark_auto_reply', {}, function(data) {
+      if (data.success) { kolRefresh(kolId); } else { alert(data.message || '操作失败'); }
+    });
+  }
+</script>

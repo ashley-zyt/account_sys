@@ -15,6 +15,17 @@
   .kol-contact-tab.active .kol-contact-tab-name { color: #93c5fd; }
   .kol-contact-panel { display: none; }
   .kol-contact-panel.active { display: block; }
+
+  .kol-actions { margin-top: 14px; border-top: 1px solid rgba(148,163,184,0.18); padding-top: 12px; display: flex; flex-direction: column; gap: 14px; }
+  .kol-actions-title { font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 8px; }
+  .kol-reply-box, .kol-status-box, .kol-note-box { display: flex; flex-direction: column; gap: 8px; }
+  .kol-reply-account { color: #60a5fa; font-weight: 600; }
+  .kol-status-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kol-status-pill { padding: 5px 10px; font-size: 12px; border-radius: 6px; border: 1px solid rgba(148,163,184,0.3); background: transparent; color: #cbd5e1; cursor: pointer; }
+  .kol-status-pill:hover { border-color: #475569; }
+  .kol-status-pill.active { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.5); color: #60a5fa; }
+  .kol-note-box { flex-direction: row; align-items: center; }
+  .kol-note-box .admin-input { flex: 1; }
 </style>
 
 <% if @contacts.any? %>
@@ -44,3 +55,49 @@
 <% else %>
   <div class="admin-empty-state">暂无会话记录。</div>
 <% end %>
+
+<div class="kol-actions" data-kol-id="<%= @kol.id %>">
+  <% if @kol.replied_unprocessed? || @kol.negotiating? %>
+    <div class="kol-reply-box">
+      <div class="kol-actions-title">快捷回复</div>
+      <div style="font-size: 12px; color: #94a3b8;">回复账号：<span class="kol-reply-account"><%= @reply_account&.account_name || "未分配" %></span></div>
+      <div style="display: flex; gap: 6px; align-items: flex-end;">
+        <div style="flex: 1;">
+          <%= render "admin/shared/searchable_select",
+                name: "reply_template_id",
+                options: @reply_templates.map { |t| [t[:label], t[:id]] },
+                selected: nil,
+                selected_label: nil,
+                placeholder: "选择模板（可选）",
+                include_blank: "手动输入" %>
+        </div>
+        <button type="button" class="admin-button-secondary" onclick="kolApplyTemplate(<%= @kol.id %>)">套用</button>
+      </div>
+      <textarea id="kol-reply-content" class="admin-input" rows="3" placeholder="输入回复内容"></textarea>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="admin-button-primary" onclick="kolReply(<%= @kol.id %>)">发送回复</button>
+        <% if @kol.replied_unprocessed? %>
+          <button type="button" class="admin-button-secondary" onclick="kolMarkAutoReply(<%= @kol.id %>)">标记为自动回复</button>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="kol-status-box">
+    <div class="kol-actions-title">快捷状态</div>
+    <div class="kol-status-pills">
+      <% Kol::STATUS_LABELS.each do |k, v| %>
+        <button type="button" class="kol-status-pill <%= 'active' if @kol.status.to_s == k %>" onclick="kolQuickStatus(<%= @kol.id %>, '<%= k %>')"><%= v %></button>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="kol-note-box">
+    <input type="text" id="kol-note-input" class="admin-input" placeholder="追加备注...">
+    <button type="button" class="admin-button-secondary" onclick="kolSaveNote(<%= @kol.id %>)">保存备注</button>
+  </div>
+</div>
+
+<script type="application/json" id="kol-reply-templates">
+<%= raw @reply_templates.to_json %>
+</script>

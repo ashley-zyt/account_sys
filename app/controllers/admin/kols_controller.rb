@@ -2,7 +2,8 @@ class Admin::KolsController < Admin::BaseController
   before_action :set_kol, only: [
     :show, :edit, :update, :destroy,
     :activate, :deactivate, :contact_now, :take_over,
-    :mark_outcome, :mark_auto_reply, :add_message, :conversation
+    :mark_outcome, :mark_auto_reply, :add_message, :conversation,
+    :reply_message, :quick_status
   ]
   before_action :load_dictionaries, only: [:index, :new, :create, :edit, :update, :show]
 
@@ -39,6 +40,13 @@ class Admin::KolsController < Admin::BaseController
       .max_by { |m| m.occurred_at || m.created_at }
       &.kol_contact_id
     @active_contact_id = @kol.current_contact_id || latest_contact_id || @contacts.first&.id
+
+    # 回复用：全部模板（渲染后的内容） + 当前回复账号
+    @reply_templates = MessageTemplate.order(:id).map do |t|
+      { id: t.id, label: "#{t.scenario_label} · #{t.name}", content: t.render_for(@kol).to_s }
+    end
+    @reply_account = @kol.current_account
+    @reply_contact = @kol.current_contact
     render layout: false
   end
 
@@ -135,6 +143,55 @@ class Admin::KolsController < Admin::BaseController
     end
   end
 
+  # 会话抽屉快捷回复：账号固定用「当前会话账号」（对方回复来的那个账号），防止串号
+  def reply_message
+    content = params[:content].to_s.strip
+    template_id = params[:template_id].to_s.strip
+
+    contact = @kol.kol_contacts.find_by(id: params[:kol_contact_id]) || @kol.current_contact
+
+    # 优先用输入框内容；输入框为空时才用模板渲染
+    if content.blank? && template_id.present?
+      template = MessageTemplate.find_by(id: template_id)
+      content = template&.render_for(@kol).to_s.strip
+    end
+
+    return render json: { success: false, message: "回复内容不能为空" } if content.blank?
+    return render json: { success: false, message: "缺少联系渠道" } if contact.nil?
+
+    account = @kol.current_account
+    return render json: { success: false, message: "该 KOL 缺少可回复的内部账号" } if account.nil?
+
+    result = KolScheduler.manual_send(@kol, contact: contact, account: account, content: content)
+    if result[:ok]
+      render json: { success: true, message: "回复已发送" }
+    else
+      render json: { success: false, message: result[:error] }
+    end
+  end
+
+  # 会话抽屉快捷改状态 + 追加备注（status / note 至少一项）
+  def quick_status
+    status = params[:status].to_s
+    note = params[:note].to_s.strip
+
+    updates = {}
+    if status.present?
+      return render json: { success: false, message: "无效的状态" } unless Kol.statuses.key?(status)
+      updates[:status] = status
+      updates[:next_action_at] = nil
+    end
+    if note.present?
+      existing = @kol.notes.to_s.strip
+      updates[:notes] = existing.present? ? "#{existing}\n#{note}" : note
+    end
+
+    return render json: { success: false, message: "没有可更新的内容" } if updates.empty?
+
+    @kol.update!(updates)
+    render json: { success: true, message: "已更新" }
+  end
+
   def take_over
     @kol.update!(status: :negotiating, next_action_at: nil)
     redirect_to admin_kol_path(@kol), notice: "已转入人工跟进"
@@ -149,13 +206,29 @@ class Admin::KolsController < Admin::BaseController
 
   def mark_auto_reply
     incoming = @kol.latest_incoming_reply
+    ok = false
     if incoming
       incoming.update!(is_auto_reply: true)
       outgoing = @kol.latest_outgoing_message
       @kol.update!(status: :contacting, next_action_at: outgoing&.wait_until || Time.current)
-      redirect_to admin_kol_path(@kol), notice: "已标记为自动回复，恢复等待倒计时"
-    else
-      redirect_to admin_kol_path(@kol), alert: "未找到可标记的回复"
+      ok = true
+    end
+
+    respond_to do |format|
+      format.html do
+        if ok
+          redirect_to admin_kol_path(@kol), notice: "已标记为自动回复，恢复等待倒计时"
+        else
+          redirect_to admin_kol_path(@kol), alert: "未找到可标记的回复"
+        end
+      end
+      format.json do
+        if ok
+          render json: { success: true, message: "已标记为自动回复" }
+        else
+          render json: { success: false, message: "未找到可标记的回复" }
+        end
+      end
     end
   end
 

@@ -30,7 +30,7 @@ class KolReplyPoller
         KolMessage.create!(
           kol: kol,
           kol_contact: contact,
-          account: nil,
+          account: account,
           platform: contact.platform,
           direction: :incoming,
           source: :auto,
