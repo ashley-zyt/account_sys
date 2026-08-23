@@ -9,6 +9,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" data-turbo-track="reload"></script>
 <% end %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <%# =========================================================== %>
 <%# 筛选栏                                                         %>
 <%# =========================================================== %>
@@ -36,15 +38,15 @@
       </div>
       <div>
         <div class="admin-filter-label">平台</div>
-        <%= f.select :platform_eq, @platforms, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :platform_eq, @platforms, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
       <div>
         <div class="admin-filter-label">工作模式</div>
-        <%= f.select :work_type_eq, @work_types, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :work_type_eq, @work_types, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
       </div>
       <div>
         <div class="admin-filter-label">账号状态</div>
-        <%= f.select :status_eq, @statuses, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :status_eq, @statuses, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="display: flex; gap: 8px;">
         <%= f.submit "筛选", class: "admin-button-primary" %>

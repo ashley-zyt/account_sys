@@ -26,6 +26,11 @@
     font-size: 14px;
   }
   .custom-select-trigger:hover { border-color: #475569; }
+  .custom-select-trigger:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
   .custom-select-value {
     flex: 1;
     text-align: left;
@@ -33,7 +38,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .custom-select-arrow { font-size: 12px; color: #94a3b8; margin-left: 8px; }
+  .custom-select-arrow { font-size: 12px; color: #94a3b8; margin-left: 8px; pointer-events: none; transition: transform 0.2s; }
   .custom-select.open .custom-select-arrow { transform: rotate(180deg); }
   .custom-select-options {
     position: absolute;
@@ -72,6 +77,27 @@
   }
   .custom-select-option:hover { background: #334155; }
   .custom-select-hidden-input { display: none; }
+
+  /* 可创建（自由输入 + 选择）模式 */
+  .custom-select-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 14px;
+    outline: none;
+    padding: 0;
+    font-family: inherit;
+  }
+  .custom-select-input::placeholder { color: #64748b; }
+  .custom-select-add {
+    padding: 8px 12px;
+    cursor: pointer;
+    color: #60a5fa;
+    font-size: 13px;
+    border-top: 1px solid #334155;
+  }
+  .custom-select-add:hover { background: #334155; }
 </style>
 
 <script>
@@ -118,6 +144,60 @@
     valueSpan.textContent = text || placeholder;
     var options = select.querySelector('.custom-select-options');
     options.style.display = 'none';
+    select.classList.remove('open');
+  }
+
+  // ---- 可创建（自由输入）模式 ----
+  function openCreatableSelect(input) {
+    var select = input.closest('.custom-select');
+    var options = select.querySelector('.custom-select-options');
+    options.style.display = 'block';
+    select.classList.add('open');
+    filterCreatableSelect(input);
+  }
+
+  function filterCreatableSelect(input) {
+    var select = input.closest('.custom-select');
+    var term = input.value.toLowerCase();
+    var hasExact = false;
+    select.querySelectorAll('.custom-select-option').forEach(function(opt) {
+      var text = opt.textContent.toLowerCase();
+      var show = text.indexOf(term) !== -1;
+      opt.style.display = show ? 'block' : 'none';
+      if (show && text === term) hasExact = true;
+    });
+    var add = select.querySelector('.custom-select-add');
+    var addText = select.querySelector('.custom-select-add-text');
+    if (add && addText) {
+      if (term && !hasExact) {
+        addText.textContent = input.value.trim();
+        add.style.display = 'block';
+      } else {
+        add.style.display = 'none';
+      }
+    }
+  }
+
+  function selectCreatableOption(option) {
+    var select = option.closest('.custom-select');
+    var value = option.getAttribute('data-value');
+    var input = select.querySelector('.custom-select-input');
+    var hidden = select.querySelector('.custom-select-hidden-input');
+    if (input) input.value = value;
+    if (hidden) hidden.value = value;
+    closeCreatableSelect(select);
+  }
+
+  function confirmCreatableAdd(btn) {
+    var select = btn.closest('.custom-select');
+    var input = select.querySelector('.custom-select-input');
+    var hidden = select.querySelector('.custom-select-hidden-input');
+    if (hidden && input) hidden.value = input.value.trim();
+    closeCreatableSelect(select);
+  }
+
+  function closeCreatableSelect(select) {
+    select.querySelector('.custom-select-options').style.display = 'none';
     select.classList.remove('open');
   }
 

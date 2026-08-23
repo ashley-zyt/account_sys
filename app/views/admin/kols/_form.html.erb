@@ -35,9 +35,11 @@
     <div>
       <div class="admin-field-label">粉丝量级</div>
       <% selected_tier = (kol.follower_min.present? || kol.follower_max.present?) ? "#{kol.follower_min},#{kol.follower_max}" : nil %>
-      <%= select_tag "kol[follower_tier]",
-            options_for_select(Kol::FOLLOWER_TIERS.map { |t| [t[:label], "#{t[:min]},#{t[:max]}"] }, selected_tier),
-            include_blank: "未设置", class: "admin-input" %>
+      <%= admin_searchable_select "kol[follower_tier]",
+            Kol::FOLLOWER_TIERS.map { |t| [t[:label], "#{t[:min]},#{t[:max]}"] },
+            selected: selected_tier,
+            placeholder: "未设置",
+            include_blank: "未设置" %>
     </div>
     <div>
       <div class="admin-field-label">所在国家/地区</div>

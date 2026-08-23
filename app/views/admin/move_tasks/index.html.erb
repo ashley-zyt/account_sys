@@ -5,6 +5,8 @@
   最近创建的任务列表
 <% end %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
@@ -30,15 +32,15 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
-        <%= f.select :theme_eq, @themes.map { |t| [t, t] }, { include_blank: "所有主题" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :theme_eq, @themes.map { |t| [t, t] }, { include_blank: "所有主题" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">平台</label>
-        <%= f.select :platform_eq, MoveTask.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :platform_eq, MoveTask.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
-        <%= f.select :status_eq, MoveTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :status_eq, MoveTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>

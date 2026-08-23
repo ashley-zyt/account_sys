@@ -71,11 +71,13 @@ class KolScheduler
     def advance(kol)
       current = kol.current_contact
       if current
+        # 只放弃「尚未发出」的排队消息；已发送成功的消息保留其「发送成功」事实，
+        # 不能因为等待期结束就被改写成「已放弃」。
         KolMessage.where(
           kol_id: kol.id,
           kol_contact_id: current.id,
           direction: KolMessage.directions[:outgoing],
-          status: [KolMessage.statuses[:queued], KolMessage.statuses[:sent_success]]
+          status: KolMessage.statuses[:queued]
         ).update_all(status: KolMessage.statuses[:ignored])
       end
 

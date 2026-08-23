@@ -49,11 +49,13 @@ class KolAccountAllocator
         .to_a
     end
 
-    # 单个账号今日已触达的 KOL 数量（按当日发出的 outgoing 消息计数）
+    # 单个账号今日已触达的 KOL 数量（仅按当日「发送成功」的消息计数，失败尝试不占配额）
     def today_contact_count(account)
-      KolMessage.where(account_id: account.id, direction: KolMessage.directions[:outgoing])
-        .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
-        .count
+      KolMessage.where(
+        account_id: account.id,
+        direction: KolMessage.directions[:outgoing],
+        status: KolMessage.statuses[:sent_success]
+      ).where(created_at: Time.current.beginning_of_day..Time.current.end_of_day).count
     end
   end
 end

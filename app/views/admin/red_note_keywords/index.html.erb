@@ -5,6 +5,8 @@
   管理小红书关键词采集任务
 <% end %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
@@ -26,15 +28,15 @@
     <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
       <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
-        <%= f.select :theme_eq,
-              options_for_select(@themes, @q.theme_eq),
+        <%= f.searchable_select :theme_eq,
+              @themes.map { |t| [t, t] },
               { include_blank: "全部主题" },
               { class: "admin-input admin-filter-input" } %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
-        <%= f.select :status_eq,
-              options_for_select(RedNoteKeyword::STATUS_NAMES.invert.to_a, @q.status_eq),
+        <%= f.searchable_select :status_eq,
+              RedNoteKeyword::STATUS_NAMES.invert.to_a,
               { include_blank: "全部状态" },
               { class: "admin-input admin-filter-input" } %>
       </div>

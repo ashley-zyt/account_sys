@@ -1,3 +1,5 @@
+<%= render "admin/shared/select_widgets" %>
+
 <%= form_with model: [:admin, browser], class: "admin-form" do |f| %>
   <% if browser.errors.any? %>
     <div class="admin-empty-state" style="margin-bottom: 12px;">
@@ -36,13 +38,13 @@
       <div class="admin-field-label">
         状态
       </div>
-      <%= f.select :status, Browser.statuses.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+      <%= f.searchable_select :status, Browser.statuses.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
     </div>
     <div>
       <div class="admin-field-label">
         用途
       </div>
-      <%= f.select :purpose, Browser.purposes.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
+      <%= f.searchable_select :purpose, Browser.purposes.keys.map { |k| [k, k] }, {}, class: "admin-input" %>
     </div>
   </div>
 

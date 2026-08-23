@@ -5,6 +5,8 @@
   手动创建单个养号任务
 <% end %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
@@ -24,7 +26,7 @@
     <%= form_for [:admin, @warmup_task] do |f| %>
       <div class="admin-form-group">
         <label class="admin-form-label">账号</label>
-        <%= f.select :account_id, @accounts.map { |a| [a.account_name, a.id] }, { include_blank: "请选择账号" }, class: "admin-input" %>
+        <%= f.searchable_select :account_id, @accounts.map { |a| [a.account_name, a.id] }, { include_blank: "请选择账号" }, class: "admin-input" %>
         <% if @warmup_task.errors[:account_id].any? %>
           <div class="admin-form-error"><%= @warmup_task.errors[:account_id].first %></div>
         <% end %>
@@ -32,7 +34,7 @@
 
       <div class="admin-form-group">
         <label class="admin-form-label">平台</label>
-        <%= f.select :platform, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "请选择平台" }, class: "admin-input" %>
+        <%= f.searchable_select :platform, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "请选择平台" }, class: "admin-input" %>
         <% if @warmup_task.errors[:platform].any? %>
           <div class="admin-form-error"><%= @warmup_task.errors[:platform].first %></div>
         <% end %>

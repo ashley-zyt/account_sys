@@ -5,6 +5,8 @@
   管理账号养号状态，按养号紧急程度排序
 <% end %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <%# --- 调度状态概览 --- %>
 <div class="admin-card" style="padding: 20px; margin-bottom: 24px;">
   <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
@@ -97,19 +99,19 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">平台</label>
-        <%= f.select :platform_eq, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :platform_eq, Account.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">运营机器</label>
-        <%= f.select :browser_machine_ip_eq, [["所有机器", ""]] + @machine_stats.map { |s| [s[:ip], s[:ip]] }, { include_blank: false }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :browser_machine_ip_eq, [["所有机器", ""]] + @machine_stats.map { |s| [s[:ip], s[:ip]] }, { include_blank: false }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
-        <%= f.select :status_eq, Account.statuses.map { |k, v| [k, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :status_eq, Account.statuses.map { |k, v| [k, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">养号开关</label>
-        <%= f.select :warmup_profile_warmup_enabled_eq, [["启用", true], ["停用", false]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :warmup_profile_warmup_enabled_eq, [["启用", true], ["停用", false]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>

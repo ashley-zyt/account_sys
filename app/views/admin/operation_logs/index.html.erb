@@ -1,5 +1,7 @@
 <%= render 'admin/shared/header' %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <div class="admin-content">
   <div class="admin-content-header">
     <h1>操作记录</h1>
@@ -9,11 +11,11 @@
     <%= search_form_for @q, html: { class: 'admin-filter-form' } do |f| %>
       <div class="admin-filter-group">
         <label class="admin-filter-label">操作人邮箱</label>
-        <%= f.select :admin_id_eq, @admins.map { |id, name| [name, id] }, { include_blank: '所有操作人' }, class: 'admin-input admin-filter-input' %>
+        <%= f.searchable_select :admin_id_eq, @admins.map { |id, name| [name, id] }, { include_blank: '所有操作人' }, class: 'admin-input admin-filter-input' %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">操作类型</label>
-        <%= f.select :action_eq, [['新增', 'create'], ['编辑', 'update'], ['删除', 'destroy']], { include_blank: '所有类型' }, class: 'admin-input admin-filter-input' %>
+        <%= f.searchable_select :action_eq, [['新增', 'create'], ['编辑', 'update'], ['删除', 'destroy']], { include_blank: '所有类型' }, class: 'admin-input admin-filter-input' %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">操作时间</label>

@@ -1,16 +1,26 @@
-<%# 可输入 + 可下拉组合框（自由录入 + 搜索已有值）
-    locals: name, value(当前显示值), list_id(唯一 datalist id), options [String], placeholder, required %>
-<% required = local_assigns[:required] %>
-<input type="text"
-       name="<%= name %>"
-       value="<%= value %>"
-       list="<%= list_id %>"
-       class="admin-input"
-       placeholder="<%= placeholder %>"
-       autocomplete="off"
-       <%= 'required' if required %>>
-<datalist id="<%= list_id %>">
-  <% options.each do |opt| %>
-    <option value="<%= opt %>"></option>
-  <% end %>
-</datalist>
+<%# 可搜索 + 可自由创建的组合框（点开后搜索已有值，无匹配时可「＋ 添加」新值）
+    locals: name, value(当前值), options [String], placeholder, required %>
+<div class="custom-select-container">
+  <div class="custom-select" data-placeholder="<%= placeholder %>">
+    <div class="custom-select-trigger">
+      <input type="text"
+             name="<%= name %>"
+             class="custom-select-input"
+             value="<%= value %>"
+             placeholder="<%= placeholder %>"
+             autocomplete="off"
+             oninput="filterCreatableSelect(this)"
+             onfocus="openCreatableSelect(this)"
+             <%= 'required' if local_assigns[:required] %>>
+      <span class="custom-select-arrow">▼</span>
+    </div>
+    <div class="custom-select-options" style="display: none;">
+      <div class="custom-select-options-list">
+        <% options.each do |opt| %>
+          <div class="custom-select-option" data-value="<%= opt %>" onclick="selectCreatableOption(this)"><%= opt %></div>
+        <% end %>
+      </div>
+      <div class="custom-select-add" style="display: none;" onclick="confirmCreatableAdd(this)">＋ 添加「<span class="custom-select-add-text"></span>」</div>
+    </div>
+  </div>
+</div>
