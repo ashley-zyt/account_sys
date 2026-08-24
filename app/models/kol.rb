@@ -70,6 +70,9 @@ class Kol < ApplicationRecord
     "unresponsive"        => "无回应"
   }.freeze
 
+  # 允许运营在快捷区直接切换的状态（其余为系统自动流转，人工改容易混乱）
+  MANUAL_STATUS_KEYS = %w[reserved negotiating cooperating failed unresponsive].freeze
+
   def status_label
     STATUS_LABELS[status] || status.to_s
   end

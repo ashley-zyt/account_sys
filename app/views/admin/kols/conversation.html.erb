@@ -74,6 +74,7 @@
         <button type="button" class="admin-button-secondary" onclick="kolApplyTemplate(<%= @kol.id %>)">套用</button>
       </div>
       <textarea id="kol-reply-content" class="admin-input" rows="3" placeholder="输入回复内容"></textarea>
+      <div id="kol-reply-var-hint" style="display: none; font-size: 12px; color: #f59e0b;"></div>
       <div style="display: flex; gap: 8px;">
         <button type="button" class="admin-button-primary" onclick="kolReply(<%= @kol.id %>)">发送回复</button>
         <% if @kol.replied_unprocessed? %>
@@ -86,8 +87,8 @@
   <div class="kol-status-box">
     <div class="kol-actions-title">快捷状态</div>
     <div class="kol-status-pills">
-      <% Kol::STATUS_LABELS.each do |k, v| %>
-        <button type="button" class="kol-status-pill <%= 'active' if @kol.status.to_s == k %>" onclick="kolQuickStatus(<%= @kol.id %>, '<%= k %>')"><%= v %></button>
+      <% Kol::MANUAL_STATUS_KEYS.each do |k| %>
+        <button type="button" class="kol-status-pill <%= 'active' if @kol.status.to_s == k %>" onclick="kolQuickStatus(<%= @kol.id %>, '<%= k %>')"><%= Kol::STATUS_LABELS[k] %></button>
       <% end %>
     </div>
   </div>

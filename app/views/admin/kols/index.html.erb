@@ -262,10 +262,20 @@
     var tid = hidden ? hidden.value : '';
     var dataEl = document.getElementById('kol-reply-templates');
     var textarea = document.getElementById('kol-reply-content');
+    var hint = document.getElementById('kol-reply-var-hint');
     if (!tid || !dataEl || !textarea) return;
     var templates = JSON.parse(dataEl.textContent);
     var found = templates.find(function(t) { return String(t.id) === String(tid); });
-    if (found) textarea.value = found.content;
+    if (!found) return;
+    textarea.value = found.content;
+    if (hint) {
+      if (found.missing && found.missing.length) {
+        hint.textContent = '该模板包含未填写的变量：' + found.missing.map(function(m){ return '${' + m + '}'; }).join('、') + '，请在内容中替换这些占位符';
+        hint.style.display = 'block';
+      } else {
+        hint.style.display = 'none';
+      }
+    }
   }
 
   function kolReply(kolId) {

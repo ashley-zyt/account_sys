@@ -41,9 +41,14 @@ class Admin::KolsController < Admin::BaseController
       &.kol_contact_id
     @active_contact_id = @kol.current_contact_id || latest_contact_id || @contacts.first&.id
 
-    # 回复用：全部模板（渲染后的内容） + 当前回复账号
+    # 回复用：全部模板（渲染后的内容 + 缺失变量）+ 当前回复账号
     @reply_templates = MessageTemplate.order(:id).map do |t|
-      { id: t.id, label: "#{t.scenario_label} · #{t.name}", content: t.render_for(@kol).to_s }
+      {
+        id: t.id,
+        label: "#{t.scenario_label} · #{t.name}",
+        content: t.render_for(@kol).to_s,
+        missing: @kol.missing_variables(t.required_variable_keys)
+      }
     end
     @reply_account = @kol.current_account
     @reply_contact = @kol.current_contact
