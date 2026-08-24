@@ -58,8 +58,16 @@ class Admin::NotebooklmKeywordsController < Admin::BaseController
     render json: { success: false, error: e.message }, status: :unprocessable_entity
   end
 
+  HUASHENG_OSS_BUCKET = "notebooklm-ld".freeze
+  HUASHENG_OSS_REGION = "cn-hangzhou".freeze
+  HUASHENG_OSS_ACCESS_KEY_ID = "gZL8z938T19mSUHf".freeze
+  HUASHENG_OSS_ACCESS_KEY_SECRET = "A9fSDa9cH5YAExpEUR4QSizkFQEcrS".freeze
+  HUASHENG_OSS_SIGNED_URL_TTL = 31_536_000 # 1 年  
   def show
     @notebooklm_keyword = NotebooklmKeyword.find(params[:id])
+    result = (JSON.parse(@notebooklm_keyword.result_data) rescue {})
+    oss_url = result["oss_url"].to_s.strip
+    @video_url = NotebooklmKeyword.oss_v1_sign_url(oss_url) if oss_url.present?
     render layout: false if request.xhr?
   end
 

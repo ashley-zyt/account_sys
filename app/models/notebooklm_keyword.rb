@@ -39,4 +39,34 @@ class NotebooklmKeyword < ApplicationRecord
   def status_name
     STATUS_NAMES[status] || "未知"
   end
+
+  # OSS 签名 URL（bucket: notebooklm-ld）
+  OSS_BUCKET = "notebooklm-ld".freeze
+  OSS_REGION = "cn-hangzhou".freeze
+  OSS_ACCESS_KEY_ID = "gZL8z938T19mSUHf".freeze
+  OSS_ACCESS_KEY_SECRET = "A9fSDa9cH5YAExpEUR4QSizkFQEcrS".freeze
+  OSS_SIGNED_URL_TTL = 31_536_000 # 1 年
+
+  def self.percent_encode(str)
+    URI.encode_www_form_component(str.to_s).gsub("+", "%20")
+  end
+
+  def self.oss_v1_sign_url(key, expires_seconds = OSS_SIGNED_URL_TTL)
+    return nil if key.blank?
+    require "openssl"
+    require "base64"
+
+    key = key.sub(%r{^/}, "")
+    expires = (Time.now.utc.to_i + expires_seconds).to_s
+    string_to_sign = "GET\n\n\n#{expires}\n/#{OSS_BUCKET}/#{key}"
+    signature = Base64.strict_encode64(
+      OpenSSL::HMAC.digest("sha1", OSS_ACCESS_KEY_SECRET, string_to_sign)
+    ).strip
+
+    encoded_key = key.split("/").map { |seg| percent_encode(seg) }.join("/")
+    "https://#{OSS_BUCKET}.oss-#{OSS_REGION}.aliyuncs.com/#{encoded_key}?" \
+      "OSSAccessKeyId=#{OSS_ACCESS_KEY_ID}" \
+      "&Expires=#{expires}" \
+      "&Signature=#{percent_encode(signature)}"
+  end
 end
