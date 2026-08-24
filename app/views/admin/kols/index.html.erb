@@ -6,19 +6,21 @@
 <% end %>
 
 <%
+  active_status = params.dig(:q, :status_eq)
+  active_incomplete = (params.dig(:q, :variables_incomplete_eq).to_s == "true")
   kol_summary = [
-    { label: "全部 KOL", value: @status_counts.values.sum, color: "#94a3b8", url: admin_kols_path },
-    { label: "待回复", value: (@status_counts["replied_unprocessed"] || 0), color: "#f87171", url: admin_kols_path(q: { status_eq: "replied_unprocessed" }) },
-    { label: "联系中", value: (@status_counts["contacting"] || 0), color: "#fbbf24", url: admin_kols_path(q: { status_eq: "contacting" }) },
-    { label: "洽谈中", value: (@status_counts["negotiating"] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: "negotiating" }) },
-    { label: "已合作", value: (@status_counts["cooperating"] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: "cooperating" }) },
-    { label: "未回复", value: (@status_counts["unresponsive"] || 0), color: "#64748b", url: admin_kols_path(q: { status_eq: "unresponsive" }) },
-    { label: "待补全变量", value: @variables_incomplete_count, color: "#fb923c", url: admin_kols_path(q: { variables_incomplete_eq: "true" }) }
+    { label: "全部 KOL", value: @status_counts.values.sum, color: "#94a3b8", url: admin_kols_path, active: active_status.blank? && !active_incomplete },
+    { label: "待回复", value: (@status_counts["replied_unprocessed"] || 0), color: "#f87171", url: admin_kols_path(q: { status_eq: "replied_unprocessed" }), active: active_status == "replied_unprocessed" },
+    { label: "联系中", value: (@status_counts["contacting"] || 0), color: "#fbbf24", url: admin_kols_path(q: { status_eq: "contacting" }), active: active_status == "contacting" },
+    { label: "洽谈中", value: (@status_counts["negotiating"] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: "negotiating" }), active: active_status == "negotiating" },
+    { label: "已合作", value: (@status_counts["cooperating"] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: "cooperating" }), active: active_status == "cooperating" },
+    { label: "未回复", value: (@status_counts["unresponsive"] || 0), color: "#64748b", url: admin_kols_path(q: { status_eq: "unresponsive" }), active: active_status == "unresponsive" },
+    { label: "待补全变量", value: @variables_incomplete_count, color: "#fb923c", url: admin_kols_path(q: { variables_incomplete_eq: "true" }), active: active_incomplete }
   ]
 %>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
   <% kol_summary.each do |s| %>
-    <%= link_to s[:url], style: "display: block; background: #0f172a; border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 14px 16px; border-left: 3px solid #{s[:color]}; text-decoration: none; transition: border-color 0.15s;" do %>
+    <%= link_to s[:url], style: "display: block; background: #0f172a; border: 1px solid #{s[:active] ? s[:color] : 'rgba(148,163,184,0.2)'}; border-radius: 10px; padding: 14px 16px; border-left: 3px solid #{s[:color]}; text-decoration: none; transition: border-color 0.15s; #{s[:active] ? 'box-shadow: 0 0 0 1px ' + s[:color] + ' inset;' : ''}" do %>
       <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;"><%= s[:label] %></div>
       <div style="font-size: 26px; font-weight: 700; color: <%= s[:color] %>;"><%= s[:value] %></div>
     <% end %>

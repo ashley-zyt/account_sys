@@ -146,6 +146,8 @@
     var options = select.querySelector('.custom-select-options');
     options.style.display = 'none';
     select.classList.remove('open');
+    // 派发 change 事件，便于外部监听选择变化（如平台联动可发私信）
+    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   // ---- 可创建（自由输入）模式 ----
@@ -184,7 +186,10 @@
     var value = option.getAttribute('data-value');
     var input = select.querySelector('.custom-select-input');
     var hidden = select.querySelector('.custom-select-hidden-input');
-    if (input) input.value = value;
+    if (input) {
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     if (hidden) hidden.value = value;
     closeCreatableSelect(select);
   }

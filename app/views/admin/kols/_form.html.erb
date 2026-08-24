@@ -181,3 +181,17 @@
     });
   })();
 </script>
+
+<script>
+  // 平台选择联动「可发私信」：youtube/facebook 不可私信，默认不勾选；其余默认勾选
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t || !t.name || !/\[platform\]$/.test(t.name)) return;
+    var row = t.closest('.admin-contact-row');
+    if (!row) return;
+    var checkbox = row.querySelector('input[type="checkbox"][name$="[messaging_enabled]"]');
+    if (!checkbox) return;
+    var noDm = ['youtube', 'facebook'];
+    checkbox.checked = noDm.indexOf(t.value) === -1;
+  });
+</script>
