@@ -42,9 +42,32 @@ body.admin {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
   transition: width 0.2s ease;
   position: relative;
   z-index: 30;
+}
+
+/* 侧边栏菜单滚动容器：logo 与 footer 固定，中间菜单区域滚动 */
+.admin-sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+.admin-sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.admin-sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+}
+.admin-sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
 }
 
 .admin-logo {
@@ -52,6 +75,7 @@ body.admin {
   align-items: center;
   gap: 10px;
   margin-bottom: 28px;
+  flex-shrink: 0;
 }
 
 .admin-logo-badge {
@@ -269,6 +293,7 @@ body.admin {
   border-top: 1px solid var(--border-subtle);
   font-size: 11px;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .admin-sidebar-footer-label,
