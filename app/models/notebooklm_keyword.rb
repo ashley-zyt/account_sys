@@ -8,6 +8,7 @@
 #  status      :integer          default(0)
 #  task_id     :string(255)
 #  result_data :text(65535)
+#  pushed      :boolean          default(FALSE)
 #  created_at  :datetime         not null
 #  updated_at  :datetime         not null
 #
@@ -32,7 +33,7 @@ class NotebooklmKeyword < ApplicationRecord
   scope :by_status, ->(status) { where(status: status) if status.present? }
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id theme keyword status task_id created_at updated_at]
+    %w[id theme keyword status task_id pushed created_at updated_at]
   end
 
   def status_name
