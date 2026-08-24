@@ -6,8 +6,8 @@
 #   3. 提供人工干预入口：立即联系（manual_contact）与人工打字发送（manual_send）
 #   4. 模板匹配 + 变量校验：自动触达缺变量时跳过并标记；人工触达缺变量时阻断
 class KolScheduler
-  # 发出消息后等待对方回复的固定时长：48 小时
-  REPLY_WAIT_HOURS = 48
+  # 发出消息后等待对方回复的固定时长（工作日，自动跳过周六周日）
+  REPLY_WAIT_DAYS = 2
   SUSPEND_HOURS = 24
   RETRY_HOURS = 1
 
@@ -81,7 +81,15 @@ class KolScheduler
         ).update_all(status: KolMessage.statuses[:ignored])
       end
 
-      run_outreach(kol, scenario: :follow_up, skip_contact_ids: [current&.id].compact)
+      # 已经成功触达过（发出过消息）的渠道，等待期结束即视为「已尝试且未回复」，
+      # 不再重复尝试，保证按优先级线性推进（A→B→…），不会循环回 A。
+      tried_ids = kol.kol_messages
+        .where(direction: KolMessage.directions[:outgoing])
+        .where(status: KolMessage.statuses[:sent_success])
+        .pluck(:kol_contact_id).compact.uniq
+      tried_ids << current.id if current
+
+      run_outreach(kol, scenario: :follow_up, skip_contact_ids: tried_ids.uniq)
     end
 
     # ---- 人工干预 ----
@@ -246,7 +254,18 @@ class KolScheduler
     end
 
     def next_wait_time
-      Time.current + REPLY_WAIT_HOURS.hours
+      business_days_from_now(REPLY_WAIT_DAYS)
+    end
+
+    # 返回 N 个工作日后的时间点，自动跳过周六周日
+    def business_days_from_now(days)
+      t = Time.current
+      count = 0
+      while count < days
+        t += 1.day
+        count += 1 if t.wday.between?(1, 5) # 周一~周五
+      end
+      t
     end
 
     def safely(kol)

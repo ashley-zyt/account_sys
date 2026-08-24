@@ -36,7 +36,8 @@ class Account < ApplicationRecord
 	has_many :grok_tasks, dependent: :nullify
 	has_many :heygen_tasks, dependent: :nullify
 	has_many :huasheng_tasks, dependent: :nullify
-	has_many :warmup_tasks, dependent: :nullify
+	# 养号任务与账号强绑定（account_id 非空），账号删除时应一并删除，而非置空
+	has_many :warmup_tasks, dependent: :destroy
 	has_one :warmup_profile, dependent: :destroy
 	# 通过 task_logs.account_id 快照反查该账号的所有执行日志（兼容运营任务被释放资源的场景）
 	has_many :task_logs, foreign_key: :account_id, dependent: :nullify
