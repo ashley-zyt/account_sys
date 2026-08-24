@@ -71,6 +71,7 @@ Rails.application.routes.draw do
       end
     end
     resources :huasheng_keywords, only: [:index, :show, :new, :create, :edit, :update, :destroy]
+    resources :notebooklm_keywords, only: [:index, :show, :new, :create, :edit, :update, :destroy]
     resources :grok_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]
     resources :heygen_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]
     resources :warmup_tasks, only: [:index, :show, :new, :create, :destroy] do

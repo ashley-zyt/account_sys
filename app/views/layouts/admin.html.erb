@@ -473,6 +473,23 @@
                 </div>
               <% end %>
             </li>
+
+            <% notebooklm_active = controller_path == "admin/notebooklm_keywords" %>
+            <li class="admin-nav-item <%= "active" if notebooklm_active %>">
+              <%= link_to admin_notebooklm_keywords_path, class: "admin-nav-link", data: { tooltip: "NotebookLM 视频储备" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📓
+                  </div>
+                  <div class="admin-nav-label">
+                    NotebookLM 视频储备
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  NotebookLM Videos
+                </div>
+              <% end %>
+            </li>
           </ul>
         </div>
 

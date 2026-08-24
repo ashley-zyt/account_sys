@@ -1,0 +1,118 @@
+<% content_for :page_title do %>
+  关键词详情
+<% end %>
+<% content_for :page_subtitle do %>
+  <%= @notebooklm_keyword.keyword %>
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        <%= @notebooklm_keyword.keyword %>
+      </div>
+      <div class="admin-card-subtitle">
+        主题：<%= @notebooklm_keyword.theme %>
+      </div>
+    </div>
+    <div class="admin-card-header-right" style="display: flex; gap: 8px;">
+      <%= link_to "返回列表", admin_notebooklm_keywords_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <!-- 基本信息 -->
+  <div style="padding: 20px 0; border-bottom: 1px solid #334155;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px 40px;">
+      <div class="info-item">
+        <span class="info-label">主题</span>
+        <span class="info-value"><%= @notebooklm_keyword.theme %></span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">关键词</span>
+        <span class="info-value"><%= @notebooklm_keyword.keyword %></span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">任务状态</span>
+        <span class="info-value"><%= status_badge(@notebooklm_keyword.status) %></span>
+      </div>
+      <% if @notebooklm_keyword.task_id.present? %>
+      <div class="info-item">
+        <span class="info-label">远程任务ID</span>
+        <span class="info-value" style="font-family: monospace; font-size: 12px;"><%= @notebooklm_keyword.task_id %></span>
+      </div>
+      <% end %>
+      <div class="info-item">
+        <span class="info-label">创建时间</span>
+        <span class="info-value"><%= @notebooklm_keyword.created_at&.strftime('%Y-%m-%d %H:%M:%S') %></span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">更新时间</span>
+        <span class="info-value"><%= @notebooklm_keyword.updated_at&.strftime('%Y-%m-%d %H:%M:%S') %></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果数据 -->
+  <%
+    result = JSON.parse(@notebooklm_keyword.result_data) rescue {}
+    video_path = result["video_path"].to_s.strip
+    clean_path = result["clean_path"].to_s.strip
+  %>
+  <% if @notebooklm_keyword.result_data.present? %>
+  <div style="padding: 20px 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-size: 14px; color: #e2e8f0; font-weight: 600;">API 原始响应</span>
+      <button id="toggle_raw_btn" style="font-size: 11px; color: #64748b; background: transparent; border: 1px solid #334155; border-radius: 4px; padding: 3px 10px; cursor: pointer;">展开</button>
+    </div>
+
+    <% if video_path.present? %>
+    <!-- 原始视频 -->
+    <div style="margin-bottom: 12px; background: rgba(15,23,42,0.4); border: 1px solid #334155; border-radius: 6px; padding: 12px;">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+        <span>原始视频</span>
+      </div>
+      <video src="<%= video_path %>" controls preload="metadata"
+             style="width: 100%; max-height: 480px; border-radius: 8px; background: #000;"></video>
+      <% if video_path.present? %>
+      <div style="font-size: 11px; color: #64748b; margin-top: 4px; font-family: monospace;"><%= video_path %></div>
+      <% end %>
+    </div>
+    <% end %>
+
+    <% if clean_path.present? %>
+    <!-- 去水印视频 -->
+    <div style="margin-bottom: 12px; background: rgba(15,23,42,0.4); border: 1px solid #334155; border-radius: 6px; padding: 12px;">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+        <span>去水印视频</span>
+      </div>
+      <video src="<%= clean_path %>" controls preload="metadata"
+             style="width: 100%; max-height: 480px; border-radius: 8px; background: #000;"></video>
+      <% if clean_path.present? %>
+      <div style="font-size: 11px; color: #64748b; margin-top: 4px; font-family: monospace;"><%= clean_path %></div>
+      <% end %>
+    </div>
+    <% end %>
+
+    <pre id="raw_data_block" style="display: none; background: rgba(15,23,42,0.6); border: 1px solid #334155; border-radius: 6px; padding: 12px; color: #cbd5e1; font-size: 12px; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto;"><%== JSON.pretty_generate(result) %></pre>
+  </div>
+  <% end %>
+</div>
+
+<style>
+  .info-item { display: flex; flex-direction: column; gap: 2px; }
+  .info-label { color: #64748b; font-size: 12px; }
+  .info-value { color: #e2e8f0; font-size: 14px; }
+</style>
+
+<script>
+document.getElementById('toggle_raw_btn')?.addEventListener('click', function() {
+  var block = document.getElementById('raw_data_block');
+  if (block.style.display === 'none') {
+    block.style.display = 'block';
+    this.textContent = '收起';
+  } else {
+    block.style.display = 'none';
+    this.textContent = '展开';
+  }
+});
+</script>
