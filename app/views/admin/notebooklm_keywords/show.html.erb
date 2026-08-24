@@ -55,8 +55,7 @@
   <!-- 结果数据 -->
   <%
     result = JSON.parse(@notebooklm_keyword.result_data) rescue {}
-    video_path = result["video_path"].to_s.strip
-    clean_path = result["clean_path"].to_s.strip
+    oss_url = result["oss_url"].to_s.strip
   %>
   <% if @notebooklm_keyword.result_data.present? %>
   <div style="padding: 20px 0;">
@@ -65,31 +64,29 @@
       <button id="toggle_raw_btn" style="font-size: 11px; color: #64748b; background: transparent; border: 1px solid #334155; border-radius: 4px; padding: 3px 10px; cursor: pointer;">展开</button>
     </div>
 
-    <% if video_path.present? %>
-    <!-- 原始视频 -->
+    <% if oss_url.present? %>
+    <!-- OSS 视频 -->
     <div style="margin-bottom: 12px; background: rgba(15,23,42,0.4); border: 1px solid #334155; border-radius: 6px; padding: 12px;">
       <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
-        <span>原始视频</span>
+        <span>OSS 视频</span>
       </div>
-      <video src="<%= video_path %>" controls preload="metadata"
+      <video src="<%= @video_url %>" controls preload="metadata"
              style="width: 100%; max-height: 480px; border-radius: 8px; background: #000;"></video>
-      <% if video_path.present? %>
-      <div style="font-size: 11px; color: #64748b; margin-top: 4px; font-family: monospace;"><%= video_path %></div>
-      <% end %>
+      <div style="font-size: 11px; color: #64748b; margin-top: 4px; font-family: monospace;"><%= oss_url %></div>
     </div>
     <% end %>
 
-    <% if clean_path.present? %>
-    <!-- 去水印视频 -->
+    <% if @video_url %>
     <div style="margin-bottom: 12px; background: rgba(15,23,42,0.4); border: 1px solid #334155; border-radius: 6px; padding: 12px;">
       <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
-        <span>去水印视频</span>
+        <span>下载链接（有效期1年）</span>
       </div>
-      <video src="<%= clean_path %>" controls preload="metadata"
-             style="width: 100%; max-height: 480px; border-radius: 8px; background: #000;"></video>
-      <% if clean_path.present? %>
-      <div style="font-size: 11px; color: #64748b; margin-top: 4px; font-family: monospace;"><%= clean_path %></div>
-      <% end %>
+      <div style="display: flex; gap: 8px;">
+        <code style="flex: 1; font-size: 11px; color: #94a3b8; background: rgba(15,23,42,0.8); padding: 6px 10px; border-radius: 4px; word-break: break-all;"><%= @video_url %></code>
+        <button class="copy-link-btn" data-url="<%= @video_url %>" style="flex-shrink: 0; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25); color: #60a5fa; border-radius: 4px; padding: 6px 10px; cursor: pointer; white-space: nowrap;" title="复制链接">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        </button>
+      </div>
     </div>
     <% end %>
 
@@ -114,5 +111,28 @@ document.getElementById('toggle_raw_btn')?.addEventListener('click', function() 
     block.style.display = 'none';
     this.textContent = '展开';
   }
+});
+
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.copy-link-btn');
+  if (!btn) return;
+  var url = btn.getAttribute('data-url') || '';
+  var ta = document.createElement('textarea');
+  ta.value = url;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    var orig = btn.innerHTML;
+    btn.innerHTML = '已复制';
+    btn.style.color = '#34d399';
+    setTimeout(function() {
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+      btn.style.color = '#60a5fa';
+    }, 1500);
+  } catch(err) {}
+  document.body.removeChild(ta);
 });
 </script>
