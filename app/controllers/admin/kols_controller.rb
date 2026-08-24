@@ -10,7 +10,7 @@ class Admin::KolsController < Admin::BaseController
   def index
     @q = Kol.ransack(params[:q])
     @kols = @q.result(distinct: true)
-              .includes(:current_account, :domain, :language)
+              .includes(:current_account, :domain, :language, :kol_contacts)
               .order(created_at: :desc)
               .page(params[:page])
               .per(15)
@@ -34,14 +34,15 @@ class Admin::KolsController < Admin::BaseController
                     .order(Arel.sql("occurred_at IS NULL ASC, occurred_at ASC, id ASC"))
     @contacts = @kol.kol_contacts.order(priority: :asc, id: :asc)
 
-    # 默认选中：当前正在联系 > 最近有消息的渠道 > 第一个渠道
+    # 默认选中：已回复的联系方式 > 当前正在联系 > 最近有消息的渠道 > 第一个渠道
+    replied_contact = @kol.kol_contacts.where(status: KolContact.statuses[:replied]).order(id: :desc).first
     latest_contact_id = @messages
       .reject { |m| m.kol_contact_id.nil? }
       .max_by { |m| m.occurred_at || m.created_at }
       &.kol_contact_id
-    @active_contact_id = @kol.current_contact_id || latest_contact_id || @contacts.first&.id
+    @active_contact_id = replied_contact&.id || @kol.current_contact_id || latest_contact_id || @contacts.first&.id
 
-    # 回复用：全部模板（渲染后的内容 + 缺失变量）+ 当前回复账号
+    # 回复用：全部模板（渲染后的内容 + 缺失变量）+ 回复账号（取「已回复」联系方式的账号）
     @reply_templates = MessageTemplate.order(:id).map do |t|
       {
         id: t.id,
@@ -50,8 +51,8 @@ class Admin::KolsController < Admin::BaseController
         missing: @kol.missing_variables(t.required_variable_keys)
       }
     end
-    @reply_account = @kol.current_account
-    @reply_contact = @kol.current_contact
+    @reply_contact = replied_contact || @kol.current_contact
+    @reply_account = @reply_contact&.last_outgoing_account || @kol.current_account
     render layout: false
   end
 
@@ -70,7 +71,7 @@ class Admin::KolsController < Admin::BaseController
 
     if @kol.save
       downgraded = finalize_kol(@kol, params[:kol_variables])
-      notice = downgraded ? "KOL 已保存，因缺少联系方式或必要变量，已自动转为「储备」" : "KOL 已成功录入"
+      notice = downgraded ? "KOL 已保存，因缺少联系方式或必要变量，已自动转为「未开始」" : "KOL 已成功录入"
       redirect_to admin_kol_path(@kol), notice: notice
     else
       @kol.kol_contacts.build if @kol.kol_contacts.empty?
@@ -92,7 +93,7 @@ class Admin::KolsController < Admin::BaseController
 
     if @kol.update(kol_params)
       downgraded = finalize_kol(@kol, params[:kol_variables])
-      notice = downgraded ? "KOL 已保存，因缺少联系方式或必要变量，已自动转为「储备」" : "KOL 信息已更新"
+      notice = downgraded ? "KOL 已保存，因缺少联系方式或必要变量，已自动转为「未开始」" : "KOL 信息已更新"
       redirect_to admin_kol_path(@kol), notice: notice
     else
       @suggested_variables = suggested_variables_for(@kol)
@@ -118,7 +119,7 @@ class Admin::KolsController < Admin::BaseController
   # 移出队列（Pending → Reserved）
   def deactivate
     @kol.dequeue!
-    redirect_to admin_kol_path(@kol), notice: "已转回储备"
+    redirect_to admin_kol_path(@kol), notice: "已转为未开始"
   end
 
   def contact_now
@@ -148,12 +149,15 @@ class Admin::KolsController < Admin::BaseController
     end
   end
 
-  # 会话抽屉快捷回复：账号固定用「当前会话账号」（对方回复来的那个账号），防止串号
+  # 会话抽屉快捷回复：账号固定用「对方回复来的那个联系方式的账号」，防止串号
   def reply_message
     content = params[:content].to_s.strip
     template_id = params[:template_id].to_s.strip
 
-    contact = @kol.kol_contacts.find_by(id: params[:kol_contact_id]) || @kol.current_contact
+    # 优先回复「已回复」的联系方式；其次用前端传入的；最后退回当前联系方式
+    contact = @kol.kol_contacts.find_by(id: params[:kol_contact_id])
+    contact ||= @kol.kol_contacts.where(status: KolContact.statuses[:replied]).order(id: :desc).first
+    contact ||= @kol.current_contact
 
     # 优先用输入框内容；输入框为空时才用模板渲染
     if content.blank? && template_id.present?
@@ -164,7 +168,7 @@ class Admin::KolsController < Admin::BaseController
     return render json: { success: false, message: "回复内容不能为空" } if content.blank?
     return render json: { success: false, message: "缺少联系渠道" } if contact.nil?
 
-    account = @kol.current_account
+    account = contact.last_outgoing_account || @kol.current_account
     return render json: { success: false, message: "该 KOL 缺少可回复的内部账号" } if account.nil?
 
     result = KolScheduler.manual_send(@kol, contact: contact, account: account, content: content)
@@ -214,8 +218,9 @@ class Admin::KolsController < Admin::BaseController
     ok = false
     if incoming
       incoming.update!(is_auto_reply: true)
-      outgoing = @kol.latest_outgoing_message
-      @kol.update!(status: :contacting, next_action_at: outgoing&.wait_until || Time.current)
+      # 该回复是机器人自动回复：联系方式恢复监测，KOL 恢复等待
+      incoming.kol_contact&.update!(status: :contacting, monitor_until: 30.days.from_now)
+      @kol.update!(status: :contacting, next_action_at: nil)
       ok = true
     end
 
@@ -281,7 +286,7 @@ class Admin::KolsController < Admin::BaseController
   end
 
   # 同步 KOL 变量值，并据实重算「待补全变量」标记；
-  # 若 KOL 处于「待联系」但尚不具备触达条件（无渠道 / 缺变量），自动回落到「储备」。
+  # 若 KOL 处于「待联系」但尚不具备触达条件（无渠道 / 缺变量），自动回落到「未开始」。
   # 返回是否发生了回落。
   def finalize_kol(kol, variables_hash)
     kol.sync_variables!(variables_hash)

@@ -8,6 +8,8 @@
 class KolScheduler
   # 发出消息后等待对方回复的固定时长（工作日，自动跳过周六周日）
   REPLY_WAIT_DAYS = 2
+  # 单个联系方式回复监测总时长（自然日，从最后一次发送成功起算）
+  REPLY_MONITOR_DAYS = 30
   SUSPEND_HOURS = 24
   RETRY_HOURS = 1
 
@@ -17,6 +19,7 @@ class KolScheduler
       Rails.logger.info "[KolScheduler] 开始自动化触达扫描"
       process_pending
       process_due_contacting
+      process_contact_expiry
       Rails.logger.info "[KolScheduler] 自动化触达扫描完成"
     end
 
@@ -34,62 +37,65 @@ class KolScheduler
       end
     end
 
-    # 从起点起按优先级遍历所有有效渠道尝试发送（仅处理已接通平台）
-    def run_outreach(kol, scenario:, skip_contact_ids: [])
+    # 向「尚未联系」的有效渠道发送（按优先级），返回是否有发送成功
+    def run_outreach(kol, scenario:)
       contacts = kol.kol_contacts
         .where(status: KolContact.statuses[:active])
         .where(messaging_enabled: true)
-      contacts = contacts.where.not(id: skip_contact_ids) if skip_contact_ids.present?
-      contacts = contacts.order(priority: :asc, id: :asc).to_a
-      contacts = contacts.select { |c| KolAccountAllocator.supported_platform?(c.platform) }
+        .order(priority: :asc, id: :asc)
+        .to_a
+        .select { |c| KolAccountAllocator.supported_platform?(c.platform) }
 
-      # 没有任何可触达渠道时，不能判为「无回应」——那是从未真正触达过的场景。
-      # 仅当该 KOL 之前确有发出消息（跟进阶段）才标记「无回应」。
-      if contacts.empty?
-        if kol.kol_messages.where(direction: KolMessage.directions[:outgoing]).exists?
-          kol.update!(status: :unresponsive)
-        else
-          kol.update!(status: :reserved, variables_incomplete: kol.missing_entry_variables.any?)
-          Rails.logger.info "[KolScheduler] KOL##{kol.id} 无可触达渠道，已回落为「储备」"
-        end
-        return false
-      end
+      return false if contacts.empty?
 
       contacts.each do |contact|
         outcome = send_on_contact(kol, contact, scenario: scenario)
-        case outcome
-        when :success then return true
-        when :suspended then return false   # 无可用账号/缺变量/临时失败，停止本次
-        when :exhausted then next           # 渠道失效，切换下一渠道
-        end
+        return true if outcome == :success
+        return false if outcome == :suspended  # 无可用账号/缺变量/临时失败，停止本次
       end
 
-      kol.update!(status: :unresponsive)
       false
     end
 
+    # 2 个工作日无回复后切换：尝试下一个「未联系」渠道；当前渠道保持 monitoring，交给 30 天过期处理
     def advance(kol)
-      current = kol.current_contact
-      if current
-        # 只放弃「尚未发出」的排队消息；已发送成功的消息保留其「发送成功」事实，
-        # 不能因为等待期结束就被改写成「已放弃」。
-        KolMessage.where(
-          kol_id: kol.id,
-          kol_contact_id: current.id,
-          direction: KolMessage.directions[:outgoing],
-          status: KolMessage.statuses[:queued]
-        ).update_all(status: KolMessage.statuses[:ignored])
+      has_active = kol.kol_contacts.where(status: KolContact.statuses[:active]).exists?
+      if has_active
+        run_outreach(kol, scenario: :follow_up)
+      else
+        # 没有未联系渠道了，停止 advance；等待 30 天过期处理判定「无回应」
+        kol.update!(next_action_at: nil)
       end
+    end
 
-      # 已经成功触达过（发出过消息）的渠道，等待期结束即视为「已尝试且未回复」，
-      # 不再重复尝试，保证按优先级线性推进（A→B→…），不会循环回 A。
-      tried_ids = kol.kol_messages
-        .where(direction: KolMessage.directions[:outgoing])
-        .where(status: KolMessage.statuses[:sent_success])
-        .pluck(:kol_contact_id).compact.uniq
-      tried_ids << current.id if current
+    # 处理 30 天监测窗口到期的联系方式：标记为「无回应」，并重新评估 KOL 状态
+    def process_contact_expiry
+      expired = KolContact.where(status: KolContact.statuses[:contacting])
+                          .where("monitor_until IS NOT NULL AND monitor_until <= ?", Time.current)
+      return if expired.none?
 
-      run_outreach(kol, scenario: :follow_up, skip_contact_ids: tried_ids.uniq)
+      kol_ids = expired.distinct.pluck(:kol_id)
+      expired.update_all(status: KolContact.statuses[:unresponsive])
+      Rails.logger.info "[KolScheduler] #{kol_ids.size} 个 KOL 的联系方式监测到期"
+
+      Kol.where(id: kol_ids).find_each do |kol|
+        safely(kol) { reevaluate_kol_status(kol) }
+      end
+    end
+
+    # 依据联系方式的独立状态，重算 KOL 的自动化状态（仅针对 pending / contacting）
+    def reevaluate_kol_status(kol)
+      return unless %w[pending contacting].include?(kol.status.to_s)
+
+      if kol.kol_contacts.where(status: KolContact.statuses[:replied]).exists?
+        kol.update!(status: :replied_unprocessed, next_action_at: nil)
+      elsif kol.kol_contacts.where(status: KolContact.statuses[:contacting]).exists?
+        kol.update!(status: :contacting)
+      elsif kol.kol_contacts.where(status: KolContact.statuses[:active]).exists?
+        kol.update!(status: :pending, next_action_at: nil)
+      else
+        kol.update!(status: :unresponsive, next_action_at: nil)
+      end
     end
 
     # ---- 人工干预 ----
@@ -219,7 +225,13 @@ class KolScheduler
       if result[:success]
         deadline = next_wait_time
         message.update!(status: :sent_success, wait_until: deadline, occurred_at: Time.current)
-        contact.update!(last_used_at: Time.current)
+
+        # 联系方式状态流转：未回复的 → 监测中（30 天窗口）；已回复的保持 replied
+        if contact.replied?
+          contact.update!(last_used_at: Time.current)
+        else
+          contact.update!(status: :contacting, monitor_until: REPLY_MONITOR_DAYS.days.from_now, last_used_at: Time.current)
+        end
 
         unless source.to_s == "manual"
           kol.update!(

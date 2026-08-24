@@ -7,16 +7,23 @@ class KolReplyPoller
     def run
       setup_logger("kol_reply_poller.log")
       Rails.logger.info "[KolReplyPoller] 开始回复轮询"
-      Kol.where(status: :contacting).find_each do |kol|
+      # 轮询所有「监测中」联系方式所属的 KOL（多会话持续监测，而非只看当前联系方式）
+      kol_ids = KolContact.where(status: KolContact.statuses[:contacting]).distinct.pluck(:kol_id)
+      Kol.where(id: kol_ids).find_each do |kol|
         safely(kol) { poll(kol) }
       end
       Rails.logger.info "[KolReplyPoller] 回复轮询完成"
     end
 
     def poll(kol)
-      contact = kol.current_contact
-      account = kol.current_account
-      return unless contact
+      kol.kol_contacts.where(status: KolContact.statuses[:contacting]).find_each do |contact|
+        safely(kol) { poll_contact(kol, contact) }
+      end
+    end
+
+    def poll_contact(kol, contact)
+      account = contact.last_outgoing_account
+      return if account.nil?
 
       result = KolOutreachApi.check_reply(platform: contact.platform, account: account, contact: contact)
       return unless result[:has_reply]
@@ -25,7 +32,7 @@ class KolReplyPoller
       Array(result[:replies]).each do |reply|
         content = reply["content"].to_s.strip
         next if content.blank?
-        next if already_stored?(kol, content)
+        next if already_stored?(kol, contact, content)
 
         KolMessage.create!(
           kol: kol,
@@ -43,16 +50,17 @@ class KolReplyPoller
 
       return if created.zero?
 
-      # 暂停自动化，等待负责人人工审阅
+      # 该联系方式已回复，停止监测；KOL 转入待人工处理
+      contact.update!(status: :replied, monitor_until: nil)
       kol.update!(status: :replied_unprocessed, next_action_at: nil)
-      Rails.logger.info "[KolReplyPoller] KOL##{kol.id} 收到 #{created} 条回复，已转入待人工处理"
+      Rails.logger.info "[KolReplyPoller] KOL##{kol.id} 联系方式##{contact.id} 收到 #{created} 条回复，已转入待人工处理"
     end
 
     private
 
-    # 按内容去重，避免重复轮询重复入库
-    def already_stored?(kol, content)
-      KolMessage.exists?(kol_id: kol.id, direction: KolMessage.directions[:incoming], content: content)
+    # 按内容去重（同一 KOL + 同一联系方式），避免重复轮询重复入库
+    def already_stored?(kol, contact, content)
+      KolMessage.exists?(kol_id: kol.id, kol_contact_id: contact.id, direction: KolMessage.directions[:incoming], content: content)
     end
 
     def parse_time(str)

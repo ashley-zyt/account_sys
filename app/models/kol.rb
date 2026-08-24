@@ -48,26 +48,26 @@ class Kol < ApplicationRecord
 
   # 第一层：KOL 业务生命周期状态
   enum status: {
-    reserved: 0,              # 储备中
-    pending: 1,               # 待触达
-    contacting: 2,            # 触达中
-    replied_unprocessed: 3,   # 已回复_待处理
-    negotiating: 4,           # 人工跟进中
+    reserved: 0,              # 未开始
+    pending: 1,               # 待联系
+    contacting: 2,            # 联系中
+    replied_unprocessed: 3,   # 待回复
+    negotiating: 4,           # 洽谈中
     cooperating: 5,           # 已合作
-    failed: 6,                # 未能合作
-    unresponsive: 7           # 无响应
+    failed: 6,                # 已拒绝
+    unresponsive: 7           # 未回复
   }
 
   # KOL 业务状态中文标签（表单下拉与展示共用）
   STATUS_LABELS = {
-    "reserved"            => "储备",
+    "reserved"            => "未开始",
     "pending"             => "待联系",
-    "contacting"          => "已联系等回复",
-    "replied_unprocessed" => "已回复待处理",
-    "negotiating"         => "人工跟进中",
+    "contacting"          => "联系中",
+    "replied_unprocessed" => "待回复",
+    "negotiating"         => "洽谈中",
     "cooperating"         => "已合作",
-    "failed"              => "拒绝合作",
-    "unresponsive"        => "无回应"
+    "failed"              => "已拒绝",
+    "unresponsive"        => "未回复"
   }.freeze
 
   # 允许运营在快捷区直接切换的状态（其余为系统自动流转，人工改容易混乱）

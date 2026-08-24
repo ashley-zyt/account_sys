@@ -42,11 +42,41 @@ class KolContact < ApplicationRecord
   }
 
   enum status: {
-    active: 0,
-    disabled: 1
+    active: 0,       # 可用（尚未联系）
+    disabled: 1,     # 停用（人工关闭）
+    contacting: 2,   # 已联系，等回复（30 天窗口内）
+    replied: 3,      # 已回复
+    unresponsive: 4  # 未回复（30 天窗口到期仍无回复）
   }
 
+  # 联系方式状态中文标签（展示用）
+  STATUS_LABELS = {
+    "active"       => "未联系",
+    "disabled"     => "已停用",
+    "contacting"   => "已联系·等回复",
+    "replied"      => "已回复",
+    "unresponsive" => "未回复"
+  }.freeze
+
+  def status_label
+    STATUS_LABELS[status] || status.to_s
+  end
+
   validates :platform, presence: true
+
+  # 该联系方式最后一次「发送成功」所用的内部账号（用于 check_reply / 人工回复）
+  def last_outgoing_account
+    kol_messages
+      .where(direction: KolMessage.directions[:outgoing], status: KolMessage.statuses[:sent_success])
+      .where.not(account_id: nil)
+      .order(id: :desc)
+      .first&.account
+  end
+
+  # 是否仍在回复监测窗口内
+  def monitoring?
+    contacting? && monitor_until.present? && monitor_until > Time.current
+  end
 
   # 是否为内部社交账号平台（可调用内部账号发送私信）
   def social_platform?

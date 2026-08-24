@@ -277,12 +277,12 @@
     <% if @kol.reserved? %>
       <%= link_to "转为待联系", activate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-primary" %>
     <% elsif @kol.pending? %>
-      <%= link_to "转回储备", deactivate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-secondary" %>
+      <%= link_to "转为未开始", deactivate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-secondary" %>
     <% end %>
     <% if @kol.replied_unprocessed? %>
       <%= link_to "人工接管", take_over_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-primary" %>
     <% end %>
     <%= link_to "标记已合作", mark_outcome_admin_kol_path(@kol, outcome: "cooperating"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
-    <%= link_to "标记拒绝合作", mark_outcome_admin_kol_path(@kol, outcome: "failed"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
+    <%= link_to "标记已拒绝", mark_outcome_admin_kol_path(@kol, outcome: "failed"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
   </div>
 </div>

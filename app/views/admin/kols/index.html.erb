@@ -8,11 +8,11 @@
 <%
   kol_summary = [
     { label: "全部 KOL", value: @status_counts.values.sum, color: "#94a3b8", url: admin_kols_path },
-    { label: "待联系", value: (@status_counts["pending"] || 0), color: "#60a5fa", url: admin_kols_path(q: { status_eq: "pending" }) },
+    { label: "待回复", value: (@status_counts["replied_unprocessed"] || 0), color: "#f87171", url: admin_kols_path(q: { status_eq: "replied_unprocessed" }) },
     { label: "联系中", value: (@status_counts["contacting"] || 0), color: "#fbbf24", url: admin_kols_path(q: { status_eq: "contacting" }) },
-    { label: "已回复待处理", value: (@status_counts["replied_unprocessed"] || 0), color: "#c084fc", url: admin_kols_path(q: { status_eq: "replied_unprocessed" }) },
-    { label: "人工跟进中", value: (@status_counts["negotiating"] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: "negotiating" }) },
+    { label: "洽谈中", value: (@status_counts["negotiating"] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: "negotiating" }) },
     { label: "已合作", value: (@status_counts["cooperating"] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: "cooperating" }) },
+    { label: "未回复", value: (@status_counts["unresponsive"] || 0), color: "#64748b", url: admin_kols_path(q: { status_eq: "unresponsive" }) },
     { label: "待补全变量", value: @variables_incomplete_count, color: "#fb923c", url: admin_kols_path(q: { variables_incomplete_eq: "true" }) }
   ]
 %>
@@ -105,7 +105,7 @@
             <th>语言</th>
             <th>归属人</th>
             <th>状态</th>
-            <th>渠道数</th>
+            <th>渠道</th>
             <th>最近触达</th>
             <th>下次动作</th>
             <th>操作</th>
@@ -118,7 +118,7 @@
               <td>
                 <%= link_to kol.name, admin_kol_path(kol), class: "admin-link-quiet", style: "color: var(--text-primary);" %>
                 <% if kol.replied_unprocessed? %>
-                  <span class="admin-pill-status" style="background: rgba(239,68,68,0.15); color: #f87171; font-size: 11px; margin-left: 6px;">待处理回复</span>
+                  <span class="admin-pill-status" style="background: rgba(239,68,68,0.15); color: #f87171; font-size: 11px; margin-left: 6px;">待回复</span>
                 <% end %>
                 <% if kol.variables_incomplete? %>
                   <span class="admin-pill-status" style="background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px; margin-left: 6px;">待补全变量</span>
@@ -129,7 +129,14 @@
               <td><span class="admin-label-muted"><%= kol.language&.name || "-" %></span></td>
               <td><span class="admin-label-muted"><%= kol.owner %></span></td>
               <td><%= render "status_badge", status: kol.status %></td>
-              <td><span class="admin-label-muted"><%= kol.kol_contacts.size %></span></td>
+              <td>
+                <%
+                  contacts = kol.kol_contacts
+                  replied_count = contacts.count { |c| c.replied? }
+                  contacted_count = contacts.count { |c| c.contacting? || c.replied? || c.unresponsive? }
+                %>
+                <span class="admin-label-muted"><%= "#{contacted_count} 已联系 · #{replied_count} 回复" %></span>
+              </td>
               <td><span class="admin-label-muted"><%= kol.last_contacted_at&.strftime("%m-%d %H:%M") || "-" %></span></td>
               <td><span class="admin-label-muted"><%= kol.next_action_at&.strftime("%m-%d %H:%M") || "-" %></span></td>
               <td>
