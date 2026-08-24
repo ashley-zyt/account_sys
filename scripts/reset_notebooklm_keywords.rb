@@ -15,7 +15,7 @@ puts "批量重置 NotebookLM 视频储备关键词状态脚本"
 puts "=" * 60
 
 # 在此处指定要重置的 ID 列表
-ids = [1，2]
+ids = [1,2]
 
 if ids.empty?
   puts "请在脚本中指定要重置的 ID 列表"
