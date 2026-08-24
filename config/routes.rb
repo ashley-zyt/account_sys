@@ -153,6 +153,10 @@ Rails.application.routes.draw do
       get  "huasheng/pending_keywords", to: "huasheng#pending_keywords"
       post "huasheng/update_status",    to: "huasheng#update_status"
       post "huasheng/report_result",    to: "huasheng#report_result"
+      # NotebookLM 视频储备接口
+      get  "notebooklm/pending_keywords", to: "notebooklm#pending_keywords"
+      post "notebooklm/update_status",    to: "notebooklm#update_status"
+      post "notebooklm/report_result",    to: "notebooklm#report_result"
       # 剪映任务批量接收
       post "jianying_tasks/batch", to: "jianying_tasks#batch"
       # 搬运视频按ID范围查询
