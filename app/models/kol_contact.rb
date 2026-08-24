@@ -2,24 +2,26 @@
 #
 # Table name: kol_contacts
 #
-#  id                                    :bigint           not null, primary key
-#  last_used_at(最后使用时间)            :datetime
-#  messaging_enabled(是否可作为发信渠道) :boolean          default(FALSE), not null
-#  nickname(平台昵称/账号)               :string(255)
-#  platform(平台或通讯渠道)              :integer          not null
-#  priority(触达优先级（越小越优先）)    :integer          default(0), not null
-#  status(联系方式状态：active/disabled)  :integer          default("active"), not null
-#  url(主页链接或联系方式)               :string(255)
-#  created_at                            :datetime         not null
-#  updated_at                            :datetime         not null
-#  kol_id                                :bigint           not null
+#  id                                                                        :bigint           not null, primary key
+#  last_used_at(最后使用时间)                                                :datetime
+#  messaging_enabled(是否可作为发信渠道)                                     :boolean          default(FALSE), not null
+#  monitor_until(回复监测截止时间（该联系方式最后一次发送成功时间 + 30 天）) :datetime
+#  nickname(平台昵称/账号)                                                   :string(255)
+#  platform(平台或通讯渠道)                                                  :integer          not null
+#  priority(触达优先级（越小越优先）)                                        :integer          default(0), not null
+#  status(联系方式状态：active/invalid)                                      :integer          default("active"), not null
+#  url(主页链接或联系方式)                                                   :string(255)
+#  created_at                                                                :datetime         not null
+#  updated_at                                                                :datetime         not null
+#  kol_id                                                                    :bigint           not null
 #
 # Indexes
 #
-#  index_kol_contacts_on_kol_id    (kol_id)
-#  index_kol_contacts_on_platform  (platform)
-#  index_kol_contacts_on_priority  (priority)
-#  index_kol_contacts_on_status    (status)
+#  index_kol_contacts_on_kol_id         (kol_id)
+#  index_kol_contacts_on_monitor_until  (monitor_until)
+#  index_kol_contacts_on_platform       (platform)
+#  index_kol_contacts_on_priority       (priority)
+#  index_kol_contacts_on_status         (status)
 #
 # Foreign Keys
 #

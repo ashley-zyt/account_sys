@@ -2,21 +2,22 @@
 #
 # Table name: notebooklm_keywords
 #
-#  id          :bigint           not null, primary key
-#  theme       :string(255)      not null
-#  keyword     :string(255)      not null
-#  status      :integer          default(0)
-#  task_id     :string(255)
-#  result_data :text(65535)
-#  pushed      :boolean          default(FALSE)
-#  created_at  :datetime         not null
-#  updated_at  :datetime         not null
+#  id                                                            :bigint           not null, primary key
+#  keyword(关键词)                                               :string(255)      not null
+#  pushed(是否已推送到NotebookLM资源队列)                        :boolean          default(FALSE), not null
+#  result_data(采集结果数据（JSON）)                             :text(65535)
+#  status(任务状态：0未启动 1待执行 2执行中 3执行完成 4任务失败) :integer          default(0)
+#  theme(主题)                                                   :string(255)      not null
+#  created_at                                                    :datetime         not null
+#  updated_at                                                    :datetime         not null
+#  task_id(远程任务ID)                                           :string(255)
 #
 # Indexes
 #
-#  index_notebooklm_keywords_on_status           (status)
-#  index_notebooklm_keywords_on_theme            (theme)
-#  index_notebooklm_keywords_on_theme_and_status  (theme, status)
+#  index_notebooklm_keywords_on_pushed            (pushed)
+#  index_notebooklm_keywords_on_status            (status)
+#  index_notebooklm_keywords_on_theme             (theme)
+#  index_notebooklm_keywords_on_theme_and_status  (theme,status)
 #
 class NotebooklmKeyword < ApplicationRecord
   STATUS_NAMES = {
