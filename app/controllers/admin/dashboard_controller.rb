@@ -87,7 +87,8 @@ class Admin::DashboardController < Admin::BaseController
 	RESOURCE_DAYS_CONFIGS = [
 		{ work_type: "视频搬运", task_model: MoveTask },
 		{ work_type: "Grok", task_model: GrokTask },
-		{ work_type: "剪映", task_model: JianyingTask }
+		{ work_type: "剪映", task_model: JianyingTask },
+		{ work_type: "花生", task_model: HuashengTask }
 	].freeze
 
 	# 预警阈值：可用天数 < 此值才会在仪表盘展示
@@ -128,7 +129,7 @@ class Admin::DashboardController < Admin::BaseController
 
 				{
 					theme: theme,
-					platform: platform,
+					platform: platform_label(platform),
 					pending: pending,
 					active_accounts: active_accounts,
 					available_days: available_days
@@ -155,6 +156,11 @@ class Admin::DashboardController < Admin::BaseController
 	end
 
 	private
+
+	# group(:platform) 返回的是整数枚举值（1..5），这里映射回平台名用于展示
+	def platform_label(platform)
+		Account.platforms.key(platform) || platform.to_s
+	end
 
 	def fetch_abnormal_accounts(_min_consecutive_failures)
 		error_counts = TaskLog.failed

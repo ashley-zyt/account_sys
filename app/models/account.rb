@@ -4,6 +4,7 @@
 #
 #  id                                                             :bigint           not null, primary key
 #  account_name(账号名)                                           :string(255)
+#  deleted_at(软删除时间（非空表示已删除，进回收站）)             :datetime
 #  kol_sleep_until(KOL触达休眠截止时间（内部账号风控后暂停调度）) :datetime
 #  last_used_at(最后一次使用时间)                                 :datetime
 #  operator                                                       :string(255)
@@ -21,6 +22,7 @@
 #
 #  idx_accounts_theme_status_lastused  (theme,status,last_used_at)
 #  index_accounts_on_browser_id        (browser_id)
+#  index_accounts_on_deleted_at        (deleted_at)
 #  index_accounts_on_kol_sleep_until   (kol_sleep_until)
 #  index_accounts_on_last_used_at      (last_used_at)
 #  index_accounts_on_platform          (platform)
@@ -94,6 +96,11 @@ class Account < ApplicationRecord
 	# 运营人员枚举
 	OPERATORS = ["张俊", "许淑雯", "石欢欢", "杜维"]
 
+	# 软删除：删除时仅写入 deleted_at 时间戳，不物理删除记录。
+	# 默认作用域会排除已删除账号，保证已删除账号不会被调度/统计等业务用到，
+	# 但数据仍保留在数据库中，可随时查到。
+	default_scope { where(deleted_at: nil) }
+
 	# 作用域：获取当前可用的账号（仅 正常 状态）
 	scope :active, -> {
 		正常
@@ -131,6 +138,11 @@ class Account < ApplicationRecord
 		recent_stats = post_stats.where(post_date: range_start..range_end)
 		return false if recent_stats.none?
 		recent_stats.where('views_count > 0').none?
+	end
+
+	# 软删除：写入 deleted_at 时间戳，不物理删除记录
+	def soft_delete!
+		update!(deleted_at: Time.current)
 	end
 
 	# 根据工作模式返回对应的任务模型类

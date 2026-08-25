@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup]
+	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :destroy]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -59,6 +59,12 @@ class Admin::AccountsController < Admin::BaseController
 		profile = @account.warmup_profile || @account.create_warmup_profile
 		profile.update!(warmup_enabled: !profile.warmup_enabled)
 		redirect_back fallback_location: admin_account_path(@account), notice: "养号开关已#{profile.warmup_enabled ? '启用' : '停止'}"
+	end
+
+	# 软删除：写入 deleted_at 时间戳，不物理删除记录
+	def destroy
+		@account.soft_delete!
+		redirect_to admin_accounts_path, notice: "账号「#{@account.account_name}」已删除"
 	end
 
 	private

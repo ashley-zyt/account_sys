@@ -1,5 +1,5 @@
 class Admin::BrowsersController < Admin::BaseController
-	before_action :set_browser, only: [:show, :edit, :update]
+	before_action :set_browser, only: [:show, :edit, :update, :destroy]
 
 	def index
 		@q = Browser.ransack(params[:q])
@@ -49,6 +49,12 @@ class Admin::BrowsersController < Admin::BaseController
 		else
 			render :edit, status: :unprocessable_entity
 		end
+	end
+
+	# 删除浏览器（绑定账号会被解绑为「未绑定」，账号本身不会被删除）
+	def destroy
+		@browser.destroy
+		redirect_to admin_browsers_path, notice: "浏览器「#{@browser.profile_name}」已删除"
 	end
 
 	private

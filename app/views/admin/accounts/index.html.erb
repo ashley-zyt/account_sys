@@ -168,6 +168,7 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "编辑", edit_admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "删除", admin_account_path(account), data: { turbo_method: :delete, turbo_confirm: "确定删除账号「#{account.account_name}」吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
                   <% if account.work_type == "人工运营" %>
                     <%= link_to "任务", admin_operation_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
                   <% elsif account.work_type == "Grok" %>

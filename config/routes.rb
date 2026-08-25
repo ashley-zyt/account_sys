@@ -8,7 +8,7 @@ Rails.application.routes.draw do
         get :account
       end
     end
-    resources :accounts, only: [:index, :show, :new, :create, :edit, :update] do
+    resources :accounts, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member do
         post :toggle_warmup
       end
@@ -31,7 +31,7 @@ Rails.application.routes.draw do
         get :setup_cors
       end
     end
-    resources :browsers, only: [:index, :show, :new, :create, :edit, :update]
+    resources :browsers, only: [:index, :show, :new, :create, :edit, :update, :destroy]
     resources :task_logs, only: [:index, :show]
     resources :themes, only: [:index, :create, :edit, :update, :destroy] do
       collection do
