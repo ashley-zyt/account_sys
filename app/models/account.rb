@@ -4,6 +4,7 @@
 #
 #  id                                                             :bigint           not null, primary key
 #  account_name(账号名)                                           :string(255)
+#  deleted_at(软删除时间（非空表示已删除，进回收站）)             :datetime
 #  kol_sleep_until(KOL触达休眠截止时间（内部账号风控后暂停调度）) :datetime
 #  last_used_at(最后一次使用时间)                                 :datetime
 #  operator                                                       :string(255)
@@ -21,6 +22,7 @@
 #
 #  idx_accounts_theme_status_lastused  (theme,status,last_used_at)
 #  index_accounts_on_browser_id        (browser_id)
+#  index_accounts_on_deleted_at        (deleted_at)
 #  index_accounts_on_kol_sleep_until   (kol_sleep_until)
 #  index_accounts_on_last_used_at      (last_used_at)
 #  index_accounts_on_platform          (platform)
