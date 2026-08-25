@@ -147,6 +147,7 @@
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "编辑", edit_admin_browser_path(browser), class: "admin-link-quiet", style: "color: var(--accent);" %>
                   <%= link_to "账号", admin_accounts_path(q: { browser_id_eq: browser.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <%= link_to "删除", admin_browser_path(browser), data: { turbo_method: :delete, turbo_confirm: "当前浏览器绑定了 #{browser.accounts.count} 个账号，是否确认删除？删除后这些账号将自动解绑。" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
                 </div>
               </td>
             </tr>
