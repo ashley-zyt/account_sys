@@ -8,7 +8,7 @@ Rails.application.routes.draw do
         get :account
       end
     end
-    resources :accounts, only: [:index, :show, :new, :create, :edit, :update] do
+    resources :accounts, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member do
         post :toggle_warmup
       end
