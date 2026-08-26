@@ -44,7 +44,7 @@ class Kol < ApplicationRecord
   belongs_to :domain, optional: true
   belongs_to :language, optional: true
 
-  accepts_nested_attributes_for :kol_contacts, allow_destroy: true, reject_if: proc { |attrs| attrs["platform"].blank? && attrs["url"].blank? }
+  accepts_nested_attributes_for :kol_contacts, allow_destroy: true, reject_if: proc { |attrs| attrs["nickname"].blank? && attrs["url"].blank? }
 
   # 第一层：KOL 业务生命周期状态
   enum status: {
@@ -189,25 +189,19 @@ class Kol < ApplicationRecord
       .order(created_at: :asc)
   }
 
-  # 全局查重：主要依据联系方式中的主页链接 / 邮箱（同名 KOL 允许存在）
-  def self.find_duplicate(contact_urls: [], contact_emails: [], exclude_id: nil)
+  # 全局查重：命中已有 KOL 时返回 { kind:, value:, kol: }，未命中返回 nil
+  # kind: :url（主页链接重复）/ :nickname（昵称重复）
+  def self.find_duplicate(contact_urls: [], contact_nicknames: [])
     urls = Array(contact_urls).map(&:to_s).map(&:strip).reject(&:blank?).uniq
-    emails = Array(contact_emails).map(&:to_s).map(&:strip).reject(&:blank?).uniq
-    kol_ids = []
+    nicknames = Array(contact_nicknames).map(&:to_s).map(&:strip).reject(&:blank?).uniq
 
-    kol_ids.concat(KolContact.where("url IN (?)", urls).pluck(:kol_id)) if urls.any?
+    url_hit = urls.any? ? KolContact.where("url IN (?)", urls).order(:id).first : nil
+    return { kind: :url, value: url_hit.url, kol: url_hit.kol } if url_hit
 
-    if emails.any?
-      kol_ids.concat(
-        KolContact.where(platform: KolContact.platforms[:email])
-          .where("url IN (?) OR nickname IN (?)", emails, emails)
-          .pluck(:kol_id)
-      )
-    end
+    nickname_hit = nicknames.any? ? KolContact.where("nickname IN (?)", nicknames).order(:id).first : nil
+    return { kind: :nickname, value: nickname_hit.nickname, kol: nickname_hit.kol } if nickname_hit
 
-    ids = kol_ids.compact.uniq
-    ids -= [exclude_id] if exclude_id.present?
-    Kol.where(id: ids).order(:id).first
+    nil
   end
 
   def self.ransackable_attributes(auth_object = nil)
@@ -224,17 +218,18 @@ class Kol < ApplicationRecord
 
   private
 
-  # 保存前查重：命中已有 KOL 时拦截并提示归属人
+  # 保存前查重：命中已有 KOL 时拦截，并说明是「昵称」还是「主页链接」重复
   def check_duplicate
-    urls = kol_contacts.map(&:url).map(&:to_s).map(&:strip).reject(&:blank?)
-    emails = kol_contacts
-      .select { |c| c.platform.to_s == "email" }
-      .flat_map { |c| [c.url, c.nickname] }
-      .map(&:to_s).map(&:strip).reject(&:blank?)
+    urls = kol_contacts.map { |c| c.url.to_s.strip }.reject(&:blank?)
+    nicknames = kol_contacts.map { |c| c.nickname.to_s.strip }.reject(&:blank?)
 
-    dup = Kol.find_duplicate(contact_urls: urls, contact_emails: emails)
+    dup = Kol.find_duplicate(contact_urls: urls, contact_nicknames: nicknames)
     return if dup.nil?
 
-    errors.add(:base, "该 KOL 已存在（归属人：#{dup.owner}，ID：#{dup.id}），请勿重复录入")
+    if dup[:kind] == :nickname
+      errors.add(:base, "该 KOL 已存在：昵称「#{dup[:value]}」重复（归属人：#{dup[:kol].owner}，ID：#{dup[:kol].id}），请勿重复录入")
+    else
+      errors.add(:base, "该 KOL 已存在：主页链接「#{dup[:value]}」重复（归属人：#{dup[:kol].owner}，ID：#{dup[:kol].id}），请勿重复录入")
+    end
   end
 end
