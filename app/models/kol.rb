@@ -177,6 +177,11 @@ class Kol < ApplicationRecord
     variables_complete? && has_outreachable_contacts?
   end
 
+  # 是否存在「联系方式缺少 url」的记录（旧数据补录排查用）
+  def has_missing_contact_url?
+    kol_contacts.any? { |c| c.url.blank? }
+  end
+
   scope :pending_queue, -> {
     where(status: :pending)
       .where(variables_incomplete: false)
