@@ -1,0 +1,184 @@
+<% content_for :page_title do %>
+  NotebookLM 资源队列
+<% end %>
+<% content_for :page_subtitle do %>
+  NotebookLM 生成的视频资源队列
+<% end %>
+
+<%= render "admin/shared/select_widgets" %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        任务列表
+      </div>
+      <div class="admin-card-subtitle">
+        监控和筛选 NotebookLM 任务队列
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">
+        共 <%= @notebooklm_tasks.total_count %> 条
+      </span>
+      <%= form_with(url: batch_destroy_admin_notebooklm_tasks_path, method: :delete, id: "batch-delete-form", class: "inline") do |f| %>
+        <%= f.submit "批量删除", class: "admin-button-danger", style: "margin-left: 12px;", data: { turbo_confirm: "确定批量删除选中的任务吗？" } %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">主题</label>
+        <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <%= f.searchable_select :platform_eq, NotebooklmTask.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">关键词</label>
+        <%= f.search_field :keyword_cont, class: "admin-input admin-filter-input", placeholder: "搜索关键词..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">标题/UUID</label>
+        <%= f.search_field :title_or_task_uuid_cont, class: "admin-input admin-filter-input", placeholder: "搜索标题或UUID..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.searchable_select :status_eq, NotebooklmTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_notebooklm_tasks_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @notebooklm_tasks.any? %>
+    <div class="admin-table-wrapper" style="overflow-x: auto;">
+      <table class="admin-table" style="table-layout: fixed; min-width: 850px;">
+        <colgroup>
+          <col style="width: 40px;">
+          <col style="width: 100px;">
+          <col style="width: 80px;">
+          <col style="width: 120px;">
+          <col style="width: auto;">
+          <col style="width: 90px;">
+          <col style="width: 110px;">
+          <col style="width: 80px;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>
+              <input type="checkbox" id="select-all-notebooklm-tasks" class="admin-checkbox">
+            </th>
+            <th>主题</th>
+            <th>平台</th>
+            <th>关键词</th>
+            <th>任务标题</th>
+            <th>状态</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @notebooklm_tasks.each do |task| %>
+            <tr>
+              <td>
+                <% if task.pending? %>
+                  <%= check_box_tag "task_ids[]", task.id, false, class: "admin-checkbox task-checkbox", form: "batch-delete-form" %>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted" style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= task.theme %>"><%= task.theme %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.platform %></span>
+              </td>
+              <td>
+                <% if task.keyword.present? %>
+                  <span style="font-size: 12px; color: #cbd5e1; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= task.keyword %>"><%= truncate(task.keyword, length: 25) %></span>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td style="white-space: normal; word-break: break-all;">
+                <%= link_to task.title.presence || task.oss_url, admin_notebooklm_task_path(task), class: "admin-link-quiet", style: "word-break: break-all;" %>
+              </td>
+              <td>
+                <% case task.status %>
+                <% when "pending" %>
+                  <span class="admin-pill-status admin-pill-status-pending">
+                    <span class="admin-pill-status-dot"></span>
+                    待分配
+                  </span>
+                <% when "waiting_publish", "executing" %>
+                  <span class="admin-pill-status admin-pill-status-pending">
+                    <span class="admin-pill-status-dot"></span>
+                    队列中
+                  </span>
+                <% when "success" %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>
+                    成功
+                  </span>
+                <% when "failed" %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>
+                    失败
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.created_at&.strftime("%m-%d %H:%M") %>
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "详情", admin_notebooklm_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if task.pending? %>
+                    <%= link_to "删除", admin_notebooklm_task_path(task),
+                          data: { turbo_method: :delete, turbo_confirm: "确定删除该任务吗？" },
+                          class: "admin-link-quiet", style: "color: #ef4444;" %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @notebooklm_tasks %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无任务数据。
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all-notebooklm-tasks');
+    const taskCheckboxes = document.querySelectorAll('.task-checkbox');
+
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', function() {
+        taskCheckboxes.forEach(cb => {
+          cb.checked = this.checked;
+        });
+      });
+    }
+
+    taskCheckboxes.forEach(cb => {
+      cb.addEventListener('change', function() {
+        const allChecked = Array.from(taskCheckboxes).every(c => c.checked);
+        selectAllCheckbox.checked = allChecked;
+      });
+    });
+  });
+</script>
