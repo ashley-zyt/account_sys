@@ -84,18 +84,22 @@
     </div>
   <% end %>
 
-  <div class="kol-status-box">
+  <div class="kol-status-box" data-kol-original-status="<%= @kol.status %>">
     <div class="kol-actions-title">快捷状态</div>
-    <div class="kol-status-pills">
+    <div class="kol-status-pills" id="kol-status-pills">
       <% Kol::MANUAL_STATUS_KEYS.each do |k| %>
-        <button type="button" class="kol-status-pill <%= 'active' if @kol.status.to_s == k %>" onclick="kolQuickStatus(<%= @kol.id %>, '<%= k %>')"><%= Kol::STATUS_LABELS[k] %></button>
+        <button type="button" class="kol-status-pill <%= 'active' if @kol.status.to_s == k %>" data-status="<%= k %>" onclick="kolSelectStatus(this, '<%= k %>')"><%= Kol::STATUS_LABELS[k] %></button>
       <% end %>
     </div>
+    <input type="hidden" id="kol-selected-status" value="<%= @kol.status %>">
   </div>
 
   <div class="kol-note-box">
     <input type="text" id="kol-note-input" class="admin-input" placeholder="追加备注...">
-    <button type="button" class="admin-button-secondary" onclick="kolSaveNote(<%= @kol.id %>)">保存备注</button>
+  </div>
+
+  <div style="display: flex; justify-content: flex-end; gap: 8px;">
+    <button type="button" class="admin-button-primary" onclick="kolSubmitStatus(<%= @kol.id %>)">确定提交</button>
   </div>
 </div>
 

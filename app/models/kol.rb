@@ -64,7 +64,7 @@ class Kol < ApplicationRecord
     "pending"             => "待联系",
     "contacting"          => "联系中",
     "replied_unprocessed" => "待回复",
-    "negotiating"         => "洽谈中",
+    "negotiating"         => "人工洽谈中",
     "cooperating"         => "已合作",
     "failed"              => "已拒绝",
     "unresponsive"        => "未回复"
