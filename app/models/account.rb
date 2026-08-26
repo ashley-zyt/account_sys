@@ -90,7 +90,8 @@ class Account < ApplicationRecord
 		"人工运营": 3,
 		"Grok": 4,
 		"Heygen": 5,
-		"花生": 6
+		"花生": 6,
+		"NotebookLM":7
 	}
 
 	# 运营人员枚举
