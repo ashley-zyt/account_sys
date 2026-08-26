@@ -25,6 +25,7 @@ class Admin::KolsController < Admin::BaseController
                     .includes(:account, :kol_contact)
                     .order(Arel.sql("occurred_at IS NULL ASC, occurred_at ASC, id ASC"))
     @accounts = Account.active.order(:platform, :account_name)
+    @manual_templates = manual_templates_for(@kol)
   end
 
   # 列表页抽屉里的跨渠道会话流（无布局，供 fetch 注入）
@@ -137,10 +138,25 @@ class Admin::KolsController < Admin::BaseController
     contact = KolContact.find_by(id: params[:kol_contact_id])
     account = Account.find_by(id: params[:account_id])
     content = params[:content].to_s.strip
+    template_id = params[:template_id].to_s.strip
+
+    # 内容为空时，若选择了模板则用模板渲染结果填充
+    if content.blank? && template_id.present?
+      template = MessageTemplate.find_by(id: template_id)
+      content = template&.render_for(@kol).to_s.strip
+    end
+
     if content.blank?
       redirect_to admin_kol_path(@kol), alert: "消息内容不能为空"
       return
     end
+
+    # 若内容里仍残留未替换的 ${变量} 占位符，提醒补齐变量
+    if content.include?("${")
+      redirect_to admin_kol_path(@kol), alert: "消息内容中仍包含未填写的变量（${...}），请先补全后再发送"
+      return
+    end
+
     result = KolScheduler.manual_send(@kol, contact: contact, account: account, content: content)
     if result[:ok]
       redirect_to admin_kol_path(@kol), notice: "消息已发送"
@@ -311,6 +327,18 @@ class Admin::KolsController < Admin::BaseController
       platforms: platforms,
       domain_id: kol.domain_id
     )
+  end
+
+  # 人工发送消息可选模板（渲染后的内容 + 缺失变量，供前端套用与提醒）
+  def manual_templates_for(kol)
+    MessageTemplate.order(:id).map do |t|
+      {
+        id: t.id,
+        label: "#{t.scenario_label} · #{t.name}",
+        content: t.render_for(kol).to_s,
+        missing: kol.missing_variables(t.required_variable_keys)
+      }
+    end
   end
 
   # 为前端「按领域/平台动态匹配变量」准备数据

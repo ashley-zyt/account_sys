@@ -147,7 +147,19 @@ class KolScheduler
 
       case result
       when :success
-        kol.update!(status: :negotiating) if kol.replied_unprocessed?
+        if kol.replied_unprocessed?
+          kol.update!(status: :negotiating)
+        elsif %w[pending reserved].include?(kol.status.to_s)
+          # 人工已成功发消息：从「待联系/未开始」转为「联系中」，避免自动化再次触达
+          deadline = kol.latest_outgoing_message&.wait_until || next_wait_time
+          kol.update!(
+            status: :contacting,
+            current_contact_id: contact.id,
+            current_account_id: account.id,
+            last_contacted_at: Time.current,
+            next_action_at: deadline
+          )
+        end
         { ok: true }
       when :account_risk
         { ok: false, error: "内部账号异常（已自动休眠），请更换账号后重试" }
