@@ -33,15 +33,29 @@ class Admin::KolsController < Admin::BaseController
     @messages = @kol.kol_messages
                     .includes(:account, :kol_contact)
                     .order(Arel.sql("occurred_at IS NULL ASC, occurred_at ASC, id ASC"))
-    @contacts = @kol.kol_contacts.order(priority: :asc, id: :asc)
 
-    # 默认选中：已回复的联系方式 > 当前正在联系 > 最近有消息的渠道 > 第一个渠道
-    replied_contact = @kol.kol_contacts.where(status: KolContact.statuses[:replied]).order(id: :desc).first
-    latest_contact_id = @messages
-      .reject { |m| m.kol_contact_id.nil? }
-      .max_by { |m| m.occurred_at || m.created_at }
-      &.kol_contact_id
-    @active_contact_id = replied_contact&.id || @kol.current_contact_id || latest_contact_id || @contacts.first&.id
+    # 只展示「可发私信」的平台
+    @contacts = @kol.kol_contacts.where(messaging_enabled: true).to_a
+
+    # 每个联系方式的最新消息时间
+    latest_times = {}
+    @messages.each do |m|
+      next if m.kol_contact_id.nil?
+      t = m.occurred_at || m.created_at
+      latest_times[m.kol_contact_id] = t if latest_times[m.kol_contact_id].nil? || t > latest_times[m.kol_contact_id]
+    end
+
+    # 有最新消息的排前面（按时间倒序），没消息的按优先级排后面
+    @contacts = @contacts.sort_by do |c|
+      t = latest_times[c.id]
+      [t.nil? ? 1 : 0, t.nil? ? 0 : -t.to_f, c.priority.to_i, c.id]
+    end
+
+    # 默认选中：已回复 > 当前正在联系 > 最新消息渠道
+    replied_contact = @contacts.find { |c| c.replied? }
+    @active_contact_id = replied_contact&.id ||
+                         @contacts.find { |c| c.id == @kol.current_contact_id }&.id ||
+                         @contacts.first&.id
 
     # 回复用：全部模板（渲染后的内容 + 缺失变量）+ 回复账号（取「已回复」联系方式的账号）
     @reply_templates = MessageTemplate.order(:id).map do |t|
