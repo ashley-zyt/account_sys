@@ -10,8 +10,8 @@ class KolAccountAllocator
   MAX_CONTACTS_PER_DAY = 5
   MIN_AVG_VIEWS = 10
   SLEEP_HOURS = 24
-  # 当前已接通 twitter / tiktok；接入其它平台后在此扩展
-  SUPPORTED_PLATFORMS = %w[twitter tiktok].freeze
+  # 当前已接通 twitter / tiktok / instagram；其它平台暂未开通
+  SUPPORTED_PLATFORMS = %w[twitter tiktok instagram].freeze
 
   class << self
     def supported_platform?(platform)

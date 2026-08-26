@@ -107,7 +107,6 @@
             <th>语言</th>
             <th>归属人</th>
             <th>状态</th>
-            <th>渠道</th>
             <th>最近触达</th>
             <th>下次动作</th>
             <th>操作</th>
@@ -134,14 +133,6 @@
               <td><span class="admin-label-muted"><%= kol.language&.name || "-" %></span></td>
               <td><span class="admin-label-muted"><%= kol.owner %></span></td>
               <td><%= render "status_badge", status: kol.status %></td>
-              <td>
-                <%
-                  contacts = kol.kol_contacts
-                  replied_count = contacts.count { |c| c.replied? }
-                  contacted_count = contacts.count { |c| c.contacting? || c.replied? || c.unresponsive? }
-                %>
-                <span class="admin-label-muted"><%= "#{contacted_count} 已联系 · #{replied_count} 回复" %></span>
-              </td>
               <td><span class="admin-label-muted"><%= kol.last_contacted_at&.strftime("%m-%d %H:%M") || "-" %></span></td>
               <td><span class="admin-label-muted"><%= kol.next_action_at&.strftime("%m-%d %H:%M") || "-" %></span></td>
               <td>
