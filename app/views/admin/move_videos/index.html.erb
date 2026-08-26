@@ -46,8 +46,18 @@
   </div>
 
   <% if @move_videos.any? %>
-    <div class="admin-table-wrapper admin-table-scroll">
-      <table class="admin-table">
+    <div class="admin-table-wrapper" style="overflow-x: auto;">
+      <table class="admin-table" style="table-layout: fixed; min-width: 850px;">
+        <colgroup>
+          <col style="width: 60px;">
+          <col style="width: auto;">
+          <col style="width: 100px;">
+          <col style="width: 100px;">
+          <col style="width: 110px;">
+          <col style="width: 110px;">
+          <col style="width: 120px;">
+          <col style="width: 70px;">
+        </colgroup>
         <thead>
           <tr>
             <th>ID</th>
@@ -66,14 +76,14 @@
               <td>
                 <span class="admin-label-muted"><%= video.id %></span>
               </td>
-              <td>
-                <%= link_to truncate(video.source_video_url, length: 40), admin_move_video_path(video), class: "admin-link-quiet" %>
+              <td style="white-space: normal; word-break: break-all;">
+                <%= link_to video.source_video_url, admin_move_video_path(video), class: "admin-link-quiet", style: "word-break: break-all;" %>
               </td>
               <td>
-                <span class="admin-label-muted"><%= video.theme %></span>
+                <span class="admin-label-muted" style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= video.theme %>"><%= video.theme %></span>
               </td>
               <td>
-                <span class="admin-label-muted"><%= video.platforms %></span>
+                <span class="admin-label-muted" style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= video.platforms %>"><%= video.platforms %></span>
               </td>
               <td>
                 <% case video.status %>

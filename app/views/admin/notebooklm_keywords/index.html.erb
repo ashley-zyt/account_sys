@@ -46,8 +46,16 @@
   </div>
 
   <% if @notebooklm_keywords.any? %>
-      <div class="admin-table-wrapper admin-table-scroll">
-        <table class="admin-table">
+      <div class="admin-table-wrapper" style="overflow-x: auto;">
+        <table class="admin-table" style="table-layout: fixed; min-width: 700px;">
+          <colgroup>
+            <col style="width: 60px;">
+            <col style="width: 120px;">
+            <col style="width: auto;">
+            <col style="width: 110px;">
+            <col style="width: 130px;">
+            <col style="width: 80px;">
+          </colgroup>
           <thead>
             <tr>
               <th>ID</th>
@@ -65,10 +73,10 @@
                   <span class="admin-label-muted"><%= kw.id %></span>
                 </td>
                 <td>
-                  <span class="admin-label-muted"><%= kw.theme %></span>
+                  <span class="admin-label-muted" style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= kw.theme %>"><%= kw.theme %></span>
                 </td>
-                <td>
-                  <%= link_to kw.keyword, admin_notebooklm_keyword_path(kw), class: "admin-label-muted", style: "text-decoration: none; cursor: pointer;" %>
+                <td style="white-space: normal; word-break: break-all;">
+                  <%= link_to kw.keyword, admin_notebooklm_keyword_path(kw), class: "admin-label-muted", style: "text-decoration: none; cursor: pointer; word-break: break-all;" %>
                 </td>
                 <td>
                   <%= status_badge(kw.status) %>

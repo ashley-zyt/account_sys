@@ -24,7 +24,8 @@ class TaskScheduler
 			{ work_type: "Grok", task_model: GrokTask, type_name: "Grok" },
 			# { work_type: "Heygen", task_model: HeygenTask, type_name: "Heygen" },
 			{ work_type: "剪映", task_model: JianyingTask, type_name: "剪映" },
-			{ work_type: "花生", task_model: HuashengTask, type_name: "花生" }
+			{ work_type: "花生", task_model: HuashengTask, type_name: "花生" },
+			{ work_type: "Notebooklm", task_model: NotebooklmTask, type_name: "Notebooklm" }
 		]
 
 		resource_configs.each do |config|
@@ -99,6 +100,9 @@ class TaskScheduler
 
 		# 从花生任务中获取
 		pending_browser_ids += HuashengTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
+
+		# 从 Notebooklm 任务中获取
+		pending_browser_ids += NotebooklmTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
 
 		# 获取待发布浏览器及其所属机器 IP（用于遍历每台机器查询锁定）
 		pending_browsers = Browser.where(id: pending_browser_ids.uniq)
@@ -263,7 +267,8 @@ class TaskScheduler
 		timeout_huasheng_tasks = HuashengTask.where(status: :executing)
 		                                     .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
 
-		timeout_count = timeout_operation_tasks.count + timeout_grok_tasks.count + timeout_move_tasks.count + timeout_heygen_tasks.count + timeout_jianying_tasks.count + timeout_huasheng_tasks.count
+		timeout_notebooklm_tasks = NotebooklmTask.where(status: :executing)
+		                                     .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
 
 		return if timeout_count == 0
 
@@ -333,12 +338,22 @@ class TaskScheduler
 				start_at: nil
 			)
 		end
+		# 重置 Notebooklm 任务
+		timeout_notebooklm_tasks.each do |task|
+			task.update!(
+				status: :pending,
+				account_id: nil,
+				browser_id: nil,
+				error_msg: "任务执行超时（超过8分钟）",
+				start_at: nil
+			)
+		end
 
-		send_timeout_alert(timeout_count, timeout_operation_tasks.count, timeout_grok_tasks.count, timeout_move_tasks.count, timeout_heygen_tasks.count, timeout_jianying_tasks.count, timeout_huasheng_tasks.count)
+		send_timeout_alert(timeout_count, timeout_operation_tasks.count, timeout_grok_tasks.count, timeout_move_tasks.count, timeout_heygen_tasks.count, timeout_jianying_tasks.count, timeout_huasheng_tasks.count, timeout_notebooklm_tasks.count)
 	end
 
 	# 发送超时任务告警消息
-	def self.send_timeout_alert(total_count, operation_count, grok_count, move_count, heygen_count = 0, jianying_count = 0, huasheng_count = 0)
+	def self.send_timeout_alert(total_count, operation_count, grok_count, move_count, heygen_count = 0, jianying_count = 0, huasheng_count = 0, notebooklm_count = 0)
 		require 'net/http'
 		require 'json'
 
@@ -353,7 +368,8 @@ class TaskScheduler
 		message += "• 搬运任务：#{move_count} 个\n"
 		message += "• Heygen任务：#{heygen_count} 个\n"
 		message += "• 剪映任务：#{jianying_count} 个\n"
-		message += "• 花生任务：#{huasheng_count} 个\n\n"
+		message += "• 花生任务：#{huasheng_count} 个\n"
+		message += "• Notebooklm任务：#{notebooklm_count} 个\n\n"
 		message += "⏰ 超时阈值：8分钟\n"
 		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}"
 
