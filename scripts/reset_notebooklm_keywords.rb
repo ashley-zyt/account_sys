@@ -40,7 +40,7 @@ puts "批量重置 NotebookLM 视频储备关键词状态脚本"
 puts "=" * 60
 
 # 在此处指定要重置的 ID 列表
-ids = [1,2]
+ids = [1,2,3,4]
 
 if ids.empty?
   puts "请在脚本中指定要重置的 ID 列表"
@@ -82,14 +82,17 @@ unless answer&.downcase == 'y'
 end
 
 time = Benchmark.measure do
-  updated = NotebooklmKeyword.where(id: ids).update_all(
-    status: 0,
-    task_id: nil,
-    result_data: nil,
-    pushed: false,
-    updated_at: Time.current
-  )
-  puts "成功更新 #{updated} 条记录"
+  # updated = NotebooklmKeyword.where(id: ids).update_all(
+  #   status: 0,
+  #   task_id: nil,
+  #   result_data: nil,
+  #   pushed: false,
+  #   updated_at: Time.current
+  # )
+  NotebooklmKeyword.where(id: ids).each do |record|
+    record.destroy
+  end
+  # puts "成功更新 #{updated} 条记录"
 end
 
 puts "耗时: #{time.real.round(2)} 秒"
