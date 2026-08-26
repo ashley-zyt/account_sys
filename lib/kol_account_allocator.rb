@@ -2,7 +2,7 @@
 #
 # 分配策略：
 #   1. 账号状态=正常 且 平台一致
-#   2. 近 7 天有发文，且「每条发文的平均浏览量」> 10
+#   2. 「近七条发文」的平均浏览量 > 10（一条发文都没有则略过）
 #   3. 按平均浏览量从高到低选择
 #   4. 单个账号每日最多联系 5 个 KOL
 #   5. 风控/发送失败的账号休眠一段时间，期间不参与分配
@@ -10,8 +10,8 @@ class KolAccountAllocator
   MAX_CONTACTS_PER_DAY = 5
   MIN_AVG_VIEWS = 10
   SLEEP_HOURS = 24
-  # 当前只接通 twitter；接入其它平台后在此扩展
-  SUPPORTED_PLATFORMS = %w[twitter].freeze
+  # 当前已接通 twitter / tiktok；接入其它平台后在此扩展
+  SUPPORTED_PLATFORMS = %w[twitter tiktok].freeze
 
   class << self
     def supported_platform?(platform)
@@ -38,15 +38,35 @@ class KolAccountAllocator
 
     private
 
-    # 正常 + 同平台 + 近7天有发文 + 平均浏览量>10，按平均浏览量降序
+    # 正常 + 同平台，按「近七条发文」的平均浏览量降序；
+    # 一条发文都没有的账号直接略过（不参与分配）。
     def ordered_candidates(platform)
-      Account.active.where(platform: platform)
-        .joins(:post_stats)
-        .where(post_stats: { post_date: 7.days.ago.to_date..Date.today })
-        .group("accounts.id")
-        .having("SUM(post_stats.views_count) / COUNT(post_stats.id) > ?", MIN_AVG_VIEWS)
-        .order(Arel.sql("SUM(post_stats.views_count) / COUNT(post_stats.id) DESC"))
-        .to_a
+      account_ids = Account.active.where(platform: platform).pluck(:id)
+      return [] if account_ids.empty?
+
+      # 按发文日期倒序拉取每个账号的浏览量，再逐个账号截取最近 7 条
+      stats = PostStat.where(account_id: account_ids)
+                      .order(account_id: :asc, post_date: :desc, id: :desc)
+                      .pluck(:account_id, :views_count)
+
+      by_account = Hash.new { |h, k| h[k] = [] }
+      stats.each do |account_id, views_count|
+        list = by_account[account_id]
+        list << views_count.to_i if list.size < 7
+      end
+
+      scored = []
+      by_account.each do |account_id, views|
+        next if views.empty?          # 一条发文都没有：略过
+        avg = views.sum.to_f / views.size
+        next if avg <= MIN_AVG_VIEWS  # 平均浏览量不达标：略过
+        scored << [account_id, avg]
+      end
+
+      scored.sort_by! { |_id, avg| -avg }
+      ids = scored.map(&:first)
+      accounts_by_id = Account.where(id: ids).index_by(&:id)
+      ids.map { |id| accounts_by_id[id] }.compact
     end
 
     # 单个账号今日已触达的 KOL 数量（仅按当日「发送成功」的消息计数，失败尝试不占配额）

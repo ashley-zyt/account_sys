@@ -65,6 +65,7 @@ class KolContact < ApplicationRecord
   end
 
   validates :platform, presence: true
+  validates :url, presence: true
 
   # 该联系方式最后一次「发送成功」所用的内部账号（用于 check_reply / 人工回复）
   def last_outgoing_account
@@ -83,6 +84,14 @@ class KolContact < ApplicationRecord
   # 是否为内部社交账号平台（可调用内部账号发送私信）
   def social_platform?
     %w[facebook twitter tiktok youtube instagram].include?(platform)
+  end
+
+  # 触达/查回复接口的 target_url 参数：
+  #   twitter：url 存 @username
+  #   tiktok / instagram / facebook / youtube：url 存完整主页链接
+  #   统一直接返回 url（url 为必填，不会为空）
+  def outreach_target_url
+    url.to_s.strip
   end
 
   # 平台展示图标（多平台名片夹 / 对话流气泡旁使用）
