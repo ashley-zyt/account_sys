@@ -125,6 +125,9 @@
                 <% if kol.variables_incomplete? %>
                   <span class="admin-pill-status" style="background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px; margin-left: 6px;">待补全变量</span>
                 <% end %>
+                <% if kol.has_missing_contact_url? %>
+                  <span class="admin-pill-status" style="background: rgba(167,139,250,0.15); color: #c4b5fd; font-size: 11px; margin-left: 6px;">缺链接</span>
+                <% end %>
               </td>
               <td><span class="admin-label-muted"><%= kol.domain&.name || "-" %></span></td>
               <td><span class="admin-label-muted"><%= kol.country.presence || "-" %></span></td>

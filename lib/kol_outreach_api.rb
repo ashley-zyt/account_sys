@@ -21,12 +21,11 @@ class KolOutreachApi
       body = {
         profile_name: account&.browser&.profile_name,
         platform: platform.to_s,
-        account_name: contact&.url.to_s,
+        target_url: contact&.outreach_target_url.to_s,
         message_content: content,
-        account_id: account&.id,
-        target_url: contact&.url.to_s,
-        passcode: PASSCODE
+        account_id: account&.id
       }
+      body[:passcode] = PASSCODE if platform.to_s == "twitter"
 
       response = post_json(url, body)
       parse_send_response(response)
@@ -42,10 +41,10 @@ class KolOutreachApi
       body = {
         profile_name: account&.browser&.profile_name,
         platform: platform.to_s,
-        account_name: contact&.url.to_s,
-        account_id: account&.id,
-        passcode: PASSCODE
+        target_url: contact&.outreach_target_url.to_s,
+        account_id: account&.id
       }
+      body[:passcode] = PASSCODE if platform.to_s == "twitter"
 
       response = post_json(url, body)
       parse_reply_response(response)
