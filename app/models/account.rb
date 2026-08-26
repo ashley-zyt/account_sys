@@ -91,7 +91,7 @@ class Account < ApplicationRecord
 		"Grok": 4,
 		"Heygen": 5,
 		"花生": 6,
-		"NotebookLM":7
+		"Notebooklm":7
 	}
 
 	# 运营人员枚举
@@ -161,6 +161,8 @@ class Account < ApplicationRecord
 			HeygenTask
 		when "花生"
 			HuashengTask
+		when "Notebooklm"
+			NotebooklmTask
 		end
 	end
 
