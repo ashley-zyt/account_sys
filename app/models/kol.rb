@@ -90,7 +90,7 @@ class Kol < ApplicationRecord
   validates :owner, presence: true
   validates :domain, presence: { message: "所属领域不能为空" }
 
-  validate :check_duplicate, on: :create
+  validate :check_duplicate
 
   # 可发信且未失效的联系渠道，按优先级升序
   def active_contacts
@@ -191,14 +191,17 @@ class Kol < ApplicationRecord
 
   # 全局查重：命中已有 KOL 时返回 { kind:, value:, kol: }，未命中返回 nil
   # kind: :url（主页链接重复）/ :nickname（昵称重复）
-  def self.find_duplicate(contact_urls: [], contact_nicknames: [])
+  # exclude_id: 需要排除的 KOL ID（更新时排除自身，避免把自己当成重复）
+  def self.find_duplicate(contact_urls: [], contact_nicknames: [], exclude_id: nil)
     urls = Array(contact_urls).map(&:to_s).map(&:strip).reject(&:blank?).uniq
     nicknames = Array(contact_nicknames).map(&:to_s).map(&:strip).reject(&:blank?).uniq
 
-    url_hit = urls.any? ? KolContact.where("url IN (?)", urls).order(:id).first : nil
+    base = exclude_id.present? ? KolContact.where.not(kol_id: exclude_id) : KolContact.all
+
+    url_hit = urls.any? ? base.where("url IN (?)", urls).order(:id).first : nil
     return { kind: :url, value: url_hit.url, kol: url_hit.kol } if url_hit
 
-    nickname_hit = nicknames.any? ? KolContact.where("nickname IN (?)", nicknames).order(:id).first : nil
+    nickname_hit = nicknames.any? ? base.where("nickname IN (?)", nicknames).order(:id).first : nil
     return { kind: :nickname, value: nickname_hit.nickname, kol: nickname_hit.kol } if nickname_hit
 
     nil
@@ -218,12 +221,12 @@ class Kol < ApplicationRecord
 
   private
 
-  # 保存前查重：命中已有 KOL 时拦截，并说明是「昵称」还是「主页链接」重复
+  # 保存前查重（新建 + 更新均校验）：命中已有 KOL 时拦截，并说明是「昵称」还是「主页链接」重复
   def check_duplicate
     urls = kol_contacts.map { |c| c.url.to_s.strip }.reject(&:blank?)
     nicknames = kol_contacts.map { |c| c.nickname.to_s.strip }.reject(&:blank?)
 
-    dup = Kol.find_duplicate(contact_urls: urls, contact_nicknames: nicknames)
+    dup = Kol.find_duplicate(contact_urls: urls, contact_nicknames: nicknames, exclude_id: id)
     return if dup.nil?
 
     if dup[:kind] == :nickname
