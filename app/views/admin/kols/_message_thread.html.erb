@@ -1,17 +1,37 @@
 <div class="kol-chat">
   <% messages.group_by { |m| m.kol_contact_id }.each do |contact_id, msgs| %>
     <% contact = msgs.first&.kol_contact %>
+    <% visible = msgs.reject(&:first_contact_failure?) %>
+    <% failures = msgs.select(&:first_contact_failure?) %>
     <div style="border: 1px solid rgba(148,163,184,0.25); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: rgba(148,163,184,0.03);">
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(148,163,184,0.15); flex-wrap: wrap;">
         <span style="font-weight: 600; color: #e2e8f0; font-size: 13px;"><%= contact&.platform_icon || "🔗" %> <%= contact&.platform || "未指定渠道" %></span>
         <% if contact && (contact.nickname.presence || contact.url.presence) %>
           <span class="admin-label-muted" style="font-size: 12px;"><%= contact.nickname.presence || contact.url %></span>
         <% end %>
-        <span style="margin-left: auto; font-size: 11px; color: #94a3b8;"><%= msgs.size %> 条</span>
+        <span style="margin-left: auto; font-size: 11px; color: #94a3b8;"><%= visible.size %> 条</span>
       </div>
 
-      <% msgs.each do |m| %>
-        <%= render "message_bubble", m: m %>
+      <% if visible.empty? %>
+        <div class="admin-empty-state" style="padding: 8px;">暂无成功发送的消息。</div>
+      <% else %>
+        <% visible.each do |m| %>
+          <%= render "message_bubble", m: m %>
+        <% end %>
+      <% end %>
+
+      <% if failures.any? %>
+        <details style="margin-top: 8px;">
+          <summary style="cursor: pointer; font-size: 12px; color: #94a3b8; user-select: none;">首次联系失败记录（<%= failures.size %> 次）</summary>
+          <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 6px;">
+            <% failures.each do |m| %>
+              <div style="font-size: 12px; color: #f87171; border: 1px dashed rgba(239,68,68,0.3); border-radius: 6px; padding: 6px 8px; word-break: break-word;">
+                <span style="color: #94a3b8;"><%= m.occurred_at&.strftime("%m-%d %H:%M") || m.created_at&.strftime("%m-%d %H:%M") %></span>
+                <span><%= m.error_msg.presence || "发送失败" %></span>
+              </div>
+            <% end %>
+          </div>
+        </details>
       <% end %>
     </div>
   <% end %>
