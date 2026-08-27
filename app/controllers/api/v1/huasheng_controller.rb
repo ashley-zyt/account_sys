@@ -164,11 +164,11 @@ module Api
 
       # huasheng-ld bucket 与 voice_video_pipeline 上传时使用的 OSS 凭证一致。
       # 参考 Admin::HuashengKeywordsController，生成 V1 GET 签名 URL。
-      HUASHENG_OSS_BUCKET = "huasheng-ld".freeze
-      HUASHENG_OSS_REGION = "cn-hangzhou".freeze
-      HUASHENG_OSS_ACCESS_KEY_ID = "gZL8z938T19mSUHf".freeze
-      HUASHENG_OSS_ACCESS_KEY_SECRET = "A9fSDa9cH5YAExpEUR4QSizkFQEcrS".freeze
-      HUASHENG_OSS_SIGNED_URL_TTL = 31_536_000 # 1 年
+    HUASHENG_OSS_BUCKET = "huasheng-ld".freeze
+    HUASHENG_OSS_REGION = "cn-hangzhou".freeze
+    HUASHENG_OSS_ACCESS_KEY_ID = "gZL8z938T19mSUHf".freeze
+    HUASHENG_OSS_ACCESS_KEY_SECRET = "A9fSDa9cH5YAExpEUR4QSizkFQEcrS".freeze
+    HUASHENG_OSS_SIGNED_URL_TTL = 31_536_000 # 1 年
 
       # 解析 result_data JSON，从中取出 oss_url（实为 object key，如 "video/video_xxx.mp4"），
       # 返回 1 年有效的 OSS V1 GET 签名 URL。失败返回 nil。
