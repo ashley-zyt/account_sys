@@ -71,7 +71,9 @@ class KolOutreachApi
     end
 
     def parse_send_response(response)
-      return { success: false, reason: "network", raw: response&.body } unless response && (response.code == 200 || response.code == 201)
+      unless response && (response.code == 200 || response.code == 201)
+        return { success: false, reason: "network", error: "接口无响应或 HTTP #{response&.code}", raw: response&.body }
+      end
 
       data = begin
         JSON.parse(response.body)
@@ -82,8 +84,10 @@ class KolOutreachApi
       if data["type"] == "success" && data["status"] == "completed" && data.dig("result", "status") == "sent"
         { success: true, reason: nil, message_id: data["profile_id"], raw: data }
       else
+        # 提取真实失败原因：优先 result.error_info，其次顶层 error_info，最后用 status 兜底
+        error = data.dig("result", "error_info").presence || data["error_info"].presence || data["status"]
         # not_logged_in / failed / error 等均视为内部账号问题，换账号重试
-        { success: false, reason: "account_risk", error: data["error_info"].presence || data["status"], raw: data }
+        { success: false, reason: "account_risk", error: error, raw: data }
       end
     end
 

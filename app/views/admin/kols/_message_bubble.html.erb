@@ -23,7 +23,7 @@
         <span class="admin-pill-status" style="background: rgba(245,158,11,0.1); color: #f59e0b; font-size: 11px;">自动回复</span>
       <% end %>
       <% if m.sent_failed? && m.error_msg.present? %>
-        <span class="admin-label-muted" style="font-size: 11px;" title="<%= m.error_msg %>"><%= truncate(m.error_msg, length: 40) %></span>
+        <span class="admin-pill-status" style="background: rgba(239,68,68,0.08); color: #f87171; font-size: 11px; word-break: break-word;"><%= m.error_msg %></span>
       <% end %>
     </div>
   </div>

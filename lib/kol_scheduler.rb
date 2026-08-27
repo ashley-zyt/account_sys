@@ -290,11 +290,11 @@ class KolScheduler
         end
         :success
       elsif result[:reason] == "account_risk"
-        message.update!(status: :sent_failed, error_msg: "内部账号异常")
+        message.update!(status: :sent_failed, error_msg: result[:error].presence || "内部账号异常")
         KolAccountAllocator.sleep_account(account)
         :account_risk
       else
-        message.update!(status: :sent_failed, error_msg: result[:error] || result[:reason] || "发送失败")
+        message.update!(status: :sent_failed, error_msg: result[:error].presence || result[:reason] || "发送失败")
         :other
       end
     end
