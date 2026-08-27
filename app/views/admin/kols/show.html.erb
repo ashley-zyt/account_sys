@@ -151,6 +151,7 @@
       <table class="admin-table">
         <thead>
           <tr>
+            <th>ID</th>
             <th>优先级</th>
             <th>平台/渠道</th>
             <th>昵称/账号</th>
@@ -162,6 +163,7 @@
         <tbody>
           <% @contacts.each do |c| %>
             <tr>
+              <td><%= c.id %></td>
               <td><span class="admin-label-muted"><%= c.priority %></span></td>
               <td><%= c.platform_icon %> <span style="color: #cbd5e1;"><%= c.platform %></span></td>
               <td><span class="admin-label-muted"><%= c.nickname.presence || "-" %></span></td>
