@@ -71,6 +71,53 @@ module Api
         )
       end
 
+      # GET /api/v1/huasheng/completed_keywords
+      # 根据主题获取状态为"执行完成"(status=3)的关键词，支持翻页
+      # params:
+      #   theme    - 必填，主题名称
+      #   page     - 可选，页码，默认 1
+      #   per_page - 可选，每页条数，默认 50，最大 200
+      def completed_keywords
+        theme = params[:theme]
+        return render_error(msg: "theme 不能为空") if theme.blank?
+
+        page     = (params[:page] || 1).to_i.clamp(1, 9999)
+        per_page = (params[:per_page] || 50).to_i.clamp(1, 200)
+
+        scope = HuashengKeyword.where(theme: theme, status: 3)
+        total = scope.count
+        keywords = scope.order(:id).offset((page - 1) * per_page).limit(per_page)
+
+        result = keywords.map do |kw|
+          {
+            id:          kw.id,
+            theme:       kw.theme,
+            keyword:     kw.keyword,
+            status:      kw.status,
+            status_name: kw.status_name,
+            task_id:     kw.task_id,
+            pushed:      kw.respond_to?(:pushed) ? kw.pushed : nil,
+            result_data: kw.result_data,
+            created_at:  kw.created_at&.strftime("%Y-%m-%d %H:%M:%S"),
+            updated_at:  kw.updated_at&.strftime("%Y-%m-%d %H:%M:%S")
+          }
+        end
+
+        total_pages = (total.to_f / per_page).ceil
+
+        render_success(
+          data: {
+            theme:       theme,
+            page:        page,
+            per_page:    per_page,
+            total:       total,
+            total_pages: total_pages,
+            keywords:    result
+          },
+          msg: "查询成功"
+        )
+      end
+
       # POST /api/v1/huasheng/report_result
       # 传递任务结果，并修改任务状态为执行完成或任务失败
       # body: { id: 1, status: 3, result_data: {...}, task_id: "xxx" }
