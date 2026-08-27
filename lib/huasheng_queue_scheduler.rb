@@ -25,6 +25,15 @@ class HuashengQueueScheduler
     failed = 0
 
     keywords.each do |kw|
+      # 跳过包含 | 分隔符的多段式关键词（如 "宁夏灵武市|Chinese|9:16"），
+      # 这类关键词由 voice_video_pipeline 独立处理，不推送到花生资源队列。
+      if kw.keyword&.include?("|")
+        # kw.update!(pushed: true)
+        skipped += 1
+        Rails.logger.info "[HuashengQueueScheduler] keyword #{kw.id} (#{kw.keyword}) 多段式关键词，跳过推送"
+        next
+      end
+
       begin
         created, err = HuashengTask.create_from_huasheng_keyword!(kw)
 
