@@ -10,7 +10,8 @@ module Api
       def pending_keywords
         limit = (params[:limit] || 10).to_i.clamp(1, 50)
         scope = HuashengKeyword.where(status: 0)
-        scope = scope.where(theme: params[:theme]) if params[:theme].present?
+        # scope = scope.where(theme: params[:theme]) if params[:theme].present?
+        scope = scope.where(id:[452,451]) 
         keywords = scope.order(:id).limit(limit)
 
         result = keywords.map do |kw|
