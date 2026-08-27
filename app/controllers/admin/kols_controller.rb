@@ -25,6 +25,7 @@ class Admin::KolsController < Admin::BaseController
                     .includes(:account, :kol_contact)
                     .order(Arel.sql("occurred_at IS NULL ASC, occurred_at ASC, id ASC"))
     @accounts = Account.active.order(:platform, :account_name)
+    @manual_templates = manual_templates_for(@kol)
   end
 
   # 列表页抽屉里的跨渠道会话流（无布局，供 fetch 注入）
@@ -32,15 +33,29 @@ class Admin::KolsController < Admin::BaseController
     @messages = @kol.kol_messages
                     .includes(:account, :kol_contact)
                     .order(Arel.sql("occurred_at IS NULL ASC, occurred_at ASC, id ASC"))
-    @contacts = @kol.kol_contacts.order(priority: :asc, id: :asc)
 
-    # 默认选中：已回复的联系方式 > 当前正在联系 > 最近有消息的渠道 > 第一个渠道
-    replied_contact = @kol.kol_contacts.where(status: KolContact.statuses[:replied]).order(id: :desc).first
-    latest_contact_id = @messages
-      .reject { |m| m.kol_contact_id.nil? }
-      .max_by { |m| m.occurred_at || m.created_at }
-      &.kol_contact_id
-    @active_contact_id = replied_contact&.id || @kol.current_contact_id || latest_contact_id || @contacts.first&.id
+    # 只展示「可发私信」的平台
+    @contacts = @kol.kol_contacts.where(messaging_enabled: true).to_a
+
+    # 每个联系方式的最新消息时间
+    latest_times = {}
+    @messages.each do |m|
+      next if m.kol_contact_id.nil?
+      t = m.occurred_at || m.created_at
+      latest_times[m.kol_contact_id] = t if latest_times[m.kol_contact_id].nil? || t > latest_times[m.kol_contact_id]
+    end
+
+    # 有最新消息的排前面（按时间倒序），没消息的按优先级排后面
+    @contacts = @contacts.sort_by do |c|
+      t = latest_times[c.id]
+      [t.nil? ? 1 : 0, t.nil? ? 0 : -t.to_f, c.priority.to_i, c.id]
+    end
+
+    # 默认选中：已回复 > 当前正在联系 > 最新消息渠道
+    replied_contact = @contacts.find { |c| c.replied? }
+    @active_contact_id = replied_contact&.id ||
+                         @contacts.find { |c| c.id == @kol.current_contact_id }&.id ||
+                         @contacts.first&.id
 
     # 回复用：全部模板（渲染后的内容 + 缺失变量）+ 回复账号（取「已回复」联系方式的账号）
     @reply_templates = MessageTemplate.order(:id).map do |t|
@@ -137,10 +152,25 @@ class Admin::KolsController < Admin::BaseController
     contact = KolContact.find_by(id: params[:kol_contact_id])
     account = Account.find_by(id: params[:account_id])
     content = params[:content].to_s.strip
+    template_id = params[:template_id].to_s.strip
+
+    # 内容为空时，若选择了模板则用模板渲染结果填充
+    if content.blank? && template_id.present?
+      template = MessageTemplate.find_by(id: template_id)
+      content = template&.render_for(@kol).to_s.strip
+    end
+
     if content.blank?
       redirect_to admin_kol_path(@kol), alert: "消息内容不能为空"
       return
     end
+
+    # 若内容里仍残留未替换的 ${变量} 占位符，提醒补齐变量
+    if content.include?("${")
+      redirect_to admin_kol_path(@kol), alert: "消息内容中仍包含未填写的变量（${...}），请先补全后再发送"
+      return
+    end
+
     result = KolScheduler.manual_send(@kol, contact: contact, account: account, content: content)
     if result[:ok]
       redirect_to admin_kol_path(@kol), notice: "消息已发送"
@@ -311,6 +341,18 @@ class Admin::KolsController < Admin::BaseController
       platforms: platforms,
       domain_id: kol.domain_id
     )
+  end
+
+  # 人工发送消息可选模板（渲染后的内容 + 缺失变量，供前端套用与提醒）
+  def manual_templates_for(kol)
+    MessageTemplate.order(:id).map do |t|
+      {
+        id: t.id,
+        label: "#{t.scenario_label} · #{t.name}",
+        content: t.render_for(kol).to_s,
+        missing: kol.missing_variables(t.required_variable_keys)
+      }
+    end
   end
 
   # 为前端「按领域/平台动态匹配变量」准备数据

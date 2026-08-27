@@ -86,4 +86,10 @@ class KolMessage < ApplicationRecord
   def self.ransackable_associations(auth_object = nil)
     %w[kol kol_contact account message_template]
   end
+
+  # 是否为「首次联系」的失败尝试（自动触达 + 发送失败）
+  # 这类噪音消息在对话流里折叠展示，主流程只保留成功发送与后续跟进
+  def first_contact_failure?
+    auto? && sent_failed?
+  end
 end

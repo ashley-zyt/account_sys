@@ -151,6 +151,7 @@
       <table class="admin-table">
         <thead>
           <tr>
+            <th>ID</th>
             <th>优先级</th>
             <th>平台/渠道</th>
             <th>昵称/账号</th>
@@ -162,6 +163,7 @@
         <tbody>
           <% @contacts.each do |c| %>
             <tr>
+              <td><%= c.id %></td>
               <td><span class="admin-label-muted"><%= c.priority %></span></td>
               <td><%= c.platform_icon %> <span style="color: #cbd5e1;"><%= c.platform %></span></td>
               <td><span class="admin-label-muted"><%= c.nickname.presence || "-" %></span></td>
@@ -224,53 +226,35 @@
     </div>
   </div>
 
-  <div class="admin-two-column">
-    <div>
-      <div class="admin-section-title">立即联系（最高优先级）</div>
-      <div class="admin-section-subtitle">绕过排队，可强制指定渠道与内部账号；按「首次建联」模板发送，所需变量需已填写</div>
-      <%= form_with url: contact_now_admin_kol_path(@kol), method: :post, class: "admin-form" do %>
-        <div style="margin-bottom: 10px;">
-          <div class="admin-field-label">联系渠道</div>
-          <select name="kol_contact_id" class="admin-input">
-            <option value="">自动选择（按优先级）</option>
-            <% @kol.active_contacts.each do |c| %>
-              <option value="<%= c.id %>"><%= c.platform %> / <%= c.nickname.presence || c.url %></option>
-            <% end %>
-          </select>
-        </div>
-        <div style="margin-bottom: 10px;">
-          <div class="admin-field-label">内部账号（可选）</div>
-          <select name="account_id" class="admin-input">
-            <option value="">自动分配（高曝光优先）</option>
-            <% @accounts.each do |a| %>
-              <option value="<%= a.id %>"><%= a.platform %> / <%= a.account_name %></option>
-            <% end %>
-          </select>
-        </div>
-        <button type="submit" class="admin-button-primary">立即联系</button>
-      <% end %>
-    </div>
-
-    <div>
-      <div class="admin-section-title">人工发送消息</div>
-      <div class="admin-section-subtitle">负责人打字回复，进入商务洽谈阶段</div>
-      <%= form_with url: add_message_admin_kol_path(@kol), method: :post, class: "admin-form" do %>
-        <div style="margin-bottom: 10px;">
-          <div class="admin-field-label">联系渠道（可选）</div>
-          <select name="kol_contact_id" class="admin-input">
-            <option value="">当前渠道</option>
-            <% @kol.active_contacts.each do |c| %>
-              <option value="<%= c.id %>"><%= c.platform %> / <%= c.nickname.presence || c.url %></option>
-            <% end %>
-          </select>
-        </div>
-        <div style="margin-bottom: 10px;">
-          <div class="admin-field-label">消息内容</div>
-          <textarea name="content" class="admin-input" rows="3" placeholder="输入要发送的内容..."></textarea>
-        </div>
-        <button type="submit" class="admin-button-primary">发送</button>
-      <% end %>
-    </div>
+  <div>
+    <div class="admin-section-title">人工发送消息</div>
+    <div class="admin-section-subtitle">负责人发送消息；可选择模板，模板含变量时会提醒填写</div>
+    <%= form_with url: add_message_admin_kol_path(@kol), method: :post, class: "admin-form" do %>
+      <div style="margin-bottom: 10px;">
+        <div class="admin-field-label">联系渠道（可选）</div>
+        <select name="kol_contact_id" class="admin-input">
+          <option value="">当前渠道</option>
+          <% @kol.active_contacts.each do |c| %>
+            <option value="<%= c.id %>"><%= c.platform %> / <%= c.nickname.presence || c.url %></option>
+          <% end %>
+        </select>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <div class="admin-field-label">消息模板（可选）</div>
+        <select name="template_id" id="kol-manual-template" class="admin-input" onchange="kolApplyManualTemplate()">
+          <option value="">手动输入</option>
+          <% @manual_templates.each do |t| %>
+            <option value="<%= t[:id] %>"><%= t[:label] %></option>
+          <% end %>
+        </select>
+      </div>
+      <div id="kol-manual-var-hint" style="display: none; margin-bottom: 10px; font-size: 12px; color: #f59e0b;"></div>
+      <div style="margin-bottom: 10px;">
+        <div class="admin-field-label">消息内容</div>
+        <textarea name="content" id="kol-manual-content" class="admin-input" rows="4" placeholder="输入要发送的内容..."></textarea>
+      </div>
+      <button type="submit" class="admin-button-primary">发送</button>
+    <% end %>
   </div>
 
   <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px;">
@@ -286,3 +270,30 @@
     <%= link_to "标记已拒绝", mark_outcome_admin_kol_path(@kol, outcome: "failed"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
   </div>
 </div>
+
+<script type="application/json" id="kol-manual-templates">
+<%= raw @manual_templates.to_json %>
+</script>
+
+<script>
+function kolApplyManualTemplate() {
+  var select = document.getElementById('kol-manual-template');
+  var tid = select ? select.value : '';
+  var dataEl = document.getElementById('kol-manual-templates');
+  var textarea = document.getElementById('kol-manual-content');
+  var hint = document.getElementById('kol-manual-var-hint');
+  if (!tid || !dataEl || !textarea) return;
+  var templates = JSON.parse(dataEl.textContent);
+  var found = templates.find(function(t) { return String(t.id) === String(tid); });
+  if (!found) return;
+  textarea.value = found.content;
+  if (hint) {
+    if (found.missing && found.missing.length) {
+      hint.textContent = '该模板包含未填写的变量：' + found.missing.map(function(m){ return '${' + m + '}'; }).join('、') + '，请在内容中替换这些占位符';
+      hint.style.display = 'block';
+    } else {
+      hint.style.display = 'none';
+    }
+  }
+}
+</script>
