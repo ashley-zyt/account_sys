@@ -2,6 +2,10 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
   before_action :set_themes, only: [:index, :new, :create, :edit, :update]
 
   def index
+    # 主题筛选时去掉"剪映-"前缀，数据库存的是不带前缀的主题名
+    if params[:q].present? && params[:q][:theme_eq].present?
+      params[:q][:theme_eq] = params[:q][:theme_eq].gsub("剪映-", "")
+    end
     @q = RedNoteKeyword.ransack(params[:q])
     @red_note_keywords = @q.result
                             .order(created_at: :desc)
@@ -167,7 +171,7 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
   private
 
   def set_themes
-    @themes = Theme.pluck(:name)
+    @themes = Theme.pluck(:name).select { |name| name.start_with?("剪映-") }
   end
 
   def red_note_keyword_params
