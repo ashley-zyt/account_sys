@@ -126,37 +126,12 @@ class PublishScheduler
   # === 数据获取 ===
 
   def self.fetch_all_tasks(platform: nil)
-    operation_tasks = OperationTask.where(status: :waiting_publish)
-                                   .where("account_id IS NOT NULL")
-                                   .includes(:browser)
-
-    grok_tasks = GrokTask.where(status: :waiting_publish)
-                         .where("account_id IS NOT NULL")
-                         .includes(:browser)
-
-    heygen_tasks = HeygenTask.where(status: :waiting_publish)
-                             .where("account_id IS NOT NULL")
-                             .includes(:browser)
-
-    jianying_tasks = JianyingTask.where(status: :waiting_publish)
-                               .where("account_id IS NOT NULL")
-                               .includes(:browser)
-
-    # 搬运任务：视频搬运模式的资源队列，发布时与运营/Grok/剪映任务一并执行
-    move_tasks = MoveTask.where(status: :waiting_publish)
-                         .where("account_id IS NOT NULL")
-                         .includes(:browser)
-
-    huasheng_tasks = HuashengTask.where(status: :waiting_publish)
-                               .where("account_id IS NOT NULL")
-                               .includes(:browser)
-    notebooklm_tasks = NotebooklmTask.where(status: :waiting_publish)
-                                  .where("account_id IS NOT NULL")
-                                  .includes(:browser)
-
-
-
-    tasks = operation_tasks.to_a + grok_tasks.to_a + heygen_tasks.to_a + jianying_tasks.to_a + move_tasks.to_a + huasheng_tasks.to_a + notebooklm_tasks.to_a
+    tasks = WorkMode.publishable_modes.flat_map do |mode|
+      mode.task_model_class.where(status: :waiting_publish)
+                           .where("account_id IS NOT NULL")
+                           .includes(:browser)
+                           .to_a
+    end
     tasks = tasks.select { |t| t.platform == platform } if platform.present?
     tasks
   end
@@ -237,33 +212,14 @@ class PublishScheduler
   end
 
   def self.task_type_name(task)
-    if task.is_a?(OperationTask)
-      'operation'
-    elsif task.is_a?(GrokTask)
-      'grok'
-    elsif task.is_a?(HeygenTask)
-      'heygen'
-    elsif task.is_a?(JianyingTask)
-      'jianying'
-    elsif task.is_a?(MoveTask)
-      'move'
-    elsif task.is_a?(HuashengTask)
-      'huasheng'
-    elsif task.is_a?(NotebooklmTask)
-      'notebooklm'
-    else
-      'operation'
-    end
+    WorkMode.for_model(task.class)&.type_name || 'operation'
   end
 
   def self.build_request_data(task)
-    # 运营/剪映/搬运/花生 任务均使用 oss_url 作为视频地址；Grok/Heygen 使用 video_url
-    video_url = if task.is_a?(OperationTask) || task.is_a?(JianyingTask) || task.is_a?(MoveTask) || task.is_a?(HuashengTask) || task.is_a?(NotebooklmTask)
-                  task.oss_url
-                else
-                  task.video_url
-                end
-    # MoveTask 没有 description 字段，搬运模式发布不需要描述
+    # 视频地址字段由注册表决定（oss_url / video_url）
+    mode = WorkMode.for_model(task.class)
+    video_url = (mode && mode.video_field.present?) ? task.public_send(mode.video_field) : nil
+    # 部分任务（如 MoveTask）没有 description 字段，发布不需要描述
     description = task.respond_to?(:description) ? task.description.to_s : ""
     {
       profile_name: ensure_utf8(task.browser.profile_name),

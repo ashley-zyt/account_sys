@@ -18,25 +18,14 @@ class TaskScheduler
 		today_start = today.beginning_of_day
 		today_end = today.end_of_day
 
-		resource_configs = [
-			{ work_type: "视频搬运", task_model: MoveTask, type_name: "搬运" },
-			{ work_type: "人工运营", task_model: OperationTask, type_name: "运营" },
-			{ work_type: "Grok", task_model: GrokTask, type_name: "Grok" },
-			# { work_type: "Heygen", task_model: HeygenTask, type_name: "Heygen" },
-			{ work_type: "剪映", task_model: JianyingTask, type_name: "剪映" },
-			{ work_type: "花生", task_model: HuashengTask, type_name: "花生" },
-			{ work_type: "Notebooklm", task_model: NotebooklmTask, type_name: "Notebooklm" }
-		]
-
-		resource_configs.each do |config|
+		WorkMode.scheduler_assign_modes.each do |mode|
 			begin
-				accounts = Account.active.where(work_type: config[:work_type])
+				task_model = mode.task_model_class
+				type_name = mode.name
+				accounts = Account.active.where(work_type: mode.name)
 				accounts = accounts.where(platform: platform) if platform.present?
 
 				accounts.each do |account|
-					task_model = config[:task_model]
-					type_name = config[:type_name]
-
 					has_posted_today = task_model.exists?(
 						account_id: account.id,
 						status: :success,
@@ -68,7 +57,7 @@ class TaskScheduler
 					end
 				end
 			rescue => e
-				Rails.logger.error "[TaskScheduler] 处理 #{config[:type_name]} 资源分配时发生异常: #{e.message}"
+				Rails.logger.error "[TaskScheduler] 处理 #{mode.name} 资源分配时发生异常: #{e.message}"
 				Rails.logger.error "[TaskScheduler] 异常堆栈: #{e.backtrace.join("\n")}"
 			end
 		end
@@ -80,29 +69,12 @@ class TaskScheduler
 	# 遍历所有运营机器（browser.machine_ip）查询锁定状态，避免遗漏其他机器上的锁
 	def self.find_locked_browsers_in_pending_tasks
 
-		# 1. 获取待执行任务中的指纹浏览器
+		# 1. 获取待执行任务中的指纹浏览器（遍历注册表所有资源队列）
 		pending_browser_ids = []
 
-		# 从搬运任务中获取
-		pending_browser_ids += MoveTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
-
-		# 从运营任务中获取
-		pending_browser_ids += OperationTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
-
-		# 从 Grok 任务中获取
-		pending_browser_ids += GrokTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
-
-		# 从 Heygen 任务中获取
-		pending_browser_ids += HeygenTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
-
-		# 从剪映任务中获取
-		pending_browser_ids += JianyingTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
-
-		# 从花生任务中获取
-		pending_browser_ids += HuashengTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
-
-		# 从 Notebooklm 任务中获取
-		pending_browser_ids += NotebooklmTask.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
+		WorkMode.resource_modes.each do |mode|
+			pending_browser_ids += mode.task_model_class.where(status: :waiting_publish).where.not(browser_id: nil).pluck(:browser_id).uniq
+		end
 
 		# 获取待发布浏览器及其所属机器 IP（用于遍历每台机器查询锁定）
 		pending_browsers = Browser.where(id: pending_browser_ids.uniq)
@@ -171,100 +143,18 @@ class TaskScheduler
 	def self.check_timeout_tasks
 		eight_minutes_ago = 8.minutes.ago
 
-		timeout_operation_tasks = OperationTask.where(status: :executing)
-		                                       .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
-
-		timeout_grok_tasks = GrokTask.where(status: :executing)
-		                             .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
-
-		timeout_move_tasks = MoveTask.where(status: :executing)
-		                             .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
-
-		timeout_heygen_tasks = HeygenTask.where(status: :executing)
-		                                 .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
-
-		timeout_jianying_tasks = JianyingTask.where(status: :executing)
-		                                     .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
-
-		timeout_huasheng_tasks = HuashengTask.where(status: :executing)
-		                                     .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
-
-		timeout_notebooklm_tasks = NotebooklmTask.where(status: :executing)
-		                                     .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
-
-		# 重置运营任务
-		timeout_operation_tasks.each do |task|
-			task.update!(
-				status: :pending,
-				account_id: nil,
-				browser_id: nil,
-				error_msg: "任务执行超时（超过8分钟）",
-				start_at: nil
-			)
-		end
-
-		# 重置 Grok 任务
-		timeout_grok_tasks.each do |task|
-			task.update!(
-				status: :pending,
-				account_id: nil,
-				browser_id: nil,
-				error_msg: "任务执行超时（超过8分钟）",
-				start_at: nil
-			)
-		end
-
-		# 重置搬运任务
-		timeout_move_tasks.each do |task|
-			task.update!(
-				status: :pending,
-				account_id: nil,
-				browser_id: nil,
-				error_msg: "任务执行超时（超过8分钟）",
-				start_at: nil
-			)
-		end
-
-		# 重置 Heygen 任务
-		timeout_heygen_tasks.each do |task|
-			task.update!(
-				status: :pending,
-				account_id: nil,
-				browser_id: nil,
-				error_msg: "任务执行超时（超过8分钟）",
-				start_at: nil
-			)
-		end
-
-		# 重置剪映任务
-		timeout_jianying_tasks.each do |task|
-			task.update!(
-				status: :pending,
-				account_id: nil,
-				browser_id: nil,
-				error_msg: "任务执行超时（超过8分钟）",
-				start_at: nil
-			)
-		end
-		# 重置花生任务
-		timeout_huasheng_tasks.each do |task|
-			task.update!(
-				status: :pending,
-				account_id: nil,
-				browser_id: nil,
-				error_msg: "任务执行超时（超过8分钟）",
-				start_at: nil
-			)
-		end
-		# 重置 Notebooklm 任务
-		timeout_notebooklm_tasks.each do |task|
-			task.update!(
-				status: :pending,
-				account_id: nil,
-				browser_id: nil,
-				error_msg: "任务执行超时（超过8分钟）",
-				start_at: nil
-			)
+		WorkMode.resource_modes.each do |mode|
+			mode.task_model_class.where(status: :executing)
+			                     .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
+			                     .each do |task|
+				task.update!(
+					status: :pending,
+					account_id: nil,
+					browser_id: nil,
+					error_msg: "任务执行超时（超过8分钟）",
+					start_at: nil
+				)
+			end
 		end
 	end
 end

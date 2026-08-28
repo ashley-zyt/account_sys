@@ -73,16 +73,7 @@ class Util
     end
 
     work_type = account.work_type
-    task_model_map = {
-      "视频搬运" => MoveTask,
-      "人工运营" => OperationTask,
-      "Grok"     => GrokTask,
-      "Heygen"   => HeygenTask,
-      "剪映"     => JianyingTask,
-      "花生"     => HuashengTask,
-      "coze"     => nil
-    }
-    task_model = task_model_map[work_type]
+    task_model = WorkMode.manual_assign_map[work_type]
     unless task_model
       msg = "账号 #{account.account_name} 的工作模式=#{work_type} 暂不支持分配资源"
       Rails.logger.error "[Util] #{msg}"

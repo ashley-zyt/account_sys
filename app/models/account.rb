@@ -32,12 +32,10 @@ class Account < ApplicationRecord
 	# 每个账号可以绑定一个指纹浏览器（用于发布/养号）
 	belongs_to :browser, optional: true
 	# 一个账号可产生多个发布任务，账号删除时任务保留（置空 account_id）
-	has_many :move_tasks, dependent: :nullify
-	has_many :jianying_tasks, dependent: :nullify
-	has_many :operation_tasks, dependent: :nullify
-	has_many :grok_tasks, dependent: :nullify
-	has_many :heygen_tasks, dependent: :nullify
-	has_many :huasheng_tasks, dependent: :nullify
+	# 任务关联由 WorkMode 注册表动态生成（每个有资源队列的工作模式一条）
+	WorkMode.resource_modes.each do |mode|
+		has_many mode.association_name, dependent: :nullify
+	end
 	# 养号任务与账号强绑定（account_id 非空），账号删除时应一并删除，而非置空
 	has_many :warmup_tasks, dependent: :destroy
 	has_one :warmup_profile, dependent: :destroy
@@ -79,20 +77,9 @@ class Account < ApplicationRecord
 		"浏览养护": 3,
 	}
 
-	# 工作模式枚举（预留扩展）
-	# - move  : 视频搬运（当前主要用途）
-	# - coze  : 调用 coze 等 AI 生成内容
-	# - other : 其他自定义模式
-	enum work_type: {
-		"视频搬运": 0,
-		"coze": 1,
-		"剪映": 2,
-		"人工运营": 3,
-		"Grok": 4,
-		"Heygen": 5,
-		"花生": 6,
-		"Notebooklm":7
-	}
+	# 工作模式枚举：由 WorkMode 注册表（config/work_modes.yml）动态生成，
+	# 新增工作模式只需修改该配置文件，无需改动本模型。
+	enum work_type: WorkMode.enum_mapping
 
 	# 运营人员枚举
 	OPERATORS = ["张俊", "许淑雯", "石欢欢", "杜维"]
@@ -146,24 +133,9 @@ class Account < ApplicationRecord
 		update!(deleted_at: Time.current)
 	end
 
-	# 根据工作模式返回对应的任务模型类
+	# 根据工作模式返回对应的任务模型类（由 WorkMode 注册表查询）
 	def task_model_for_work_type
-		case work_type
-		when "视频搬运"
-			MoveTask
-		when "剪映"
-			JianyingTask
-		when "人工运营"
-			OperationTask
-		when "Grok"
-			GrokTask
-		when "Heygen"
-			HeygenTask
-		when "花生"
-			HuashengTask
-		when "Notebooklm"
-			NotebooklmTask
-		end
+		WorkMode.all.find { |m| m.enum_value == self[:work_type] }&.task_model_class
 	end
 
 	# 获取最后一次运行的日志
@@ -180,13 +152,11 @@ class Account < ApplicationRecord
 
 	# 获取该账号最后一次成功运行任务的时间
 	def last_successful_run_at
-		move_uuids = move_tasks.select(:task_uuid)
-		jianying_uuids = jianying_tasks.select(:task_uuid)
-		grok_uuids = grok_tasks.select(:task_uuid)
-		heygen_uuids = heygen_tasks.select(:task_uuid)
-		
+		uuids = WorkMode.resource_modes.map { |m| public_send(m.association_name).select(:task_uuid) }
+		return nil if uuids.empty?
+
 		TaskLog.success
-		       .where("task_uuid IN (?) OR task_uuid IN (?) OR task_uuid IN (?) OR task_uuid IN (?)", move_uuids, jianying_uuids, grok_uuids, heygen_uuids)
+		       .where(uuids.map { "task_uuid IN (?)" }.join(" OR "), *uuids)
 		       .order(run_at: :desc)
 		       .pick(:run_at)
 	end

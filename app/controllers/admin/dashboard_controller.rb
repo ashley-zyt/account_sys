@@ -18,53 +18,24 @@ class Admin::DashboardController < Admin::BaseController
 			end
 		end
 
-		@auto_account_stats = Account.where(work_type: 0).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
-			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
-			hash[platform][:total] += count
-			case status
-			when "正常" then hash[platform][:active] += count
-			when "未登录" then hash[platform][:unlogged] += count
-			when "封禁/停用" then hash[platform][:banned] += count
+		# 各工作模式账号统计卡片（由注册表驱动，新增模式自动出现）
+		@work_type_cards = WorkMode.resource_modes.map do |mode|
+			stats = Account.where(work_type: mode.name).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
+				hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
+				hash[platform][:total] += count
+				case status
+				when "正常" then hash[platform][:active] += count
+				when "未登录" then hash[platform][:unlogged] += count
+				when "封禁/停用" then hash[platform][:banned] += count
+				end
 			end
+			{
+				mode: mode,
+				stats: stats,
+				total: Account.where(work_type: mode.name).count,
+				active: Account.where(work_type: mode.name).active.count
+			}
 		end
-		@auto_account_total = Account.where(work_type: 0).count
-		@auto_account_active = Account.where(work_type: 0).active.count
-
-		@manual_account_stats = Account.where(work_type: 3).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
-			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
-			hash[platform][:total] += count
-			case status
-			when "正常" then hash[platform][:active] += count
-			when "未登录" then hash[platform][:unlogged] += count
-			when "封禁/停用" then hash[platform][:banned] += count
-			end
-		end
-		@manual_account_total = Account.where(work_type: 3).count
-		@manual_account_active = Account.where(work_type: 3).active.count
-
-		@grok_account_stats = Account.where(work_type: 4).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
-			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
-			hash[platform][:total] += count
-			case status
-			when "正常" then hash[platform][:active] += count
-			when "未登录" then hash[platform][:unlogged] += count
-			when "封禁/停用" then hash[platform][:banned] += count
-			end
-		end
-		@grok_account_total = Account.where(work_type: 4).count
-		@grok_account_active = Account.where(work_type: 4).active.count
-
-		@heygen_account_stats = Account.where(work_type: 5).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
-			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
-			hash[platform][:total] += count
-			case status
-			when "正常" then hash[platform][:active] += count
-			when "未登录" then hash[platform][:unlogged] += count
-			when "封禁/停用" then hash[platform][:banned] += count
-			end
-		end
-		@heygen_account_total = Account.where(work_type: 5).count
-		@heygen_account_active = Account.where(work_type: 5).active.count
 
 		@browsers_total = Browser.count
 		@browsers_normal = Browser.where(status: 0).count
@@ -83,14 +54,6 @@ class Admin::DashboardController < Admin::BaseController
 		@low_stock_alerts = fetch_low_stock_alerts
 	end
 
-	# 资源剩余可用天数统计配置（跳过人工运营，排除 Heygen）
-	RESOURCE_DAYS_CONFIGS = [
-		{ work_type: "视频搬运", task_model: MoveTask },
-		{ work_type: "Grok", task_model: GrokTask },
-		{ work_type: "剪映", task_model: JianyingTask },
-		{ work_type: "花生", task_model: HuashengTask }
-	].freeze
-
 	# 预警阈值：可用天数 < 此值才会在仪表盘展示
 	LOW_STOCK_DAY_THRESHOLD = 10
 
@@ -104,9 +67,9 @@ class Admin::DashboardController < Admin::BaseController
 	# 注：无正常账号的组合直接跳过（没有账号则不需要计算资源消耗）
 	# @return [Array<Hash>] 工作模式维度聚合的预警列表
 	def fetch_low_stock_alerts
-		RESOURCE_DAYS_CONFIGS.map do |config|
-			task_model = config[:task_model]
-			work_type = config[:work_type]
+		WorkMode.low_stock_track_modes.map do |mode|
+			task_model = mode.task_model_class
+			work_type = mode.name
 
 			# 按 theme + platform 双维度统计 pending 数
 			pending_counts = task_model.where(status: :pending).group(:theme, :platform).count

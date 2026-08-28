@@ -23,36 +23,25 @@
 #  index_task_logs_on_task_uuid   (task_uuid)
 #
 class TaskLog < ApplicationRecord
-	belongs_to :move_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
-	belongs_to :jianying_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
-	belongs_to :grok_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
-	belongs_to :operation_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
-	belongs_to :heygen_task, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
+	# 与各资源队列任务的反查关联，由 WorkMode 注册表动态生成
+	# （新增工作模式无需改动本文件）
+	WorkMode.resource_modes.each do |mode|
+		belongs_to mode.singular_association_name, foreign_key: :task_uuid, primary_key: :task_uuid, optional: true
+	end
 
 	# 任务释放后仍然能定位到执行账号/浏览器
 	belongs_to :log_account, class_name: 'Account', foreign_key: :account_id, optional: true
 	belongs_to :log_browser, class_name: 'Browser', foreign_key: :browser_id, optional: true
 
-	# 获取当前关联的具体任务对象
+	# 获取当前关联的具体任务对象（按注册表遍历各资源队列）
 	def task
-		move_task || jianying_task || grok_task || operation_task || heygen_task
+		WorkMode.resource_modes.map { |m| public_send(m.singular_association_name) }.compact.first
 	end
 
-	# 获取任务类型
+	# 获取任务类型标签（由注册表的 log_label 提供）
 	def task_type
-		if move_task.present?
-			"搬运任务"
-		elsif jianying_task.present?
-			"剪映任务"
-		elsif grok_task.present?
-			"Grok任务"
-		elsif operation_task.present?
-			"运营任务"
-		elsif heygen_task.present?
-			"Heygen任务"
-		else
-			"未知"
-		end
+		mode = WorkMode.resource_modes.find { |m| public_send(m.singular_association_name).present? }
+		mode ? mode.log_label : "未知"
 	end
 
 	# 基础校验
@@ -101,22 +90,37 @@ class TaskLog < ApplicationRecord
 		end
 	end
 
+	# 生成「快照优先 + 各资源队列任务回退」的 COALESCE 子查询片段
+	# 注意：必须在 ransacker 之前定义，因为 ransacker 的 block 在类加载时立即求值
+	# @param column [String] 要取值的字段（platform / work_type）
+	def self.account_snapshot_fallback_sql(column)
+		snapshot = "(SELECT a.#{column} FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1)"
+		fallbacks = WorkMode.resource_modes.map { |m|
+			"(SELECT a.#{column} FROM #{m.association_name} _t JOIN accounts a ON a.id = _t.account_id WHERE _t.task_uuid = task_logs.task_uuid LIMIT 1)"
+		}
+		([snapshot] + fallbacks).join(", ")
+	end
+
+	# 任务类型筛选：按注册表动态生成「该 task_uuid 属于哪张资源表」的 CASE 表达式
 	ransacker :task_type do
-		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM move_tasks WHERE move_tasks.task_uuid = task_logs.task_uuid) THEN 'move_task' WHEN EXISTS (SELECT 1 FROM jianying_tasks WHERE jianying_tasks.task_uuid = task_logs.task_uuid) THEN 'jianying_task' WHEN EXISTS (SELECT 1 FROM grok_tasks WHERE grok_tasks.task_uuid = task_logs.task_uuid) THEN 'grok_task' WHEN EXISTS (SELECT 1 FROM operation_tasks WHERE operation_tasks.task_uuid = task_logs.task_uuid) THEN 'operation_task' WHEN EXISTS (SELECT 1 FROM heygen_tasks WHERE heygen_tasks.task_uuid = task_logs.task_uuid) THEN 'heygen_task' ELSE 'unknown' END")
+		cases = WorkMode.resource_modes.map { |m|
+			"WHEN EXISTS (SELECT 1 FROM #{m.association_name} WHERE #{m.association_name}.task_uuid = task_logs.task_uuid) THEN '#{m.key}_task'"
+		}.join(" ")
+		Arel.sql("CASE #{cases} ELSE 'unknown' END")
 	end
 
-	# 账号所属平台：优先读取快照字段，回退到关联任务再到 accounts 表
+	# 账号所属平台：优先读取快照字段，回退到各资源队列任务再到 accounts 表
 	ransacker :account_platform, formatter: proc { |v| Account.platforms[v] } do
-		Arel.sql("COALESCE((SELECT a.platform FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1), (SELECT a.platform FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM grok_tasks g JOIN accounts a ON a.id = g.account_id WHERE g.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.platform FROM heygen_tasks h JOIN accounts a ON a.id = h.account_id WHERE h.task_uuid = task_logs.task_uuid LIMIT 1))")
+		Arel.sql("COALESCE(#{account_snapshot_fallback_sql('platform')})")
 	end
 
-	# 工作模式筛选：优先读取快照字段，回退到关联任务再到 accounts 表
+	# 工作模式筛选：优先读取快照字段，回退到各资源队列任务再到 accounts 表
 	ransacker :account_work_type, formatter: proc { |v| Account.work_types[v] } do
-		Arel.sql("COALESCE((SELECT a.work_type FROM accounts a WHERE a.id = task_logs.account_id LIMIT 1), (SELECT a.work_type FROM move_tasks m JOIN accounts a ON a.id = m.account_id WHERE m.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM jianying_tasks j JOIN accounts a ON a.id = j.account_id WHERE j.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM grok_tasks g JOIN accounts a ON a.id = g.account_id WHERE g.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM operation_tasks o JOIN accounts a ON a.id = o.account_id WHERE o.task_uuid = task_logs.task_uuid LIMIT 1), (SELECT a.work_type FROM heygen_tasks h JOIN accounts a ON a.id = h.account_id WHERE h.task_uuid = task_logs.task_uuid LIMIT 1))")
+		Arel.sql("COALESCE(#{account_snapshot_fallback_sql('work_type')})")
 	end
 
 	def self.ransackable_associations(auth_object = nil)
-		%w[move_task jianying_task grok_task operation_task heygen_task log_account log_browser]
+		WorkMode.resource_modes.map { |m| m.singular_association_name.to_s } + %w[log_account log_browser]
 	end
 
 	def self.ransackable_attributes(auth_object = nil)

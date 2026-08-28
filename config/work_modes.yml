@@ -1,0 +1,123 @@
+# ============================================================
+# 工作模式统一注册表 —— 新增工作模式的唯一登记点
+# ============================================================
+# 新增一个工作模式，只需在此追加一条（并新建对应的 Model/Migration），
+# 侧边栏 / 仪表盘统计卡 / 趋势图颜色 / 调度分配 / 发布执行 / 超时重置
+# 等模块会自动生效，无需再逐个文件修改。
+#
+# 字段说明：
+#   key              唯一标识（英文，用于日志/路由）
+#   name             中文名（同时是 accounts.work_type 的枚举 key）
+#   icon             侧边栏图标（emoji）
+#   short_name       简称（用于侧边栏/日志等紧凑场景，默认等于 name）
+#   sort             展示排序（侧边栏 / 仪表盘统计卡），数字越小越靠前
+#   enum_value       accounts.work_type 的整数值（DB 值，与历史数据兼容，不可更改）
+#   task_model       资源队列对应的 Model 类名；无资源队列（如 coze）留空
+#   type_name        发布时传给运营机器的任务类型标识
+#   trend_color      趋势图线条颜色
+#   sidebar_section  侧边栏所属分组
+#   video_field      发布时取视频地址的字段（oss_url / video_url）
+#   scheduler_assign 是否参与 TaskScheduler 自动分配资源（默认 true）
+#   publish          是否参与 PublishScheduler 发布执行（默认 true）
+#   manual_assign    是否支持 Util 手动分配资源（默认 true）
+#   low_stock_track  是否参与仪表盘低库存预警（默认 false）
+# ============================================================
+work_modes:
+  - key: move
+    name: 视频搬运
+    icon: "🎬"
+    short_name: "搬运"
+    sort: 10
+    enum_value: 0
+    task_model: MoveTask
+    type_name: move
+    trend_color: "#f59e0b"
+    sidebar_section: tasks
+    video_field: oss_url
+    low_stock_track: true
+
+  - key: coze
+    name: coze
+    icon: "🤖"
+    sort: 99
+    enum_value: 1
+    task_model: null
+    type_name: coze
+    trend_color: "#06b6d4"
+    sidebar_section: tasks
+    video_field: null
+    scheduler_assign: false
+    publish: false
+    manual_assign: false
+
+  - key: jianying
+    name: 剪映
+    icon: "✂️"
+    sort: 20
+    enum_value: 2
+    task_model: JianyingTask
+    type_name: jianying
+    trend_color: "#ef4444"
+    sidebar_section: tasks
+    video_field: oss_url
+    low_stock_track: true
+
+  - key: operation
+    name: 人工运营
+    icon: "📦"
+    short_name: "运营"
+    sort: 50
+    enum_value: 3
+    task_model: OperationTask
+    type_name: operation
+    trend_color: "#10b981"
+    sidebar_section: tasks
+    video_field: oss_url
+
+  - key: grok
+    name: Grok
+    icon: "🤖"
+    sort: 60
+    enum_value: 4
+    task_model: GrokTask
+    type_name: grok
+    trend_color: "#8b5cf6"
+    sidebar_section: tasks
+    video_field: video_url
+    low_stock_track: true
+
+  - key: heygen
+    name: Heygen
+    icon: "🎥"
+    sort: 70
+    enum_value: 5
+    task_model: HeygenTask
+    type_name: heygen
+    trend_color: "#ec4899"
+    sidebar_section: tasks
+    video_field: video_url
+    scheduler_assign: false
+
+  - key: huasheng
+    name: 花生
+    icon: "🥜"
+    sort: 30
+    enum_value: 6
+    task_model: HuashengTask
+    type_name: huasheng
+    trend_color: "#14b8a6"
+    sidebar_section: tasks
+    video_field: oss_url
+    low_stock_track: true
+
+  - key: notebooklm
+    name: Notebooklm
+    icon: "📓"
+    sort: 40
+    enum_value: 7
+    task_model: NotebooklmTask
+    type_name: notebooklm
+    trend_color: "#6366f1"
+    sidebar_section: tasks
+    video_field: oss_url
+    manual_assign: false

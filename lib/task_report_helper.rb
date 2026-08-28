@@ -70,7 +70,7 @@ module TaskReportHelper
         )
       else
         # 所有资源队列任务失败时统一重置为 pending，清空账号/浏览器/开始时间，等待重新分配
-        if task.is_a?(OperationTask) || task.is_a?(GrokTask) || task.is_a?(HeygenTask) || task.is_a?(JianyingTask) || task.is_a?(MoveTask)
+        if WorkMode.for_model(task.class)
           task.update!(
             status: :pending,
             account_id: nil,
