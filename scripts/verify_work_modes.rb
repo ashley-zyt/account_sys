@@ -52,7 +52,7 @@ assert_set("低库存预警 low_stock", WorkMode.low_stock_track_modes.map(&:nam
 puts "\n===== 5. 关联动态生成 ====="
 bt = TaskLog.reflect_on_all_associations(:belongs_to).map(&:name)
 assert_set("TaskLog belongs_to", bt, %w[move_task jianying_task grok_task operation_task heygen_task huasheng_task notebooklm_task log_account log_browser])
-am = Account.reflect_on_all_associations(:has_many).map(&:name)
+am = Account.reflect_on_all_associations(:has_many).map(&:name).map(&:to_s)
 missing = %w[move_tasks jianying_tasks operation_tasks grok_tasks heygen_tasks huasheng_tasks notebooklm_tasks] - am
 ok("Account has_many 含全部资源队列(含 notebooklm)", missing.empty?, "缺失 #{missing.inspect}")
 
