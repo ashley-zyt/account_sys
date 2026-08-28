@@ -4,7 +4,10 @@ class Admin::RedNoteKeywordsController < Admin::BaseController
   def index
     # 主题筛选时去掉"剪映-"前缀，数据库存的是不带前缀的主题名
     if params[:q].present? && params[:q][:theme_eq].present?
-      params[:q][:theme_eq] = params[:q][:theme_eq].gsub("剪映-", "")
+      selected = params[:q][:theme_eq].gsub("剪映-", "")
+      params[:q][:theme_eq] = selected
+      # 确保下拉框中包含当前选中值（去掉前缀后），否则 select 会因找不到匹配项而显示"全部主题"
+      @themes.unshift(selected) unless @themes.include?(selected)
     end
     @q = RedNoteKeyword.ransack(params[:q])
     @red_note_keywords = @q.result
