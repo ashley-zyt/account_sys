@@ -10,7 +10,7 @@ class Api::V1::GrokController < ApplicationController
     used_image_ids = GrokTask.where.not(grok_image_id: nil).pluck(:grok_image_id)
 
     # 获取未被使用的图片资源，按id升序排序，取第一个
-    grok_image = GrokImageResource
+    grok_image = GrokImageResource.where(theme: "grok-古画")
                   .where.not(id: used_image_ids)
                   .order(id: :desc)
                   .first
