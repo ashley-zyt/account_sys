@@ -154,6 +154,7 @@ Rails.application.routes.draw do
       post "auth/login", to: "auth#login"
       # RedNote接口
       post "red_note/keywords", to: "red_note#keywords"
+      post "red_note/batch_add_keywords", to: "red_note#batch_add_keywords"
       # 花生视频储备接口
       get  "huasheng/pending_keywords",    to: "huasheng#pending_keywords"
       get  "huasheng/completed_keywords",  to: "huasheng#completed_keywords"
