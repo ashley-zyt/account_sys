@@ -138,11 +138,6 @@ class TaskScheduler
 		# 3. 找出重合的浏览器名称
 		matched_browser_names = pending_browser_names & locked_browser_names
 
-		# 4. 如果有匹配的浏览器，发送钉钉通知
-		if matched_browser_names.present?
-			send_locked_browsers_alert(matched_browser_names, pending_browser_names, locked_browser_names)
-		end
-
 		result = {
 			pending_browsers: pending_browser_names,
 			locked_browsers: locked_browser_names,
@@ -172,79 +167,6 @@ class TaskScheduler
 		end
 	end
 
-	# 发送钉钉告警消息
-	def self.send_locked_browsers_alert(matched_browsers, pending_browsers, locked_browsers)
-		require 'net/http'
-		require 'json'
-
-		webhook_url = ENV['DINGDING_WEBHOOK_URL']
-		return unless webhook_url.present?
-
-		# 格式化浏览器列表
-		matched_list = matched_browsers.map { |name| "• #{name}" }.join("\n")
-		pending_list = pending_browsers.map { |name| "• #{name}" }.join("\n")
-		locked_list = locked_browsers.map { |name| "• #{name}" }.join("\n")
-
-		message = "【发布】检测到被锁定的浏览器正在执行任务\n\n"
-		message += "🔒 被锁定的浏览器（共 #{matched_browsers.size} 个）：\n#{matched_list}\n\n"
-		message += "📋 待执行任务中的浏览器（共 #{pending_browsers.size} 个）：\n#{pending_list}\n\n"
-		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}"
-
-		webhook_url = ENV['DINGDING_WEBHOOK_URL']
-		return unless webhook_url.present?
-
-		postbody = {"msgtype": "text","text": {"content": message}}
-		headers = {
-			"Content-Type": "application/json;charset=utf-8"
-		}
-		res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
-	end
-
-	# 检查前两小时内"指纹浏览器已被占用"错误，并发送钉钉通知
-	def self.check_browser_occupied_errors
-		two_hours_ago = 2.hours.ago
-
-		# 查询前两小时内包含"指纹浏览器已被占用"的错误日志
-		error_logs = TaskLog.where("error_msg LIKE ? AND created_at >= ?", "%指纹浏览器已被占用%", two_hours_ago)
-		                    .where.not(browser_id: nil)
-
-		# 获取浏览器名称并去重
-		browser_ids = error_logs.pluck(:browser_id).compact.uniq
-		browsers = Browser.where(id: browser_ids).pluck(:profile_name).compact.uniq
-
-		return if browsers.empty?
-
-		# 发送钉钉通知
-		send_browser_occupied_alert(browsers, error_logs.count, error_logs.last&.created_at)
-	end
-
-	# 发送浏览器被占用告警消息
-	def self.send_browser_occupied_alert(browsers, error_count, last_error_time)
-		require 'net/http'
-		require 'json'
-
-		webhook_url = ENV['DINGDING_WEBHOOK_URL']
-		Rails.logger.info "webhook_url: #{webhook_url}"
-		return unless webhook_url.present?
-
-		browser_list = browsers.map { |name| "• #{name}" }.join("\n")
-
-		message = "【养号】检测到多个指纹浏览器被占用\n\n"
-		message += "📊 统计信息：\n"
-		message += "• 最近2小时内错误次数：#{error_count} 次\n"
-		message += "• 被占用的浏览器数量：#{browsers.size} 个\n\n"
-		message += "🔐 被占用的指纹浏览器：\n#{browser_list}\n\n"
-		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}\n"
-		message += "⏰ 最近错误时间：#{last_error_time&.strftime("%Y-%m-%d %H:%M:%S") || "无"}"
-		Rails.logger.info message
-
-		postbody = {"msgtype": "text","text": {"content": message}}
-		headers = {
-			"Content-Type": "application/json;charset=utf-8"
-		}
-		res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
-	end
-
 	# 检查超时任务（超过8分钟未完成）并自动重置
 	def self.check_timeout_tasks
 		eight_minutes_ago = 8.minutes.ago
@@ -269,10 +191,6 @@ class TaskScheduler
 
 		timeout_notebooklm_tasks = NotebooklmTask.where(status: :executing)
 		                                     .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
-
-		return if timeout_count == 0
-
-		Rails.logger.warn "[TaskScheduler] 检测到 #{timeout_count} 个超时任务，正在重置..."
 
 		# 重置运营任务
 		timeout_operation_tasks.each do |task|
@@ -348,35 +266,5 @@ class TaskScheduler
 				start_at: nil
 			)
 		end
-
-		send_timeout_alert(timeout_count, timeout_operation_tasks.count, timeout_grok_tasks.count, timeout_move_tasks.count, timeout_heygen_tasks.count, timeout_jianying_tasks.count, timeout_huasheng_tasks.count, timeout_notebooklm_tasks.count)
-	end
-
-	# 发送超时任务告警消息
-	def self.send_timeout_alert(total_count, operation_count, grok_count, move_count, heygen_count = 0, jianying_count = 0, huasheng_count = 0, notebooklm_count = 0)
-		require 'net/http'
-		require 'json'
-
-		webhook_url = ENV['DINGDING_WEBHOOK_URL']
-		return unless webhook_url.present?
-
-		message = "【养号】检测到超时任务\n\n"
-		message += "📊 统计信息：\n"
-		message += "• 总超时任务数：#{total_count} 个\n"
-		message += "• 运营任务：#{operation_count} 个\n"
-		message += "• Grok任务：#{grok_count} 个\n"
-		message += "• 搬运任务：#{move_count} 个\n"
-		message += "• Heygen任务：#{heygen_count} 个\n"
-		message += "• 剪映任务：#{jianying_count} 个\n"
-		message += "• 花生任务：#{huasheng_count} 个\n"
-		message += "• Notebooklm任务：#{notebooklm_count} 个\n\n"
-		message += "⏰ 超时阈值：8分钟\n"
-		message += "⏰ 检测时间：#{Time.current.strftime("%Y-%m-%d %H:%M:%S")}"
-
-		postbody = {"msgtype": "text","text": {"content": message}}
-		headers = {
-			"Content-Type": "application/json;charset=utf-8"
-		}
-		res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
 	end
 end

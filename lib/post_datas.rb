@@ -148,31 +148,7 @@ class PostDatas
       end
 
       if alerts.any?
-        title = "【数据采集告警】发文/账号数据异常过多"
-        retry_section = if retry_result
-                          "### 自动重试采集\n\n" \
-                          "- 重试账号数: #{retry_result[:total]} 个\n" \
-                          "- 重试成功: #{retry_result[:success_count]} 个\n" \
-                          "- 重试失败: #{retry_result[:fail_count]} 个\n\n"
-                        else
-                          ""
-                        end
-
-        content = "### 采集执行情况\n\n" \
-                  "- 本次尝试采集账号: #{total_fetched} 个\n" \
-                  "- 采集推送成功: #{success_count} 个\n" \
-                  "- 采集推送失败: #{fail_count} 个\n\n" \
-                  "### 未更新数据检测\n\n" \
-                  "- 纳入统计的活跃账号总数: #{total_stale} 个\n" \
-                  "- 发文数据未更新(post_stats): #{post_stale_count} 个\n" \
-                  "- 账号快照未更新(account_stat): #{stat_stale_count} 个\n\n" \
-                  "#{retry_section}" \
-                  "### 告警项\n\n" \
-                  "#{alerts.map { |a| "- ⚠️ #{a}" }.join("\n")}\n\n" \
-                  "**时间**: #{Time.current.strftime('%Y-%m-%d %H:%M:%S')}"
-
-        Rails.logger.warn "[PostDatas] 检测到数据异常，发送钉钉告警: #{alerts.join('; ')}"
-        TaskReportHelper.send_dingding_alert(title, content)
+        Rails.logger.warn "[PostDatas] 检测到数据异常: #{alerts.join('; ')}"
       else
         Rails.logger.info "[PostDatas] 未更新账号数量在正常范围内（post_stats=#{post_stale_count}, account_stat=#{stat_stale_count}, 阈值=#{STALE_ALERT_THRESHOLD}）"
       end

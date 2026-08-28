@@ -29,7 +29,6 @@ module Api
 				                        .first
 
 				if next_task.nil?
-					TaskScheduler.check_browser_occupied_errors
 					return render json: {
 						type: 'error',
 						message: '暂无待发布的运营任务'
@@ -179,25 +178,7 @@ module Api
 						account_id: nil,
 						browser_id: nil
 					)
-
-					# 推送钉钉消息
-					send_dingding_alert(recent_errors.count)
 				end
-			end
-
-			# 推送钉钉告警消息
-			def send_dingding_alert(error_count)
-				message = "【养号】检测到连续 #{error_count} 次「哼哼猫未登陆成功」错误\n"
-				message += "已将所有待执行的搬运任务重置为未分配状态"
-
-				webhook_url = ENV['DINGDING_WEBHOOK_URL']
-				return unless webhook_url.present?
-
-				postbody = {"msgtype": "text","text": {"content": message}}
-				headers = {
-					"Content-Type": "application/json;charset=utf-8"
-				}
-				res = RestClient.post(webhook_url,postbody.to_json,headers = headers)
 			end
 
 		end

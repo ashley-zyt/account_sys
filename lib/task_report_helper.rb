@@ -57,37 +57,6 @@ module TaskReportHelper
         account_id: nil,
         browser_id: nil
       )
-
-      send_dingding_alert("【养号】检测到连续5次哼哼猫未登录成功", "已自动将所有待执行任务重置为未分配状态")
-    end
-  end
-
-  def self.send_dingding_alert(title, content)
-    webhook_url = ENV['DINGDING_WEBHOOK_URL']
-    return unless webhook_url.present?
-
-    begin
-      uri = URI.parse(webhook_url)
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = true
-      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-
-      message = {
-        msgtype: "markdown",
-        markdown: {
-          title: title,
-          text: "## #{title}\n\n#{content}"
-        }
-      }
-
-      request = Net::HTTP::Post.new(uri.request_uri)
-      request['Content-Type'] = 'application/json'
-      request.body = message.to_json
-
-      http.request(request)
-      Rails.logger.info "[TaskReportHelper] 钉钉消息发送成功"
-    rescue => e
-      Rails.logger.error "[TaskReportHelper] 钉钉消息发送失败: #{e.message}"
     end
   end
 
