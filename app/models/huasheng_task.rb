@@ -52,10 +52,12 @@ class HuashengTask < ApplicationRecord
     twitter: 2,
     tiktok: 3,
     youtube: 4,
-    instagram: 5
+    instagram: 5,
+    '抖音': 6,
+    '视频': 7
   }
 
-  ALL_PLATFORMS = %w[facebook twitter tiktok youtube instagram].freeze
+  ALL_PLATFORMS = %w[facebook twitter tiktok youtube instagram '抖音' '视频'].freeze
 
   validates :task_uuid, presence: true, uniqueness: true
   validates :oss_url, presence: true
@@ -158,8 +160,11 @@ class HuashengTask < ApplicationRecord
 
     created = 0
     platforms = ALL_PLATFORMS
-    if huasheng_keyword.include?("|")
+    if huasheng_keyword.keyword&.include?("|")
       platforms= ["抖音","视频"]
+    else
+      platforms.delete("抖音")
+      platforms.delete("视频")
     end
     platforms.each do |platform_name|
       if platform_name == "youtube"
