@@ -157,7 +157,11 @@ class HuashengTask < ApplicationRecord
     group_id   = SecureRandom.uuid
 
     created = 0
-    ALL_PLATFORMS.each do |platform_name|
+    platforms = ALL_PLATFORMS
+    if huasheng_keyword.include?("|")
+      platforms= ["抖音","视频"]
+    end
+    platforms.each do |platform_name|
       if platform_name == "youtube"
         # youtube: title = Script.title（限 100），description = Script.caption（限 280）
         task_title = title_text[0...100]
