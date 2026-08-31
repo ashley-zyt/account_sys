@@ -87,15 +87,15 @@
               <td>
                 <span class="admin-label-muted"><%= task.platform %></span>
               </td>
-              <td>
+              <td class="admin-cell-wrap">
                 <% if task.keyword.present? %>
-                  <span style="font-size: 12px; color: #cbd5e1;"><%= truncate(task.keyword, length: 25) %></span>
+                  <span style="font-size: 12px; color: #cbd5e1;"><%= task.keyword %></span>
                 <% else %>
                   <span class="admin-label-muted">-</span>
                 <% end %>
               </td>
-              <td>
-                <%= link_to truncate(task.title.presence || task.oss_url, length: 40), admin_huasheng_task_path(task), class: "admin-link-quiet" %>
+              <td class="admin-cell-wrap">
+                <%= link_to (task.title.presence || task.oss_url), admin_huasheng_task_path(task), class: "admin-link-quiet" %>
               </td>
               <td>
                 <% case task.status %>

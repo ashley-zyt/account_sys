@@ -1105,6 +1105,13 @@ body.admin {
   overflow-x: auto;
 }
 
+/* 关键词 / 任务标题等长内容列：允许换行并完整展示，不再截断 */
+.admin-cell-wrap {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
 /* @media (max-width: 960px) {
   .admin-layout {
     flex-direction: column;
