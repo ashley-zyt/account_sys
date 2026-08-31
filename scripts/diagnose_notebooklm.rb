@@ -31,9 +31,8 @@ NotebooklmKeyword.group(:status).count.sort.each do |s, c|
   puts "    status=#{s} (#{NotebooklmKeyword::STATUS_NAMES[s]}) : #{c} 条"
 end
 puts "  pushed 分布："
-NotebooklmKeyword.group(:pushed).count.sort.each do |p, c|
-  puts "    pushed=#{p} : #{c} 条"
-end
+puts "    pushed=false : #{NotebooklmKeyword.where(pushed: false).count} 条"
+puts "    pushed=true  : #{NotebooklmKeyword.where(pushed: true).count} 条"
 waiting_push = NotebooklmKeyword.where(status: 3, pushed: false).count
 puts "  待推送(status=3 且 pushed=false)：#{waiting_push} 条"
 puts "  → #{waiting_push > 0 ? "有数据待推送（若任务表没数据，说明 NotebooklmQueueScheduler 没跑/没生效）" : "没有 status=3 的关键词（关键词还没生成完成）"}"
