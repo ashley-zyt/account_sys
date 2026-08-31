@@ -1101,6 +1101,8 @@ body.admin {
 
 .admin-table-scroll {
   /* 表格不再限制高度，由分页控制数量 */
+  /* 长内容（如关键词）撑宽时横向滚动兜底，避免右侧列被 overflow: hidden 裁掉 */
+  overflow-x: auto;
 }
 
 /* @media (max-width: 960px) {
