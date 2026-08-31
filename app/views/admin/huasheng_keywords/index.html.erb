@@ -76,7 +76,7 @@
                   <span class="admin-label-muted"><%= kw.theme %></span>
                 </td>
                 <td>
-                  <%= link_to kw.keyword, admin_huasheng_keyword_path(kw), class: "admin-label-muted", style: "text-decoration: none; cursor: pointer;" %>
+                  <%= link_to truncate(kw.keyword, length: 20), admin_huasheng_keyword_path(kw), class: "admin-label-muted", style: "text-decoration: none; cursor: pointer;", title: kw.keyword %>
                 </td>
                 <td>
                   <%= status_badge(kw.status) %>
