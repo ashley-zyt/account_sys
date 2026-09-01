@@ -10,12 +10,24 @@ class Admin::DashboardController < Admin::BaseController
 		# 账号资产矩阵（行=工作模式，列=状态汇总，注册表驱动，新增模式自动出现）
 		@account_matrix = WorkMode.resource_modes.map do |mode|
 			scope = Account.where(work_type: mode.name)
+			# 平台维度明细（点击「详情」弹窗展示）
+			platforms = Account.platforms.keys.map do |pk|
+				ps = scope.where(platform: pk)
+				{
+					platform: pk,
+					total: ps.count,
+					active: ps.active.count,
+					unlogged: ps.where(status: "未登录").count,
+					banned: ps.where(status: "封禁/停用").count
+				}
+			end
 			{
 				mode: mode,
 				total: scope.count,
 				active: scope.active.count,
-				unlogged: scope.where(status: 1).count,
-				banned: scope.where(status: 2).count
+				unlogged: scope.where(status: "未登录").count,
+				banned: scope.where(status: "封禁/停用").count,
+				platforms: platforms
 			}
 		end
 		@account_matrix_totals = {

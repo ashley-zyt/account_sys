@@ -104,11 +104,12 @@
         </tr>
       </thead>
       <tbody>
-        <% @account_matrix.each do |row| %>
+        <% @account_matrix.each_with_index do |row, index| %>
           <% mode = row[:mode] %>
           <tr>
             <td>
               <span style="margin-right: 6px;"><%= mode.icon %></span><%= mode.name %>
+              <button type="button" onclick="openPlatformModal(<%= index %>)" style="margin-left: 10px; background: transparent; border: 1px solid var(--border-secondary); color: var(--accent); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;">详情</button>
             </td>
             <td style="text-align: center;">
               <%= link_to row[:active], admin_accounts_path(q: { work_type_eq: mode.enum_value, status_eq: 0 }), class: "admin-link-quiet", style: "color: var(--success); font-weight: 600;" %>
@@ -372,3 +373,60 @@
     </div>
   </div>
 </div>
+
+
+<div id="platform-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 1000; justify-content: center; align-items: center;">
+  <div style="background: #1e293b; border-radius: 12px; width: 560px; max-width: 92%; max-height: 82%; overflow: auto; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div id="platform-modal-title" style="font-size: 15px; font-weight: 500;"></div>
+      <button type="button" onclick="closePlatformModal()" style="background: transparent; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; line-height: 1;">×</button>
+    </div>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>平台</th>
+          <th style="text-align: center;">正常</th>
+          <th style="text-align: center;">未登录</th>
+          <th style="text-align: center;">封禁</th>
+          <th style="text-align: center;">总计</th>
+        </tr>
+      </thead>
+      <tbody id="platform-modal-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  window.__accountPlatforms = <%= raw @account_matrix.map { |r| { name: r[:mode].name, icon: r[:mode].icon, platforms: r[:platforms] } }.to_json %>;
+
+  function openPlatformModal(idx) {
+    var data = window.__accountPlatforms[idx];
+    if (!data) return;
+    document.getElementById('platform-modal-title').textContent = data.icon + ' ' + data.name + ' · 平台分布';
+    var rows = data.platforms.map(function (p) {
+      var label = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
+      return '<tr>' +
+        '<td>' + label + '</td>' +
+        '<td style="text-align: center; color: var(--success); font-weight: 600;">' + p.active + '</td>' +
+        '<td style="text-align: center; color: var(--warning); font-weight: 600;">' + p.unlogged + '</td>' +
+        '<td style="text-align: center; color: var(--danger); font-weight: 600;">' + p.banned + '</td>' +
+        '<td style="text-align: center; font-weight: 600;">' + p.total + '</td>' +
+        '</tr>';
+    }).join('');
+    document.getElementById('platform-modal-body').innerHTML = rows;
+    document.getElementById('platform-modal').style.display = 'flex';
+  }
+
+  function closePlatformModal() {
+    document.getElementById('platform-modal').style.display = 'none';
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var modal = document.getElementById('platform-modal');
+    if (modal) {
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) closePlatformModal();
+      });
+    }
+  });
+</script>
