@@ -186,7 +186,7 @@ class Util
       ]
     }
 
-    endpoint = "http://#{machine_ip}:8080/accounts/fetch_posts"
+    endpoint = "http://#{machine_ip}/accounts/fetch_posts"
     Rails.logger.info "[Util] 账号 #{account.account_name}(#{account.platform}) 推送采集指令 → #{endpoint}"
 
     result = PostDatas.push_to_external_with_retry(payload, endpoint)

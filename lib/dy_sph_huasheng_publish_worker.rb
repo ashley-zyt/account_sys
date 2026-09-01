@@ -18,7 +18,7 @@ class DySphHuashengPublishWorker
   PLATFORM = "抖音-视频号"
 
   # 发布接口主机（抖音/视频号共用）
-  PUBLISH_HOST = "ag15.juzhiic.com:8080"
+  PUBLISH_HOST = "ag15.juzhiic.com"
 
   # 固定 profile_name
   PROFILE_NAME = "douyin01"

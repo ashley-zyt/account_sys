@@ -80,7 +80,7 @@ class WarmupScheduler
   def self.execute_warmup_for_account(account, machine_ip)
     return if account.browser.nil?
 
-    endpoint = "http://#{machine_ip}:#{Browser::NURTURE_PORT}/accounts/nurture"
+    endpoint = "http://#{machine_ip}/accounts/nurture"
     Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 开始养号: #{account.account_name} (#{account.platform}) → #{endpoint}"
 
     warmup_task = WarmupTask.create!(

@@ -82,7 +82,7 @@ class Browser < ApplicationRecord
 	# 例：machine_ip = 'ag117.juzhiic.com' -> 'http://ag117.juzhiic.com:8080/accounts/nurture'
 	def nurture_endpoint
 		return nil if machine_ip.blank?
-		"http://#{machine_ip}:#{NURTURE_PORT}/accounts/nurture"
+		"http://#{machine_ip}/accounts/nurture"
 	end
 
 	def self.ransackable_attributes(auth_object = nil)
