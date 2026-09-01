@@ -80,7 +80,7 @@ class WarmupScheduler
   def self.execute_warmup_for_account(account, machine_ip)
     return if account.browser.nil?
 
-    endpoint = "http://#{machine_ip}:#{Browser::NURTURE_PORT}/accounts/nurture"
+    endpoint = "https://#{machine_ip}/accounts/nurture"
     Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 开始养号: #{account.account_name} (#{account.platform}) → #{endpoint}"
 
     warmup_task = WarmupTask.create!(
@@ -127,17 +127,8 @@ class WarmupScheduler
   end
 
   def self.send_request(endpoint, request_data)
-    uri = URI.parse(endpoint)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.read_timeout = TIMEOUT_SECONDS
-    http.open_timeout = 30
-
-    request = Net::HTTP::Post.new(uri.request_uri)
-    request['Content-Type'] = 'application/json'
-    request.body = request_data.to_json
-
     begin
-      response = http.request(request)
+      response = RemoteApiClient.post(endpoint, request_data, read_timeout: TIMEOUT_SECONDS)
       JSON.parse(response.body)
     rescue Net::ReadTimeout
       { 'status' => 'error', 'info' => '请求超时' }

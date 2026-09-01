@@ -18,7 +18,7 @@ class DySphHuashengPublishWorker
   PLATFORM = "抖音-视频号"
 
   # 发布接口主机（抖音/视频号共用）
-  PUBLISH_HOST = "174.139.46.15:8080"
+  PUBLISH_HOST = "ag15.juzhiic.com"
 
   # 固定 profile_name
   PROFILE_NAME = "douyin01"
@@ -83,7 +83,7 @@ class DySphHuashengPublishWorker
       }
       Rails.logger.info "[DySphHuashengPublishWorker] [#{platform_name}] 请求 #{endpoint} body=#{body.to_json}"
 
-      response = http_post_json("http://#{PUBLISH_HOST}#{endpoint}", body)
+      response = http_post_json("https://#{PUBLISH_HOST}#{endpoint}", body)
 
       if response.is_a?(Hash) && response["type"] == "success"
         { success: true, message: "成功" }
@@ -113,19 +113,7 @@ class DySphHuashengPublishWorker
 
     # POST JSON，返回解析后的响应；异常统一转成 { type: "error", error_info: ... }
     def http_post_json(endpoint, body)
-      require 'net/http'
-      require 'json'
-
-      uri  = URI.parse(endpoint)
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.open_timeout = OPEN_TIMEOUT
-      http.read_timeout = READ_TIMEOUT
-
-      request = Net::HTTP::Post.new(uri.request_uri)
-      request['Content-Type'] = 'application/json'
-      request.body = body.to_json
-
-      response = http.request(request)
+      response = RemoteApiClient.post(endpoint, body, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT)
       JSON.parse(response.body)
     rescue JSON::ParserError => e
       { "type" => "error", "error_info" => "响应非JSON: #{e.message}" }

@@ -194,7 +194,7 @@ class PublishScheduler
       return
     end
 
-    endpoint = "http://#{machine_ip}:#{PUBLISH_PORT}/#{task.platform}/publish"
+    endpoint = "https://#{machine_ip}/#{task.platform}/publish"
 
     Rails.logger.info "[PublishScheduler] 开始执行任务 #{task_type}:#{task.id} - #{task.title} (浏览器: #{task.browser.profile_name}, 机器: #{machine_ip}) → #{endpoint}"
 
@@ -230,16 +230,7 @@ class PublishScheduler
   end
 
   def self.send_publish_request(endpoint, request_data)
-    uri = URI.parse(endpoint)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.read_timeout = TIMEOUT_SECONDS
-    http.open_timeout = 30
-
-    request = Net::HTTP::Post.new(uri.request_uri)
-    request['Content-Type'] = 'application/json'
-    request.body = request_data.to_json
-
-    response = http.request(request)
+    response = RemoteApiClient.post(endpoint, request_data, read_timeout: TIMEOUT_SECONDS)
     body = ensure_utf8(response.body)
 
     begin
