@@ -211,6 +211,25 @@ class PublishScheduler
     end
   end
 
+  # 手动立即执行单个任务（供后台「立即执行」按钮调用）
+  # 校验 waiting_publish → 事务锁 + 改 executing → 发布
+  # @param task [Object] 任一工作模式的任务实例
+  # @return [Boolean] 是否成功触发执行
+  def self.execute_single_task(task)
+    return false if task.nil?
+    return false unless task.respond_to?(:waiting_publish?) && task.waiting_publish?
+    return false if task.browser.nil? || task.browser.machine_ip.blank?
+
+    ActiveRecord::Base.transaction do
+      task.lock!
+      return false unless task.waiting_publish?
+      task.update!(status: :executing, start_at: Time.current)
+    end
+
+    execute_task(task, task_type_name(task), task.browser.machine_ip)
+    true
+  end
+
   def self.task_type_name(task)
     WorkMode.for_model(task.class)&.type_name || 'operation'
   end

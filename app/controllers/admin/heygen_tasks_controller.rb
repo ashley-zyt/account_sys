@@ -1,4 +1,6 @@
 class Admin::HeygenTasksController < Admin::BaseController
+  include TaskExecutable
+
   def index
     @q = HeygenTask.ransack(params[:q])
     @heygen_tasks = @q.result.includes(:account, :browser).order(created_at: :desc).page(params[:page])
@@ -15,6 +17,10 @@ class Admin::HeygenTasksController < Admin::BaseController
   end
 
   private
+
+  def task_model_class
+    HeygenTask
+  end
 
   def heygen_task_params
     params.require(:heygen_task).permit(

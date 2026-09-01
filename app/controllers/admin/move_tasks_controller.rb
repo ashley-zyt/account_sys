@@ -1,4 +1,6 @@
 class Admin::MoveTasksController < Admin::BaseController
+	include TaskExecutable
+
 	# 搬运资源队列：主要展示已剪映处理完成（move_video.status = processed）的发布任务
 	def index
 		@q = MoveTask.ransack(params[:q])
@@ -13,5 +15,11 @@ class Admin::MoveTasksController < Admin::BaseController
 
 	def show
 		@move_task = MoveTask.find(params[:id])
+	end
+
+	private
+
+	def task_model_class
+		MoveTask
 	end
 end

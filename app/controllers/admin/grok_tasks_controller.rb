@@ -1,4 +1,6 @@
 class Admin::GrokTasksController < Admin::BaseController
+  include TaskExecutable
+
   def index
     @q = GrokTask.ransack(params[:q])
     @grok_tasks = @q.result.includes(:account, :browser).order(created_at: :desc).page(params[:page])
@@ -59,6 +61,10 @@ class Admin::GrokTasksController < Admin::BaseController
   end
 
   private
+
+  def task_model_class
+    GrokTask
+  end
 
   def grok_task_params
     params.require(:grok_task).permit(

@@ -1,4 +1,5 @@
 class Admin::JianyingTasksController < Admin::BaseController
+	include TaskExecutable
 	before_action :set_jianying_task, only: [:show, :destroy]
 
 	OSS_BUCKET = "jianying-rd".freeze
@@ -88,6 +89,10 @@ class Admin::JianyingTasksController < Admin::BaseController
 	end
 
 	private
+
+	def task_model_class
+		JianyingTask
+	end
 
 	def set_jianying_task
 		@jianying_task = JianyingTask.find(params[:id])

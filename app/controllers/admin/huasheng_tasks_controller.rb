@@ -1,4 +1,5 @@
 class Admin::HuashengTasksController < Admin::BaseController
+  include TaskExecutable
   before_action :set_huasheng_task, only: [:show, :destroy]
 
   def index
@@ -49,6 +50,10 @@ class Admin::HuashengTasksController < Admin::BaseController
   end
 
   private
+
+  def task_model_class
+    HuashengTask
+  end
 
   def set_huasheng_task
     @huasheng_task = HuashengTask.find(params[:id])

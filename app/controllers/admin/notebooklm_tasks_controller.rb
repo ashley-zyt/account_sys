@@ -1,4 +1,5 @@
 class Admin::NotebooklmTasksController < Admin::BaseController
+  include TaskExecutable
   before_action :set_notebooklm_task, only: [:show, :destroy]
 
   def index
@@ -49,6 +50,10 @@ class Admin::NotebooklmTasksController < Admin::BaseController
   end
 
   private
+
+  def task_model_class
+    NotebooklmTask
+  end
 
   def set_notebooklm_task
     @notebooklm_task = NotebooklmTask.find(params[:id])

@@ -165,6 +165,9 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "详情", admin_operation_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if task.waiting_publish? %>
+                    <%= link_to "立即执行", execute_admin_operation_task_path(task), data: { turbo_method: :post, turbo_confirm: "确定立即执行该任务吗？" }, class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% end %>
                   <%= link_to "日志", admin_task_logs_path(q: { task_uuid_eq: task.task_uuid }), class: "admin-link-quiet", style: "color: var(--accent);" %>
                   <% if task.pending? %>
                     <%= link_to "删除", admin_operation_task_path(task), data: { turbo_method: :delete, turbo_confirm: "确定要删除该 pending 任务吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>

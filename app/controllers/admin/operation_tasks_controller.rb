@@ -1,5 +1,6 @@
 class Admin::OperationTasksController < Admin::BaseController
   before_action :set_operation_task, only: [:show, :destroy]
+  include TaskExecutable
   
   # 配置 OSS CORS 规则（只需执行一次）
   def setup_cors
@@ -229,6 +230,10 @@ XML
   end
 
   private
+
+  def task_model_class
+    OperationTask
+  end
 
   # 对标题/简介中的双引号与反斜杠做反斜杠转义
   # 使用 block 形式确保反斜杠本身不被 gsub 语义误解

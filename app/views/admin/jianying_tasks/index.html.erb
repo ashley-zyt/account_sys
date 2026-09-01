@@ -130,6 +130,9 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "详情", admin_jianying_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if task.waiting_publish? %>
+                    <%= link_to "立即执行", execute_admin_jianying_task_path(task), data: { turbo_method: :post, turbo_confirm: "确定立即执行该任务吗？" }, class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% end %>
                   <% if task.pending? %>
                     <%= link_to "删除", admin_jianying_task_path(task),
                           data: { turbo_method: :delete, turbo_confirm: "确定删除该任务吗？" },

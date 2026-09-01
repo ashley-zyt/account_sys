@@ -13,27 +13,43 @@ Rails.application.routes.draw do
         post :toggle_warmup
       end
     end
-    resources :move_tasks, only: [:index, :show]
+    resources :move_tasks, only: [:index, :show] do
+      member do
+        post :execute
+      end
+    end
     resources :move_videos, only: [:index, :show]
     resources :jianying_tasks, only: [:index, :show, :destroy] do
       collection do
         delete :batch_destroy
+      end
+      member do
+        post :execute
       end
     end
     resources :huasheng_tasks, only: [:index, :show, :destroy] do
       collection do
         delete :batch_destroy
       end
+      member do
+        post :execute
+      end
     end
     resources :notebooklm_tasks, only: [:index, :show, :destroy] do
       collection do
         delete :batch_destroy
+      end
+      member do
+        post :execute
       end
     end
     resources :operation_tasks, only: [:index, :show, :new, :create, :destroy] do
       collection do
         get :oss_signature
         get :setup_cors
+      end
+      member do
+        post :execute
       end
     end
     resources :browsers, only: [:index, :show, :new, :create, :edit, :update, :destroy]
@@ -77,8 +93,16 @@ Rails.application.routes.draw do
     end
     resources :huasheng_keywords, only: [:index, :show, :new, :create, :edit, :update, :destroy]
     resources :notebooklm_keywords, only: [:index, :show, :new, :create, :edit, :update, :destroy]
-    resources :grok_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]
-    resources :heygen_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy]
+    resources :grok_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      member do
+        post :execute
+      end
+    end
+    resources :heygen_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      member do
+        post :execute
+      end
+    end
     resources :warmup_tasks, only: [:index, :show, :new, :create, :destroy] do
       collection do
         get :stats
