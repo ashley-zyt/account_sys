@@ -36,6 +36,7 @@ puts "\n===== 3. /health 连通性检查（无需鉴权，验证域名可达）=
 begin
   uri  = URI("https://#{DOMAIN}/health")
   http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = true
   http.open_timeout = 5
   http.read_timeout = 5
   resp = http.get(uri.request_uri)
