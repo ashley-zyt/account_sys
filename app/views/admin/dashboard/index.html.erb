@@ -75,148 +75,117 @@
   </div>
 </div>
 
-<div class="admin-grid-three">
-  <div class="admin-card">
-    <div class="admin-card-header">
-      <div>
-        <div class="admin-card-title">
-          账号概览
-        </div>
-        <div class="admin-card-subtitle">
-          当前可用的社交账号资产
-        </div>
+<div class="admin-card" style="margin-bottom: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        账号资产矩阵
       </div>
-      <div class="admin-card-header-right">
-        <%= link_to admin_accounts_path, class: "admin-tag admin-tag-accent" do %>
-          总计 <%= @accounts_total %> 个
-        <% end %>
+      <div class="admin-card-subtitle">
+        各工作模式账号状态一览
       </div>
     </div>
-
-    <div class="admin-metric-row">
-      <%= link_to admin_accounts_path(q: { status_eq: 0 }), class: "admin-metric admin-link-card" do %>
-        <div class="admin-metric-label">
-          正常
-        </div>
-        <div class="admin-metric-value">
-          <%= @accounts_active %>
-        </div>
-        <div class="admin-metric-trend admin-metric-trend-up">
-          可用状态
-        </div>
-      <% end %>
-      <%= link_to admin_accounts_path(q: { status_eq: 1 }), class: "admin-metric admin-link-card" do %>
-        <div class="admin-metric-label">
-          未登录
-        </div>
-        <div class="admin-metric-value">
-          <%= @accounts_unlogged %>
-        </div>
-        <div class="admin-metric-trend">
-          需重新授权
-        </div>
-      <% end %>
-      <%= link_to admin_accounts_path(q: { status_eq: 2 }), class: "admin-metric admin-link-card" do %>
-        <div class="admin-metric-label">
-          封禁/停用
-        </div>
-        <div class="admin-metric-value">
-          <%= @accounts_banned %>
-        </div>
-        <div class="admin-metric-trend admin-metric-trend-down">
-          不可用
-        </div>
+    <div class="admin-card-header-right">
+      <%= link_to admin_accounts_path, class: "admin-tag admin-tag-accent" do %>
+        总计 <%= @account_matrix_totals[:total] %> 个
       <% end %>
     </div>
   </div>
 
-  <%# 各工作模式账号统计卡片（由注册表驱动，新增模式自动出现） %>
-  <% @work_type_cards.each do |card| %>
-    <% mode = card[:mode] %>
-    <div class="admin-card">
-      <div class="admin-card-header">
-        <div>
-          <div class="admin-card-title">
-            <%= mode.name %>账号
-          </div>
-          <div class="admin-card-subtitle">
-          </div>
-        </div>
-        <div class="admin-card-header-right">
-          <%= link_to admin_accounts_path(q: { work_type_eq: mode.enum_value }), class: "admin-tag admin-tag-accent" do %>
-            总计 <%= card[:total] %> 个
-          <% end %>
-        </div>
-      </div>
-
-      <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
-        <table class="admin-table" style="font-size: 12px;">
-          <thead>
-            <tr style="background: rgba(15, 23, 42, 0.3);">
-              <th style="padding: 8px;">平台</th>
-              <th style="padding: 8px; text-align: center;">总计</th>
-              <th style="padding: 8px; text-align: center;">正常</th>
-              <th style="padding: 8px; text-align: center;">未登录</th>
-              <th style="padding: 8px; text-align: center;">封禁</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% Account.platforms.keys.each do |platform| %>
-              <% stats = card[:stats][platform] || { total: 0, active: 0, unlogged: 0, banned: 0 } %>
-              <tr>
-                <td style="padding: 8px;">
-                  <%= link_to platform.capitalize, admin_accounts_path(q: { work_type_eq: mode.enum_value, platform_eq: Account.platforms[platform] }), class: "admin-link-quiet" %>
-                </td>
-                <td style="padding: 8px; text-align: center;"><%= stats[:total] %></td>
-                <td style="padding: 8px; text-align: center; color: var(--success);"><%= stats[:active] %></td>
-                <td style="padding: 8px; text-align: center; color: var(--warning);"><%= stats[:unlogged] %></td>
-                <td style="padding: 8px; text-align: center; color: var(--danger);"><%= stats[:banned] %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  <% end %>
-
-  <div class="admin-card">
-    <div class="admin-card-header" style="margin-bottom: 12px;">
-      <div>
-        <div class="admin-card-title">
-          平台分布
-        </div>
-        <div class="admin-card-subtitle">
-          各社交平台账号状态
-        </div>
-      </div>
-    </div>
-    <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
-      <table class="admin-table" style="font-size: 12px;">
-        <thead>
-          <tr style="background: rgba(15, 23, 42, 0.3);">
-            <th style="padding: 8px;">平台</th>
-            <th style="padding: 8px; text-align: center;">总计</th>
-            <th style="padding: 8px; text-align: center;">正常</th>
-            <th style="padding: 8px; text-align: center;">未登录</th>
-            <th style="padding: 8px; text-align: center;">封禁</th>
+  <div class="admin-table-wrapper" style="border: none; background: transparent; padding: 0;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>工作模式</th>
+          <th style="text-align: center;">正常</th>
+          <th style="text-align: center;">未登录</th>
+          <th style="text-align: center;">封禁</th>
+          <th style="text-align: center;">总计</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @account_matrix.each do |row| %>
+          <% mode = row[:mode] %>
+          <tr>
+            <td>
+              <span style="margin-right: 6px;"><%= mode.icon %></span><%= mode.name %>
+            </td>
+            <td style="text-align: center;">
+              <%= link_to row[:active], admin_accounts_path(q: { work_type_eq: mode.enum_value, status_eq: 0 }), class: "admin-link-quiet", style: "color: var(--success); font-weight: 600;" %>
+            </td>
+            <td style="text-align: center;">
+              <%= link_to row[:unlogged], admin_accounts_path(q: { work_type_eq: mode.enum_value, status_eq: 1 }), class: "admin-link-quiet", style: "color: var(--warning); font-weight: 600;" %>
+            </td>
+            <td style="text-align: center;">
+              <%= link_to row[:banned], admin_accounts_path(q: { work_type_eq: mode.enum_value, status_eq: 2 }), class: "admin-link-quiet", style: "color: var(--danger); font-weight: 600;" %>
+            </td>
+            <td style="text-align: center; font-weight: 600;">
+              <%= link_to row[:total], admin_accounts_path(q: { work_type_eq: mode.enum_value }), class: "admin-link-quiet", style: "font-weight: 600;" %>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          <% Account.platforms.keys.each do |platform| %>
-            <% stats = @platform_stats[platform] || { total: 0, active: 0, unlogged: 0, banned: 0 } %>
-            <tr>
-              <td style="padding: 8px;">
-                <%= link_to platform.capitalize, admin_accounts_path(q: { platform_eq: Account.platforms[platform] }), class: "admin-link-quiet" %>
-              </td>
-              <td style="padding: 8px; text-align: center;"><%= stats[:total] %></td>
-              <td style="padding: 8px; text-align: center; color: var(--success);"><%= stats[:active] %></td>
-              <td style="padding: 8px; text-align: center; color: var(--warning);"><%= stats[:unlogged] %></td>
-              <td style="padding: 8px; text-align: center; color: var(--danger);"><%= stats[:banned] %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
+        <% end %>
+        <tr style="background: rgba(15, 23, 42, 0.3); font-weight: 600;">
+          <td>合计</td>
+          <td style="text-align: center; color: var(--success);"><%= @account_matrix_totals[:active] %></td>
+          <td style="text-align: center; color: var(--warning);"><%= @account_matrix_totals[:unlogged] %></td>
+          <td style="text-align: center; color: var(--danger);"><%= @account_matrix_totals[:banned] %></td>
+          <td style="text-align: center;"><%= @account_matrix_totals[:total] %></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="admin-card" style="margin-bottom: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        浏览器健康
+      </div>
+      <div class="admin-card-subtitle">
+        指纹浏览器池状态
+      </div>
     </div>
+    <div class="admin-card-header-right">
+      <%= link_to admin_browsers_path, class: "admin-tag admin-tag-accent" do %>
+        查看全部
+      <% end %>
+    </div>
+  </div>
+  <div class="admin-metric-row">
+    <%= link_to admin_browsers_path, class: "admin-metric admin-link-card" do %>
+      <div class="admin-metric-label">
+        正常
+      </div>
+      <div class="admin-metric-value">
+        <%= @browsers_normal %>
+      </div>
+      <div class="admin-metric-trend admin-metric-trend-up">
+        可用
+      </div>
+    <% end %>
+    <%= link_to admin_browsers_path(q: { status_eq: 1 }), class: "admin-metric admin-link-card" do %>
+      <div class="admin-metric-label">
+        网络问题
+      </div>
+      <div class="admin-metric-value">
+        <%= @browsers_network_error %>
+      </div>
+      <div class="admin-metric-trend">
+        需检查
+      </div>
+    <% end %>
+    <%= link_to admin_browsers_path(q: { status_eq: 2 }), class: "admin-metric admin-link-card" do %>
+      <div class="admin-metric-label">
+        无效(账号失效)
+      </div>
+      <div class="admin-metric-value">
+        <%= @browsers_invalid %>
+      </div>
+      <div class="admin-metric-trend admin-metric-trend-down">
+        不可用
+      </div>
+    <% end %>
   </div>
 </div>
 
@@ -400,89 +369,6 @@
           <% end %>
         </tbody>
       </table>
-    </div>
-  </div>
-</div>
-
-<div class="admin-grid-full">
-  <div class="admin-card">
-    <div class="admin-card-header">
-      <div>
-        <div class="admin-card-title">
-          运行统计
-        </div>
-        <div class="admin-card-subtitle">
-          今日运行数据概览
-        </div>
-      </div>
-    </div>
-
-    <div style="padding-top: 10px;">
-      <div style="display: flex; gap: 40px; align-items: flex-start;">
-        <div style="flex: 1;">
-          <div class="admin-card-subtitle" style="margin-bottom: 12px;">
-            今日运行
-          </div>
-          <div style="display: flex; gap: 20px;">
-            <%= link_to admin_task_logs_path(q: { created_at_gteq: Time.zone.now.beginning_of_day }), class: "admin-link-card" do %>
-              <div class="admin-label-muted" style="font-size: 11px;">
-                产生日志
-              </div>
-              <div style="font-size: 18px; font-weight: 600;">
-                <%= @today_logs_count %>
-              </div>
-            <% end %>
-            <%= link_to admin_task_logs_path(q: { created_at_gteq: Time.zone.now.beginning_of_day, status_eq: 1 }), class: "admin-link-card" do %>
-              <div class="admin-label-muted" style="font-size: 11px;">
-                异常次数
-              </div>
-              <div style="font-size: 18px; font-weight: 600; color: var(--danger);">
-                <%= @today_errors_count %>
-              </div>
-            <% end %>
-            <div class="admin-link-card">
-              <div class="admin-label-muted" style="font-size: 11px;">
-                今日活跃账号
-              </div>
-              <div style="font-size: 18px; font-weight: 600; color: var(--success);">
-                <%= @accounts_active_today %>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style="flex: 1; border-left: 1px solid var(--border-subtle); padding-left: 40px;">
-          <div class="admin-card-subtitle" style="margin-bottom: 12px;">
-            浏览器健康
-          </div>
-          <div style="display: flex; gap: 20px;">
-            <%= link_to admin_browsers_path, class: "admin-link-card" do %>
-              <div class="admin-label-muted" style="font-size: 11px;">
-                正常
-              </div>
-              <div style="font-size: 18px; font-weight: 600; color: var(--success);">
-                <%= @browsers_normal %>
-              </div>
-            <% end %>
-            <%= link_to admin_browsers_path(q: { status_eq: 1 }), class: "admin-link-card" do %>
-              <div class="admin-label-muted" style="font-size: 11px;">
-                网络问题
-              </div>
-              <div style="font-size: 18px; font-weight: 600; color: var(--warning);">
-                <%= @browsers_network_error %>
-              </div>
-            <% end %>
-            <%= link_to admin_browsers_path(q: { status_eq: 2 }), class: "admin-link-card" do %>
-              <div class="admin-label-muted" style="font-size: 11px;">
-                无效(账号失效)
-              </div>
-              <div style="font-size: 18px; font-weight: 600; color: var(--text-muted);">
-                <%= @browsers_invalid %>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </div>

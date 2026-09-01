@@ -1,57 +1,34 @@
 class Admin::DashboardController < Admin::BaseController
 	def index
-		@accounts_total = Account.count
-		@accounts_active = Account.active.count
-		@accounts_unlogged = Account.where(status: 1).count
-		@accounts_banned = Account.where(status: 2).count
-		
-		today_logs = TaskLog.where("created_at >= ?", Time.zone.now.beginning_of_day).includes(:move_task, :jianying_task)
-		@accounts_active_today = today_logs.map { |log| log.task&.account_id }.compact.uniq.count
-
-		@platform_stats = Account.group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
-			hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
-			hash[platform][:total] += count
-			case status
-			when "正常" then hash[platform][:active] += count
-			when "未登录" then hash[platform][:unlogged] += count
-			when "封禁/停用" then hash[platform][:banned] += count
-			end
-		end
-
-		# 各工作模式账号统计卡片（由注册表驱动，新增模式自动出现）
-		@work_type_cards = WorkMode.resource_modes.map do |mode|
-			stats = Account.where(work_type: mode.name).group(:platform, :status).count.each_with_object({}) do |((platform, status), count), hash|
-				hash[platform] ||= { total: 0, active: 0, unlogged: 0, banned: 0 }
-				hash[platform][:total] += count
-				case status
-				when "正常" then hash[platform][:active] += count
-				when "未登录" then hash[platform][:unlogged] += count
-				when "封禁/停用" then hash[platform][:banned] += count
-				end
-			end
-			{
-				mode: mode,
-				stats: stats,
-				total: Account.where(work_type: mode.name).count,
-				active: Account.where(work_type: mode.name).active.count
-			}
-		end
-
-		@browsers_total = Browser.count
-		@browsers_normal = Browser.where(status: 0).count
-		@browsers_network_error = Browser.where(status: 1).count
-		@browsers_invalid = Browser.where(status: 2).count
-
+		# 今日核心 KPI
 		@today_logs_count = TaskLog.where("created_at >= ?", Time.zone.now.beginning_of_day).count
 		@today_errors_count = TaskLog.where("created_at >= ?", Time.zone.now.beginning_of_day).failed.count
-
-		@total_logs_count = TaskLog.count
-		@total_errors_count = TaskLog.failed.count
-
-		# 今日核心 KPI
 		@today_success_count = @today_logs_count - @today_errors_count
 		@today_success_rate = @today_logs_count > 0 ? ((@today_success_count.to_f / @today_logs_count) * 100).round(1) : 0
 		@pending_publish_count = WorkMode.publishable_modes.sum { |m| m.task_model_class.where(status: :waiting_publish).count }
+
+		# 账号资产矩阵（行=工作模式，列=状态汇总，注册表驱动，新增模式自动出现）
+		@account_matrix = WorkMode.resource_modes.map do |mode|
+			scope = Account.where(work_type: mode.name)
+			{
+				mode: mode,
+				total: scope.count,
+				active: scope.active.count,
+				unlogged: scope.where(status: 1).count,
+				banned: scope.where(status: 2).count
+			}
+		end
+		@account_matrix_totals = {
+			total: Account.count,
+			active: Account.active.count,
+			unlogged: Account.where(status: 1).count,
+			banned: Account.where(status: 2).count
+		}
+
+		# 浏览器健康
+		@browsers_normal = Browser.where(status: 0).count
+		@browsers_network_error = Browser.where(status: 1).count
+		@browsers_invalid = Browser.where(status: 2).count
 
 		@abnormal_accounts = fetch_abnormal_accounts(3)
 

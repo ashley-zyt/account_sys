@@ -121,6 +121,51 @@
           </ul>
         </div>
 
+        <div class="admin-sidebar-section" data-section-name="tasks" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>资源队列</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% WorkMode.resource_modes.each do |mode| %>
+              <% active = controller_path == mode.controller_path %>
+              <li class="admin-nav-item <%= "active" if active %>">
+                <%= link_to public_send(mode.route_helper), class: "admin-nav-link", data: { tooltip: mode.sidebar_label } do %>
+                  <div class="admin-nav-link-main">
+                    <div class="admin-nav-icon">
+                      <%= mode.icon %>
+                    </div>
+                    <div class="admin-nav-label">
+                      <%= mode.sidebar_label %>
+                    </div>
+                  </div>
+                  <div class="admin-nav-meta">
+                    <%= mode.sidebar_meta %>
+                  </div>
+                <% end %>
+              </li>
+            <% end %>
+            
+            <% logs_active = controller_path == "admin/task_logs" %>
+            <li class="admin-nav-item <%= "active" if logs_active %>">
+              <%= link_to admin_task_logs_path, class: "admin-nav-link", data: { tooltip: "任务日志" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📜
+                  </div>
+                  <div class="admin-nav-label">
+                    任务日志
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Logs
+                </div>
+              <% end %>
+            </li>
+          </ul>
+        </div>
+
         <div class="admin-sidebar-section" data-section-name="content" data-sidebar-target="section">
           <div class="admin-sidebar-section-title"
                data-action="click->sidebar#toggleSection">
@@ -210,51 +255,6 @@
                 </div>
                 <div class="admin-nav-meta">
                   NotebookLM Videos
-                </div>
-              <% end %>
-            </li>
-          </ul>
-        </div>
-
-        <div class="admin-sidebar-section" data-section-name="tasks" data-sidebar-target="section">
-          <div class="admin-sidebar-section-title"
-               data-action="click->sidebar#toggleSection">
-            <span>资源队列</span>
-            <span class="section-arrow">▾</span>
-          </div>
-          <ul class="admin-nav">
-            <% WorkMode.resource_modes.each do |mode| %>
-              <% active = controller_path == mode.controller_path %>
-              <li class="admin-nav-item <%= "active" if active %>">
-                <%= link_to public_send(mode.route_helper), class: "admin-nav-link", data: { tooltip: mode.sidebar_label } do %>
-                  <div class="admin-nav-link-main">
-                    <div class="admin-nav-icon">
-                      <%= mode.icon %>
-                    </div>
-                    <div class="admin-nav-label">
-                      <%= mode.sidebar_label %>
-                    </div>
-                  </div>
-                  <div class="admin-nav-meta">
-                    <%= mode.sidebar_meta %>
-                  </div>
-                <% end %>
-              </li>
-            <% end %>
-            
-            <% logs_active = controller_path == "admin/task_logs" %>
-            <li class="admin-nav-item <%= "active" if logs_active %>">
-              <%= link_to admin_task_logs_path, class: "admin-nav-link", data: { tooltip: "任务日志" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    📜
-                  </div>
-                  <div class="admin-nav-label">
-                    任务日志
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Logs
                 </div>
               <% end %>
             </li>
