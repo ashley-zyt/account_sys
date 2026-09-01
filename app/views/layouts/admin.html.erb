@@ -78,6 +78,49 @@
           </ul>
         </div>
 
+        <div class="admin-sidebar-section" data-section-name="stats" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>数据统计</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% post_stats_active = controller_path == "admin/post_stats" %>
+            <li class="admin-nav-item <%= "active" if post_stats_active %>">
+              <%= link_to admin_post_stats_path, class: "admin-nav-link", data: { tooltip: "发文数据统计" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📈
+                  </div>
+                  <div class="admin-nav-label">
+                    发文数据统计
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Post Stats
+                </div>
+              <% end %>
+            </li>
+
+            <% account_stats_active = controller_path == "admin/account_stats" %>
+            <li class="admin-nav-item <%= "active" if account_stats_active %>">
+              <%= link_to admin_account_stats_path, class: "admin-nav-link", data: { tooltip: "账号数据统计" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🎯
+                  </div>
+                  <div class="admin-nav-label">
+                    账号数据统计
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Account Stats
+                </div>
+              <% end %>
+            </li>
+          </ul>
+        </div>
+
         <div class="admin-sidebar-section" data-section-name="accounts" data-sidebar-target="section">
           <div class="admin-sidebar-section-title"
                data-action="click->sidebar#toggleSection">
@@ -361,48 +404,7 @@
           </ul>
         </div>
 
-        <div class="admin-sidebar-section" data-section-name="stats" data-sidebar-target="section">
-          <div class="admin-sidebar-section-title"
-               data-action="click->sidebar#toggleSection">
-            <span>数据统计</span>
-            <span class="section-arrow">▾</span>
-          </div>
-          <ul class="admin-nav">
-            <% post_stats_active = controller_path == "admin/post_stats" %>
-            <li class="admin-nav-item <%= "active" if post_stats_active %>">
-              <%= link_to admin_post_stats_path, class: "admin-nav-link", data: { tooltip: "发文数据统计" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    📈
-                  </div>
-                  <div class="admin-nav-label">
-                    发文数据统计
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Post Stats
-                </div>
-              <% end %>
-            </li>
-
-            <% account_stats_active = controller_path == "admin/account_stats" %>
-            <li class="admin-nav-item <%= "active" if account_stats_active %>">
-              <%= link_to admin_account_stats_path, class: "admin-nav-link", data: { tooltip: "账号数据统计" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    🎯
-                  </div>
-                  <div class="admin-nav-label">
-                    账号数据统计
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Account Stats
-                </div>
-              <% end %>
-            </li>
-          </ul>
-        </div>
+        
 
         <div class="admin-sidebar-section" data-section-name="config" data-sidebar-target="section">
           <div class="admin-sidebar-section-title"
