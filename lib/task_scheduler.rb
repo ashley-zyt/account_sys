@@ -122,12 +122,7 @@ class TaskScheduler
 	# 调用单台运营机器的锁定接口，返回锁定的浏览器名称数组
 	# 端点：http://<machine_ip>:8080/api/browser/locked（端口固定 8080）
 	def self.fetch_locked_browser_names(machine_ip)
-		uri = URI("http://#{machine_ip}:8080/api/browser/locked")
-		http = Net::HTTP.new(uri.host, uri.port)
-		http.open_timeout = 100
-		http.read_timeout = 100
-
-		response = http.get(uri.path)
+		response = RemoteApiClient.get("http://#{machine_ip}:8080/api/browser/locked", open_timeout: 100, read_timeout: 100)
 		locked_data = JSON.parse(response.body)
 
 		if locked_data.is_a?(Array)

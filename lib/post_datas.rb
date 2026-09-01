@@ -252,16 +252,7 @@ class PostDatas
   end
 
   def self.push_to_external(browser_data, endpoint)
-    uri = URI.parse(endpoint)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.read_timeout = 600
-    http.open_timeout = 300
-
-    request = Net::HTTP::Post.new(uri.request_uri)
-    request['Content-Type'] = 'application/json'
-    request.body = browser_data.to_json.force_encoding('UTF-8')
-
-    response = http.request(request)
+    response = RemoteApiClient.post(endpoint, browser_data, open_timeout: 300, read_timeout: 600)
     body = response.body
 
     if response.code == '200'

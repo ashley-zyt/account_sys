@@ -230,16 +230,7 @@ class PublishScheduler
   end
 
   def self.send_publish_request(endpoint, request_data)
-    uri = URI.parse(endpoint)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.read_timeout = TIMEOUT_SECONDS
-    http.open_timeout = 30
-
-    request = Net::HTTP::Post.new(uri.request_uri)
-    request['Content-Type'] = 'application/json'
-    request.body = request_data.to_json
-
-    response = http.request(request)
+    response = RemoteApiClient.post(endpoint, request_data, read_timeout: TIMEOUT_SECONDS)
     body = ensure_utf8(response.body)
 
     begin

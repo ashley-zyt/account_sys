@@ -62,16 +62,11 @@ class KolOutreachApi
     end
 
     def post_json(url, body)
-      HTTParty.post(
-        url,
-        headers: { "Content-Type" => "application/json" },
-        body: body.to_json,
-        timeout: 300 # 接口为同步调用，最长等待 5 分钟
-      )
+      RemoteApiClient.post(url, body, read_timeout: 300)
     end
 
     def parse_send_response(response)
-      unless response && (response.code == 200 || response.code == 201)
+      unless response && (response.code.to_i == 200 || response.code.to_i == 201)
         return { success: false, reason: "network", error: "接口无响应或 HTTP #{response&.code}", raw: response&.body }
       end
 
@@ -92,7 +87,7 @@ class KolOutreachApi
     end
 
     def parse_reply_response(response)
-      return { has_reply: false, replies: [], raw: response&.body } unless response && response.code == 200
+      return { has_reply: false, replies: [], raw: response&.body } unless response && response.code.to_i == 200
 
       data = begin
         JSON.parse(response.body)
