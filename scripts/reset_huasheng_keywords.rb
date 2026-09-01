@@ -40,7 +40,7 @@ puts "批量重置花生视频储备关键词状态脚本"
 puts "=" * 60
 
 # 在此处指定要重置的 ID 列表
-ids = [469,467,465,464,463,462,459,458,457,456,455,454]
+ids = [496,509,507,504,500,485,502,501,495,523,517,518,524,510]
 
 if ids.empty?
   puts "请在脚本中指定要重置的 ID 列表"
@@ -74,7 +74,27 @@ if completed_records.any?
   end
 end
 
-print "确认将以上 #{count} 条数据的状态更新为未启动？(y/N): "
+# 检查并删除已推送关键词对应的待分配任务
+pushed_records = HuashengKeyword.where(id: ids, pushed: true)
+if pushed_records.any?
+  puts ""
+  puts "检测到 #{pushed_records.count} 条已推送关键词，将删除对应 huasheng_tasks 中的待分配任务:"
+  deleted_tasks = 0
+  pushed_records.each do |record|
+    pending_tasks = HuashengTask.where(huasheng_keyword_id: record.id, status: :pending)
+    task_count = pending_tasks.count
+    if task_count > 0
+      puts "  ID=#{record.id} key=#{record.keyword}: 待分配任务 #{task_count} 条，删除"
+      pending_tasks.delete_all
+      deleted_tasks += task_count
+    else
+      puts "  ID=#{record.id} key=#{record.keyword}: 无待分配任务，跳过"
+    end
+  end
+  puts "共删除待分配任务 #{deleted_tasks} 条"
+end
+
+print "确认执行以上删除操作并将 #{count} 条数据状态更新为未启动？(y/N): "
 answer = STDIN.gets&.strip
 unless answer&.downcase == 'y'
   puts "已取消操作"
