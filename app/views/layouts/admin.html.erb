@@ -81,7 +81,7 @@
         <div class="admin-sidebar-section" data-section-name="accounts" data-sidebar-target="section">
           <div class="admin-sidebar-section-title"
                data-action="click->sidebar#toggleSection">
-            <span>账号管理</span>
+            <span>账号与浏览器</span>
             <span class="section-arrow">▾</span>
           </div>
           <ul class="admin-nav">
@@ -118,37 +118,98 @@
                 </div>
               <% end %>
             </li>
-            
-            <% post_stats_active = controller_path == "admin/post_stats" %>
-            <li class="admin-nav-item <%= "active" if post_stats_active %>">
-              <%= link_to admin_post_stats_path, class: "admin-nav-link", data: { tooltip: "发文数据统计" } do %>
+          </ul>
+        </div>
+
+        <div class="admin-sidebar-section" data-section-name="content" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>内容储备</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+
+            <% grok_image_active = controller_path == "admin/grok_image_resources" %>
+            <li class="admin-nav-item <%= "active" if grok_image_active %>">
+              <%= link_to admin_grok_image_resources_path, class: "admin-nav-link", data: { tooltip: "Grok 图片储备" } do %>
                 <div class="admin-nav-link-main">
                   <div class="admin-nav-icon">
-                    📈
+                    🖼️
                   </div>
                   <div class="admin-nav-label">
-                    发文数据统计
+                    Grok 图片储备
                   </div>
                 </div>
                 <div class="admin-nav-meta">
-                  Post Stats
+                  Grok Images
                 </div>
               <% end %>
             </li>
 
-            <% account_stats_active = controller_path == "admin/account_stats" %>
-            <li class="admin-nav-item <%= "active" if account_stats_active %>">
-              <%= link_to admin_account_stats_path, class: "admin-nav-link", data: { tooltip: "账号数据统计" } do %>
+            <% move_videos_active = controller_path == "admin/move_videos" %>
+            <li class="admin-nav-item <%= "active" if move_videos_active %>">
+              <%= link_to admin_move_videos_path, class: "admin-nav-link", data: { tooltip: "搬运视频储备" } do %>
                 <div class="admin-nav-link-main">
                   <div class="admin-nav-icon">
-                    🎯
+                    🎞️
                   </div>
                   <div class="admin-nav-label">
-                    账号数据统计
+                    搬运视频储备
                   </div>
                 </div>
                 <div class="admin-nav-meta">
-                  Account Stats
+                  Move Videos
+                </div>
+              <% end %>
+            </li>
+
+            <% red_note_active = controller_path == "admin/red_note_keywords" %>
+            <li class="admin-nav-item <%= "active" if red_note_active %>">
+              <%= link_to admin_red_note_keywords_path, class: "admin-nav-link", data: { tooltip: "RedNote照片" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📷
+                  </div>
+                  <div class="admin-nav-label">
+                    RedNote照片
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  RedNote Photos
+                </div>
+              <% end %>
+            </li>
+
+            <% huasheng_active = controller_path == "admin/huasheng_keywords" %>
+            <li class="admin-nav-item <%= "active" if huasheng_active %>">
+              <%= link_to admin_huasheng_keywords_path, class: "admin-nav-link", data: { tooltip: "花生视频储备" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🎥
+                  </div>
+                  <div class="admin-nav-label">
+                    花生视频储备
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Huasheng Videos
+                </div>
+              <% end %>
+            </li>
+
+            <% notebooklm_active = controller_path == "admin/notebooklm_keywords" %>
+            <li class="admin-nav-item <%= "active" if notebooklm_active %>">
+              <%= link_to admin_notebooklm_keywords_path, class: "admin-nav-link", data: { tooltip: "NotebookLM 视频储备" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📓
+                  </div>
+                  <div class="admin-nav-label">
+                    NotebookLM 视频储备
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  NotebookLM Videos
                 </div>
               <% end %>
             </li>
@@ -158,7 +219,7 @@
         <div class="admin-sidebar-section" data-section-name="tasks" data-sidebar-target="section">
           <div class="admin-sidebar-section-title"
                data-action="click->sidebar#toggleSection">
-            <span>任务管理</span>
+            <span>资源队列</span>
             <span class="section-arrow">▾</span>
           </div>
           <ul class="admin-nav">
@@ -245,7 +306,7 @@
         <div class="admin-sidebar-section" data-section-name="kol" data-sidebar-target="section">
           <div class="admin-sidebar-section-title"
                data-action="click->sidebar#toggleSection">
-            <span>KOL 管理</span>
+            <span>KOL 触达</span>
             <span class="section-arrow">▾</span>
           </div>
           <ul class="admin-nav">
@@ -300,10 +361,53 @@
           </ul>
         </div>
 
+        <div class="admin-sidebar-section" data-section-name="stats" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>数据统计</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% post_stats_active = controller_path == "admin/post_stats" %>
+            <li class="admin-nav-item <%= "active" if post_stats_active %>">
+              <%= link_to admin_post_stats_path, class: "admin-nav-link", data: { tooltip: "发文数据统计" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📈
+                  </div>
+                  <div class="admin-nav-label">
+                    发文数据统计
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Post Stats
+                </div>
+              <% end %>
+            </li>
+
+            <% account_stats_active = controller_path == "admin/account_stats" %>
+            <li class="admin-nav-item <%= "active" if account_stats_active %>">
+              <%= link_to admin_account_stats_path, class: "admin-nav-link", data: { tooltip: "账号数据统计" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🎯
+                  </div>
+                  <div class="admin-nav-label">
+                    账号数据统计
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Account Stats
+                </div>
+              <% end %>
+            </li>
+          </ul>
+        </div>
+
         <div class="admin-sidebar-section" data-section-name="config" data-sidebar-target="section">
           <div class="admin-sidebar-section-title"
                data-action="click->sidebar#toggleSection">
-            <span>基础配置</span>
+            <span>系统设置</span>
             <span class="section-arrow">▾</span>
           </div>
           <ul class="admin-nav">
@@ -320,91 +424,6 @@
                 </div>
                 <div class="admin-nav-meta">
                   Themes
-                </div>
-              <% end %>
-            </li>
-
-            <% grok_image_active = controller_path == "admin/grok_image_resources" %>
-            <li class="admin-nav-item <%= "active" if grok_image_active %>">
-              <%= link_to admin_grok_image_resources_path, class: "admin-nav-link", data: { tooltip: "Grok 图片储备" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    🖼️
-                  </div>
-                  <div class="admin-nav-label">
-                    Grok 图片储备
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Grok Images
-                </div>
-              <% end %>
-            </li>
-
-            <% move_videos_active = controller_path == "admin/move_videos" %>
-            <li class="admin-nav-item <%= "active" if move_videos_active %>">
-              <%= link_to admin_move_videos_path, class: "admin-nav-link", data: { tooltip: "搬运视频储备" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    🎞️
-                  </div>
-                  <div class="admin-nav-label">
-                    搬运视频储备
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Move Videos
-                </div>
-              <% end %>
-            </li>
-
-            <% red_note_active = controller_path == "admin/red_note_keywords" %>
-            <li class="admin-nav-item <%= "active" if red_note_active %>">
-              <%= link_to admin_red_note_keywords_path, class: "admin-nav-link", data: { tooltip: "RedNote照片" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    📷
-                  </div>
-                  <div class="admin-nav-label">
-                    RedNote照片
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  RedNote Photos
-                </div>
-              <% end %>
-            </li>
-
-            <% huasheng_active = controller_path == "admin/huasheng_keywords" %>
-            <li class="admin-nav-item <%= "active" if huasheng_active %>">
-              <%= link_to admin_huasheng_keywords_path, class: "admin-nav-link", data: { tooltip: "花生视频储备" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    🎥
-                  </div>
-                  <div class="admin-nav-label">
-                    花生视频储备
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Huasheng Videos
-                </div>
-              <% end %>
-            </li>
-
-            <% notebooklm_active = controller_path == "admin/notebooklm_keywords" %>
-            <li class="admin-nav-item <%= "active" if notebooklm_active %>">
-              <%= link_to admin_notebooklm_keywords_path, class: "admin-nav-link", data: { tooltip: "NotebookLM 视频储备" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    📓
-                  </div>
-                  <div class="admin-nav-label">
-                    NotebookLM 视频储备
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  NotebookLM Videos
                 </div>
               <% end %>
             </li>

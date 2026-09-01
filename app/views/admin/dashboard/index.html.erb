@@ -5,6 +5,76 @@
   账号与任务运行情况一览
 <% end %>
 
+<div class="admin-card" style="margin-bottom: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        今日概览
+      </div>
+      <div class="admin-card-subtitle">
+        今天系统发布执行的整体情况
+      </div>
+    </div>
+  </div>
+  <div class="admin-metric-row">
+    <div class="admin-metric">
+      <div class="admin-metric-label">
+        今日发布
+      </div>
+      <div class="admin-metric-value">
+        <%= @today_logs_count %>
+      </div>
+      <div class="admin-metric-trend">
+        全部任务
+      </div>
+    </div>
+    <div class="admin-metric">
+      <div class="admin-metric-label">
+        今日成功
+      </div>
+      <div class="admin-metric-value">
+        <%= @today_success_count %>
+      </div>
+      <div class="admin-metric-trend admin-metric-trend-up">
+        已发布
+      </div>
+    </div>
+    <div class="admin-metric">
+      <div class="admin-metric-label">
+        今日失败
+      </div>
+      <div class="admin-metric-value">
+        <%= @today_errors_count %>
+      </div>
+      <div class="admin-metric-trend admin-metric-trend-down">
+        需关注
+      </div>
+    </div>
+    <div class="admin-metric">
+      <div class="admin-metric-label">
+        成功率
+      </div>
+      <div class="admin-metric-value">
+        <%= @today_success_rate %>%
+      </div>
+      <div class="admin-metric-trend">
+        今日
+      </div>
+    </div>
+    <div class="admin-metric">
+      <div class="admin-metric-label">
+        待发布
+      </div>
+      <div class="admin-metric-value">
+        <%= @pending_publish_count %>
+      </div>
+      <div class="admin-metric-trend">
+        已分配
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="admin-grid-three">
   <div class="admin-card">
     <div class="admin-card-header">

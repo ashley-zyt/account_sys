@@ -48,6 +48,11 @@ class Admin::DashboardController < Admin::BaseController
 		@total_logs_count = TaskLog.count
 		@total_errors_count = TaskLog.failed.count
 
+		# 今日核心 KPI
+		@today_success_count = @today_logs_count - @today_errors_count
+		@today_success_rate = @today_logs_count > 0 ? ((@today_success_count.to_f / @today_logs_count) * 100).round(1) : 0
+		@pending_publish_count = WorkMode.publishable_modes.sum { |m| m.task_model_class.where(status: :waiting_publish).count }
+
 		@abnormal_accounts = fetch_abnormal_accounts(3)
 
 		# 低库存预警：仅展示可用天数 < 10 天（含无库存/无法估算）的工作模式×主题×平台组合
