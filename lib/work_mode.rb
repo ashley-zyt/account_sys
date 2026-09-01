@@ -64,6 +64,21 @@ class WorkMode
     "#{short_name}任务"
   end
 
+  # 任务日志页 pill 标签背景色（trend_color 的 0.1 alpha 版本）
+  def pill_bg_color
+    hex = trend_color.to_s.delete("#")
+    return nil unless hex.length == 6
+    r = hex[0..1].to_i(16)
+    g = hex[2..3].to_i(16)
+    b = hex[4..5].to_i(16)
+    "rgba(#{r}, #{g}, #{b}, 0.1)"
+  end
+
+  # pill 标签文字色（与 trend_color 一致）
+  def pill_text_color
+    trend_color
+  end
+
   # 侧边栏菜单项标签（如「搬运资源队列」）
   def sidebar_label
     "#{short_name}资源队列"
