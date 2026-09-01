@@ -45,7 +45,9 @@ body.admin {
   height: 100vh;
   overflow: hidden;
   transition: width 0.2s ease;
-  position: relative;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
   z-index: 30;
 }
 

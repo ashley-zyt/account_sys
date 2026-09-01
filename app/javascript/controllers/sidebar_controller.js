@@ -11,6 +11,8 @@ export default class extends Controller {
     this.restoreCollapsed()
     this.restoreSections()
     this.ensureActiveSectionOpen()
+    // 分组展开、DOM 布局稳定后，把当前激活项滚动到菜单可视区中间
+    requestAnimationFrame(() => this.scrollActiveIntoView())
   }
 
   // 切换整侧边栏收窄状态
@@ -88,5 +90,20 @@ export default class extends Controller {
         section.classList.remove("collapsed")
       }
     })
+  }
+
+  // 让当前激活菜单项定位到菜单可视区中间
+  scrollActiveIntoView() {
+    const nav = this.element.querySelector(".admin-sidebar-nav")
+    const active = nav ? nav.querySelector(".admin-nav-item.active") : null
+    if (!nav || !active) return
+
+    const navRect = nav.getBoundingClientRect()
+    const activeRect = active.getBoundingClientRect()
+    // active 项相对 nav 内容顶部的绝对位置
+    const offsetTop = activeRect.top - navRect.top + nav.scrollTop
+    // 目标滚动位置：让 active 项垂直居中
+    const target = offsetTop - (nav.clientHeight / 2) + (activeRect.height / 2)
+    nav.scrollTop = Math.max(0, target)
   }
 }
