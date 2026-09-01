@@ -157,7 +157,7 @@ class RedNoteApiService
       Rails.logger = logger
 
       # keywords = RedNoteKeyword.where(status: 0).to_a.sample(rand(1..4))
-      keywords = RedNoteKeyword.where(status: 0,theme:["隐世古建与古刹仙踪","治愈田园与四季花海"]).to_a.sample(rand(1..4))
+      keywords = RedNoteKeyword.where(status: 0,theme:["隐世古建与古刹仙踪","治愈田园与四季花海"]).to_a.sample(rand(3..8))
       return if keywords.empty?
 
       Rails.logger.info "[RedNoteApi] 随机创建任务：抽中 #{keywords.size} 条未启动关键词"
