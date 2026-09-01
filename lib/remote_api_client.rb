@@ -53,6 +53,7 @@ module RemoteApiClient
 
     def perform(uri, req, open_timeout, read_timeout)
       http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = (uri.scheme == 'https')
       http.open_timeout = open_timeout
       http.read_timeout = read_timeout
       http.request(req)

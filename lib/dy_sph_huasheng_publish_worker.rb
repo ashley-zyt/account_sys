@@ -83,7 +83,7 @@ class DySphHuashengPublishWorker
       }
       Rails.logger.info "[DySphHuashengPublishWorker] [#{platform_name}] 请求 #{endpoint} body=#{body.to_json}"
 
-      response = http_post_json("http://#{PUBLISH_HOST}#{endpoint}", body)
+      response = http_post_json("https://#{PUBLISH_HOST}#{endpoint}", body)
 
       if response.is_a?(Hash) && response["type"] == "success"
         { success: true, message: "成功" }

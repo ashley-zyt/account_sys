@@ -122,7 +122,7 @@ class TaskScheduler
 	# 调用单台运营机器的锁定接口，返回锁定的浏览器名称数组
 	# 端点：http://<machine_ip>:8080/api/browser/locked（端口固定 8080）
 	def self.fetch_locked_browser_names(machine_ip)
-		response = RemoteApiClient.get("http://#{machine_ip}/api/browser/locked", open_timeout: 100, read_timeout: 100)
+		response = RemoteApiClient.get("https://#{machine_ip}/api/browser/locked", open_timeout: 100, read_timeout: 100)
 		locked_data = JSON.parse(response.body)
 
 		if locked_data.is_a?(Array)

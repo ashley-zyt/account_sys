@@ -194,7 +194,7 @@ class PublishScheduler
       return
     end
 
-    endpoint = "http://#{machine_ip}/#{task.platform}/publish"
+    endpoint = "https://#{machine_ip}/#{task.platform}/publish"
 
     Rails.logger.info "[PublishScheduler] 开始执行任务 #{task_type}:#{task.id} - #{task.title} (浏览器: #{task.browser.profile_name}, 机器: #{machine_ip}) → #{endpoint}"
 

@@ -34,14 +34,14 @@ end
 
 puts "\n===== 3. /health 连通性检查（无需鉴权，验证域名可达）====="
 begin
-  uri  = URI("http://#{DOMAIN}/health")
+  uri  = URI("https://#{DOMAIN}/health")
   http = Net::HTTP.new(uri.host, uri.port)
   http.open_timeout = 5
   http.read_timeout = 5
   resp = http.get(uri.request_uri)
-  puts "[OK]   http://#{DOMAIN}/health -> HTTP #{resp.code}"
+  puts "[OK]   https://#{DOMAIN}/health -> HTTP #{resp.code}"
 rescue => e
-  puts "[FAIL] http://#{DOMAIN}/health 连接失败: #{e.message}"
+  puts "[FAIL] https://#{DOMAIN}/health 连接失败: #{e.message}"
 end
 
 puts "\n===== 4. 鉴权签名验证（只读接口 /api/browser/locked）====="
@@ -49,7 +49,7 @@ if api_key.blank? || api_secret.blank?
   puts "[SKIP] 密钥未配置，鉴权验证结果不可信，请先解决第 1 项再重跑"
 else
   begin
-    resp = RemoteApiClient.get("http://#{DOMAIN}/api/browser/locked", open_timeout: 30, read_timeout: 100)
+    resp = RemoteApiClient.get("https://#{DOMAIN}/api/browser/locked", open_timeout: 30, read_timeout: 100)
     case resp.code
     when '200'
       puts "[OK]   #{DOMAIN} /api/browser/locked -> HTTP 200（鉴权通过）"

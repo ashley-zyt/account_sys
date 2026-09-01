@@ -19,7 +19,7 @@ class ExecuteWorker
       return
     end
 
-    endpoint = "http://#{machine_ip}/accounts/nurture"
+    endpoint = "https://#{machine_ip}/accounts/nurture"
 
     # 更新任务状态为执行中，并记录执行机器
     warmup_task.update!(status: :executing, machine: machine_ip)

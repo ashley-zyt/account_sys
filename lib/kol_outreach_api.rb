@@ -58,7 +58,7 @@ class KolOutreachApi
     def base_url(account)
       ip = account&.browser&.machine_ip.to_s.strip
       raise "账号未绑定机器 IP" if ip.blank?
-      "http://#{ip}"
+      "https://#{ip}"
     end
 
     def post_json(url, body)
