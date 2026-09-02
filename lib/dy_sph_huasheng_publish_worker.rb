@@ -18,7 +18,7 @@ class DySphHuashengPublishWorker
   PLATFORM = "抖音-视频号"
 
   # 发布接口主机（抖音/视频号共用）
-  PUBLISH_HOST = "ag15.juzhiic.com"
+  PUBLISH_HOST = "http://47.98.149.236:8080"
 
   # 固定 profile_name
   PROFILE_NAME = "douyin01"
@@ -63,7 +63,7 @@ class DySphHuashengPublishWorker
       update_task_status(task, results)
 
       # 钉钉通知
-      notify_result(task, results)
+      # notify_result(task, results)
 
       Rails.logger.info "[DySphHuashengPublishWorker] ===== done ====="
     end
