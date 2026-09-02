@@ -72,10 +72,7 @@ module Api
 			# GET /api/v1/move_videos/fetch_for_download
 			# 原子 claim 一条 pending_download → downloading，无任务返回 data:{id:null}
 			def fetch_for_download
-				# ===== 【临时改动】优先获取「日式萝莉」主题的视频，后续恢复原逻辑 =====
-				move_video = MoveVideo.claim_for_download_by_theme!('日式萝莉')
-				move_video ||= MoveVideo.claim_for_download!
-				# ===== 【临时改动结束】 =====
+				move_video = MoveVideo.claim_for_download!
 				return render_success(data: { id: nil }) if move_video.nil?
 
 				render_success(data: build_download_payload(move_video))
