@@ -1,9 +1,9 @@
 # 单独测试抖音 / 视频号 发布接口（POST /accounts/publish_video，platform 字段区分平台）
 #
 # 用法：
-#   只测抖音：  bundle exec rails runner 'scripts/test_dy_sph_publish.rb douyin'
-#   只测视频号：bundle exec rails runner 'scripts/test_dy_sph_publish.rb shipinhao'
-#   两个都测：  bundle exec rails runner 'scripts/test_dy_sph_publish.rb'
+#   只测抖音：  bundle exec rails runner scripts/test_dy_sph_publish.rb douyin
+#   只测视频号：bundle exec rails runner scripts/test_dy_sph_publish.rb shipinhao
+#   两个都测：  bundle exec rails runner scripts/test_dy_sph_publish.rb
 #
 # 必填环境变量：
 #   PROFILE_NAME  指纹浏览器 profile 名
@@ -13,7 +13,7 @@
 #     VIDEO_PATH  远端机器本地视频绝对路径（必须真实存在）
 # 示例（用 URL，可直接用 task.oss_url）：
 #   PROFILE_NAME='douyin_fb_001' VIDEO_URL='https://xxx/test.mp4' TITLE='测试文案 #话题' \
-#     bundle exec rails runner 'scripts/test_dy_sph_publish.rb douyin'
+#     bundle exec rails runner scripts/test_dy_sph_publish.rb douyin
 #
 # 平台专属覆盖（可选，同时测两个平台时各自用不同参数）：
 #   PROFILE_NAME_DOUYIN / PROFILE_NAME_SHIPINHAO
@@ -84,10 +84,13 @@ def publish(platform)
 
   response = RemoteApiClient.post(url, body, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT)
   puts "HTTP: #{response.code}"
-  puts "响应: #{response.body}"
+
+  # Net::HTTP 响应体默认 ASCII-8BIT，含中文时会与 UTF-8 字符串拼接报编码冲突；先按 UTF-8 解释
+  resp_body = response.body.to_s.dup.force_encoding('UTF-8')
+  puts "响应: #{resp_body}"
 
   parsed = begin
-    JSON.parse(response.body)
+    JSON.parse(resp_body)
   rescue JSON::ParserError
     nil
   end
@@ -97,7 +100,7 @@ def publish(platform)
     { success: true }
   else
     err = parsed.is_a?(Hash) ? parsed["error_info"] : nil
-    puts "=> #{PLATFORM_NAMES[platform]} 发布失败 ❌ #{err || response.body}"
+    puts "=> #{PLATFORM_NAMES[platform]} 发布失败 ❌ #{err || resp_body}"
     { success: false }
   end
 rescue => e
@@ -121,7 +124,7 @@ if missing.any?
   puts ""
   puts "示例（用 URL）："
   puts "  PROFILE_NAME='douyin_fb_001' VIDEO_URL='https://xxx/test.mp4' TITLE='测试文案 #话题' \\"
-  puts "    bundle exec rails runner 'scripts/test_dy_sph_publish.rb douyin'"
+  puts "    bundle exec rails runner scripts/test_dy_sph_publish.rb douyin"
   exit 1
 end
 
