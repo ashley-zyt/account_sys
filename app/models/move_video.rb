@@ -156,6 +156,15 @@ class MoveVideo < ApplicationRecord
     nil
   end
 
+  # 【临时】优先领取指定主题的待下载视频（原子 claim），无则返回 nil
+  # 供 fetch_for_download 临时优先获取「日式萝莉」主题使用，后续可删
+  def self.claim_for_download_by_theme!(theme_name)
+    pending_download.where(theme: theme_name).order(created_at: :asc).limit(50).each do |record|
+      return record if record.claim_download!
+    end
+    nil
+  end
+
   # 选下一个要领取的主题：在有待下载视频的主题中，选「最近领取时间最早」的
   # 从未领取过的主题（download_started_at 为 NULL）优先，保证每个主题都能被轮到
   # @return [String, nil] 主题名；无待下载视频时返回 nil
