@@ -151,6 +151,14 @@ class HuashengTask < ApplicationRecord
     title_text = script["title"].to_s.strip
     caption    = script["caption"].to_s.strip
 
+    # 若 caption 末尾还没有话题标签（如 #霸王茶姬 #中国茶饮），则把 Script 的
+    # tags 以 "#标签" 形式追加到 caption 末尾。
+    tags = script["tags"].is_a?(Array) ? script["tags"].map { |t| t.to_s.strip }.reject(&:empty?) : []
+    if caption !~ /#\S+\s*$/ && tags.any?
+      hashtags = tags.map { |t| t.start_with?("#") ? t : "##{t}" }.join(" ")
+      caption = "#{caption} #{hashtags}".strip
+    end
+
     theme    = huasheng_keyword.theme.to_s
     keyword  = huasheng_keyword.keyword.to_s
 
