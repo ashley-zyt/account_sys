@@ -1,66 +1,84 @@
-# 单独测试抖音 / 视频号 发布接口（参考 DySphHuashengPublishWorker 的发布逻辑）
+# 单独测试抖音 / 视频号 发布接口（POST /accounts/publish_video，platform 字段区分平台）
 #
 # 用法：
 #   只测抖音：  bundle exec rails runner 'scripts/test_dy_sph_publish.rb douyin'
-#   只测视频号：bundle exec rails runner 'scripts/test_dy_sph_publish.rb weixin'
+#   只测视频号：bundle exec rails runner 'scripts/test_dy_sph_publish.rb shipinhao'
 #   两个都测：  bundle exec rails runner 'scripts/test_dy_sph_publish.rb'
 #
-# 测试数据来源（二选一，优先级从上到下）：
-#   1. 环境变量 TEXT + VIDEO_URL 手动指定
-#        TEXT='你的文案' VIDEO_URL='https://...mp4?xxx' bundle exec rails runner 'scripts/test_dy_sph_publish.rb douyin'
-#   2. 未指定时自动从 HuashengTask 取一条（pending 且 theme=花生视频-抖音号视频号 且 platform=抖音-视频号）
+# 必填环境变量：
+#   PROFILE_NAME  指纹浏览器 profile 名
+#   TITLE         标题/文案（话题用 # 前缀直接写在文案里）
+#   视频来源二选一（VIDEO_URL 优先）：
+#     VIDEO_URL   视频 URL（服务端先下载到本地临时文件再发布，结束后自动删除）
+#     VIDEO_PATH  远端机器本地视频绝对路径（必须真实存在）
+# 示例（用 URL，可直接用 task.oss_url）：
+#   PROFILE_NAME='douyin_fb_001' VIDEO_URL='https://xxx/test.mp4' TITLE='测试文案 #话题' \
+#     bundle exec rails runner 'scripts/test_dy_sph_publish.rb douyin'
 #
-# 请求体（与 worker 的 publish 完全一致）：
-#   { "profile_name": "douyin01", "text": <文案>, "video_oss_url": <视频URL> }
-# 鉴权：走 RemoteApiClient（X-API-Key / X-Timestamp / X-Nonce / X-Signature）
+# 平台专属覆盖（可选，同时测两个平台时各自用不同参数）：
+#   PROFILE_NAME_DOUYIN / PROFILE_NAME_SHIPINHAO
+#   VIDEO_URL_DOUYIN / VIDEO_URL_SHIPINHAO
+#   VIDEO_PATH_DOUYIN / VIDEO_PATH_SHIPINHAO
+#   TITLE_DOUYIN / TITLE_SHIPINHAO
+# 其他可选：ACCOUNT_ID、HOST、PORT、WAIT_SECONDS、UNDETECTABLE_PATH
 
-# 发布接口主机（与 DySphHuashengPublishWorker::PUBLISH_HOST 保持一致；直接带协议，拼接时不再重复）
-PUBLISH_HOST = "http://47.98.149.236:8080"
-PROFILE_NAME = "douyin01"
-THEME   = "花生视频-抖音号视频号"
-PLATFORM = "抖音-视频号"
+PUBLISH_HOST = "http://47.98.149.236:8080"   # 127.0.0.1 已替换为 47.98.149.236
+ENDPOINT = "/accounts/publish_video"
 
-TARGETS = {
-  "抖音"  => "/douyin/publish",
-  "视频号" => "/weixin/publish"
+PLATFORM_NAMES = {
+  "douyin"    => "抖音",
+  "shipinhao" => "视频号"
 }.freeze
 
 OPEN_TIMEOUT = 30
-READ_TIMEOUT = 600
+READ_TIMEOUT = 900   # 发布流程超时上限 15 分钟，读超时放宽
+
+# 取环境变量：先查平台专属 <KEY>_<PLATFORM>，再查通用 <KEY>
+def env_for(platform, key)
+  ENV["#{key}_#{platform.upcase}"].presence || ENV[key].presence
+end
 
 # 根据命令行参数决定测哪些平台
-def select_targets
+def select_platforms
   arg = ARGV[0].to_s.strip.downcase
   case arg
-  when "douyin", "抖音"   then TARGETS.select { |k, _| k == "抖音" }
-  when "weixin", "视频号" then TARGETS.select { |k, _| k == "视频号" }
-  else TARGETS
+  when "douyin", "抖音"     then ["douyin"]
+  when "shipinhao", "视频号" then ["shipinhao"]
+  else ["douyin", "shipinhao"]
   end
 end
 
-# 取测试数据：优先环境变量，否则从 HuashengTask 取一条
-def fetch_test_data
-  text = ENV['TEXT']
-  video_url = ENV['VIDEO_URL']
+# 构造请求体
+def build_body(platform)
+  body = {
+    "profile_name" => env_for(platform, "PROFILE_NAME").to_s,
+    "platform"     => platform,
+    "title"        => env_for(platform, "TITLE").to_s
+  }
 
-  if !text.to_s.empty? && !video_url.to_s.empty?
-    return { text: text, video_url: video_url, from: "环境变量" }
+  # 视频来源：video_url 优先，为空时用 video_path
+  video_url  = env_for(platform, "VIDEO_URL").to_s
+  video_path = env_for(platform, "VIDEO_PATH").to_s
+  if !video_url.empty?
+    body["video_url"] = video_url
+  elsif !video_path.empty?
+    body["video_path"] = video_path
   end
 
-  task = HuashengTask.where(status: :pending, theme: THEME, platform: PLATFORM).order(:id).first
-  if task
-    { text: task.title.to_s, video_url: task.oss_url.to_s, from: "HuashengTask##{task.id}" }
-  else
-    nil
-  end
+  body["account_id"]        = ENV['ACCOUNT_ID'].to_i if ENV['ACCOUNT_ID'].present?
+  body["host"]              = ENV['HOST'] if ENV['HOST'].present?
+  body["port"]              = ENV['PORT'].to_i if ENV['PORT'].present?
+  body["wait_seconds"]      = ENV['WAIT_SECONDS'].to_i if ENV['WAIT_SECONDS'].present?
+  body["undetectable_path"] = ENV['UNDETECTABLE_PATH'] if ENV['UNDETECTABLE_PATH'].present?
+  body
 end
 
-# 发布到单个平台端点
-def publish(endpoint, platform_name, text, video_url)
-  body = { profile_name: PROFILE_NAME, text: text, video_oss_url: video_url }
-  url  = "#{PUBLISH_HOST}#{endpoint}"
+# 发布到单个平台
+def publish(platform)
+  body = build_body(platform)
+  url  = "#{PUBLISH_HOST}#{ENDPOINT}"
 
-  puts "\n===== #{platform_name} ====="
+  puts "\n===== #{PLATFORM_NAMES[platform]} (#{platform}) ====="
   puts "URL:  #{url}"
   puts "Body: #{body.to_json}"
 
@@ -75,36 +93,42 @@ def publish(endpoint, platform_name, text, video_url)
   end
 
   if parsed.is_a?(Hash) && parsed["type"] == "success"
-    puts "=> #{platform_name} 发布成功 ✅"
+    puts "=> #{PLATFORM_NAMES[platform]} 发布成功 ✅ (status=#{parsed["status"]}, profile_id=#{parsed["profile_id"]})"
     { success: true }
   else
-    err = parsed.is_a?(Hash) ? (parsed["error_info"] || parsed["error"] || parsed["message"]) : nil
-    puts "=> #{platform_name} 发布失败 ❌ #{err || response.body}"
+    err = parsed.is_a?(Hash) ? parsed["error_info"] : nil
+    puts "=> #{PLATFORM_NAMES[platform]} 发布失败 ❌ #{err || response.body}"
     { success: false }
   end
 rescue => e
-  puts "=> #{platform_name} 请求异常 ❌ #{e.class}: #{e.message}"
+  puts "=> #{PLATFORM_NAMES[platform]} 请求异常 ❌ #{e.class}: #{e.message}"
   { success: false }
 end
 
 # ===== 主流程 =====
-data = fetch_test_data
+platforms = select_platforms
 
-if data.nil?
-  puts "无测试数据：HuashengTask 无 pending 任务，且未设置 TEXT/VIDEO_URL 环境变量。"
-  puts "可用环境变量手动指定："
-  puts "  TEXT='你的文案' VIDEO_URL='https://...mp4?xxx' bundle exec rails runner 'scripts/test_dy_sph_publish.rb douyin'"
+missing = []
+platforms.each do |platform|
+  missing << "PROFILE_NAME" if env_for(platform, "PROFILE_NAME").to_s.empty?
+  missing << "TITLE"        if env_for(platform, "TITLE").to_s.empty?
+  vurl  = env_for(platform, "VIDEO_URL").to_s
+  vpath = env_for(platform, "VIDEO_PATH").to_s
+  missing << "VIDEO_URL 或 VIDEO_PATH" if vurl.empty? && vpath.empty?
+end
+if missing.any?
+  puts "缺少必填环境变量: #{missing.uniq.join(', ')}"
+  puts ""
+  puts "示例（用 URL）："
+  puts "  PROFILE_NAME='douyin_fb_001' VIDEO_URL='https://xxx/test.mp4' TITLE='测试文案 #话题' \\"
+  puts "    bundle exec rails runner 'scripts/test_dy_sph_publish.rb douyin'"
   exit 1
 end
 
-puts "测试数据来源: #{data[:from]}"
-puts "text:      #{data[:text]}"
-puts "video_url: #{data[:video_url]}"
-
 results = {}
-select_targets.each do |platform_name, endpoint|
-  results[platform_name] = publish(endpoint, platform_name, data[:text], data[:video_url])
+platforms.each do |platform|
+  results[platform] = publish(platform)
 end
 
 puts "\n===== 汇总 ====="
-results.each { |k, r| puts "#{k}: #{r[:success] ? '成功' : '失败'}" }
+results.each { |k, r| puts "#{PLATFORM_NAMES[k]}: #{r[:success] ? '成功' : '失败'}" }
