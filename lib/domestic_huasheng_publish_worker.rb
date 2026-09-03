@@ -54,11 +54,23 @@ class DomesticHuashengPublishWorker
       end
       Rails.logger.info "[DySphHuashengPublishWorker] 取到任务 id=#{task.id} keyword=#{task.keyword} title=#{task.title}"
 
-      # 依次发布抖音、视频号
+      # 依次发布抖音、视频号，每次 API 调用间隔 40-60 秒
       results = {}
       TARGETS.each do |platform_name, platform_key|
-        results[platform_name] = publish(task, platform_key, platform_name)
-        Rails.logger.info "[DySphHuashengPublishWorker] #{platform_name} 发布结果: #{results[platform_name].inspect}"
+        result = publish(task, platform_key, platform_name)
+        Rails.logger.info "[DySphHuashengPublishWorker] #{platform_name} 发布结果: #{result.inspect}"
+
+        # 连不上：直接结束，钉钉通知，任务保持 pending
+        if result[:special] == :connection_failed
+          notify_connection_failed(task, platform_name, result)
+          Rails.logger.info "[DySphHuashengPublishWorker] 发布接口连不上，任务 id=#{task.id} 保持 pending，本次结束"
+          return
+        end
+
+        results[platform_name] = result
+
+        # 每次 API 调用间隔 40-60 秒（最后一个平台后不再等待）
+        sleep(rand(40..60)) unless platform_name == TARGETS.keys.last
       end
 
       # 更新任务状态
@@ -76,7 +88,7 @@ class DomesticHuashengPublishWorker
     end
 
     # 发布到指定平台（统一走 POST /accounts/publish_video）
-    # @return [Hash] { success: true/false, message: "结果说明" }
+    # @return [Hash] { success:, message:, special: nil/:connection_failed/:undetectable/:other_error }
     def publish(task, platform_key, platform_name)
       body = {
         profile_name: PROFILE_NAME,
@@ -87,20 +99,56 @@ class DomesticHuashengPublishWorker
       url = "#{PUBLISH_HOST}/accounts/publish_video"
       Rails.logger.info "[DySphHuashengPublishWorker] [#{platform_name}] 请求 #{url} body=#{body.to_json}"
 
-      response = http_post_json(url, body)
+      result = parse_result(http_post_json(url, body))
 
-      # 成功判定：type 只表示「请求被处理」，status=="completed" 才是真正发布成功
-      if response.is_a?(Hash) && response["type"] == "success" && response["status"] == "completed"
-        { success: true, message: "成功" }
+      case result[:special]
+      when :connection_failed
+        # 连不上：不重试，直接返回
+        result
+      when :undetectable
+        # 指纹浏览器刚关未反应过来：等 30 秒重试一次
+        Rails.logger.info "[DySphHuashengPublishWorker] [#{platform_name}] undetectable_path 错误，30 秒后重试"
+        sleep 30
+        parse_result(http_post_json(url, body))
+      when :other_error
+        # 其他报错：等 60 秒重试一次
+        Rails.logger.info "[DySphHuashengPublishWorker] [#{platform_name}] 报错(#{result[:message]})，60 秒后重试"
+        sleep 60
+        parse_result(http_post_json(url, body))
       else
-        { success: false, message: extract_error(response) }
+        result # 成功
       end
     end
 
-    # 发布结束后更新任务状态：全部平台成功 → success，任一失败 → failed
+    # 解析发布响应：成功 / 连不上 / undetectable 错误 / 其他报错
+    # 成功判定：type 只表示「请求被处理」，status=="completed" 才是真正发布成功
+    def parse_result(response)
+      if response.is_a?(Hash) && response["network_error"]
+        { success: false, message: response["error_info"].to_s, special: :connection_failed }
+      elsif response.is_a?(Hash) && response["type"] == "success" && response["status"] == "completed"
+        { success: true, message: "成功", special: nil }
+      else
+        err = extract_error(response)
+        if err.include?("undetectable_path")
+          { success: false, message: err, special: :undetectable }
+        else
+          { success: false, message: err, special: :other_error }
+        end
+      end
+    end
+
+    # 发布结束后更新任务状态：全部平台成功 → success；任一失败 → failed
+    # undetectable 重试后仍失败 → 不置失败，保持 pending 等下次调度重试（指纹浏览器临时状态）
     # 注：这类抖音-视频号任务不走账号分配，account_id 恒为空；
     #     而 model 有「非 pending 必须有账号」的校验，故用 save(validate: false) 绕过
     def update_task_status(task, results)
+      if results.values.any? { |r| r[:special] == :undetectable }
+        task.error_msg = results.map { |k, r| "#{k}:#{r[:success] ? "成功" : "失败(#{r[:message]})"}" }.join("；")
+        task.save(validate: false)
+        Rails.logger.info "[DySphHuashengPublishWorker] undetectable 错误重试后仍失败，任务 id=#{task.id} 保持 pending 不置失败"
+        return
+      end
+
       all_success = results.values.all? { |r| r[:success] }
 
       if all_success
@@ -116,14 +164,15 @@ class DomesticHuashengPublishWorker
       Rails.logger.info "[DySphHuashengPublishWorker] 任务 id=#{task.id} 状态已更新为 #{all_success ? "success" : "failed"}"
     end
 
-    # POST JSON，返回解析后的响应；异常统一转成 { type: "error", error_info: ... }
+    # POST JSON，返回解析后的响应
+    # 网络层异常（连不上/超时/域名解析失败等）标记 network_error: true，供上层识别「发布接口连不上」
     def http_post_json(endpoint, body)
       response = RemoteApiClient.post(endpoint, body, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT)
       JSON.parse(response.body.to_s.dup.force_encoding('UTF-8'))
     rescue JSON::ParserError => e
       { "type" => "error", "error_info" => "响应非JSON: #{e.message}" }
     rescue => e
-      { "type" => "error", "error_info" => "请求异常: #{e.class} #{e.message}" }
+      { "type" => "error", "network_error" => true, "error_info" => "#{e.class} #{e.message}" }
     end
 
     # 提取失败原因（优先 error_info，其次 status，最后 error/message/响应原文）
@@ -152,10 +201,22 @@ class DomesticHuashengPublishWorker
       Dingtalk.send_text(NOTIFY_ROBOT, "今日无待发布的 #{THEME} 数据")
     end
 
+    # 发布接口连不上时的通知
+    def notify_connection_failed(task, platform_name, result)
+      keyword = task.keyword.to_s.split("|").first.to_s.strip
+      keyword = task.keyword.to_s if keyword.empty?
+      Dingtalk.send_text(NOTIFY_ROBOT, "#{keyword}:发布接口连不上(#{platform_name})，任务保持 pending，本次跳过")
+    end
+
     private
 
     def platform_result_text(result)
-      result[:success] ? "成功" : "失败(#{result[:message]})"
+      return "成功" if result[:success]
+      case result[:special]
+      when :connection_failed then "发布接口连不上"
+      when :undetectable then "undetectable错误(重试后仍失败)"
+      else "失败(#{result[:message]})"
+      end
     end
 
     def setup_logger
