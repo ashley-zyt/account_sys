@@ -12,7 +12,7 @@
 # 成功判定：type=="success" 且 status=="completed"（status 才是真实发布结果）
 # 全部平台成功 → 任务 status=success；任一失败 → status=failed（error_msg 记录各平台结果）
 # 结束后通过钉钉机器人（agic_dw）通知结果
-class DySphHuashengPublishWorker
+class DomesticHuashengPublishWorker
   # 要发布的主题
   THEME = "花生视频-抖音号视频号"
 
