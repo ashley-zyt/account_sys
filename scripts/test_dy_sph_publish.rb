@@ -95,12 +95,16 @@ def publish(platform)
     nil
   end
 
-  if parsed.is_a?(Hash) && parsed["type"] == "success"
-    puts "=> #{PLATFORM_NAMES[platform]} 发布成功 ✅ (status=#{parsed["status"]}, profile_id=#{parsed["profile_id"]})"
+  # 成功判定：必须 type=="success" 且 status=="completed"
+  # type 只表示「请求被处理了」，status 才是真正的发布结果
+  #   completed / failed / not_logged_in / abnormal / error
+  if parsed.is_a?(Hash) && parsed["type"] == "success" && parsed["status"] == "completed"
+    puts "=> #{PLATFORM_NAMES[platform]} 发布成功 ✅ (status=completed, profile_id=#{parsed["profile_id"]})"
     { success: true }
   else
+    status = parsed.is_a?(Hash) ? parsed["status"] : nil
     err = parsed.is_a?(Hash) ? parsed["error_info"] : nil
-    puts "=> #{PLATFORM_NAMES[platform]} 发布失败 ❌ #{err || resp_body}"
+    puts "=> #{PLATFORM_NAMES[platform]} 发布失败 ❌ [status=#{status}] #{err || resp_body}"
     { success: false }
   end
 rescue => e

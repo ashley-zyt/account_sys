@@ -4,10 +4,12 @@
 # 手动执行：bundle exec rails runner 'DySphHuashengPublishWorker.run'
 #
 # 数据源：HuashengTask（status=pending 且 theme=花生视频-抖音号视频号 且 platform=抖音-视频号）
-#   取一条任务，同时发布到抖音（/douyin/publish）和视频号（/weixin/publish）：
-#   - profile_name  固定 douyin01
-#   - text          用 task.title（已含话题标签，如 #快时尚 #Shein）
-#   - video_oss_url 用 task.oss_url（已签名的 URL）
+#   取一条任务，同时发布到抖音（platform=douyin）和视频号（platform=shipinhao），
+#   统一走 POST /accounts/publish_video：
+#   - profile_name  固定 domestic01（两平台都用，靠 platform 字段区分）
+#   - video_url     用 task.oss_url（已签名的 URL，服务端先下载到本地临时文件再发布）
+#   - title         用 task.title（已含话题标签，如 #快时尚 #Shein）
+# 成功判定：type=="success" 且 status=="completed"（status 才是真实发布结果）
 # 全部平台成功 → 任务 status=success；任一失败 → status=failed（error_msg 记录各平台结果）
 # 结束后通过钉钉机器人（agic_dw）通知结果
 class DySphHuashengPublishWorker
@@ -21,12 +23,12 @@ class DySphHuashengPublishWorker
   PUBLISH_HOST = "http://47.98.149.236:8080"
 
   # 固定 profile_name
-  PROFILE_NAME = "douyin01"
+  PROFILE_NAME = "domestic01"
 
-  # 发布目标：平台名 → 发布端点（顺序即通知里的展示顺序）
+  # 发布目标：平台名 → platform 标识（顺序即通知里的展示顺序）
   TARGETS = {
-    "抖音" => "/douyin/publish",
-    "视频号" => "/weixin/publish"
+    "抖音"  => "douyin",
+    "视频号" => "shipinhao"
   }.freeze
 
   # 钉钉机器人（agic_dw 已在 config/dingtalk.yml 配置）
@@ -34,7 +36,7 @@ class DySphHuashengPublishWorker
 
   # HTTP 超时（秒）
   OPEN_TIMEOUT = 30
-  READ_TIMEOUT = 600
+  READ_TIMEOUT = 900   # 发布流程超时上限 15 分钟
 
   # 日志文件
   LOG_FILE = "log/dy_sph_huasheng_publish_worker.log"
@@ -54,8 +56,8 @@ class DySphHuashengPublishWorker
 
       # 依次发布抖音、视频号
       results = {}
-      TARGETS.each do |platform_name, endpoint|
-        results[platform_name] = publish(task, endpoint, platform_name)
+      TARGETS.each do |platform_name, platform_key|
+        results[platform_name] = publish(task, platform_key, platform_name)
         Rails.logger.info "[DySphHuashengPublishWorker] #{platform_name} 发布结果: #{results[platform_name].inspect}"
       end
 
@@ -63,7 +65,7 @@ class DySphHuashengPublishWorker
       update_task_status(task, results)
 
       # 钉钉通知
-      # notify_result(task, results)
+      notify_result(task, results)
 
       Rails.logger.info "[DySphHuashengPublishWorker] ===== done ====="
     end
@@ -73,19 +75,22 @@ class DySphHuashengPublishWorker
       HuashengTask.where(status: :pending, theme: THEME, platform: PLATFORM).order(:id).first
     end
 
-    # 发布到指定端点
+    # 发布到指定平台（统一走 POST /accounts/publish_video）
     # @return [Hash] { success: true/false, message: "结果说明" }
-    def publish(task, endpoint, platform_name)
+    def publish(task, platform_key, platform_name)
       body = {
-        profile_name:  PROFILE_NAME,
-        text:          task.title.to_s,
-        video_oss_url: task.oss_url.to_s
+        profile_name: PROFILE_NAME,
+        platform:     platform_key,
+        video_url:    task.oss_url.to_s,
+        title:        task.title.to_s
       }
-      Rails.logger.info "[DySphHuashengPublishWorker] [#{platform_name}] 请求 #{endpoint} body=#{body.to_json}"
+      url = "#{PUBLISH_HOST}/accounts/publish_video"
+      Rails.logger.info "[DySphHuashengPublishWorker] [#{platform_name}] 请求 #{url} body=#{body.to_json}"
 
-      response = http_post_json("https://#{PUBLISH_HOST}#{endpoint}", body)
+      response = http_post_json(url, body)
 
-      if response.is_a?(Hash) && response["type"] == "success"
+      # 成功判定：type 只表示「请求被处理」，status=="completed" 才是真正发布成功
+      if response.is_a?(Hash) && response["type"] == "success" && response["status"] == "completed"
         { success: true, message: "成功" }
       else
         { success: false, message: extract_error(response) }
@@ -114,17 +119,19 @@ class DySphHuashengPublishWorker
     # POST JSON，返回解析后的响应；异常统一转成 { type: "error", error_info: ... }
     def http_post_json(endpoint, body)
       response = RemoteApiClient.post(endpoint, body, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT)
-      JSON.parse(response.body)
+      JSON.parse(response.body.to_s.dup.force_encoding('UTF-8'))
     rescue JSON::ParserError => e
       { "type" => "error", "error_info" => "响应非JSON: #{e.message}" }
     rescue => e
       { "type" => "error", "error_info" => "请求异常: #{e.class} #{e.message}" }
     end
 
-    # 提取失败原因（优先 error_info/error/message，否则整个响应原文）
+    # 提取失败原因（优先 error_info，其次 status，最后 error/message/响应原文）
     def extract_error(response)
       return response.to_s unless response.is_a?(Hash)
-      response["error_info"] || response["error"] || response["message"] || response.to_json
+      return response["error_info"] if response["error_info"].present?
+      return "status=#{response["status"]}" if response["status"].present? && response["status"] != "completed"
+      response["error"] || response["message"] || response.to_json
     end
 
     # 钉钉通知：[keyword]:抖音:成功/失败(错误原因)；视频号:成功/失败(错误原因)；
