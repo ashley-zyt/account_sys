@@ -77,7 +77,7 @@ class DomesticHuashengPublishWorker
       update_task_status(task, results)
 
       # 钉钉通知
-      # notify_result(task, results)
+      notify_result(task, results)
 
       Rails.logger.info "[DySphHuashengPublishWorker] ===== done ====="
     end
