@@ -18,7 +18,7 @@
       </div>
     </div>
     <div class="admin-card-header-right">
-      <%= link_to "新增账号", new_admin_account_path, class: "admin-button-secondary" %>
+      <%= link_to "新增账号", new_admin_account_path(q: params[:q], page: params[:page]), class: "admin-button-secondary" %>
       <span class="admin-tag">
         共 <%= @accounts.total_count %> 条
       </span>
@@ -55,6 +55,10 @@
       <div class="admin-filter-group">
         <label class="admin-filter-label">运营人员</label>
         <%= f.searchable_select :operator_eq, Account::OPERATORS.map { |o| [o, o] }, { include_blank: "所有人员" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">浏览器</label>
+        <%= f.searchable_select :browser_id_eq, Browser.order(:profile_name).map { |o| [o.profile_name, o.id] }, { include_blank: "所有浏览器" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
@@ -167,7 +171,7 @@
               </td>
               <td>
                 <div style="display: flex; gap: 8px;">
-                  <%= link_to "编辑", edit_admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "编辑", edit_admin_account_path(account, q: params[:q], page: params[:page]), class: "admin-link-quiet", style: "color: var(--accent);" %>
                   <%= link_to "删除", admin_account_path(account), data: { turbo_method: :delete, turbo_confirm: "确定删除账号「#{account.account_name}」吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
                   <% if account.work_type == "人工运营" %>
                     <%= link_to "任务", admin_operation_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>

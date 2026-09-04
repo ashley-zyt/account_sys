@@ -19,7 +19,7 @@ class Admin::AccountsController < Admin::BaseController
 	def create
 		@account = Account.new(account_params)
 		if @account.save
-			redirect_to admin_account_path(@account), notice: "账号已成功创建"
+			back_to_accounts_list("账号已成功创建")
 		else
 			render :new, status: :unprocessable_entity
 		end
@@ -49,7 +49,7 @@ class Admin::AccountsController < Admin::BaseController
 
 	def update
 		if @account.update(account_params)
-			redirect_to admin_account_path(@account), notice: "账号信息已更新"
+			back_to_accounts_list("账号信息已更新")
 		else
 			render :edit, status: :unprocessable_entity
 		end
@@ -68,6 +68,13 @@ class Admin::AccountsController < Admin::BaseController
 	end
 
 	private
+
+	def back_to_accounts_list(notice)
+		opts = {}
+		opts[:q] = params[:q] if params[:q].present?
+		opts[:page] = params[:page] if params[:page].present?
+		redirect_to admin_accounts_path(opts), notice: notice
+	end
 
 	def set_account
 		@account = Account.find(params[:id])

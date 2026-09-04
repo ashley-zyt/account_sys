@@ -44,6 +44,10 @@
         <label class="admin-filter-label">运营机器</label>
         <%= f.searchable_select :machine_eq, [["所有机器", ""]] + WarmupTask.where.not(machine: [nil, ""]).distinct.pluck(:machine).sort.map { |ip| [ip, ip] }, { include_blank: false }, class: "admin-input admin-filter-input" %>
       </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">浏览器</label>
+        <%= f.searchable_select :browser_id_eq, Browser.order(:profile_name).map { |o| [o.profile_name, o.id] }, { include_blank: "所有浏览器" }, class: "admin-input admin-filter-input" %>
+      </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
         <%= link_to "重置", admin_warmup_tasks_path, class: "admin-button-secondary" %>
