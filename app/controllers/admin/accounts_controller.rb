@@ -71,7 +71,7 @@ class Admin::AccountsController < Admin::BaseController
 
 	def back_to_accounts_list(notice)
 		opts = {}
-		opts[:q] = params[:q] if params[:q].present?
+		opts[:q] = params[:q].to_unsafe_h if params[:q].present?
 		opts[:page] = params[:page] if params[:page].present?
 		redirect_to admin_accounts_path(opts), notice: notice
 	end
