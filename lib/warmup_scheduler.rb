@@ -1,9 +1,9 @@
 class WarmupScheduler
   # 单次请求最长10分钟
-  TIMEOUT_SECONDS = 660
+  TIMEOUT_SECONDS = 420
   # 账号间等待时间
-  INTER_ACCOUNT_PAUSE_MIN = 30
-  INTER_ACCOUNT_PAUSE_MAX = 60
+  INTER_ACCOUNT_PAUSE_MIN = 20
+  INTER_ACCOUNT_PAUSE_MAX = 40
   # 每台运营机器单次运行时长上限（小时）；超时自动停止，下次从上次位置继续
   TIME_WINDOW_HOURS = 6
 
