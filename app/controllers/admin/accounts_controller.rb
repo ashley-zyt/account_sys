@@ -67,26 +67,36 @@ class Admin::AccountsController < Admin::BaseController
 		redirect_to admin_accounts_path, notice: "账号「#{@account.account_name}」已删除"
 	end
 
-	# 获取视频号登录二维码（代理转发到远端接口，带鉴权）
+	# 获取视频号登录二维码（代理转发到远端接口，带鉴权），渲染为二维码页面
 	# GET /admin/accounts/shipinhao_login_qrcode
 	def shipinhao_login_qrcode
 		url = "http://47.98.149.236:8080/accounts/shipinhao_login_qrcode?profile_name=domestic01"
 		response = RemoteApiClient.get(url, open_timeout: 30, read_timeout: 60)
 		body = response.body.to_s.dup.force_encoding('UTF-8')
 
-		parsed = begin
+		data = begin
 			JSON.parse(body)
 		rescue JSON::ParserError
 			nil
 		end
 
-		if parsed
-			render json: parsed
+		@login_status = data&.dig("login_status").to_s
+		@profile_id   = data&.dig("profile_id").to_s
+		qrcode        = data&.dig("qrcode_image").to_s
+
+		if data.nil?
+			@error = "远端响应非JSON(HTTP #{response.code})"
+		elsif qrcode.blank?
+			@error = "二维码数据为空"
+		elsif qrcode.match?(/\A[A-Za-z0-9+\/=]+\z/)
+			# base64 编码的 PNG → 直接拼 data URI
+			@qrcode_data_uri = "data:image/png;base64,#{qrcode}"
 		else
-			render json: { type: "error", error_info: "远端响应非JSON(HTTP #{response.code}): #{body.to_s.truncate(200)}" }
+			# 远端返回的是原始二进制（已损坏，应改为 base64 返回）
+			@error = "二维码数据格式异常：远端应返回 base64 编码，当前返回的是原始二进制且已损坏"
 		end
 	rescue => e
-		render json: { type: "error", error_info: "请求异常: #{e.class} #{e.message}" }
+		@error = "请求异常: #{e.class} #{e.message}"
 	end
 
 	private
