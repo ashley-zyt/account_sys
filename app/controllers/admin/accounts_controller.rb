@@ -67,6 +67,28 @@ class Admin::AccountsController < Admin::BaseController
 		redirect_to admin_accounts_path, notice: "账号「#{@account.account_name}」已删除"
 	end
 
+	# 获取视频号登录二维码（代理转发到远端接口，带鉴权）
+	# GET /admin/accounts/shipinhao_login_qrcode
+	def shipinhao_login_qrcode
+		url = "http://47.98.149.236:8080/accounts/shipinhao_login_qrcode?profile_name=domestic01"
+		response = RemoteApiClient.get(url, open_timeout: 30, read_timeout: 60)
+		body = response.body.to_s.dup.force_encoding('UTF-8')
+
+		parsed = begin
+			JSON.parse(body)
+		rescue JSON::ParserError
+			nil
+		end
+
+		if parsed
+			render json: parsed
+		else
+			render json: { type: "error", error_info: "远端响应非JSON(HTTP #{response.code}): #{body.to_s.truncate(200)}" }
+		end
+	rescue => e
+		render json: { type: "error", error_info: "请求异常: #{e.class} #{e.message}" }
+	end
+
 	private
 
 	def back_to_accounts_list(notice)
