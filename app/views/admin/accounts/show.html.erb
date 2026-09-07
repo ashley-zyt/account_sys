@@ -347,10 +347,11 @@
         近 30 天粉丝数与发帖数变化
       </div>
     </div>
-    <div class="admin-card-header-right">
+    <div class="admin-card-header-right" style="display: flex; align-items: center; gap: 12px;">
       <% if @follower_history.any? %>
         <span class="admin-label-muted">最新粉丝：<strong style="color: var(--text-primary);"><%= number_with_delimiter(@follower_history.last.followers_count || 0) %></strong></span>
       <% end %>
+      <%= link_to "立即更新", refresh_stats_admin_account_path(@account), data: { turbo_method: :post, turbo_confirm: "将立即采集该账号的粉丝和发文数据，可能需要 1~2 分钟，确定？" }, class: "admin-button-secondary" %>
     </div>
   </div>
 

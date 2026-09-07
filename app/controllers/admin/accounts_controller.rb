@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :destroy]
+	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :destroy]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -59,6 +59,21 @@ class Admin::AccountsController < Admin::BaseController
 		profile = @account.warmup_profile || @account.create_warmup_profile
 		profile.update!(warmup_enabled: !profile.warmup_enabled)
 		redirect_back fallback_location: admin_account_path(@account), notice: "养号开关已#{profile.warmup_enabled ? '启用' : '停止'}"
+	end
+
+	# 立即采集单个账号的粉丝/发文数据（异步推送采集指令到运营机器，落库由采集端回传完成）
+	def refresh_stats
+		account_id = @account.id
+		Thread.new do
+			ActiveRecord::Base.connection_pool.with_connection do
+				begin
+					Util.fetch_account_post_data(account_id: account_id)
+				rescue => e
+					Rails.logger.error "[AccountsController] 账号 ##{account_id} 立即更新失败: #{e.message}"
+				end
+			end
+		end
+		redirect_back fallback_location: admin_account_path(@account), notice: "已触发采集，粉丝与发文数据稍后更新（通常 1~2 分钟）"
 	end
 
 	# 软删除：写入 deleted_at 时间戳，不物理删除记录

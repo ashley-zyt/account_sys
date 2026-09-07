@@ -11,6 +11,7 @@ Rails.application.routes.draw do
     resources :accounts, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member do
         post :toggle_warmup
+        post :refresh_stats
       end
       collection do
         get :shipinhao_login_qrcode
