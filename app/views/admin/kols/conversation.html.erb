@@ -75,7 +75,7 @@
   <% if @kol.replied_unprocessed? || @kol.negotiating? %>
     <div class="kol-reply-box">
       <div class="kol-actions-title">快捷回复</div>
-      <div style="font-size: 12px; color: #94a3b8;">回复账号：<span class="kol-reply-account"><%= @reply_account&.account_name || "未分配" %></span></div>
+      <div style="font-size: 12px; color: #94a3b8;">回复账号：<% if @reply_account %><%= link_to @reply_account.account_name, admin_account_path(@reply_account), class: "kol-reply-account", style: "color: #60a5fa; font-weight: 600;" %><% else %><span class="kol-reply-account">未分配</span><% end %></div>
       <div style="display: flex; gap: 6px; align-items: flex-end;">
         <div style="flex: 1;">
           <%= render "admin/shared/searchable_select",

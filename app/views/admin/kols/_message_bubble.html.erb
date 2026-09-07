@@ -2,7 +2,15 @@
   <div class="kol-bubble <%= m.outgoing? ? "out" : "in" %>">
     <div class="kol-bubble-meta">
       <span><%= m.kol_contact&.platform_icon %> <%= m.platform %></span>
-      <span><%= m.outgoing? ? (m.account&.account_name || "我方") : "KOL" %></span>
+      <% if m.outgoing? %>
+        <% if m.account %>
+          <%= link_to m.account.account_name, admin_account_path(m.account), class: "admin-link-quiet", style: "color: #60a5fa;" %>
+        <% else %>
+          <span>我方</span>
+        <% end %>
+      <% else %>
+        <span>KOL</span>
+      <% end %>
       <% if m.outgoing? %><span><%= m.manual? ? "人工" : "自动" %></span><% end %>
       <span><%= m.occurred_at&.strftime("%m-%d %H:%M") || m.created_at&.strftime("%m-%d %H:%M") %></span>
     </div>
