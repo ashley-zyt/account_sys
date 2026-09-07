@@ -30,9 +30,9 @@
     </div>
     <div>
       <div class="admin-field-label">
-        运营机器 IP
+        运营机器
       </div>
-      <%= f.text_field :machine_ip, class: "admin-input", placeholder: "如 ag117.juzhiic.com（养号端口固定 8080）" %>
+      <%= f.select :machine_ip, [["ag117.juzhiic.com", "ag117.juzhiic.com"], ["ag15.juzhiic.com", "ag15.juzhiic.com"]], { include_blank: "请选择运营机器" }, class: "admin-input" %>
     </div>
     <div>
       <div class="admin-field-label">

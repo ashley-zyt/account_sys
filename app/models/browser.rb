@@ -30,7 +30,7 @@ class Browser < ApplicationRecord
 	# 格式校验在填写时生效；未填写时不阻断保存（便于渐进迁移）
 	validates :machine_ip,
 		format: { with: /\A(\d{1,3}(\.\d{1,3}){3}|([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})\z/, message: "请填写合法的 IP 地址或域名（如 ag117.juzhiic.com）" },
-		allow_nil: true
+		allow_blank: true
 
 	# 浏览器状态枚举
 	# - online        : 在线且空闲，可分配任务
