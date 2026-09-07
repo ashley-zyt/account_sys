@@ -12,6 +12,9 @@ Rails.application.routes.draw do
       member do
         post :toggle_warmup
       end
+      collection do
+        get :shipinhao_login_qrcode
+      end
     end
     resources :move_tasks, only: [:index, :show] do
       member do
