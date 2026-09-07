@@ -68,9 +68,13 @@ class Admin::AccountsController < Admin::BaseController
 	end
 
 	# 获取视频号登录二维码（代理转发到远端接口，带鉴权），渲染为二维码页面
-	# GET /admin/accounts/shipinhao_login_qrcode
+	# GET /admin/accounts/shipinhao_login_qrcode?profile_name=domestic01
 	def shipinhao_login_qrcode
-		url = "http://47.98.149.236:8080/accounts/shipinhao_login_qrcode?profile_name=domestic01"
+		profile_name = params[:profile_name].presence || "domestic01"
+		profile_name = "domestic01" unless %w[domestic01 domestic02].include?(profile_name)
+		@profile_name = profile_name
+
+		url = "http://47.98.149.236:8080/accounts/shipinhao_login_qrcode?profile_name=#{profile_name}"
 		response = RemoteApiClient.get(url, open_timeout: 30, read_timeout: 60)
 		body = response.body.to_s.dup.force_encoding('UTF-8')
 

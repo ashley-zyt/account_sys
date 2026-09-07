@@ -2,7 +2,7 @@
   视频号登录二维码
 <% end %>
 <% content_for :page_subtitle do %>
-  扫码登录视频号账号（profile: domestic01）
+  扫码登录视频号账号
 <% end %>
 
 <div class="admin-card" style="max-width: 640px;">
@@ -15,7 +15,13 @@
         使用手机视频号 App 扫码登录
       </div>
     </div>
-    <div class="admin-card-header-right">
+    <div class="admin-card-header-right" style="display: flex; gap: 8px; align-items: center;">
+      <select name="profile_name"
+              onchange="location.href='<%= request.path %>?profile_name=' + this.value"
+              class="admin-input" style="width: auto;">
+        <option value="domestic01" <%= "selected" if @profile_name == "domestic01" %>>domestic01</option>
+        <option value="domestic02" <%= "selected" if @profile_name == "domestic02" %>>domestic02</option>
+      </select>
       <button type="button" onclick="location.reload()" class="admin-button-secondary">
         刷新二维码
       </button>
