@@ -5,7 +5,7 @@
   扫码登录视频号账号（profile: domestic01）
 <% end %>
 
-<div class="admin-card" style="max-width: 560px;">
+<div class="admin-card" style="max-width: 640px;">
   <div class="admin-card-header">
     <div>
       <div class="admin-card-title">
@@ -36,7 +36,7 @@
     <div style="display: flex; flex-direction: column; align-items: center; padding: 24px;">
       <img src="<%= @qrcode_data_uri %>"
            alt="视频号登录二维码"
-           style="width: 280px; height: 280px; border: 1px solid var(--border-tertiary); border-radius: 8px;" />
+           style="width: 560px; height: 560px; border: 1px solid var(--border-tertiary); border-radius: 8px;" />
 
       <div style="margin-top: 16px;">
         <% status_text = case @login_status
