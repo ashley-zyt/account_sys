@@ -12,63 +12,87 @@
         视频号登录二维码
       </div>
       <div class="admin-card-subtitle">
-        使用手机视频号 App 扫码登录
+        选择 profile 后点击「获取二维码」
       </div>
     </div>
     <div class="admin-card-header-right" style="display: flex; gap: 8px; align-items: center;">
-      <select name="profile_name"
-              onchange="location.href='<%= request.path %>?profile_name=' + this.value"
-              class="admin-input" style="width: auto;">
+      <select name="profile_name" id="profile-select" class="admin-input" style="width: auto;">
         <option value="domestic01" <%= "selected" if @profile_name == "domestic01" %>>domestic01</option>
         <option value="domestic02" <%= "selected" if @profile_name == "domestic02" %>>domestic02</option>
       </select>
-      <button type="button" onclick="location.reload()" class="admin-button-secondary">
-        刷新二维码
+      <button type="button" onclick="fetchQrcode()" class="admin-button-primary">
+        获取二维码
       </button>
     </div>
   </div>
 
-  <% if @error %>
-    <div style="padding: 40px 24px; text-align: center;">
-      <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
-      <div style="color: var(--danger); font-size: 14px; margin-bottom: 8px;">
-        <%= @error %>
-      </div>
-      <div style="color: var(--text-muted); font-size: 12px;">
-        请确认远端接口已返回 base64 编码的 qrcode_image 后重试
+  <div id="qrcode-result">
+    <div style="display: flex; flex-direction: column; align-items: center; padding: 60px 24px; text-align: center;">
+      <div style="color: var(--text-muted); font-size: 14px;">
+        点击上方「获取二维码」按钮开始请求登录二维码
       </div>
     </div>
-  <% else %>
-    <div style="display: flex; flex-direction: column; align-items: center; padding: 24px;">
-      <img src="<%= @qrcode_data_uri %>"
-           alt="视频号登录二维码"
-           style="width: 560px; height: 560px; border: 1px solid var(--border-tertiary); border-radius: 8px;" />
-
-      <div style="margin-top: 16px;">
-        <% status_text = case @login_status
-           when "waiting" then "等待扫码"
-           when "scanned" then "已扫码，等待确认"
-           when "success" then "登录成功"
-           when "expired" then "二维码已过期"
-           when "failed", "error" then "登录失败"
-           else (@login_status.presence || "未知状态")
-           end %>
-        <% status_color = case @login_status
-           when "success" then "var(--success)"
-           when "expired", "failed", "error" then "var(--danger)"
-           when "scanned" then "var(--warning)"
-           else "var(--accent)"
-           end %>
-        <span class="admin-pill-status" style="color: <%= status_color %>; border: 1px solid <%= status_color %>;">
-          登录状态：<%= status_text %>
-        </span>
-      </div>
-
-      <% if @profile_id.present? %>
-        <div style="margin-top: 10px; color: var(--text-muted); font-size: 12px;">
-          profile_id：<%= @profile_id %>
-        </div>
-      <% end %>
-    </div>
-  <% end %>
+  </div>
 </div>
+
+<script>
+  function statusText(s) {
+    switch (s) {
+      case "waiting": return "等待扫码";
+      case "scanned": return "已扫码，等待确认";
+      case "success": return "登录成功";
+      case "already_logged_in": return "已登录";
+      case "expired": return "二维码已过期";
+      case "failed": case "error": return "登录失败";
+      default: return (s || "未知状态");
+    }
+  }
+
+  function statusColor(s) {
+    switch (s) {
+      case "success": case "already_logged_in": return "var(--success)";
+      case "expired": case "failed": case "error": return "var(--danger)";
+      case "scanned": return "var(--warning)";
+      default: return "var(--accent)";
+    }
+  }
+
+  function fetchQrcode() {
+    var profile = document.getElementById('profile-select').value;
+    var result = document.getElementById('qrcode-result');
+    result.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted);">加载中...</div>';
+
+    fetch('<%= request.path %>_data?profile_name=' + profile, {
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin'
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.type === 'error' || data.error_info) {
+          result.innerHTML =
+            '<div style="text-align:center;padding:40px 24px;">' +
+              '<div style="font-size:32px;margin-bottom:12px;">⚠️</div>' +
+              '<div style="color:var(--danger);font-size:14px;">' + (data.error_info || '请求失败') + '</div>' +
+            '</div>';
+        } else if (data.login_status === 'already_logged_in') {
+          result.innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;padding:60px 24px;">' +
+              '<div style="font-size:48px;margin-bottom:16px;">✓</div>' +
+              '<div style="color:var(--success);font-size:16px;font-weight:500;">该账号已登录，无需扫码</div>' +
+              (data.profile_id ? '<div style="margin-top:10px;color:var(--text-muted);font-size:12px;">profile_id：' + data.profile_id + '</div>' : '') +
+            '</div>';
+        } else {
+          var color = statusColor(data.login_status);
+          result.innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;padding:24px;">' +
+              '<img src="' + data.qrcode_data_uri + '" alt="视频号登录二维码" style="width:560px;height:560px;border:1px solid var(--border-tertiary);border-radius:8px;" />' +
+              '<div style="margin-top:16px;"><span class="admin-pill-status" style="color:' + color + ';border:1px solid ' + color + ';">登录状态：' + statusText(data.login_status) + '</span></div>' +
+              (data.profile_id ? '<div style="margin-top:10px;color:var(--text-muted);font-size:12px;">profile_id：' + data.profile_id + '</div>' : '') +
+            '</div>';
+        }
+      })
+      .catch(function (e) {
+        result.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">请求失败：' + e.message + '</div>';
+      });
+  }
+</script>

@@ -67,13 +67,16 @@ class Admin::AccountsController < Admin::BaseController
 		redirect_to admin_accounts_path, notice: "账号「#{@account.account_name}」已删除"
 	end
 
-	# 获取视频号登录二维码（代理转发到远端接口，带鉴权），渲染为二维码页面
+	# 视频号登录二维码页面（仅渲染页面，不自动请求，点击按钮后由前端 fetch 触发）
 	# GET /admin/accounts/shipinhao_login_qrcode?profile_name=domestic01
 	def shipinhao_login_qrcode
-		profile_name = params[:profile_name].presence || "domestic01"
-		profile_name = "domestic01" unless %w[domestic01 domestic02].include?(profile_name)
-		@profile_name = profile_name
+		@profile_name = valid_profile_name(params[:profile_name])
+	end
 
+	# 获取视频号登录二维码数据（代理转发到远端接口，带鉴权），返回 JSON
+	# GET /admin/accounts/shipinhao_login_qrcode_data?profile_name=domestic01
+	def shipinhao_login_qrcode_data
+		profile_name = valid_profile_name(params[:profile_name])
 		url = "http://47.98.149.236:8080/accounts/shipinhao_login_qrcode?profile_name=#{profile_name}"
 		response = RemoteApiClient.get(url, open_timeout: 30, read_timeout: 60)
 		body = response.body.to_s.dup.force_encoding('UTF-8')
@@ -84,26 +87,37 @@ class Admin::AccountsController < Admin::BaseController
 			nil
 		end
 
-		@login_status = data&.dig("login_status").to_s
-		@profile_id   = data&.dig("profile_id").to_s
-		qrcode        = data&.dig("qrcode_image").to_s
+		return render json: { type: "error", error_info: "远端响应非JSON(HTTP #{response.code})" } if data.nil?
 
-		if data.nil?
-			@error = "远端响应非JSON(HTTP #{response.code})"
-		elsif qrcode.blank?
-			@error = "二维码数据为空"
-		elsif qrcode.match?(/\A[A-Za-z0-9+\/=]+\z/)
-			# base64 编码的 PNG → 直接拼 data URI
-			@qrcode_data_uri = "data:image/png;base64,#{qrcode}"
-		else
-			# 远端返回的是原始二进制（已损坏，应改为 base64 返回）
-			@error = "二维码数据格式异常：远端应返回 base64 编码，当前返回的是原始二进制且已损坏"
+		login_status = data.dig("login_status").to_s
+		profile_id   = data.dig("profile_id").to_s
+		qrcode       = data.dig("qrcode_image").to_s
+
+		# 已登录，无需扫码（无 qrcode_image 字段）
+		return render json: { type: "success", login_status: login_status, profile_id: profile_id } if login_status == "already_logged_in"
+
+		return render json: { type: "error", error_info: "二维码数据为空" } if qrcode.blank?
+
+		unless qrcode.match?(/\A[A-Za-z0-9+\/=]+\z/)
+			return render json: { type: "error", error_info: "二维码数据格式异常：远端应返回 base64 编码" }
 		end
+
+		render json: {
+			type: "success",
+			login_status: login_status,
+			profile_id: profile_id,
+			qrcode_data_uri: "data:image/png;base64,#{qrcode}"
+		}
 	rescue => e
-		@error = "请求异常: #{e.class} #{e.message}"
+		render json: { type: "error", error_info: "请求异常: #{e.class} #{e.message}" }
 	end
 
 	private
+
+	def valid_profile_name(value)
+		name = value.presence || "domestic01"
+		%w[domestic01 domestic02].include?(name) ? name : "domestic01"
+	end
 
 	def back_to_accounts_list(notice)
 		opts = {}
