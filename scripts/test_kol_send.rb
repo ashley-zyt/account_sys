@@ -8,7 +8,7 @@
 # 参数（按顺序）：
 #   1. KOL_ID       必填
 #   2. 消息内容      可选，缺省走首次触达模板（模板缺变量会报错）
-#   3. 联系方式ID    可选，缺省取该 KOL 优先级最高的可用渠道
+#   3. 联系方式ID    可选，缺省取「当前联系渠道」，不管是否已联系过（临时测试用）
 #   4. 账号ID       可选，缺省自动分配一个可用内部账号
 #
 # 注意：这是真实发送，会给对方真的发一条私信，请确认无误后再执行。
@@ -41,6 +41,14 @@ if contact_id.present?
   contact = kol.kol_contacts.find_by(id: contact_id)
   if contact.nil?
     puts "未找到联系方式 ##{contact_id}（该 KOL 的联系方式见上方列表）"
+    exit 1
+  end
+else
+  # 【临时测试】不管是否联系过都可继续发：
+  # 优先用当前联系渠道，否则取优先级最高的可发私信渠道（不再限定 status=未联系）
+  contact = kol.current_contact || kol.kol_contacts.where(messaging_enabled: true).order(:priority, :id).first
+  if contact.nil?
+    puts "该 KOL 没有可发私信的联系方式"
     exit 1
   end
 end
