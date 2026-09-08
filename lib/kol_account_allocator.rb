@@ -12,6 +12,8 @@ class KolAccountAllocator
   SLEEP_HOURS = 24
   # 当前已接通 twitter / tiktok / instagram / facebook
   SUPPORTED_PLATFORMS = %w[twitter tiktok instagram facebook].freeze
+  # 无发文数据、无需按浏览量评分的平台（直接返回全部正常账号）
+  SKIP_POST_SCORING_PLATFORMS = %w[facebook].freeze
 
   class << self
     def supported_platform?(platform)
@@ -43,6 +45,12 @@ class KolAccountAllocator
     def ordered_candidates(platform)
       account_ids = Account.active.where(platform: platform).pluck(:id)
       return [] if account_ids.empty?
+
+      # 无发文数据的平台（如 facebook）跳过浏览量评分，直接返回全部正常账号，
+      # 按「最久未使用」优先，兼顾账号轮询平衡
+      if SKIP_POST_SCORING_PLATFORMS.include?(platform.to_s)
+        return Account.where(id: account_ids).order(:last_used_at, :id).to_a
+      end
 
       # 按发文日期倒序拉取每个账号的浏览量，再逐个账号截取最近 7 条
       stats = PostStat.where(account_id: account_ids)
