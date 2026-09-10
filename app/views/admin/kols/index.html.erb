@@ -37,6 +37,7 @@
     </div>
     <div class="admin-card-header-right">
       <span class="admin-tag">共 <%= @kols.total_count %> 条</span>
+      <%= link_to "批量导入", import_admin_kols_path, class: "admin-button-secondary" %>
       <%= link_to "录入 KOL", new_admin_kol_path, class: "admin-button-primary" %>
       <%= link_to "消息模板", admin_message_templates_path, class: "admin-button-secondary" %>
     </div>

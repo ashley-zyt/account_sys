@@ -19,6 +19,79 @@ class Admin::KolsController < Admin::BaseController
     @variables_incomplete_count = Kol.where(variables_incomplete: true).count
   end
 
+  # 批量导入页（下载模板 + 上传 + 预览）
+  def import
+  end
+
+  # 下载导入模板（生成 xlsx）
+  def import_template
+    path = Rails.root.join("tmp", "kol_import_template_#{Process.pid}_#{Time.now.to_i}.xlsx").to_s
+    KolImporter.generate_template(path)
+    data = File.binread(path)
+    File.delete(path) rescue nil
+    send_data data, filename: "KOL批量导入模板.xlsx",
+                    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  end
+
+  # 上传文件并预览（解析 + 校验 + 查重）
+  def import_upload
+    file = params[:file]
+    if file.blank?
+      redirect_to import_admin_kols_path, alert: "请选择要上传的 Excel 文件"
+      return
+    end
+
+    tmp_path = Rails.root.join("tmp", "kol_import_#{Process.pid}_#{Time.now.to_i}.xlsx").to_s
+    File.binwrite(tmp_path, file.read)
+
+    begin
+      rows = KolImporter.parse(tmp_path)
+      if rows.empty?
+        File.delete(tmp_path) rescue nil
+        redirect_to import_admin_kols_path, alert: "文件中没有可解析的数据行（请使用模板填写）"
+        return
+      end
+      result = KolImporter.validate_all(rows)
+      session[:kol_import_file] = tmp_path
+      @valid = result[:valid]
+      @invalid = result[:invalid]
+      render :import
+    rescue => e
+      File.delete(tmp_path) rescue nil
+      redirect_to import_admin_kols_path, alert: "文件解析失败: #{e.message}"
+    end
+  end
+
+  # 确认导入
+  def import_confirm
+    tmp_path = session[:kol_import_file]
+    if tmp_path.blank? || !File.exist?(tmp_path)
+      redirect_to import_admin_kols_path, alert: "导入会话已过期，请重新上传"
+      return
+    end
+
+    import_result = nil
+    error = nil
+    begin
+      rows = KolImporter.parse(tmp_path)
+      result = KolImporter.validate_all(rows)
+      import_result = KolImporter.import!(result[:valid])
+    rescue => e
+      error = e.message
+    ensure
+      File.delete(tmp_path) if File.exist?(tmp_path)
+      session.delete(:kol_import_file)
+    end
+
+    if error
+      redirect_to import_admin_kols_path, alert: "导入失败: #{error}"
+    else
+      notice = "导入完成：新增 #{import_result[:created]} 个 KOL、#{import_result[:contacts]} 个联系方式"
+      notice += "，失败 #{import_result[:failed].size} 条" if import_result[:failed].any?
+      redirect_to admin_kols_path, notice: notice
+    end
+  end
+
   def show
     @contacts = @kol.kol_contacts.order(priority: :asc, id: :asc)
     @messages = @kol.kol_messages

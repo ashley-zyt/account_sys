@@ -125,6 +125,12 @@ Rails.application.routes.draw do
 
     # KOL 自动化触达与管理模块
     resources :kols do
+      collection do
+        get :import
+        get :import_template
+        post :import_upload
+        post :import_confirm
+      end
       member do
         post :activate
         post :deactivate

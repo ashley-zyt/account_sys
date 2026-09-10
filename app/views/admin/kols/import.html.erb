@@ -1,0 +1,103 @@
+<% content_for :page_title do %>
+  批量导入 KOL
+<% end %>
+<% content_for :page_subtitle do %>
+  下载模板填写后上传，支持一行一个联系方式、同名 KOL 自动合并
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        批量导入 KOL
+      </div>
+      <div class="admin-card-subtitle">
+        步骤：下载模板 → 填写数据 → 上传预览 → 确认导入
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "下载导入模板", import_template_admin_kols_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <% if @valid.nil? %>
+    <div style="margin-top: 12px;">
+      <div class="admin-section-subtitle" style="margin-bottom: 12px;">
+        支持 .xlsx 格式。模板列：KOL名称、所属领域、归属人、国家/地区、使用语言、粉丝量级、平台、昵称/账号、主页链接、可发私信、优先级、备注。
+      </div>
+      <%= form_with url: import_upload_admin_kols_path, method: :post, multipart: true, class: "admin-form" do %>
+        <div style="display: flex; gap: 12px; align-items: flex-end;">
+          <div style="flex: 1;">
+            <div class="admin-field-label">选择 Excel 文件</div>
+            <%= file_field_tag :file, class: "admin-input", accept: ".xlsx" %>
+          </div>
+          <button type="submit" class="admin-button-primary">上传预览</button>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div style="margin-top: 12px;">
+      <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+        <div class="admin-metric">
+          <div class="admin-metric-label">可导入</div>
+          <div class="admin-metric-value" style="color: var(--success);"><%= @valid.size %></div>
+        </div>
+        <div class="admin-metric">
+          <div class="admin-metric-label">错误</div>
+          <div class="admin-metric-value" style="color: var(--danger);"><%= @invalid.size %></div>
+        </div>
+      </div>
+
+      <% if @invalid.any? %>
+        <div class="admin-section-title" style="margin-bottom: 8px;">错误行（导入时将被跳过）</div>
+        <div class="admin-table-wrapper admin-table-scroll" style="max-height: 300px;">
+          <table class="admin-table">
+            <thead>
+              <tr><th>行号</th><th>原因</th></tr>
+            </thead>
+            <tbody>
+              <% @invalid.each do |iv| %>
+                <tr>
+                  <td><span class="admin-label-muted">第 <%= iv[:row_no] %> 行</span></td>
+                  <td style="color: #f87171;"><%= iv[:error] %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+
+      <% if @valid.any? %>
+        <div class="admin-section-title" style="margin: 12px 0 8px;">可导入数据（同名 KOL 将合并联系方式）</div>
+        <div class="admin-table-wrapper admin-table-scroll" style="max-height: 300px;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>KOL名称</th><th>领域</th><th>归属人</th><th>平台</th><th>主页链接</th><th>可发私信</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @valid.each do |v| %>
+                <tr>
+                  <td><%= v[:name] %></td>
+                  <td><%= v[:domain_name] %></td>
+                  <td><%= v[:owner] %></td>
+                  <td><%= v[:platform] %></td>
+                  <td style="word-break: break-all;"><%= v[:url] %></td>
+                  <td><%= v[:messaging_enabled] ? "是" : "否" %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+
+      <div style="display: flex; gap: 12px; margin-top: 16px;">
+        <% if @valid.any? %>
+          <%= button_to "确认导入 #{@valid.size} 条", import_confirm_admin_kols_path, method: :post, class: "admin-button-primary", data: { turbo_confirm: "确定导入这 #{@valid.size} 条数据吗？导入后 KOL 默认为「未开始」状态。" } %>
+        <% end %>
+        <%= link_to "重新上传", import_admin_kols_path, class: "admin-button-secondary" %>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -65,6 +65,10 @@ gem 'dotenv-rails'
 gem 'openai'
 
 gem 'httparty'
+
+# Excel 导入/导出（KOL 批量导入）
+gem 'roo', '~> 2.10'       # 读取 .xlsx
+gem 'write_xlsx', '~> 1.10' # 生成 .xlsx 模板
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri mingw x64_mingw ]
