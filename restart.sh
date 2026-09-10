@@ -52,7 +52,7 @@ sleep 2
 
 echo "===== 启动 Puma ====="
 mkdir -p "$APP_DIR/tmp/pids" "$APP_DIR/log"
-nohup bundle exec rails s puma -e "$RAILS_ENV" -b 0.0.0.0 -p "$PORT" > "$BOOT_LOG" 2>&1 &
+nohup bundle exec rails s -u puma -e "$RAILS_ENV" -b 0.0.0.0 -p "$PORT" > "$BOOT_LOG" 2>&1 &
 
 sleep 3
 
