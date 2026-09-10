@@ -1,5 +1,5 @@
 class WarmupScheduler
-  # 单次请求最长10分钟
+  # 单次请求最长7分钟
   TIMEOUT_SECONDS = 420
   # 账号间等待时间
   INTER_ACCOUNT_PAUSE_MIN = 20
