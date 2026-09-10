@@ -6,6 +6,8 @@ class Admin::AccountStatsController < Admin::BaseController
     @stale_stats = Util.get_stale_accounts
 
     params[:q] ||= {}
+    # 默认筛选「正常」状态的账号（账号数据统计只关心正常账号，与未更新提示口径一致）
+    params[:q][:status_eq] = Account.statuses['正常'] unless params[:q].key?(:status_eq)
     # 清除空字符串参数，避免 ransack 用空字符串过滤返回空结果
     params[:q].reject! { |_, v| v.blank? }
 
