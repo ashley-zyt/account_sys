@@ -162,6 +162,23 @@
     <% else %>
       <div class="admin-empty-state">暂无趋势数据</div>
     <% end %>
+
+    <%# 今日数据更新进度提示 %>
+    <% if @stale_stats.present? %>
+      <% post_stale = @stale_stats[:post_stats_stale].size %>
+      <% stat_stale = @stale_stats[:stat_stale].size %>
+      <div style="margin: 0 16px 16px; padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.6; background: rgba(251, 146, 60, 0.08); border: 1px solid rgba(251, 146, 60, 0.3);">
+        <% if post_stale.zero? && stat_stale.zero? %>
+          <span style="color: #34d399;">✅ 今日数据已全部更新完成</span>
+        <% else %>
+          <span style="color: #fdba74;">⚠️ 今日数据更新中：</span>
+          <span style="color: #e2e8f0;">
+            还有 <strong style="color: #fbbf24;"><%= post_stale %></strong> 个账号的发文数据、
+            <strong style="color: #fbbf24;"><%= stat_stale %></strong> 个账号的账号数据未更新完成
+          </span>
+        <% end %>
+      </div>
+    <% end %>
   </div>
 
   <%# Top5 账号增长对比 %>

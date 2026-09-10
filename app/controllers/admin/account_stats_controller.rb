@@ -2,6 +2,9 @@ class Admin::AccountStatsController < Admin::BaseController
   # 账号总量快照统计（account_stats 日快照表）
   # 核心功能：每个账号最新累计快照 + 粉丝变化趋势（日增/7日增/30日走势图）
   def index
+    # 今日未更新数据统计（发文数据 + 账号数据，供趋势图下方提示）
+    @stale_stats = Util.get_stale_accounts
+
     params[:q] ||= {}
     # 清除空字符串参数，避免 ransack 用空字符串过滤返回空结果
     params[:q].reject! { |_, v| v.blank? }
