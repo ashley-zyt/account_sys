@@ -148,9 +148,9 @@ end
 
 
 # ==================== 抖音/视频号 账号登录状态检查 ====================
-# 每天凌晨 03:30 检查两个平台账号是否登录，未登录时通过钉钉提醒
+# 每天凌晨 15:30 检查两个平台账号是否登录，未登录时通过钉钉提醒
 set :output, "log/domestic_login_status.log"
-every :day, at: '03:30' do
+every :day, at: '15:30' do
   runner 'DomesticLoginStatusChecker.run'
 end
 
