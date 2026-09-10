@@ -1,15 +1,17 @@
 # KOL 批量导入服务（Excel .xlsx）
 #
 # 支持：
-#   - 生成导入模板（write_xlsx）
+#   - 生成导入模板（write_xlsx）：固定列 + 动态「消息变量」列
 #   - 解析上传的 xlsx（roo）
 #   - 校验 + 查重 + 同名聚合预览
-#   - 确认导入（创建 Kol + KolContact + name 变量）
+#   - 确认导入（创建 Kol + KolContact + 变量值）
 #
 # 模板列（一行 = 一个 KOL 的一个联系方式；同名 KOL 自动聚合到同一 KOL）：
-#   KOL名称 | 所属领域 | 归属人 | 国家/地区 | 使用语言 | 粉丝量级 | 平台 | 昵称/账号 | 主页链接 | 可发私信 | 优先级 | 备注
+#   固定列：KOL名称 | 所属领域 | 归属人 | 国家/地区 | 使用语言 | 粉丝量级 | 平台 | 昵称/账号 | 主页链接 | 可发私信 | 优先级 | 备注
+#   变量列（动态，来自 MessageVariable）：如 称呼/姓名(name) | 邮箱(email) | 公司/品牌(company)
+#     - name 变量留空时自动 = KOL名称；填了则用填写的值（可自定义称呼）
 class KolImporter
-  COLUMNS = %w[KOL名称 所属领域 归属人 国家/地区 使用语言 粉丝量级 平台 昵称/账号 主页链接 可发私信 优先级 备注].freeze
+  BASE_COLUMNS = %w[KOL名称 所属领域 归属人 国家/地区 使用语言 粉丝量级 平台 昵称/账号 主页链接 可发私信 优先级 备注].freeze
 
   # 平台名别名 → 枚举 key（兼容中英文常见写法）
   PLATFORM_ALIASES = {
@@ -26,6 +28,18 @@ class KolImporter
   TRUE_VALUES = %w[是 1 true yes y t 对 有效].freeze
 
   class << self
+    # 变量列（动态，来自全局变量字典 MessageVariable）
+    # 返回 [{ identifier:, label: }]，label 用于模板列头
+    def variable_columns
+      MessageVariable.order(:id).map do |v|
+        { identifier: v.identifier, label: "#{v.name}(#{v.identifier})" }
+      end
+    end
+
+    def all_columns
+      BASE_COLUMNS + variable_columns.map { |v| v[:label] }
+    end
+
     # 生成导入模板 xlsx 到指定路径
     def generate_template(file_path)
       require "write_xlsx"
@@ -33,12 +47,15 @@ class KolImporter
       ws = workbook.add_worksheet("KOL导入模板")
 
       header = workbook.add_format(bold: 1, bg_color: "#dbeafe", border: 1, align: "center")
-      ws.set_column(0, COLUMNS.size - 1, 16)
+      cols = all_columns
+      ws.set_column(0, cols.size - 1, 16)
 
-      COLUMNS.each_with_index { |c, i| ws.write(0, i, c, header) }
+      cols.each_with_index { |c, i| ws.write(0, i, c, header) }
 
       example = ["hanfuxiu", "文旅", "杜维", "美国", "英文", "0万-10万",
                  "facebook", "hanfuxiu", "https://www.facebook.com/profile.php?id=123", "是", "0", "示例行，请删除"]
+      # 变量列示例留空（name 自动取 KOL名称，其余可选）
+      example += [""] * variable_columns.size
       example.each_with_index { |v, i| ws.write(1, i, v) }
 
       workbook.close
@@ -118,8 +135,9 @@ class KolImporter
             )
             contacts += 1
           end
-          # 自动把 name 变量设为 KOL 名称（最常见的模板变量）
-          kol.set_variable!("name", kol.name)
+
+          # 写入变量：name 变量留空则自动用 KOL 名称，其余按列填写
+          write_variables(kol, first[:variables])
           created += 1
         rescue => e
           failed << { name: name, error: e.message }
@@ -160,6 +178,13 @@ class KolImporter
       tier_min, tier_max = parse_tier(tier)
       return fail_row("粉丝量级「#{tier}」不合法") if tier.present? && tier_min.nil? && tier_max.nil?
 
+      # 变量列（BASE_COLUMNS.size 之后），只收集非空的
+      variables = {}
+      variable_columns.each_with_index do |vc, i|
+        val = cell(cells, BASE_COLUMNS.size + i)
+        variables[vc[:identifier]] = val if val.present?
+      end
+
       {
         ok: true,
         data: {
@@ -168,7 +193,8 @@ class KolImporter
           platform: platform_key, nickname: nickname, url: url,
           messaging_enabled: parse_bool(dm),
           priority: priority.present? ? priority.to_i : 0,
-          notes: notes.presence
+          notes: notes.presence,
+          variables: variables
         }
       }
     end
@@ -213,6 +239,15 @@ class KolImporter
         notes: d[:notes],
         status: :reserved # 导入默认「未开始」，不自动触达
       )
+    end
+
+    # 写入变量值：name 变量留空则自动 = KOL 名称，其余按模板列填写
+    def write_variables(kol, variables)
+      vars = variables || {}
+      kol.set_variable!("name", vars["name"].presence || kol.name)
+      vars.each do |key, value|
+        kol.set_variable!(key, value) unless key == "name"
+      end
     end
   end
 end

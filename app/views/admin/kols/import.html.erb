@@ -23,7 +23,7 @@
   <% if @valid.nil? %>
     <div style="margin-top: 12px;">
       <div class="admin-section-subtitle" style="margin-bottom: 12px;">
-        支持 .xlsx 格式。模板列：KOL名称、所属领域、归属人、国家/地区、使用语言、粉丝量级、平台、昵称/账号、主页链接、可发私信、优先级、备注。
+        支持 .xlsx 格式。模板固定列：KOL名称、所属领域、归属人、国家/地区、使用语言、粉丝量级、平台、昵称/账号、主页链接、可发私信、优先级、备注；末尾为「消息变量」列（如 称呼/姓名(name)、邮箱(email)、公司/品牌(company)），称呼留空时自动取 KOL 名称。
       </div>
       <%= form_with url: import_upload_admin_kols_path, method: :post, multipart: true, class: "admin-form" do %>
         <div style="display: flex; gap: 12px; align-items: flex-end;">
