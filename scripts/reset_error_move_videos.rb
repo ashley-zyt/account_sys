@@ -1,13 +1,14 @@
-# 将指定 ID 的搬运视频：清除其队列任务 + 重置为「待剪映」状态（清掉错误的成片视频）
+# 将指定 ID 的搬运视频：清除其队列任务 + 重置为「待剪映」状态
 #
 # 用法：
 #   bundle exec rails runner scripts/reset_error_move_videos.rb            # 预览（只统计，不改数据）
 #   bundle exec rails runner scripts/reset_error_move_videos.rb confirm    # 执行
 #
 # 处理逻辑（每个视频）：
-#   1. 删除对应的 move_tasks（队列数据）及其关联的 task_logs
+#   1. 删除对应的 move_tasks（队列数据，含成片 oss_url）及其关联的 task_logs
+#      —— 注：剪映成片 URL 已迁移到 move_task.oss_url（move_videos 已无 processed_oss_url 字段），
+#         所以删队列任务 = 清掉错误成片
 #   2. 将 move_video 状态重置为 pending_process（待剪映），清空：
-#      - processed_oss_url（错误的成片视频，不保留）
 #      - processed_at / process_started_at（剪映时间戳）
 #      - error_msg（错误信息）
 #   3. 保留 raw_oss_url（原始视频，作为重新剪映的输入）
@@ -32,14 +33,14 @@ videos.each do |v|
   tasks = MoveTask.where(move_video_id: v.id)
   task_count = tasks.count
   uuids = tasks.pluck(:task_uuid)
+  oss_count = tasks.where.not(oss_url: [nil, '']).count
   log_count = TaskLog.where(task_uuid: uuids).count
   total_tasks += task_count
   total_logs += log_count
 
   puts "  视频 ##{v.id} [主题=#{v.theme}]"
-  puts "    当前状态：#{v.human_status}  |  队列任务 #{task_count} 条  |  关联日志 #{log_count} 条"
+  puts "    当前状态：#{v.human_status}  |  队列任务 #{task_count} 条（其中含成片 oss_url #{oss_count} 条）  |  关联日志 #{log_count} 条"
   puts "    raw_oss_url（原始，保留）：#{v.raw_oss_url.present? ? '有' : '无'}"
-  puts "    processed_oss_url（成片，清空）：#{v.processed_oss_url.present? ? '有' : '无'}"
 end
 
 puts ""
@@ -64,7 +65,6 @@ ActiveRecord::Base.transaction do
 
     v.update_columns(
       status: MoveVideo.statuses[:pending_process],
-      processed_oss_url: nil,
       processed_at: nil,
       process_started_at: nil,
       error_msg: nil,
