@@ -6,8 +6,8 @@
 #   - 统一提供 text / markdown 两种消息类型，统一 HTTP 发送、错误处理与日志
 #
 # 使用示例：
-#   Dingtalk.send_text(:yanghao, "检测到浏览器被占用")
-#   Dingtalk.send_markdown(:publish_result, "发布结果", "正文内容")
+#   Dingtalk.send_text(:agic_zyt, "检测到浏览器被占用")
+#   Dingtalk.send_markdown(:publish_status, "发布状况", "正文内容")
 module Dingtalk
   CONFIG_PATH = Rails.root.join('config/dingtalk.yml')
 
@@ -42,7 +42,7 @@ module Dingtalk
   end
 
   # 发送纯文本消息到指定机器人
-  # @param robot   [Symbol/String] 机器人名称，如 :yanghao / :publish_result
+  # @param robot   [Symbol/String] 机器人 key，如 :agic_zyt / :publish_status
   # @param content [String] 消息正文（纯文本）
   # @return [Boolean] 是否发送成功（未配置时返回 false）
   def self.send_text(robot, content)

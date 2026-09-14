@@ -4,8 +4,8 @@
 # keyword 为钉钉机器人「自定义关键词」安全设置，发送时若消息内容不含该关键词会自动补齐。
 #
 # 使用方式：
-#   Dingtalk.send_text(:yanghao, "检测到浏览器被占用")
-#   Dingtalk.send_markdown(:publish_result, "发布结果", "正文内容")
+#   Dingtalk.send_text(:agic_zyt, "检测到浏览器被占用")
+#   Dingtalk.send_markdown(:publish_status, "发布状况", "正文内容")
 
 robots:
   agic_zyt:            # zyt接收
@@ -16,3 +16,7 @@ robots:
     name: 杜维接收
     webhook_url: "https://oapi.dingtalk.com/robot/send?access_token=33d818901dbc78e73d5a82bc0d1d6ff64d8ef5c76fe9a5731df59c4b7424f1f4"
     keyword: 发布结果
+  publish_status:      # 发布状况（杜维、刘宝珍）
+    name: 发布状况
+    webhook_url: "https://oapi.dingtalk.com/robot/send?access_token=a2691cfdd555bc750a98b43677321fb5e98ddb6ad8fd0091827e2758273a5838"
+    keyword: 发布状况

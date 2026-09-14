@@ -147,6 +147,14 @@ every :day, at: '16:00' do
 end
 
 
+# ==================== 发布状况日报 ====================
+# 每天早上 9:00 统计前一日各平台正常状态账号发文情况（对比前前一日），推送到钉钉「发布状况」群
+set :output, "log/publish_status_report.log"
+every :day, at: '9:00' do
+  runner 'PublishStatusReport.run'
+end
+
+
 # ==================== 抖音/视频号 账号登录状态检查 ====================
 # 每天凌晨 15:30 检查两个平台账号是否登录，未登录时通过钉钉提醒
 set :output, "log/domestic_login_status.log"
