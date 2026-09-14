@@ -234,6 +234,89 @@ class PublishScheduler
     WorkMode.for_model(task.class)&.type_name || 'operation'
   end
 
+  # 给指定账号立即发布一条资源（手动触发，绕过全局调度，直接指定资源）
+  #
+  # 逻辑：
+  #   1. 根据账号工作模式（work_type）确定其资源队列 Model
+  #   2. 优先取该账号已分配（waiting_publish）的任务；否则取一条 pending 资源
+  #      （按平台+主题匹配，规则同 TaskScheduler.assign_resources）直接指派给该账号
+  #   3. 调用 execute_single_task 立即发布（含任务日志、状态流转）
+  #
+  # @param account_id [Integer] 账号 ID
+  # @param task_id    [Integer, nil] 可选：直接指定某条资源的 ID（须属于该账号工作模式的队列）
+  # @return [Hash] { success:, message:, task:, task_type: }
+  def self.publish_for_account(account_id, task_id: nil)
+    account = Account.find_by(id: account_id)
+    return { success: false, message: "账号不存在或已删除（id=#{account_id}）" } unless account
+
+    task_model = account.task_model_for_work_type
+    return { success: false, message: "账号「#{account.account_name}」工作模式=#{account.work_type}，无资源队列，无法发布" } unless task_model
+
+    if account.browser.blank?
+      return { success: false, message: "账号「#{account.account_name}」未绑定指纹浏览器，无法发布" }
+    end
+    if account.browser.machine_ip.blank?
+      return { success: false, message: "账号「#{account.account_name}」绑定的浏览器未设置 machine_ip，无法发布" }
+    end
+
+    # 说明：本方法主要用于测试发布功能，不做「当天已发布过」校验（每天可多次触发）
+
+    task = resolve_task(account, task_model, task_id)
+    return { success: false, message: "账号「#{account.account_name}」无可用资源（waiting_publish/pending 均无匹配平台+主题的记录）" } unless task
+
+    # 资源必须处于待发布状态才能走正常发布流程（success/failed/executing 一律拒绝）
+    unless task.waiting_publish?
+      return { success: false, message: "资源 ##{task.id} 当前状态=#{task.status}，非待发布（waiting_publish），无法执行", task: task }
+    end
+
+    unless execute_single_task(task)
+      return { success: false, message: "资源 ##{task.id} 发布触发失败（状态仍为 waiting_publish）", task: task }
+    end
+
+    {
+      success: true,
+      message: "已为账号「#{account.account_name}」发布资源：#{task_model}##{task.id}（主题=#{task.theme}）",
+      task: task,
+      task_type: task_type_name(task)
+    }
+  end
+
+  # 解析要发布的资源：
+  #   - 指定 task_id 时：校验属于该工作模式队列，pending 则指派给账号，已归属其它账号则报错
+  #   - 未指定时：优先取该账号已分配的 waiting_publish，否则取 pending 并指派
+  def self.resolve_task(account, task_model, task_id)
+    if task_id.present?
+      task = task_model.find_by(id: task_id)
+      return nil unless task
+
+      if task.pending?
+        assign_to_account!(task, account)
+      elsif task.account_id != account.id
+        Rails.logger.warn "[PublishScheduler] 资源 ##{task.id} 已指派给账号 #{task.account_id}，非目标账号 #{account.id}"
+        return nil
+      end
+      return task
+    end
+
+    task = task_model.where(status: :waiting_publish, account_id: account.id).order(:created_at).first
+    return task if task
+
+    pending_task = task_model.where(status: :pending, platform: account.platform, theme: account.theme).order(:created_at).first
+    return nil unless pending_task
+
+    assign_to_account!(pending_task, account)
+    pending_task
+  end
+
+  # 把一条 pending 资源指派给账号（事务+行锁，防止并发重复分配）
+  def self.assign_to_account!(task, account)
+    ActiveRecord::Base.transaction do
+      task.lock!
+      return unless task.pending?
+      task.update!(account_id: account.id, browser_id: account.browser_id, status: :waiting_publish)
+    end
+  end
+
   def self.build_request_data(task)
     # 视频地址字段由注册表决定（oss_url / video_url）
     mode = WorkMode.for_model(task.class)
