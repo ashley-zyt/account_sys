@@ -148,9 +148,9 @@ end
 
 
 # ==================== 发布状况日报 ====================
-# 每天早上 9:00 统计前一日各平台正常状态账号发文情况（对比前前一日），推送到钉钉「发布状况」群
+# 每天晚上 20:00 统计当日各平台正常状态账号发文情况（对比昨日，昨日无快照则以当日数值为基准），推送到钉钉「发布状况」群
 set :output, "log/publish_status_report.log"
-every :day, at: '9:00' do
+every :day, at: '20:00' do
   runner 'PublishStatusReport.run'
 end
 

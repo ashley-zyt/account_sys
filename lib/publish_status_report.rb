@@ -3,29 +3,32 @@
 require 'json'
 require 'fileutils'
 
-# 发布状况日报：每天早上 9:00 推送前一日发文数据概况到钉钉「发布状况」机器人，
+# 发布状况日报：每天晚上 20:00 推送当日发文数据概况到钉钉「发布状况」机器人，
 # 同时把当天的统计结果落一份 JSON 快照，便于后续对比与追溯。
 #
 # 数据口径（报告日与基准日均按同一口径统计，保证可比）：
 #   - 正常状态账号数：status=正常 的账号中，当天（post_stats.post_date = 当日）
 #     有发文记录的去重账号数
 #   - 正常发文数：上述账号当天的发文条数（post_stats 记录数）
-#   - 对比：报告日（昨天） vs 基准日（前天）
+#   - 对比：报告日（今天） vs 基准日（昨天）
 #
-# 说明：账号的 status 只有当前值、无历史快照，因此「账号数」取
-# 「当天有发文的正常状态账号数」，这样才能按日对比出多/少。
+# 说明：
+#   - 账号的 status 只有当前值、无历史快照，因此「账号数」取
+#     「当天有发文的正常状态账号数」，这样才能按日对比出多/少
+#   - 若昨日没有快照记录（如首次运行/任务漏跑），则用今天的数值作为对比基准
+#     先记录着（各平台显示「与昨日持平」），明天起即可按实际数据计算
 #
 # 快照文件：storage/publish_status_snapshots/YYYY-MM-DD.json
 #   - 首写为准（文件已存在则不覆盖），保证「昨天报告里看到的数字」与
 #     「今天报告里作为对比基准的数字」一致，历史数字不会因补采数据而漂移
-#   - 对比时优先读基准日快照；快照缺失则回退为实时查询
+#   - 对比时优先读基准日快照；快照缺失则回退用今天的数值作为基准
 #
 # 相关命令：
 #   手动推送：bundle exec rails runner "PublishStatusReport.run"
 #   查看历史：bundle exec rails runner scripts/publish_status_snapshots.rb
 #   对比两天：bundle exec rails runner scripts/publish_status_snapshots.rb diff 2026-09-12 2026-09-13
 #
-# 调度：config/schedule.rb → every :day, at: '9:00' → PublishStatusReport.run
+# 调度：config/schedule.rb → every :day, at: '20:00' → PublishStatusReport.run
 class PublishStatusReport
   # 【临时测试】先发到 agic_zyt（zyt接收）验证功能，测试通过后改回 :publish_status
   NOTIFY_ROBOT = :agic_zyt
@@ -42,7 +45,7 @@ class PublishStatusReport
   class << self
     # 生成并推送日报（同时落快照）
     def run
-      report_date = Date.yesterday
+      report_date = Date.today
       base_date   = report_date - 1
 
       rows = PLATFORMS.map do |platform, label|
@@ -55,14 +58,14 @@ class PublishStatusReport
       lines = ["#{report_date.strftime('%Y年%m月%d日')}："]
       PLATFORMS.each do |platform, label|
         cur  = rows.find { |r| r[:platform] == platform }[:stats]
-        prev = prev_stats_for(platform, base_date)
+        prev = prev_stats_for(platform, base_date, cur)
         lines << build_line(label, cur, prev)
       end
 
       content = lines.join("\n\n")
       ok = Dingtalk.send_markdown(NOTIFY_ROBOT, '发布状况', content)
       Rails.logger.info "[PublishStatusReport] 快照=#{path || '已存在，未覆盖'}；" \
-                        "推送#{ok ? '成功' : '失败'}（报告日=#{report_date} 基准日=#{base_date}，基准来源=#{prev_source(base_date)}）"
+                        "推送#{ok ? '成功' : '失败'}（报告日=#{report_date} 基准日=#{base_date}，基准来源=#{prev_source(base_date, rows)}）"
       ok
     rescue => e
       Rails.logger.error "[PublishStatusReport] 执行异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
@@ -141,13 +144,15 @@ class PublishStatusReport
       path
     end
 
-    # 基准日统计：优先取快照，缺失则实时查询
-    def prev_stats_for(platform, date)
+    # 基准日统计：优先取昨日快照；快照缺失（首次运行/漏跑）时，
+    # 按需求用今天的数值作为基准先记录着（各平台显示「与昨日持平」），
+    # 明天起即可按实际数据计算
+    def prev_stats_for(platform, date, fallback)
       snap = load_snapshot(date)
       from_snapshot = snapshot_stats(snap, platform)
       return from_snapshot if from_snapshot
 
-      stats_for(platform, date)
+      fallback
     end
 
     # 默认取快照目录下的所有快照（按日期升序）
@@ -236,8 +241,8 @@ class PublishStatusReport
     end
 
     # 基准日数字来源说明（日志用）
-    def prev_source(date)
-      load_snapshot(date) ? '快照' : '实时查询'
+    def prev_source(date, rows)
+      load_snapshot(date) ? '昨日快照' : '今日数值（昨日无快照，先记录着）'
     end
 
     def signed(number)
