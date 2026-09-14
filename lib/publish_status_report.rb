@@ -6,19 +6,19 @@ require 'fileutils'
 # 发布状况日报：每天晚上 20:00 推送当日发文数据概况到钉钉「发布状况」机器人，
 # 同时把当天的统计结果落一份 JSON 快照，便于后续对比与追溯。
 #
-# 数据口径（报告日与基准日均按同一口径统计，保证可比）：
-#   - 正常状态账号数：status=正常 的账号中，当天（post_stats.post_date = 当日）
-#     有发文记录的去重账号数
-#   - 正常发文数：上述账号当天的发文条数（post_stats 记录数）
+# 数据口径：
+#   - 正常状态账号数：当天统计时 status=正常 的账号总数（每平台），与
+#     Account.where(status: 0, platform: X).count 一致。该值只有当前快照、
+#     无历史，因此跨天对比依赖每日快照文件（昨天取快照值）
+#   - 正常发文数：正常状态账号当天（post_stats.post_date = 当日）的发文条数
 #   - 对比：报告日（今天） vs 基准日（昨天）
 #
 # 说明：
-#   - 账号的 status 只有当前值、无历史快照，因此「账号数」取
-#     「当天有发文的正常状态账号数」，这样才能按日对比出多/少
 #   - 若昨日没有快照记录（如首次运行/任务漏跑），则用今天的数值作为对比基准
 #     先记录着（各平台显示「与昨日持平」），明天起即可按实际数据计算
 #
 # 快照文件：storage/publish_status_snapshots/YYYY-MM-DD.json
+#   - normal_accounts = 当日正常状态账号总数（当前快照值），posts = 当日正常账号发文条数
 #   - 首写为准（文件已存在则不覆盖），保证「昨天报告里看到的数字」与
 #     「今天报告里作为对比基准的数字」一致，历史数字不会因补采数据而漂移
 #   - 对比时优先读基准日快照；快照缺失则回退用今天的数值作为基准
@@ -73,15 +73,16 @@ class PublishStatusReport
     end
 
     # 指定平台、指定日期的发文统计（实时查询）
-    # @return [Hash] { accounts: 正常状态且有发文的账号数, posts: 发文条数 }
+    # @return [Hash] { accounts: 正常状态账号总数（当前快照）, posts: 该日正常账号发文条数 }
     def stats_for(platform, date)
-      scope = PostStat.joins(:account)
-                      .where(accounts: { status: Account.statuses['正常'],
-                                        platform: Account.platforms[platform] })
-                      .where(post_date: date)
       {
-        accounts: scope.distinct.count('post_stats.account_id'),
-        posts:    scope.count
+        accounts: Account.where(status: Account.statuses['正常'],
+                                platform: Account.platforms[platform]).count,
+        posts:    PostStat.joins(:account)
+                          .where(accounts: { status: Account.statuses['正常'],
+                                             platform: Account.platforms[platform] })
+                          .where(post_date: date)
+                          .count
       }
     end
 

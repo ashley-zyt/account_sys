@@ -12,7 +12,8 @@
 #   # 指定两个日期对比（后者显示与前一天的变化：账号数/发文数）
 #   bundle exec rails runner scripts/publish_status_snapshots.rb diff 2026-09-12 2026-09-13
 #
-# 表格单元格含义：账号数/发文数（均为「正常状态且有发文」的账号数与条数）
+# 表格单元格含义：账号数/发文数
+#   账号数 = 当日正常状态账号总数（快照值）；发文数 = 当日正常账号发文条数
 
 args = ARGV.dup
 mode = args.first
