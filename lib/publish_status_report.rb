@@ -3,18 +3,21 @@
 require 'json'
 require 'fileutils'
 
-# 发布状况日报：每天晚上 20:00 推送当日发文数据概况到钉钉「发布状况」机器人，
-# 同时把当天的统计结果落一份 JSON 快照，便于后续对比与追溯。
+# 发布状况日报：每天晚上 20:00 推送前一日（昨天）发文数据概况到钉钉「发布状况」机器人，
+# 同时把昨天的统计结果落一份 JSON 快照，便于后续对比与追溯。
+#
+# 为什么报告昨天而不是今天：发文数据有采集滞后，当天发文要到次日才抓取完整，
+# 所以报告日取「昨天」（数据已完整），对比「前天」。
 #
 # 数据口径：
-#   - 正常状态账号数：当天统计时 status=正常 的账号总数（每平台），与
+#   - 正常状态账号数：统计时 status=正常 的账号总数（每平台），与
 #     Account.where(status: 0, platform: X).count 一致。该值只有当前快照、
-#     无历史，因此跨天对比依赖每日快照文件（昨天取快照值）
+#     无历史，因此跨天对比依赖每日快照文件（前天取快照值）
 #   - 正常发文数：正常状态账号当天（post_stats.post_date = 当日）的发文条数
-#   - 对比：报告日（今天） vs 基准日（昨天）
+#   - 对比：报告日（昨天） vs 基准日（前天）
 #
 # 说明：
-#   - 若昨日没有快照记录（如首次运行/任务漏跑），则用今天的数值作为对比基准
+#   - 若前天没有快照记录（如首次运行/任务漏跑），则用昨天的数值作为对比基准
 #     先记录着（各平台显示「与昨日持平」），明天起即可按实际数据计算
 #
 # 快照文件：storage/publish_status_snapshots/YYYY-MM-DD.json
@@ -45,7 +48,9 @@ class PublishStatusReport
   class << self
     # 生成并推送日报（同时落快照）
     def run
-      report_date = Date.today
+      # 发文数据存在采集滞后：当天发文要到次日才抓取完整，
+      # 所以报告日取「昨天」（数据已完整），对比「前天」。
+      report_date = Date.yesterday
       base_date   = report_date - 1
 
       rows = PLATFORMS.map do |platform, label|
@@ -145,8 +150,8 @@ class PublishStatusReport
       path
     end
 
-    # 基准日统计：优先取昨日快照；快照缺失（首次运行/漏跑）时，
-    # 按需求用今天的数值作为基准先记录着（各平台显示「与昨日持平」），
+    # 基准日统计：优先取前天快照；快照缺失（首次运行/漏跑）时，
+    # 按需求用昨天的数值作为基准先记录着（各平台显示「与昨日持平」），
     # 明天起即可按实际数据计算
     def prev_stats_for(platform, date, fallback)
       snap = load_snapshot(date)
@@ -243,7 +248,7 @@ class PublishStatusReport
 
     # 基准日数字来源说明（日志用）
     def prev_source(date, rows)
-      load_snapshot(date) ? '昨日快照' : '今日数值（昨日无快照，先记录着）'
+      load_snapshot(date) ? '前天快照' : '昨日数值（前天无快照，先记录着）'
     end
 
     def signed(number)
