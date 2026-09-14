@@ -21,10 +21,10 @@ def assert_set(label, actual, expected)
   ok(label, a == e, "实际=#{a.inspect} 期望=#{e.inspect}")
 end
 
-puts "===== 1. 枚举映射（应与改造前 8 个值完全一致） ====="
+puts "===== 1. 枚举映射（应与预期 9 个值完全一致） ====="
 expected_enum = {
   "视频搬运" => 0, "coze" => 1, "剪映" => 2, "人工运营" => 3,
-  "Grok" => 4, "Heygen" => 5, "花生" => 6, "Notebooklm" => 7
+  "Grok" => 4, "Heygen" => 5, "花生" => 6, "Notebooklm" => 7, "agent" => 8
 }
 ok("Account.work_types", Account.work_types == expected_enum, Account.work_types.inspect)
 
@@ -42,6 +42,10 @@ puts "\n===== 3. 中文名 -> 任务模型 映射 ====="
   ok("#{name} -> #{klass}", m && m.task_model == klass)
 end
 ok("coze 无任务模型", WorkMode.all.find { |x| x.name == 'coze' }&.task_model.nil?)
+ok("agent 无任务模型", WorkMode.all.find { |x| x.name == 'agent' }&.task_model.nil?)
+ok("agent 不参与调度/发布/手动分配/低库存",
+   WorkMode.all.find { |x| x.name == 'agent' }&.then { |m| !m.scheduler_assign && !m.publish && !m.manual_assign && !m.low_stock_track })
+ok("agent 参与仪表盘账号矩阵", WorkMode.dashboard_track_modes.map(&:name).include?('agent'))
 
 puts "\n===== 4. 各调用点集合 ====="
 assert_set("自动分配 scheduler_assign", WorkMode.scheduler_assign_modes.map(&:name), %w[视频搬运 剪映 花生 Notebooklm 人工运营 Grok])

@@ -21,6 +21,7 @@
 #   publish          是否参与 PublishScheduler 发布执行（默认 true）
 #   manual_assign    是否支持 Util 手动分配资源（默认 true）
 #   low_stock_track  是否参与仪表盘低库存预警（默认 false）
+#   dashboard_track  是否参与仪表盘账号资产矩阵（无资源队列的模式默认不参与，需显式开启）
 # ============================================================
 work_modes:
   - key: move
@@ -121,3 +122,21 @@ work_modes:
     sidebar_section: tasks
     video_field: oss_url
     manual_assign: false
+
+  # Agent 模式：视频资源与发布完全走外部 agent 软件，系统内不建资源队列、
+  # 不参与调度分配与发布执行；仅用于账号管理中区分账号归属，
+  # 发文数据采集仍走系统内部（PostDatas 每日采集，与其它模式一致）。
+  - key: agent
+    name: agent
+    icon: "⚡"
+    sort: 80
+    enum_value: 8
+    task_model: null
+    type_name: agent
+    trend_color: "#84cc16"
+    sidebar_section: tasks
+    video_field: null
+    scheduler_assign: false
+    publish: false
+    manual_assign: false
+    dashboard_track: true

@@ -7,8 +7,9 @@ class Admin::DashboardController < Admin::BaseController
 		@today_success_rate = @today_logs_count > 0 ? ((@today_success_count.to_f / @today_logs_count) * 100).round(1) : 0
 		@pending_publish_count = WorkMode.publishable_modes.sum { |m| m.task_model_class.where(status: :waiting_publish).count }
 
-		# 账号资产矩阵（行=工作模式，列=状态汇总，注册表驱动，新增模式自动出现）
-		@account_matrix = WorkMode.resource_modes.map do |mode|
+		# 账号资产矩阵（行=工作模式，列=状态汇总，注册表驱动，新增模式自动出现；
+		# 无资源队列但 dashboard_track: true 的模式（如 agent）也会展示）
+		@account_matrix = WorkMode.dashboard_track_modes.map do |mode|
 			scope = Account.where(work_type: mode.name)
 			# 平台维度明细（点击「详情」弹窗展示）
 			platforms = Account.platforms.keys.map do |pk|

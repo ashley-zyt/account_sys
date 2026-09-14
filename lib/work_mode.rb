@@ -16,7 +16,7 @@ class WorkMode
   ATTRS = %i[
     key name icon short_name sort enum_value task_model type_name
     trend_color sidebar_section video_field
-    scheduler_assign publish manual_assign low_stock_track
+    scheduler_assign publish manual_assign low_stock_track dashboard_track
   ].freeze
 
   attr_reader(*ATTRS)
@@ -37,6 +37,9 @@ class WorkMode
     @publish          = hash.fetch("publish", true)
     @manual_assign    = hash.fetch("manual_assign", true)
     @low_stock_track  = hash.fetch("low_stock_track", false)
+    # 仪表盘账号资产矩阵默认只展示有资源队列的模式（保持历史行为）；
+    # 无资源队列的模式（如 agent）需显式开启 dashboard_track 才会出现在矩阵中
+    @dashboard_track  = hash.fetch("dashboard_track", hash["task_model"].present?)
   end
 
   # 是否有对应的资源队列 Model（coze 等预留枚举值没有）
@@ -163,6 +166,12 @@ class WorkMode
     # 参与低库存预警的工作模式（Dashboard）
     def low_stock_track_modes
       resource_modes.select(&:low_stock_track)
+    end
+
+    # 参与仪表盘账号资产矩阵的工作模式
+    # （有资源队列的模式默认参与；无资源队列的模式需在 yml 中显式 dashboard_track: true）
+    def dashboard_track_modes
+      all.select(&:dashboard_track)
     end
 
     private

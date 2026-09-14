@@ -136,8 +136,8 @@ class Admin::PostStatsController < Admin::BaseController
           stat.data_updated_at&.strftime('%Y-%m-%d %H:%M') || '-',
           case stat.account&.work_type
           when "人工运营" then stat.account&.operator || "-"
-          when "Grok" then "Grok"
-          else "视频搬运"
+          # 其它模式直接显示工作模式名（视频搬运/Grok/agent/coze 等），避免被误标为「视频搬运」
+          else stat.account&.work_type.presence || "-"
           end
         ]
       end
