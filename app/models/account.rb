@@ -134,8 +134,10 @@ class Account < ApplicationRecord
 	end
 
 	# 根据工作模式返回对应的任务模型类（由 WorkMode 注册表查询）
+	# 用枚举名（work_type getter 返回的中文名，如「剪映」）匹配，而不是原始整数值，
+	# 避免账号 work_type 原始值与注册表 enum_value 因历史迁移等原因不一致导致匹配失败。
 	def task_model_for_work_type
-		WorkMode.all.find { |m| m.enum_value == self[:work_type] }&.task_model_class
+		WorkMode.all.find { |m| m.name == work_type }&.task_model_class
 	end
 
 	# 获取最后一次运行的日志
