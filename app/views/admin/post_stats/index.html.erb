@@ -45,6 +45,10 @@
         <%= f.searchable_select :account_platform_eq, @platforms, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">指纹浏览器</label>
+        <%= f.searchable_select :account_browser_id_eq, @browsers, { include_blank: "所有浏览器" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">发文日期</label>
         <div style="display: flex; gap: 8px;">
           <%= f.date_field :post_date_gteq, class: "admin-input admin-filter-input", placeholder: "开始日期" %>

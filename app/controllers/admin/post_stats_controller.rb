@@ -16,6 +16,8 @@ class Admin::PostStatsController < Admin::BaseController
     @platforms = Account.platforms.map { |k, v| [k, v] }
     # 主题选项：去重、排序后的账号主题列表
     @themes = Account.distinct.pluck(:theme).compact.reject(&:blank?).sort.map { |t| [t, t] }
+    # 指纹浏览器选项：[[浏览器名称, id], ...]
+    @browsers = Browser.order(:profile_name).map { |b| [b.profile_name.presence || "浏览器##{b.id}", b.id] }
     
     @current_sort = sort_column
     @current_direction = sort_direction
