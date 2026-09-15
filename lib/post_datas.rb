@@ -58,14 +58,19 @@ class PostDatas
 
     # 4. worker 池并行采集：每个 worker 取一个浏览器分组，非阻塞占用，
     #    忙的分组放回队尾稍后重试（谁空闲谁先走），空闲的执行完再取下一个。
-    pool_size = [groups.size, BrowserOccupationManager::MAX_BROWSER_PER_IP * machine_count].min
-    pool_size = groups.size if pool_size <= 0
+    #    注意：worker 数受数据库连接池大小限制，不能超过连接池，否则 ConnectionTimeoutError。
+    db_pool_size = ActiveRecord::Base.connection_pool.size
+    pool_size = [groups.size, BrowserOccupationManager::MAX_BROWSER_PER_IP * machine_count, db_pool_size].min
+    pool_size = 1 if pool_size <= 0
 
     mutex     = Mutex.new
     queue     = groups.dup          # 待处理浏览器分组（忙的会放回队尾）
     remaining = groups.size         # 尚未完成的分组数
     stats     = { success: 0, fail: 0, failed_items: [] }
     worker_id = 0
+
+    # 释放主线程占用的连接，让 worker 线程能拿满整个连接池
+    ActiveRecord::Base.connection_pool.release_connection
 
     workers = Array.new(pool_size) do
       wid = mutex.synchronize { worker_id += 1 }
