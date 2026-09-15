@@ -34,6 +34,10 @@ class TaskScheduler
 
 					next if has_posted_today
 
+					# 防同账号重复分配：该账号已有待发布/执行中的任务则跳过，避免同一账号堆多条 waiting_publish
+					has_active_task = task_model.exists?(account_id: account.id, status: [:waiting_publish, :executing])
+					next if has_active_task
+
 					# TikTok 限制：账号过去3天发文浏览量均为0时暂停分配，冷却3天后再恢复
 					# （滑动窗口：连续0浏览量的账号会被持续跳过，直到窗口滑出那些0浏览量的发文）
 					if platform == 'tiktok' && account.zero_views_in_past_3_days?

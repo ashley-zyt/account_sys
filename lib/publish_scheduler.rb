@@ -87,9 +87,20 @@ class PublishScheduler
   def self.execute_next_task_for_machine(tasks)
     return nil if tasks.empty?
 
+    today_range = Date.today.beginning_of_day..Date.today.end_of_day
+
     tasks.sort_by { |t| t.created_at || Time.current }.each do |task|
       browser = task.browser
       next if browser.nil? || browser.machine_ip.blank?
+
+      # 防同账号多次发布：该账号今天已有成功发布记录，这条多余的 waiting_publish 任务
+      # 重置回 pending（释放资源），不再发布
+      if task.account_id.present? &&
+         task.class.exists?(account_id: task.account_id, status: :success, actual_publish_time: today_range)
+        Rails.logger.info "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 对应账号 ##{task.account_id} 今天已发布成功，重置为 pending 跳过"
+        task.update!(status: :pending, account_id: nil, browser_id: nil, start_at: nil)
+        next
+      end
 
       # 非阻塞占用：忙/机器满则跳过，去试下一个任务
       result = BrowserOccupationManager.try_acquire(

@@ -18,6 +18,16 @@ class PostDatas
   # 运营机器发文数据采集服务固定端口
   FETCH_PORT = 8080
 
+  # 独立调试日志：专门记录 worker 池与占用决策（占用成功/失败原因/机器活跃数/补位），
+  # 便于排查「流程是否正确、每机器≤4、连接池限制」等问题。写入 log/postdatas_debug.log。
+  def self.dlog
+    @dlog ||= begin
+      l = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_debug.log'))
+      l.formatter = proc { |_severity, time, _progname, msg| "#{time.strftime('%Y-%m-%d %H:%M:%S')} #{msg}\n" }
+      l
+    end
+  end
+
   def self.fetch
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_fetch.log'))
     logger.formatter = Rails.logger.formatter
@@ -63,6 +73,9 @@ class PostDatas
     pool_size = [groups.size, BrowserOccupationManager::MAX_BROWSER_PER_IP * machine_count, db_pool_size].min
     pool_size = 1 if pool_size <= 0
 
+    dlog.info "[fetch] 账号=#{total} 机器=#{machine_count} 浏览器=#{groups.size} 连接池=#{db_pool_size}"
+    dlog.info "[fetch] pool_size=min(浏览器=#{groups.size}, 4×机器=#{BrowserOccupationManager::MAX_BROWSER_PER_IP * machine_count}, 连接池=#{db_pool_size})=#{pool_size}"
+
     mutex     = Mutex.new
     queue     = groups.dup          # 待处理浏览器分组（忙的会放回队尾）
     remaining = groups.size         # 尚未完成的分组数
@@ -100,6 +113,8 @@ class PostDatas
     fail_count    = stats[:fail]
     failed_items  = stats[:failed_items]
 
+    dlog.info "[fetch] 完成 成功账号=#{success_count} 失败账号=#{fail_count} 总计账号=#{total}"
+
     Rails.logger.info "[PostDatas] 采集完成: 成功 #{success_count} 个, 失败 #{fail_count} 个, 总计 #{total} 个"
     if failed_items.any?
       Rails.logger.error "[PostDatas] 失败详情:"
@@ -131,7 +146,11 @@ class PostDatas
       task_ref: "collect(accounts:#{group.size})",
       ttl: 1800
     )
-    unless result[:status] == :ok
+    active_now = BrowserOccupationManager.active_count(browser.machine_ip)
+    if result[:status] == :ok
+      dlog.info "#{label} ACQUIRE_OK browser=#{browser.profile_name} ip=#{browser.machine_ip} active=#{active_now}/#{BrowserOccupationManager::MAX_BROWSER_PER_IP} accounts=#{group.size}"
+    else
+      dlog.info "#{label} ACQUIRE_#{result[:status].to_s.upcase} browser=#{browser.profile_name} ip=#{browser.machine_ip} active=#{active_now}/#{BrowserOccupationManager::MAX_BROWSER_PER_IP}"
       Rails.logger.info "[PostDatas] #{label} 浏览器 #{browser.profile_name} 占用失败（#{result[:status]}：#{result[:message]}），放回队尾稍后重试"
       return :busy
     end
@@ -177,6 +196,8 @@ class PostDatas
         sleep(ACCOUNT_INTERVAL)
       end
     end
+
+    dlog.info "#{label} GROUP_DONE browser=#{browser.profile_name} accounts=#{group.size}（指令已发完，占用等回传释放）"
 
     :done
   end
@@ -261,6 +282,8 @@ class PostDatas
         task_ref: "retry(accounts:#{group.size})",
         ttl: 1800
       )
+      active_now = BrowserOccupationManager.active_count(browser.machine_ip)
+      dlog.info "[retry] ACQUIRE_#{occ[:status].to_s.upcase} browser=#{browser.profile_name} ip=#{browser.machine_ip} active=#{active_now}/#{BrowserOccupationManager::MAX_BROWSER_PER_IP}"
       unless occ[:status] == :ok
         Rails.logger.info "[PostDatas] 重试 浏览器 #{browser.profile_name} 占用失败（#{occ[:status]}：#{occ[:message]}），跳过"
         next
