@@ -2,19 +2,24 @@
 #
 # Table name: browser_occupations
 #
-#  id           :bigint           not null, primary key
-#  resource_key :string(255)      not null  # profile:<profile_name>
-#  machine_ip   :string(255)      not null
-#  profile_name :string(255)
-#  operation    :string(255)      not null  # publish/collect/nurture/kol/domestic
-#  task_ref     :string(255)
-#  expires_at   :datetime         not null
-#  released_at  :datetime
-#  created_at   :datetime         not null
-#  updated_at   :datetime         not null
+#  id                                                             :bigint           not null, primary key
+#  expires_at(占用过期时间（崩溃兜底，正常走 release）)           :datetime         not null
+#  machine_ip(所属运营机器 IP/域名)                               :string(255)      not null
+#  operation(占用类型：publish/collect/nurture/kol/domestic)      :string(255)      not null
+#  profile_name(指纹浏览器名称（冗余，便于日志/排查）)            :string(255)
+#  released_at(释放时间；释放后保留 30s 作为冷却标记，之后被清理) :datetime
+#  resource_key(资源唯一标识（profile:<profile_name>）)           :string(255)      not null
+#  task_ref(任务引用（如 MoveTask#123，仅日志/排查用）)           :string(255)
+#  created_at                                                     :datetime         not null
+#  updated_at                                                     :datetime         not null
 #
-# 临时占用登记（用完即删/短冷却），非长期数据。并发控制见 BrowserOccupationManager。
-# 资源标识统一用 profile_name（与机器端共通的字段），browser_id 仅为内部主键、机器端不认识。
+# Indexes
+#
+#  index_browser_occupations_on_expires_at                    (expires_at)
+#  index_browser_occupations_on_machine_ip                    (machine_ip)
+#  index_browser_occupations_on_resource_key                  (resource_key)
+#  index_browser_occupations_on_resource_key_and_released_at  (resource_key,released_at)
+#
 class BrowserOccupation < ApplicationRecord
   OPERATIONS = %w[publish collect nurture kol domestic].freeze
 

@@ -2,25 +2,25 @@
 #
 # Table name: huasheng_tasks
 #
-#  id                   :bigint           not null, primary key
-#  actual_publish_time  :datetime
-#  error_msg            :text(65535)
-#  full_oss_url         :text(65535)
-#  group_id             :string(255)
-#  huasheng_keyword_id  :bigint
-#  keyword              :string(255)
-#  oss_url              :text(65535)
-#  platform             :integer
-#  start_at             :datetime
-#  status               :integer          default("pending")
-#  task_uuid            :string(255)
-#  theme                :string(255)
-#  title                :string(280)
-#  description          :string(280)
-#  created_at           :datetime         not null
-#  updated_at           :datetime         not null
-#  account_id           :bigint
-#  browser_id           :bigint
+#  id                                                                :bigint           not null, primary key
+#  actual_publish_time(实际发布时间)                                 :datetime
+#  description(视频描述)                                             :string(280)
+#  error_msg(错误信息/失败原因)                                      :text(65535)
+#  full_oss_url(完整OSS视频object key)                               :text(65535)
+#  keyword(关键词)                                                   :string(255)
+#  oss_url(花生视频OSS签名地址)                                      :text(65535)
+#  platform(目标发布平台)                                            :integer
+#  start_at(任务开始时间)                                            :datetime
+#  status(任务状态 pending/waiting_publish/executing/success/failed) :integer          default("pending")
+#  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
+#  theme(内容主题)                                                   :string(255)
+#  title(发布标题)                                                   :string(280)
+#  created_at                                                        :datetime         not null
+#  updated_at                                                        :datetime         not null
+#  account_id(发布账号ID)                                            :bigint
+#  browser_id(执行任务的浏览器ID)                                    :bigint
+#  group_id(任务组ID)                                                :string(255)
+#  huasheng_keyword_id(来源花生关键词ID)                             :bigint
 #
 # Indexes
 #
