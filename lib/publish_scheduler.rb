@@ -244,6 +244,7 @@ class PublishScheduler
 
     Rails.logger.info "[PublishScheduler] 开始执行任务 #{task_type}:#{task.id} - #{task.title} (浏览器: #{task.browser.profile_name}, 机器: #{machine_ip}) → #{endpoint}"
 
+    # 注意：占用不在此处释放，由机器端发布完成后回传 release 接口精确释放（ttl 兜底）
     begin
       request_data = build_request_data(task)
       response = send_publish_request(endpoint, request_data)
@@ -254,8 +255,6 @@ class PublishScheduler
     rescue => e
       Rails.logger.error "[PublishScheduler] 任务 #{task_type}:#{task.id} 机器 #{machine_ip} 执行异常: #{e.message}"
       handle_error(task, "执行异常: #{e.message}")
-    ensure
-      BrowserOccupationManager.release(acquired)
     end
   end
 
