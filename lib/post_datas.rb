@@ -4,8 +4,8 @@
 # 调度模型：
 #   - 查询所有状态为"正常"且非Facebook的账号（包含特殊账号）
 #   - 仅处理绑定了浏览器且设置了machine_ip的账号
-#   - 按浏览器分组，多个 worker 线程并行采集（CONCURRENCY 个不同浏览器同时进行），
-#     组内顺序执行、账号间间隔 15 秒；共享游标保证同一浏览器不会被两个 worker 同时选中
+#   - 先按机器（machine_ip）分组，每台机器内最多 CONCURRENCY 个「不同」浏览器并行；
+#     组内（同一浏览器）顺序执行、账号间间隔 15 秒；共享游标保证同一浏览器不会被两个 worker 同时选中
 #   - 依次调用 Util.fetch_account_post_data 推送单个账号采集指令
 class PostDatas
 
@@ -51,32 +51,40 @@ class PostDatas
 
     return { success_count: 0, fail_count: 0, total: 0, failed_items: [] } if accounts.empty?
 
-    # 3. 按浏览器分组：一个分组 = 一个指纹浏览器下的所有账号。
-    #    组内顺序执行（同一浏览器一次只能开一个），组间由多个 worker 并行，
-    #    通过共享游标保证同一浏览器不会被两个 worker 同时选中（严格区分开）。
-    groups = accounts.group_by(&:browser_id).values.sort_by { |g| g.first.browser_id || 0 }
-    browser_names = groups.map { |g| g.first.browser.profile_name }
-    Rails.logger.info "[PostDatas] 待采集浏览器 #{groups.size} 个（并发 #{CONCURRENCY}）: #{browser_names.join('、')}"
+    # 3. 先按机器（machine_ip）分组，再在每台机器内按浏览器分组。
+    #    一个浏览器分组 = 该指纹浏览器下的所有账号；组内顺序执行（同一浏览器一次只能开一个），
+    #    每台机器内最多 CONCURRENCY 个不同浏览器并行，机器之间也互不阻塞。
+    machine_list = accounts.group_by { |a| a.browser.machine_ip }.map do |ip, accs|
+      [ip, accs.group_by(&:browser_id).values.sort_by { |g| g.first.browser_id || 0 }]
+    end
+    machine_list.each do |ip, groups|
+      names = groups.map { |g| g.first.browser.profile_name }.join('、')
+      Rails.logger.info "[PostDatas] 机器 #{ip}：#{groups.size} 个浏览器（#{names}）"
+    end
 
-    # 4. 多个 worker 并行采集，每个 worker 独占一个浏览器分组
-    mutex  = Mutex.new
-    cursor = 0
-    stats  = { success: 0, fail: 0, failed_items: [] }
+    # 4. 每台机器起 CONCURRENCY 个 worker 并行采集，每个 worker 独占一个浏览器分组
+    mutex     = Mutex.new
+    stats     = { success: 0, fail: 0, failed_items: [] }
+    worker_id = 0
 
-    workers = Array.new(CONCURRENCY) do |worker_idx|
-      Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection do
-          loop do
-            group = mutex.synchronize do
-              if cursor < groups.size
-                g = groups[cursor]
-                cursor += 1
-                g
+    workers = machine_list.flat_map do |ip, browser_groups|
+      cursor = 0
+      Array.new(CONCURRENCY) do
+        wid = mutex.synchronize { worker_id += 1 }
+        Thread.new do
+          ActiveRecord::Base.connection_pool.with_connection do
+            loop do
+              group = mutex.synchronize do
+                if cursor < browser_groups.size
+                  g = browser_groups[cursor]
+                  cursor += 1
+                  g
+                end
               end
-            end
-            break unless group
+              break unless group
 
-            fetch_browser_group(group, worker_idx, mutex, stats)
+              fetch_browser_group(group, wid, mutex, stats)
+            end
           end
         end
       end
@@ -109,7 +117,7 @@ class PostDatas
   def self.fetch_browser_group(group, worker_idx, mutex, stats)
     browser = group.first.browser
     label = "[worker#{worker_idx}]"
-    Rails.logger.info "[PostDatas] #{label} 开始采集浏览器 #{browser.profile_name}（#{group.size} 个账号）"
+    Rails.logger.info "[PostDatas] #{label} 开始采集浏览器 #{browser.profile_name}（#{group.size} 个账号，IP=#{browser.machine_ip}）"
 
     group.each_with_index do |account, index|
       begin
