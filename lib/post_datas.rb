@@ -129,9 +129,12 @@ class PostDatas
       profile_name: browser.profile_name,
       operation: :collect,
       task_ref: "collect(accounts:#{group.size})",
-      ttl: 600
+      ttl: 1800
     )
-    return :busy unless result[:status] == :ok
+    unless result[:status] == :ok
+      Rails.logger.info "[PostDatas] #{label} 浏览器 #{browser.profile_name} 占用失败（#{result[:status]}：#{result[:message]}），放回队尾稍后重试"
+      return :busy
+    end
 
     Rails.logger.info "[PostDatas] #{label} 开始采集浏览器 #{browser.profile_name}（#{group.size} 个账号，IP=#{browser.machine_ip}）"
 
@@ -218,10 +221,10 @@ class PostDatas
   end
 
   # 对未更新数据的账号重试一次采集推送
-  # all_stale 超过阈值时由 check_stale_accounts_and_alert 触发：
-  #   - 取出账号并过滤掉无浏览器/无 machine_ip 的
-  #   - 按浏览器"混开"排序，避免连续打开同一 profile 导致 lock
-  #   - 依次调用 Util.fetch_account_post_data(account_id:)，账号间隔 ACCOUNT_INTERVAL 秒
+  # all_stale 超过阈值时由 check_stale_accounts_and_alert 触发。
+  # 与主流程一致：按浏览器分组，每组先经过 BrowserOccupationManager 非阻塞占用
+  # （同浏览器互斥 + 每机器上限 + 冷却），占用成功才发采集指令；忙/机器满的跳过，
+  # 避免绕过占用中心导致「开了浏览器却没记录」「单机浏览器超限」。
   # @param stale_account_ids [Array<Integer>] 未更新数据的账号ID列表
   # @return [Hash] { total: Integer, success_count: Integer, fail_count: Integer }
   def self.retry_fetch_for_stale_accounts(stale_account_ids)
@@ -238,34 +241,53 @@ class PostDatas
       return { total: 0, success_count: 0, fail_count: 0 }
     end
 
-    shuffled = shuffle_accounts_by_browser(accounts)
-    total = shuffled.size
+    groups = accounts.group_by(&:browser_id).values.sort_by { |g| g.first.browser_id || 0 }
+    total = accounts.size
 
-    Rails.logger.info "[PostDatas] 重试采集开始，共 #{total} 个有效账号（浏览器混开排序）"
+    Rails.logger.info "[PostDatas] 重试采集开始，共 #{total} 个账号（#{groups.size} 个浏览器）"
 
     success_count = 0
     fail_count = 0
 
-    shuffled.each_with_index do |account, index|
-      begin
-        Rails.logger.info "[PostDatas] 重试 [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}, 平台=#{account.platform}, 浏览器=#{account.browser.profile_name})"
-        result = Util.fetch_account_post_data(account_id: account.id)
+    groups.each do |group|
+      browser = group.first.browser
 
-        if result[:success]
-          success_count += 1
-          Rails.logger.info "[PostDatas] 重试 [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}) 推送成功"
-        else
-          fail_count += 1
-          Rails.logger.error "[PostDatas] 重试 [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}) 推送失败: #{result[:message]}"
-        end
-      rescue => e
-        fail_count += 1
-        Rails.logger.error "[PostDatas] 重试 [#{index + 1}/#{total}] 账号 #{account.account_name}(##{account.id}) 异常: #{e.message}"
+      # 接入占用中心：非阻塞占用，浏览器忙/机器满则跳过（下次 stale 检查会再次触发补采）
+      occ = BrowserOccupationManager.try_acquire(
+        BrowserOccupation.key_for_browser(browser),
+        machine_ip: browser.machine_ip,
+        profile_name: browser.profile_name,
+        operation: :collect,
+        task_ref: "retry(accounts:#{group.size})",
+        ttl: 1800
+      )
+      unless occ[:status] == :ok
+        Rails.logger.info "[PostDatas] 重试 浏览器 #{browser.profile_name} 占用失败（#{occ[:status]}：#{occ[:message]}），跳过"
+        next
       end
 
-      # 最后一个账号不需要sleep
-      if index < total - 1
-        sleep(ACCOUNT_INTERVAL)
+      # 注意：占用不在此处释放，由采集端回传 release 接口精确释放（ttl 兜底），与主流程一致
+      group.each_with_index do |account, index|
+        begin
+          Rails.logger.info "[PostDatas] 重试 [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}, 平台=#{account.platform}, 浏览器=#{browser.profile_name})"
+          result = Util.fetch_account_post_data(account_id: account.id)
+
+          if result[:success]
+            success_count += 1
+            Rails.logger.info "[PostDatas] 重试 [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 推送成功"
+          else
+            fail_count += 1
+            Rails.logger.error "[PostDatas] 重试 [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 推送失败: #{result[:message]}"
+          end
+        rescue => e
+          fail_count += 1
+          Rails.logger.error "[PostDatas] 重试 [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 异常: #{e.message}"
+        end
+
+        # 组内最后一个账号不需要sleep
+        if index < group.size - 1
+          sleep(ACCOUNT_INTERVAL)
+        end
       end
     end
 

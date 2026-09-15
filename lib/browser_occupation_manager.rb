@@ -89,22 +89,27 @@ class BrowserOccupationManager
       return nil if resource_key.blank?
 
       occupation = BrowserOccupation.where(resource_key: resource_key, released_at: nil)
+                                    .where("expires_at > ?", Time.current)
                                     .order(created_at: :desc)
                                     .first
       release(occupation)
     end
 
-    # 指定资源是否被占用（活跃 或 释放冷却期内）
+    # 指定资源是否被占用（未过期活跃占用，或释放冷却期内）
     def occupied?(resource_key)
-      BrowserOccupation.exists?(resource_key: resource_key, released_at: nil) ||
+      BrowserOccupation.where(resource_key: resource_key, released_at: nil)
+                       .where("expires_at > ?", Time.current)
+                       .exists? ||
         BrowserOccupation.where(resource_key: resource_key)
                         .where("released_at IS NOT NULL AND released_at > ?", COOLDOWN_SECONDS.seconds.ago)
                         .exists?
     end
 
-    # 某机器当前活跃占用数（未释放）
+    # 某机器当前「未过期且未释放」的活跃占用数
     def active_count(machine_ip)
-      BrowserOccupation.where(machine_ip: machine_ip, released_at: nil).count
+      BrowserOccupation.where(machine_ip: machine_ip, released_at: nil)
+                       .where("expires_at > ?", Time.current)
+                       .count
     end
 
     # 清理：ttl 过期且未释放（崩溃兜底）直接删；冷却标记超时删除
@@ -114,9 +119,18 @@ class BrowserOccupationManager
     end
 
     # MySQL 命名锁：串行化登记动作。锁只覆盖「查询+插入/更新」这一瞬，不阻塞浏览器实际使用。
+    # 检查 GET_LOCK 返回值（1=成功，0=超时未获得），失败则短暂重试，避免并发下漏锁。
     def with_lock
       conn = ActiveRecord::Base.connection
-      conn.select_value("SELECT GET_LOCK('#{LOCK_NAME}', 10)")
+      acquired = false
+      3.times do
+        if conn.select_value("SELECT GET_LOCK('#{LOCK_NAME}', 10)").to_i == 1
+          acquired = true
+          break
+        end
+        sleep(0.2)
+      end
+      Rails.logger.error "[BrowserOccupation] 获取命名锁失败，本次登记未做串行化保护" unless acquired
       yield
     ensure
       conn&.select_value("SELECT RELEASE_LOCK('#{LOCK_NAME}')")
