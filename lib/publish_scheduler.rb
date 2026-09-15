@@ -366,9 +366,17 @@ class PublishScheduler
     TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg)
   end
 
+  # 确保字符串是干净的 UTF-8：
+  #   - 已经是合法 UTF-8 就原样返回（避免把日文等多字节字符按二进制转坏成空）
+  #   - ASCII-8BIT/binary（如 Net::HTTP 响应体）先按 UTF-8 重打标签再校验
+  #   - 其它编码正常转码；非法字节替换为空
   def self.ensure_utf8(str)
     return str unless str.is_a?(String)
-    str.encode('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
+    return str if str.encoding == Encoding::UTF_8 && str.valid_encoding?
+
+    s = str.dup
+    s.force_encoding(Encoding::UTF_8) if s.encoding == Encoding::ASCII_8BIT
+    s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
   end
 
 end
