@@ -4,8 +4,8 @@
 # 调度模型：
 #   - 查询所有状态为"正常"且非Facebook的账号（包含特殊账号）
 #   - 仅处理绑定了浏览器且设置了machine_ip的账号
-#   - 先按机器（machine_ip）分组，每台机器内最多 CONCURRENCY 个「不同」浏览器并行；
-#     组内（同一浏览器）顺序执行、账号间间隔 15 秒；共享游标保证同一浏览器不会被两个 worker 同时选中
+#   - 按浏览器分组，多个 worker 并行采集；每个浏览器分组开始前通过 BrowserOccupationManager
+#     申请占用（同浏览器互斥 + 每机器上限 + 释放后冷却），组内顺序执行、账号间间隔 15 秒
 #   - 依次调用 Util.fetch_account_post_data 推送单个账号采集指令
 class PostDatas
 
@@ -13,9 +13,6 @@ class PostDatas
   RETRY_DELAY = 20
   REQUEST_INTERVAL = 2
   ACCOUNT_INTERVAL = 15  # 单个账号之间的间隔（秒）
-  # 并行采集的浏览器数：同一时刻最多同时打开这么多个「不同」的指纹浏览器。
-  # 通过共享队列保证并发 worker 不会选中同一个浏览器（严格区分开）。
-  CONCURRENCY = 2
   STALE_ALERT_THRESHOLD = 10  # 未更新账号超过此数量则发送钉钉告警
 
   # 运营机器发文数据采集服务固定端口
@@ -51,39 +48,42 @@ class PostDatas
 
     return { success_count: 0, fail_count: 0, total: 0, failed_items: [] } if accounts.empty?
 
-    # 3. 先按机器（machine_ip）分组，再在每台机器内按浏览器分组。
-    #    一个浏览器分组 = 该指纹浏览器下的所有账号；组内顺序执行（同一浏览器一次只能开一个），
-    #    每台机器内最多 CONCURRENCY 个不同浏览器并行，机器之间也互不阻塞。
-    machine_list = accounts.group_by { |a| a.browser.machine_ip }.map do |ip, accs|
-      [ip, accs.group_by(&:browser_id).values.sort_by { |g| g.first.browser_id || 0 }]
-    end
-    machine_list.each do |ip, groups|
-      names = groups.map { |g| g.first.browser.profile_name }.join('、')
-      Rails.logger.info "[PostDatas] 机器 #{ip}：#{groups.size} 个浏览器（#{names}）"
-    end
+    # 3. 按浏览器分组：一个分组 = 一个指纹浏览器下的所有账号。
+    #    组内顺序执行（同一浏览器一次只能开一个），组间由 worker 并行；
+    #    具体并发上限由 BrowserOccupationManager 统一把关（同浏览器互斥 + 每机器≤4 + 冷却）。
+    groups = accounts.group_by(&:browser_id).values.sort_by { |g| g.first.browser_id || 0 }
+    machine_count = accounts.map { |a| a.browser.machine_ip }.uniq.size
+    browser_names = groups.map { |g| "#{g.first.browser.profile_name}(#{g.size}个)" }
+    Rails.logger.info "[PostDatas] 待采集浏览器 #{groups.size} 个（机器 #{machine_count} 台）: #{browser_names.join('、')}"
 
-    # 4. 每台机器起 CONCURRENCY 个 worker 并行采集，每个 worker 独占一个浏览器分组
+    # 4. worker 池并行采集：每个 worker 取一个浏览器分组，非阻塞占用，
+    #    忙的分组放回队尾稍后重试（谁空闲谁先走），空闲的执行完再取下一个。
+    pool_size = [groups.size, BrowserOccupationManager::MAX_BROWSER_PER_IP * machine_count].min
+    pool_size = groups.size if pool_size <= 0
+
     mutex     = Mutex.new
+    queue     = groups.dup          # 待处理浏览器分组（忙的会放回队尾）
+    remaining = groups.size         # 尚未完成的分组数
     stats     = { success: 0, fail: 0, failed_items: [] }
     worker_id = 0
 
-    workers = machine_list.flat_map do |ip, browser_groups|
-      cursor = 0
-      Array.new(CONCURRENCY) do
-        wid = mutex.synchronize { worker_id += 1 }
-        Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection do
-            loop do
-              group = mutex.synchronize do
-                if cursor < browser_groups.size
-                  g = browser_groups[cursor]
-                  cursor += 1
-                  g
-                end
-              end
-              break unless group
+    workers = Array.new(pool_size) do
+      wid = mutex.synchronize { worker_id += 1 }
+      Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          loop do
+            group = mutex.synchronize { queue.shift }
+            unless group
+              break if mutex.synchronize { remaining <= 0 }
+              sleep(BrowserOccupationManager::POLL_INTERVAL)
+              next
+            end
 
-              fetch_browser_group(group, wid, mutex, stats)
+            if fetch_browser_group(group, wid, mutex, stats) == :busy
+              mutex.synchronize { queue << group }
+              sleep(BrowserOccupationManager::POLL_INTERVAL)
+            else
+              mutex.synchronize { remaining -= 1 }
             end
           end
         end
@@ -112,51 +112,69 @@ class PostDatas
     { success_count: 0, fail_count: 0, total: 0, failed_items: [], error: e.message }
   end
 
-  # 采集一个浏览器分组（该浏览器下的所有账号），组内顺序执行，账号间间隔 ACCOUNT_INTERVAL 秒。
-  # 结果通过 mutex 累加到 stats（多线程共享）。
+  # 采集一个浏览器分组（该浏览器下的所有账号）：非阻塞占用，组内顺序执行，最后释放。
+  # @return [Symbol] :done（已执行或跳过）/ :busy（浏览器忙，放回队尾稍后重试）
   def self.fetch_browser_group(group, worker_idx, mutex, stats)
     browser = group.first.browser
     label = "[worker#{worker_idx}]"
+
+    result = BrowserOccupationManager.try_acquire(
+      BrowserOccupation.key_for_browser(browser),
+      machine_ip: browser.machine_ip,
+      profile_name: browser.profile_name,
+      operation: :collect,
+      task_ref: "collect(accounts:#{group.size})",
+      ttl: 600
+    )
+    return :busy unless result[:status] == :ok
+
+    occupation = result[:occupation]
     Rails.logger.info "[PostDatas] #{label} 开始采集浏览器 #{browser.profile_name}（#{group.size} 个账号，IP=#{browser.machine_ip}）"
 
-    group.each_with_index do |account, index|
-      begin
-        Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 开始采集账号 #{account.account_name}(ID=#{account.id}, 平台=#{account.platform}, 浏览器=#{browser.profile_name}, IP=#{browser.machine_ip})"
+    begin
+      group.each_with_index do |account, index|
+        begin
+          Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 开始采集账号 #{account.account_name}(ID=#{account.id}, 平台=#{account.platform}, 浏览器=#{browser.profile_name}, IP=#{browser.machine_ip})"
 
-        result = Util.fetch_account_post_data(account_id: account.id)
+          result = Util.fetch_account_post_data(account_id: account.id)
 
-        if result[:success]
-          mutex.synchronize { stats[:success] += 1 }
-          Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 采集指令推送成功"
-        else
+          if result[:success]
+            mutex.synchronize { stats[:success] += 1 }
+            Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 采集指令推送成功"
+          else
+            fail_info = {
+              account_id: account.id,
+              account_name: account.account_name,
+              browser_name: browser.profile_name,
+              machine_ip: browser.machine_ip,
+              error: result[:message]
+            }
+            mutex.synchronize { stats[:fail] += 1; stats[:failed_items] << fail_info }
+            Rails.logger.error "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 推送失败: #{result[:message]}"
+          end
+        rescue => e
           fail_info = {
             account_id: account.id,
             account_name: account.account_name,
-            browser_name: browser.profile_name,
-            machine_ip: browser.machine_ip,
-            error: result[:message]
+            browser_name: browser&.profile_name,
+            machine_ip: browser&.machine_ip,
+            error: "异常: #{e.message}"
           }
           mutex.synchronize { stats[:fail] += 1; stats[:failed_items] << fail_info }
-          Rails.logger.error "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 推送失败: #{result[:message]}"
+          Rails.logger.error "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 执行异常: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
         end
-      rescue => e
-        fail_info = {
-          account_id: account.id,
-          account_name: account.account_name,
-          browser_name: browser&.profile_name,
-          machine_ip: browser&.machine_ip,
-          error: "异常: #{e.message}"
-        }
-        mutex.synchronize { stats[:fail] += 1; stats[:failed_items] << fail_info }
-        Rails.logger.error "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 执行异常: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
-      end
 
-      # 组内最后一个账号不 sleep
-      if index < group.size - 1
-        Rails.logger.info "[PostDatas] #{label} 等待 #{ACCOUNT_INTERVAL} 秒后继续下一个账号..."
-        sleep(ACCOUNT_INTERVAL)
+        # 组内最后一个账号不 sleep
+        if index < group.size - 1
+          Rails.logger.info "[PostDatas] #{label} 等待 #{ACCOUNT_INTERVAL} 秒后继续下一个账号..."
+          sleep(ACCOUNT_INTERVAL)
+        end
       end
+    ensure
+      BrowserOccupationManager.release(occupation)
     end
+
+    :done
   end
 
   # 检查未更新数据的账号，超过阈值发送钉钉告警

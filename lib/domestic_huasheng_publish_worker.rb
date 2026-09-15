@@ -22,6 +22,9 @@ class DomesticHuashengPublishWorker
   # 发布接口主机（抖音/视频号共用）
   PUBLISH_HOST = "http://47.98.149.236:8080"
 
+  # 机器 IP（不含端口，用于占用登记）
+  MACHINE_IP = "47.98.149.236"
+
   # 固定 profile_name
   PROFILE_NAME = "domestic01"
 
@@ -57,7 +60,20 @@ class DomesticHuashengPublishWorker
       # 依次发布抖音、视频号，每次 API 调用间隔 40-60 秒
       results = {}
       TARGETS.each do |platform_name, platform_key|
-        result = publish(task, platform_key, platform_name)
+        # 申请 domestic01 浏览器占用（等待重试，避免与登录检查等并发冲突）
+        occupation = BrowserOccupationManager.acquire(
+          BrowserOccupation.key_for_virtual(PROFILE_NAME),
+          machine_ip: MACHINE_IP,
+          profile_name: PROFILE_NAME,
+          operation: :domestic,
+          task_ref: "HuashengTask##{task.id}",
+          ttl: 900
+        )
+        result = begin
+          publish(task, platform_key, platform_name)
+        ensure
+          BrowserOccupationManager.release(occupation)
+        end
         Rails.logger.info "[DySphHuashengPublishWorker] #{platform_name} 发布结果: #{result.inspect}"
 
         # 连不上：直接结束，钉钉通知，任务保持 pending

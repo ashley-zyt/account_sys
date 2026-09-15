@@ -21,6 +21,22 @@ class ExecuteWorker
 
     endpoint = "https://#{machine_ip}/accounts/nurture"
 
+    # 申请浏览器占用（等待重试），避免与发文/采集等并发冲突
+    occupation = BrowserOccupationManager.acquire(
+      BrowserOccupation.key_for_browser(browser),
+      machine_ip: machine_ip,
+      profile_name: browser.profile_name,
+      operation: :nurture,
+      task_ref: "WarmupTask##{warmup_task.id}",
+      ttl: 420
+    )
+    unless occupation
+      error_msg = "浏览器 #{browser.profile_name} 正被占用，获取占用失败"
+      Rails.logger.error "[ExecuteWorker] #{error_msg}"
+      warmup_task.update!(status: :failed, error_msg: error_msg, executed_at: Time.current)
+      return
+    end
+
     # 更新任务状态为执行中，并记录执行机器
     warmup_task.update!(status: :executing, machine: machine_ip)
 
@@ -49,6 +65,8 @@ class ExecuteWorker
       warmup_task.update!(status: :failed, error_msg: e.message, executed_at: Time.current)
       profile = account.warmup_profile || account.create_warmup_profile
       profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
+    ensure
+      BrowserOccupationManager.release(occupation)
     end
   end
 end

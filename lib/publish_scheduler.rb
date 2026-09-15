@@ -64,38 +64,66 @@ class PublishScheduler
     Rails.logger.info "[PublishScheduler] 所有机器发布任务执行完成"
   end
 
-  # 针对单台机器顺序执行其待发布任务
+  # 针对单台机器执行其待发布任务：跳过忙的浏览器，优先执行空闲的，忙的稍后重试
   # @param machine_ip [String] 运营机器 IP
   # @param platform [String, nil] 限定平台
   def self.run_for_machine(machine_ip, platform: nil)
     loop do
-      task = execute_next_task_for_machine(machine_ip, platform: platform)
-      break unless task
+      tasks = fetch_tasks_for_machine(machine_ip, platform: platform)
+      break if tasks.empty?
+
+      if execute_next_task_for_machine(tasks)
+        sleep(TASK_INTERVAL)
+      else
+        # 所有任务浏览器都忙 → 等一会再重试
+        sleep(BrowserOccupationManager::POLL_INTERVAL)
+      end
     end
   end
 
-  # 执行单台机器的下一个任务（顺序执行，避免 profile lock）
-  # @return [Object, false] 返回执行的任务对象；无任务时返回 false
-  def self.execute_next_task_for_machine(machine_ip, platform: nil)
-    tasks = fetch_tasks_for_machine(machine_ip, platform: platform)
-    return false if tasks.empty?
+  # 从给定待发布任务里挑一个浏览器空闲的执行（非阻塞）；全部忙则返回 nil
+  # @param tasks [Array] 待发布任务列表
+  # @return [Object, nil] 执行的任务；无空闲浏览器时返回 nil
+  def self.execute_next_task_for_machine(tasks)
+    return nil if tasks.empty?
 
-    last_browser_id = get_last_browser_id
-    task = select_next_task(tasks, last_browser_id)
-    return false unless task
+    tasks.sort_by { |t| t.created_at || Time.current }.each do |task|
+      browser = task.browser
+      next if browser.nil? || browser.machine_ip.blank?
 
-    task_type = task_type_name(task)
+      # 非阻塞占用：忙/机器满则跳过，去试下一个任务
+      result = BrowserOccupationManager.try_acquire(
+        BrowserOccupation.key_for_browser(browser),
+        machine_ip: browser.machine_ip,
+        profile_name: browser.profile_name,
+        operation: :publish,
+        task_ref: "#{task_type_name(task)}##{task.id}",
+        ttl: 900
+      )
+      next unless result[:status] == :ok
 
-    # 事务锁定任务，避免被其他机器或线程重复执行
-    ActiveRecord::Base.transaction do
-      task.lock!
-      return false unless task.status == 'waiting_publish'
-      task.update!(status: :executing, start_at: Time.current)
+      occupation = result[:occupation]
+      task_type  = task_type_name(task)
+
+      # 事务锁定任务，避免重复执行；抢不到则释放占用并跳过
+      executed = false
+      ActiveRecord::Base.transaction do
+        task.lock!
+        if task.status == 'waiting_publish'
+          task.update!(status: :executing, start_at: Time.current)
+          executed = true
+        end
+      end
+      unless executed
+        BrowserOccupationManager.release(occupation)
+        next
+      end
+
+      execute_task(task, task_type, browser.machine_ip, occupation: occupation)
+      return task
     end
 
-    execute_task(task, task_type, machine_ip)
-    sleep(TASK_INTERVAL)
-    task
+    nil
   end
 
   # === 旧入口兼容（保留以避免外部调用断裂） ===
@@ -183,7 +211,7 @@ class PublishScheduler
 
   # === 任务执行 ===
 
-  def self.execute_task(task, task_type, machine_ip)
+  def self.execute_task(task, task_type, machine_ip, occupation: nil)
     return if task.account.nil? || task.browser.nil?
 
     # 端点由浏览器所属运营机器决定；端口固定 8080
@@ -195,6 +223,24 @@ class PublishScheduler
     end
 
     endpoint = "https://#{machine_ip}/#{task.platform}/publish"
+
+    # 占用：调用方已非阻塞拿到 occupation 则复用；否则此处阻塞等待（兼容手动立即执行）
+    acquired = occupation
+    unless acquired
+      acquired = BrowserOccupationManager.acquire(
+        BrowserOccupation.key_for_browser(task.browser),
+        machine_ip: machine_ip,
+        profile_name: task.browser.profile_name,
+        operation: :publish,
+        task_ref: "#{task_type}##{task.id}",
+        ttl: 900
+      )
+      unless acquired
+        Rails.logger.error "[PublishScheduler] 任务 #{task_type}:#{task.id} 获取浏览器占用失败，回退为待发布"
+        task.update(status: :waiting_publish)
+        return
+      end
+    end
 
     Rails.logger.info "[PublishScheduler] 开始执行任务 #{task_type}:#{task.id} - #{task.title} (浏览器: #{task.browser.profile_name}, 机器: #{machine_ip}) → #{endpoint}"
 
@@ -208,6 +254,8 @@ class PublishScheduler
     rescue => e
       Rails.logger.error "[PublishScheduler] 任务 #{task_type}:#{task.id} 机器 #{machine_ip} 执行异常: #{e.message}"
       handle_error(task, "执行异常: #{e.message}")
+    ensure
+      BrowserOccupationManager.release(acquired)
     end
   end
 

@@ -14,6 +14,9 @@ class DomesticLoginStatusChecker
   # 运营机器主机（抖音/视频号共用，与发布接口同机器）
   HOST = "http://47.98.149.236:8080"
 
+  # 机器 IP（不含端口，用于占用登记）
+  MACHINE_IP = "47.98.149.236"
+
   # 固定 profile_name
   PROFILE_NAME = "domestic01"
 
@@ -61,6 +64,17 @@ class DomesticLoginStatusChecker
     # @return [Hash] { status: "logged_in"/"not_logged_in"/"abnormal", error: nil/String }
     def check(platform_key)
       url = "#{HOST}/accounts/login_status?profile_name=#{PROFILE_NAME}&platform=#{platform_key}"
+
+      # 申请 domestic01 浏览器占用（等待重试，避免与发布并发冲突）
+      occupation = BrowserOccupationManager.acquire(
+        BrowserOccupation.key_for_virtual(PROFILE_NAME),
+        machine_ip: MACHINE_IP,
+        profile_name: PROFILE_NAME,
+        operation: :domestic,
+        task_ref: "login_check",
+        ttl: 120
+      )
+
       Rails.logger.info "[DomesticLoginStatusChecker] 请求 #{url}"
       response = RemoteApiClient.get(url, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT)
       data = JSON.parse(response.body.to_s.dup.force_encoding('UTF-8'))
@@ -69,6 +83,8 @@ class DomesticLoginStatusChecker
       { status: "abnormal", error: "响应非JSON: #{e.message}" }
     rescue => e
       { status: "abnormal", error: "#{e.class} #{e.message}" }
+    ensure
+      BrowserOccupationManager.release(occupation)
     end
 
     # 若某平台未登录或检查异常，发钉钉提醒

@@ -35,22 +35,35 @@ class WarmupScheduler
   end
 
   # 针对单台机器运行（公开方法，便于单独触发或调试）
+  # 跳过忙的浏览器，优先养号空闲的，忙的账号回头再试
   def self.run_for_machine(machine_ip)
     start_time = Time.current
     accounts = fetch_target_accounts_for_machine(machine_ip)
     Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 获取到 #{accounts.size} 个需要养号的账号"
     return if accounts.empty?
 
-    accounts.each_with_index do |account, index|
-      break if time_exceeded?(start_time, TIME_WINDOW_HOURS)
+    pending = accounts
+    until pending.empty? || time_exceeded?(start_time, TIME_WINDOW_HOURS)
+      progressed = false
+      still_busy = []
 
-      execute_warmup_for_account(account, machine_ip)
-
-      if index < accounts.size - 1 && !time_exceeded?(start_time, TIME_WINDOW_HOURS)
-        pause_time = rand(INTER_ACCOUNT_PAUSE_MIN..INTER_ACCOUNT_PAUSE_MAX)
-        Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 等待 #{pause_time} 秒后处理下一个账号"
-        sleep(pause_time)
+      pending.each do |account|
+        status = execute_warmup_for_account(account, machine_ip)
+        case status
+        when :executed
+          progressed = true
+          pause_time = rand(INTER_ACCOUNT_PAUSE_MIN..INTER_ACCOUNT_PAUSE_MAX)
+          Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 等待 #{pause_time} 秒后处理下一个账号"
+          sleep(pause_time)
+        when :busy
+          still_busy << account
+        end
+        # :skipped（无浏览器等）直接丢弃
       end
+
+      break if still_busy.empty?
+      pending = still_busy
+      sleep(BrowserOccupationManager::POLL_INTERVAL) unless progressed
     end
 
     Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 养号任务执行完成"
@@ -77,10 +90,25 @@ class WarmupScheduler
            .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.warmup_status = 'failed' DESC, warmup_profiles.last_warmup_at ASC"))
   end
 
+  # 养号单个账号（非阻塞占用）
+  # @return [Symbol] :executed（已执行）/ :busy（浏览器忙，稍后重试）/ :skipped（无浏览器）
   def self.execute_warmup_for_account(account, machine_ip)
-    return if account.browser.nil?
+    return :skipped if account.browser.nil?
 
     endpoint = "https://#{machine_ip}/accounts/nurture"
+
+    # 非阻塞占用：忙/机器满则返回 :busy，由上层跳过、回头再试
+    result = BrowserOccupationManager.try_acquire(
+      BrowserOccupation.key_for_browser(account.browser),
+      machine_ip: machine_ip,
+      profile_name: account.browser.profile_name,
+      operation: :nurture,
+      task_ref: "account##{account.id}",
+      ttl: 420
+    )
+    return :busy unless result[:status] == :ok
+
+    occupation = result[:occupation]
     Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 开始养号: #{account.account_name} (#{account.platform}) → #{endpoint}"
 
     warmup_task = WarmupTask.create!(
@@ -123,7 +151,11 @@ class WarmupScheduler
       warmup_task.update!(status: :failed, error_msg: e.message, executed_at: Time.current)
       profile = account.warmup_profile || account.create_warmup_profile
       profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
+    ensure
+      BrowserOccupationManager.release(occupation)
     end
+
+    :executed
   end
 
   def self.send_request(endpoint, request_data)

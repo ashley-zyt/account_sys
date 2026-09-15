@@ -27,8 +27,13 @@ class KolOutreachApi
       }
       body[:passcode] = PASSCODE if platform.to_s == "twitter"
 
-      response = post_json(url, body)
-      parse_send_response(response)
+      occupation = acquire_browser(account, "kol_send##{contact&.id}")
+      begin
+        response = post_json(url, body)
+        parse_send_response(response)
+      ensure
+        BrowserOccupationManager.release(occupation)
+      end
     rescue => e
       Rails.logger.error "[KolOutreachApi] 发送异常: #{e.message}"
       { success: false, reason: "network", error: e.message, raw: nil }
@@ -46,14 +51,33 @@ class KolOutreachApi
       }
       body[:passcode] = PASSCODE if platform.to_s == "twitter"
 
-      response = post_json(url, body)
-      parse_reply_response(response)
+      occupation = acquire_browser(account, "kol_check##{contact&.id}")
+      begin
+        response = post_json(url, body)
+        parse_reply_response(response)
+      ensure
+        BrowserOccupationManager.release(occupation)
+      end
     rescue => e
       Rails.logger.error "[KolOutreachApi] 检查回复异常: #{e.message}"
       { has_reply: false, replies: [], error: e.message, raw: nil }
     end
 
     private
+
+    # 申请账号所属浏览器占用（无浏览器/无 IP 时跳过，返回 nil）
+    def acquire_browser(account, task_ref)
+      return nil unless account&.browser&.machine_ip.present?
+
+      BrowserOccupationManager.acquire(
+        BrowserOccupation.key_for_browser(account.browser),
+        machine_ip: account.browser.machine_ip,
+        profile_name: account.browser.profile_name,
+        operation: :kol,
+        task_ref: task_ref,
+        ttl: 300
+      )
+    end
 
     def base_url(account)
       ip = account&.browser&.machine_ip.to_s.strip
