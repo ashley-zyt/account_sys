@@ -66,7 +66,8 @@ class DomesticLoginStatusChecker
       url = "#{HOST}/accounts/login_status?profile_name=#{PROFILE_NAME}&platform=#{platform_key}"
 
       # 申请 domestic01 浏览器占用（等待重试，避免与发布并发冲突）
-      occupation = BrowserOccupationManager.acquire(
+      # 注意：占用不在此处释放，由机器端完成后回传 release 接口精确释放（ttl 兜底）
+      BrowserOccupationManager.acquire(
         BrowserOccupation.key_for_virtual(PROFILE_NAME),
         machine_ip: MACHINE_IP,
         profile_name: PROFILE_NAME,
@@ -83,8 +84,6 @@ class DomesticLoginStatusChecker
       { status: "abnormal", error: "响应非JSON: #{e.message}" }
     rescue => e
       { status: "abnormal", error: "#{e.class} #{e.message}" }
-    ensure
-      BrowserOccupationManager.release(occupation)
     end
 
     # 若某平台未登录或检查异常，发钉钉提醒

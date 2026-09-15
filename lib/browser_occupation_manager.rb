@@ -83,7 +83,7 @@ class BrowserOccupationManager
     end
 
     # 按资源标识精确释放其当前活跃占用（供采集端/运营机器回传「已完成」时调用）
-    # @param resource_key [String] 如 "browser:719" 或 "virtual:domestic01"
+    # @param resource_key [String] 如 "profile:<profile_name>"
     # @return [BrowserOccupation, nil] 释放的占用；无活跃占用返回 nil
     def release_by_resource_key(resource_key)
       return nil if resource_key.blank?

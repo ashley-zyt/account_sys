@@ -1,8 +1,8 @@
 class CreateBrowserOccupations < ActiveRecord::Migration[6.1]
   def change
     create_table :browser_occupations do |t|
-      # 资源唯一标识：如 "browser:719" 或 "virtual:domestic01"
-      t.string   :resource_key, null: false, comment: "资源唯一标识（browser:<id> 或 virtual:<key>）"
+      # 资源唯一标识：profile:<profile_name>（与机器端共通的指纹浏览器名）
+      t.string   :resource_key, null: false, comment: "资源唯一标识（profile:<profile_name>）"
       t.string   :machine_ip,   null: false, comment: "所属运营机器 IP/域名"
       t.string   :profile_name, comment: "指纹浏览器名称（冗余，便于日志/排查）"
       t.string   :operation,    null: false, comment: "占用类型：publish/collect/nurture/kol/domestic"

@@ -61,7 +61,8 @@ class DomesticHuashengPublishWorker
       results = {}
       TARGETS.each do |platform_name, platform_key|
         # 申请 domestic01 浏览器占用（等待重试，避免与登录检查等并发冲突）
-        occupation = BrowserOccupationManager.acquire(
+        # 注意：占用不在此处释放，由机器端发布完成后回传 release 接口精确释放（ttl 兜底）
+        BrowserOccupationManager.acquire(
           BrowserOccupation.key_for_virtual(PROFILE_NAME),
           machine_ip: MACHINE_IP,
           profile_name: PROFILE_NAME,
@@ -69,11 +70,7 @@ class DomesticHuashengPublishWorker
           task_ref: "HuashengTask##{task.id}",
           ttl: 900
         )
-        result = begin
-          publish(task, platform_key, platform_name)
-        ensure
-          BrowserOccupationManager.release(occupation)
-        end
+        result = publish(task, platform_key, platform_name)
         Rails.logger.info "[DySphHuashengPublishWorker] #{platform_name} 发布结果: #{result.inspect}"
 
         # 连不上：直接结束，钉钉通知，任务保持 pending

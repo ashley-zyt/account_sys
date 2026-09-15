@@ -65,8 +65,8 @@ class ExecuteWorker
       warmup_task.update!(status: :failed, error_msg: e.message, executed_at: Time.current)
       profile = account.warmup_profile || account.create_warmup_profile
       profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
-    ensure
-      BrowserOccupationManager.release(occupation)
     end
+
+    # 注意：占用不在此处释放，由机器端养号完成后回传 release 接口精确释放（ttl 兜底）
   end
 end

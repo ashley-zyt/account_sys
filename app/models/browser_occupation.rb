@@ -3,7 +3,7 @@
 # Table name: browser_occupations
 #
 #  id           :bigint           not null, primary key
-#  resource_key :string(255)      not null  # browser:<id> 或 virtual:<key>
+#  resource_key :string(255)      not null  # profile:<profile_name>
 #  machine_ip   :string(255)      not null
 #  profile_name :string(255)
 #  operation    :string(255)      not null  # publish/collect/nurture/kol/domestic
@@ -14,6 +14,7 @@
 #  updated_at   :datetime         not null
 #
 # 临时占用登记（用完即删/短冷却），非长期数据。并发控制见 BrowserOccupationManager。
+# 资源标识统一用 profile_name（与机器端共通的字段），browser_id 仅为内部主键、机器端不认识。
 class BrowserOccupation < ApplicationRecord
   OPERATIONS = %w[publish collect nurture kol domestic].freeze
 
@@ -32,18 +33,18 @@ class BrowserOccupation < ApplicationRecord
     released_at.present? && released_at > cooldown_seconds.seconds.ago
   end
 
-  # 按 browser 生成 resource_key
+  # 以 profile_name 生成 resource_key（与机器端共通的标识）
+  def self.key_for_profile(profile_name)
+    "profile:#{profile_name}"
+  end
+
+  # 按 browser 生成 resource_key（内部统一走 profile_name）
   def self.key_for_browser(browser)
-    "browser:#{browser.id}"
+    key_for_profile(browser.profile_name)
   end
 
-  # 按 browser_id 生成 resource_key（供回传接口用）
-  def self.key_for_browser_id(id)
-    "browser:#{id}"
-  end
-
-  # 按虚拟资源名生成 resource_key（如 domestic01）
+  # 按虚拟资源名生成 resource_key（如 domestic01，本质也是 profile_name）
   def self.key_for_virtual(name)
-    "virtual:#{name}"
+    key_for_profile(name)
   end
 end

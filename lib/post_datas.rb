@@ -128,50 +128,46 @@ class PostDatas
     )
     return :busy unless result[:status] == :ok
 
-    occupation = result[:occupation]
     Rails.logger.info "[PostDatas] #{label} 开始采集浏览器 #{browser.profile_name}（#{group.size} 个账号，IP=#{browser.machine_ip}）"
 
-    begin
-      group.each_with_index do |account, index|
-        begin
-          Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 开始采集账号 #{account.account_name}(ID=#{account.id}, 平台=#{account.platform}, 浏览器=#{browser.profile_name}, IP=#{browser.machine_ip})"
+    # 注意：占用不在此处释放，由采集端真正采集完成后回传 release 接口精确释放（ttl 兜底）
+    group.each_with_index do |account, index|
+      begin
+        Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 开始采集账号 #{account.account_name}(ID=#{account.id}, 平台=#{account.platform}, 浏览器=#{browser.profile_name}, IP=#{browser.machine_ip})"
 
-          result = Util.fetch_account_post_data(account_id: account.id)
+        result = Util.fetch_account_post_data(account_id: account.id)
 
-          if result[:success]
-            mutex.synchronize { stats[:success] += 1 }
-            Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 采集指令推送成功"
-          else
-            fail_info = {
-              account_id: account.id,
-              account_name: account.account_name,
-              browser_name: browser.profile_name,
-              machine_ip: browser.machine_ip,
-              error: result[:message]
-            }
-            mutex.synchronize { stats[:fail] += 1; stats[:failed_items] << fail_info }
-            Rails.logger.error "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 推送失败: #{result[:message]}"
-          end
-        rescue => e
+        if result[:success]
+          mutex.synchronize { stats[:success] += 1 }
+          Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 采集指令推送成功"
+        else
           fail_info = {
             account_id: account.id,
             account_name: account.account_name,
-            browser_name: browser&.profile_name,
-            machine_ip: browser&.machine_ip,
-            error: "异常: #{e.message}"
+            browser_name: browser.profile_name,
+            machine_ip: browser.machine_ip,
+            error: result[:message]
           }
           mutex.synchronize { stats[:fail] += 1; stats[:failed_items] << fail_info }
-          Rails.logger.error "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 执行异常: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
+          Rails.logger.error "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 推送失败: #{result[:message]}"
         end
-
-        # 组内最后一个账号不 sleep
-        if index < group.size - 1
-          Rails.logger.info "[PostDatas] #{label} 等待 #{ACCOUNT_INTERVAL} 秒后继续下一个账号..."
-          sleep(ACCOUNT_INTERVAL)
-        end
+      rescue => e
+        fail_info = {
+          account_id: account.id,
+          account_name: account.account_name,
+          browser_name: browser&.profile_name,
+          machine_ip: browser&.machine_ip,
+          error: "异常: #{e.message}"
+        }
+        mutex.synchronize { stats[:fail] += 1; stats[:failed_items] << fail_info }
+        Rails.logger.error "[PostDatas] #{label} [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}) 执行异常: #{e.message}\n#{e.backtrace.first(3).join("\n")}"
       end
-    ensure
-      BrowserOccupationManager.release(occupation)
+
+      # 组内最后一个账号不 sleep
+      if index < group.size - 1
+        Rails.logger.info "[PostDatas] #{label} 等待 #{ACCOUNT_INTERVAL} 秒后继续下一个账号..."
+        sleep(ACCOUNT_INTERVAL)
+      end
     end
 
     :done

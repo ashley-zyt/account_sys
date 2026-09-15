@@ -27,13 +27,10 @@ class KolOutreachApi
       }
       body[:passcode] = PASSCODE if platform.to_s == "twitter"
 
-      occupation = acquire_browser(account, "kol_send##{contact&.id}")
-      begin
-        response = post_json(url, body)
-        parse_send_response(response)
-      ensure
-        BrowserOccupationManager.release(occupation)
-      end
+      acquire_browser(account, "kol_send##{contact&.id}")
+      # 注意：占用不在此处释放，由机器端完成后回传 release 接口精确释放（ttl 兜底）
+      response = post_json(url, body)
+      parse_send_response(response)
     rescue => e
       Rails.logger.error "[KolOutreachApi] 发送异常: #{e.message}"
       { success: false, reason: "network", error: e.message, raw: nil }
@@ -51,13 +48,10 @@ class KolOutreachApi
       }
       body[:passcode] = PASSCODE if platform.to_s == "twitter"
 
-      occupation = acquire_browser(account, "kol_check##{contact&.id}")
-      begin
-        response = post_json(url, body)
-        parse_reply_response(response)
-      ensure
-        BrowserOccupationManager.release(occupation)
-      end
+      acquire_browser(account, "kol_check##{contact&.id}")
+      # 注意：占用不在此处释放，由机器端完成后回传 release 接口精确释放（ttl 兜底）
+      response = post_json(url, body)
+      parse_reply_response(response)
     rescue => e
       Rails.logger.error "[KolOutreachApi] 检查回复异常: #{e.message}"
       { has_reply: false, replies: [], error: e.message, raw: nil }
