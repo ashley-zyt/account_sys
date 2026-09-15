@@ -71,15 +71,24 @@ class DomesticLoginStatusChecker
       { status: "abnormal", error: "#{e.class} #{e.message}" }
     end
 
-    # 若某平台未登录，发钉钉提醒
+    # 若某平台未登录或检查异常，发钉钉提醒
     def notify_if_logged_out(results)
       logged_out = results.select { |_name, r| r[:status] == "not_logged_in" }
-      return if logged_out.empty?
+      abnormals  = results.select { |_name, r| r[:status] == "abnormal" }
 
-      names = logged_out.keys.join("、")
-      content = "账号登录状态提醒：#{names}账号已退出登录，请及时处理"
-      Dingtalk.send_text(NOTIFY_ROBOT, content)
-      Rails.logger.info "[DomesticLoginStatusChecker] #{names} 未登录，已发钉钉提醒"
+      if logged_out.any?
+        names = logged_out.keys.join("、")
+        content = "账号登录状态提醒：#{names}账号已退出登录，请及时处理"
+        Dingtalk.send_text(NOTIFY_ROBOT, content)
+        Rails.logger.info "[DomesticLoginStatusChecker] #{names} 未登录，已发钉钉提醒"
+      end
+
+      if abnormals.any?
+        names = abnormals.map { |name, r| "#{name}（#{r[:error]}）" }.join("、")
+        content = "账号登录状态检查异常：#{names}，请检查运营机器接口"
+        Dingtalk.send_text(NOTIFY_ROBOT, content)
+        Rails.logger.info "[DomesticLoginStatusChecker] #{abnormals.keys.join('、')} 异常，已发钉钉提醒"
+      end
     end
 
     private
