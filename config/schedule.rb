@@ -67,12 +67,12 @@ end
 
 # TikTok: 19:00 发布，18:50 分配资源
 set :output, "log/taskscheduler_assignresources_tiktok.log"
-every :day, at: '18:50' do
+every :day, at: '17:50' do
   runner "TaskScheduler.assign_resources(platform: 'tiktok')"
 end
 
 set :output, "log/publishscheduler_run_tiktok.log"
-every :day, at: '19:00' do
+every :day, at: '18:00' do
   runner "PublishScheduler.run(platform: 'tiktok')"
 end
 
