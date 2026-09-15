@@ -33,8 +33,8 @@ require 'fileutils'
 #
 # 调度：config/schedule.rb → every :day, at: '20:00' → PublishStatusReport.run
 class PublishStatusReport
-  # 【临时测试】先发到 agic_zyt（zyt接收）验证功能，测试通过后改回 :publish_status
-  NOTIFY_ROBOT = :agic_zyt
+  # 推送目标：发布状况群（关键词与标题一致，不会补前缀）
+  NOTIFY_ROBOT = :publish_status
 
   # 展示顺序与名称（key 为 accounts.platform 枚举值）
   PLATFORMS = [
