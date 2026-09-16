@@ -88,7 +88,23 @@ module Dingtalk
     request.body = post_body.to_json
 
     response = http.request(request)
-    Rails.logger.info "[Dingtalk] 消息发送完成 status=#{response.code} body=#{response.body}"
+    body = response.body.to_s
+
+    # 钉钉即使发送失败（关键词不匹配/token 失效/限流等）也返回 HTTP 200，
+    # 必须检查 body 里的 errcode（0=成功），否则会「假成功」
+    errcode = begin
+      parsed = JSON.parse(body)
+      parsed.is_a?(Hash) ? parsed['errcode'] : nil
+    rescue JSON::ParserError
+      nil
+    end
+
+    if errcode && errcode != 0
+      Rails.logger.error "[Dingtalk] 消息被钉钉拒绝 status=#{response.code} errcode=#{errcode} body=#{body}"
+      return false
+    end
+
+    Rails.logger.info "[Dingtalk] 消息发送完成 status=#{response.code} body=#{body}"
     true
   rescue => e
     Rails.logger.error "[Dingtalk] 消息发送失败: #{e.message}"

@@ -78,12 +78,29 @@ class DomesticLoginStatusChecker
 
       Rails.logger.info "[DomesticLoginStatusChecker] 请求 #{url}"
       response = RemoteApiClient.get(url, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT)
-      data = JSON.parse(response.body.to_s.dup.force_encoding('UTF-8'))
-      { status: data["status"].to_s, error: nil }
+      body = response.body.to_s.dup.force_encoding('UTF-8')
+      Rails.logger.info "[DomesticLoginStatusChecker] 响应体: #{body}"
+      data = JSON.parse(body)
+      raw = data["status"]
+      status = normalize_status(raw)
+      error = nil
+      if status == "abnormal"
+        error = raw.blank? ? "接口未返回 status 字段" : "未知状态值: #{raw.inspect}"
+      end
+      { status: status, error: error }
     rescue JSON::ParserError => e
       { status: "abnormal", error: "响应非JSON: #{e.message}" }
     rescue => e
       { status: "abnormal", error: "#{e.class} #{e.message}" }
+    end
+
+    # 把接口返回的登录状态归一化为 logged_in / not_logged_in / abnormal，
+    # 兼容接口可能返回的多种写法，避免「值对不上 → 静默不发」。
+    def normalize_status(raw)
+      s = raw.to_s.strip.downcase
+      return "logged_in" if %w[logged_in login 已登录].include?(s)
+      return "not_logged_in" if %w[not_logged_in logged_out not_login logout 未登录 退出登录].include?(s)
+      "abnormal"
     end
 
     # 若某平台未登录或检查异常，发钉钉提醒
@@ -94,15 +111,23 @@ class DomesticLoginStatusChecker
       if logged_out.any?
         names = logged_out.keys.join("、")
         content = "账号登录状态提醒：#{names}账号已退出登录，请及时处理"
-        Dingtalk.send_text(NOTIFY_ROBOT, content)
-        Rails.logger.info "[DomesticLoginStatusChecker] #{names} 未登录，已发钉钉提醒"
+        ok = Dingtalk.send_text(NOTIFY_ROBOT, content)
+        if ok
+          Rails.logger.info "[DomesticLoginStatusChecker] #{names} 未登录，已发钉钉提醒"
+        else
+          Rails.logger.error "[DomesticLoginStatusChecker] #{names} 未登录，钉钉发送失败（请检查机器人配置/token/关键词）"
+        end
       end
 
       if abnormals.any?
         names = abnormals.map { |name, r| "#{name}（#{r[:error]}）" }.join("、")
         content = "账号登录状态检查异常：#{names}，请检查运营机器接口"
-        Dingtalk.send_text(NOTIFY_ROBOT, content)
-        Rails.logger.info "[DomesticLoginStatusChecker] #{abnormals.keys.join('、')} 异常，已发钉钉提醒"
+        ok = Dingtalk.send_text(NOTIFY_ROBOT, content)
+        if ok
+          Rails.logger.info "[DomesticLoginStatusChecker] #{abnormals.keys.join('、')} 异常，已发钉钉提醒"
+        else
+          Rails.logger.error "[DomesticLoginStatusChecker] #{abnormals.keys.join('、')} 异常，钉钉发送失败（请检查机器人配置/token/关键词）"
+        end
       end
     end
 

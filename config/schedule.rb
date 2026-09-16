@@ -7,7 +7,7 @@ set :environment, :development
 
 # 每日推送浏览器账号数据到Windows机器采集发文数据
 set :output, "log/postdatas_fetch.log"
-every :day, at: '01:00' do
+every :day, at: '03:10' do
   runner 'PostDatas.fetch'
 end
 # 做数字货币视频
