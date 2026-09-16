@@ -34,107 +34,117 @@ class PublishScheduler
 
     return if machine_ips.empty?
 
-    # 每台机器并行执行
-    threads = machine_ips.map do |ip|
-      Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection do
-          run_for_machine(ip, platform: platform)
-        end
-      end
-    end
-    threads.each(&:join)
+    # 首轮：全局 worker 池并行发布（受占用中心「每机器≤4 + 同浏览器互斥」约束）
+    tasks = fetch_all_tasks(platform: platform)
+    run_tasks_with_pool(tasks, machine_count: machine_ips.size)
 
     # 首轮发布完成，重新分配资源并重试（保持原有逻辑：仅指定平台时重试）
     if platform.present?
       Rails.logger.info "[PublishScheduler] 平台 #{platform} 首轮发布完成，开始重试流程"
       TaskScheduler.assign_resources(platform: platform)
 
-      # 重试时仍按机器并行
-      retry_threads = machine_ips.map do |ip|
-        Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection do
-            run_for_machine(ip, platform: platform)
-          end
-        end
-      end
-      retry_threads.each(&:join)
+      retry_tasks = fetch_all_tasks(platform: platform)
+      run_tasks_with_pool(retry_tasks, machine_count: machine_ips.size)
       Rails.logger.info "[PublishScheduler] 平台 #{platform} 重试流程完成"
     end
 
     Rails.logger.info "[PublishScheduler] 所有机器发布任务执行完成"
   end
 
-  # 针对单台机器执行其待发布任务：跳过忙的浏览器，优先执行空闲的，忙的稍后重试
-  # @param machine_ip [String] 运营机器 IP
-  # @param platform [String, nil] 限定平台
-  def self.run_for_machine(machine_ip, platform: nil)
-    loop do
-      tasks = fetch_tasks_for_machine(machine_ip, platform: platform)
-      break if tasks.empty?
+  # 用 worker 池并行执行一批待发布任务：非阻塞占用，忙的放回队尾重试，谁空闲谁先走。
+  # 并发受占用中心约束（同浏览器互斥 + 每机器≤4），worker 数再受连接池上限约束。
+  # @param tasks [Array] 待发布任务列表
+  # @param machine_count [Integer] 参与发布的机器数（用于计算 worker 池上限）
+  def self.run_tasks_with_pool(tasks, machine_count: nil)
+    return if tasks.empty?
 
-      if execute_next_task_for_machine(tasks)
-        sleep(TASK_INTERVAL)
-      else
-        # 所有任务浏览器都忙 → 等一会再重试
-        sleep(BrowserOccupationManager::POLL_INTERVAL)
+    machine_count ||= tasks.map { |t| t.browser&.machine_ip }.compact.uniq.size
+    db_pool_size = ActiveRecord::Base.connection_pool.size
+    pool_size = [tasks.size, BrowserOccupationManager::MAX_BROWSER_PER_IP * machine_count, db_pool_size].min
+    pool_size = 1 if pool_size <= 0
+
+    Rails.logger.info "[PublishScheduler] 本轮待发布任务 #{tasks.size} 个，worker 池=#{pool_size}（机器=#{machine_count}，连接池=#{db_pool_size}）"
+
+    # 释放主线程占用的连接，让 worker 能拿满整个连接池
+    ActiveRecord::Base.connection_pool.release_connection
+
+    mutex     = Mutex.new
+    queue     = tasks.dup
+    remaining = tasks.size
+    worker_id = 0
+
+    workers = Array.new(pool_size) do
+      wid = mutex.synchronize { worker_id += 1 }
+      Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          loop do
+            task = mutex.synchronize { queue.shift }
+            unless task
+              break if mutex.synchronize { remaining <= 0 }
+              sleep(BrowserOccupationManager::POLL_INTERVAL)
+              next
+            end
+
+            if attempt_task(task) == :busy
+              mutex.synchronize { queue << task }
+              sleep(BrowserOccupationManager::POLL_INTERVAL)
+            else
+              mutex.synchronize { remaining -= 1 }
+            end
+          end
+        end
       end
     end
+    workers.each(&:join)
   end
 
-  # 从给定待发布任务里挑一个浏览器空闲的执行（非阻塞）；全部忙则返回 nil
-  # @param tasks [Array] 待发布任务列表
-  # @return [Object, nil] 执行的任务；无空闲浏览器时返回 nil
-  def self.execute_next_task_for_machine(tasks)
-    return nil if tasks.empty?
+  # 尝试执行单个待发布任务（非阻塞）。
+  # @return [Symbol] :done 已执行/跳过（无需重试）；:busy 浏览器忙或机器满（需放回重试）
+  def self.attempt_task(task)
+    browser = task.browser
+    return :done if browser.nil? || browser.machine_ip.blank?
 
     today_range = Date.today.beginning_of_day..Date.today.end_of_day
 
-    tasks.sort_by { |t| t.created_at || Time.current }.each do |task|
-      browser = task.browser
-      next if browser.nil? || browser.machine_ip.blank?
-
-      # 防同账号多次发布：该账号今天已有成功发布记录，这条多余的 waiting_publish 任务
-      # 重置回 pending（释放资源），不再发布
-      if task.account_id.present? &&
-         task.class.exists?(account_id: task.account_id, status: :success, actual_publish_time: today_range)
-        Rails.logger.info "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 对应账号 ##{task.account_id} 今天已发布成功，重置为 pending 跳过"
-        task.update!(status: :pending, account_id: nil, browser_id: nil, start_at: nil)
-        next
-      end
-
-      # 非阻塞占用：忙/机器满则跳过，去试下一个任务
-      result = BrowserOccupationManager.try_acquire(
-        BrowserOccupation.key_for_browser(browser),
-        machine_ip: browser.machine_ip,
-        profile_name: browser.profile_name,
-        operation: :publish,
-        task_ref: "#{task_type_name(task)}##{task.id}",
-        ttl: 900
-      )
-      next unless result[:status] == :ok
-
-      occupation = result[:occupation]
-      task_type  = task_type_name(task)
-
-      # 事务锁定任务，避免重复执行；抢不到则释放占用并跳过
-      executed = false
-      ActiveRecord::Base.transaction do
-        task.lock!
-        if task.status == 'waiting_publish'
-          task.update!(status: :executing, start_at: Time.current)
-          executed = true
-        end
-      end
-      unless executed
-        BrowserOccupationManager.release(occupation)
-        next
-      end
-
-      execute_task(task, task_type, browser.machine_ip, occupation: occupation)
-      return task
+    # 防同账号多次发布：该账号今天已有成功发布记录，这条多余的 waiting_publish 任务
+    # 重置回 pending（释放资源），不再发布
+    if task.account_id.present? &&
+       task.class.exists?(account_id: task.account_id, status: :success, actual_publish_time: today_range)
+      Rails.logger.info "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 对应账号 ##{task.account_id} 今天已发布成功，重置为 pending 跳过"
+      task.update!(status: :pending, account_id: nil, browser_id: nil, start_at: nil)
+      return :done
     end
 
-    nil
+    # 非阻塞占用：忙/机器满则放回重试
+    result = BrowserOccupationManager.try_acquire(
+      BrowserOccupation.key_for_browser(browser),
+      machine_ip: browser.machine_ip,
+      profile_name: browser.profile_name,
+      operation: :publish,
+      task_ref: "#{task_type_name(task)}##{task.id}",
+      ttl: 900
+    )
+    return :busy unless result[:status] == :ok
+
+    occupation = result[:occupation]
+    task_type  = task_type_name(task)
+
+    # 事务锁定任务，避免重复执行；抢不到则释放占用并放弃本轮
+    executed = false
+    ActiveRecord::Base.transaction do
+      task.lock!
+      if task.status == 'waiting_publish'
+        task.update!(status: :executing, start_at: Time.current)
+        executed = true
+      end
+    end
+    unless executed
+      BrowserOccupationManager.release(occupation)
+      return :done
+    end
+
+    execute_task(task, task_type, browser.machine_ip, occupation: occupation)
+    :done
   end
 
   # === 旧入口兼容（保留以避免外部调用断裂） ===
@@ -173,13 +183,6 @@ class PublishScheduler
     end
     tasks = tasks.select { |t| t.platform == platform } if platform.present?
     tasks
-  end
-
-  # 获取指定机器下所有待发布任务
-  def self.fetch_tasks_for_machine(machine_ip, platform: nil)
-    fetch_all_tasks(platform: platform).select do |t|
-      t.browser&.machine_ip == machine_ip
-    end
   end
 
   # 当前需要参与发布的所有运营机器 IP
