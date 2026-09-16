@@ -81,12 +81,15 @@ class DomesticLoginStatusChecker
       body = response.body.to_s.dup.force_encoding('UTF-8')
       Rails.logger.info "[DomesticLoginStatusChecker] 响应体: #{body}"
       data = JSON.parse(body)
+
+      # 错误返回：type=error，只有 error_info、没有 status（如浏览器启动失败/导航失败/平台不支持等）
+      if data["type"] == "error"
+        return { status: "abnormal", error: data["error_info"].to_s.presence || "接口返回 error 但无 error_info" }
+      end
+
       raw = data["status"]
       status = normalize_status(raw)
-      error = nil
-      if status == "abnormal"
-        error = raw.blank? ? "接口未返回 status 字段" : "未知状态值: #{raw.inspect}"
-      end
+      error = abnormal_error(raw)
       { status: status, error: error }
     rescue JSON::ParserError => e
       { status: "abnormal", error: "响应非JSON: #{e.message}" }
@@ -98,9 +101,20 @@ class DomesticLoginStatusChecker
     # 兼容接口可能返回的多种写法，避免「值对不上 → 静默不发」。
     def normalize_status(raw)
       s = raw.to_s.strip.downcase
-      return "logged_in" if %w[logged_in login 已登录].include?(s)
-      return "not_logged_in" if %w[not_logged_in logged_out not_login logout 未登录 退出登录].include?(s)
-      "abnormal"
+      case s
+      when "logged_in", "login", "已登录" then "logged_in"
+      when "not_logged_in", "logged_out", "not_login", "logout", "未登录", "退出登录" then "not_logged_in"
+      when "abnormal" then "abnormal"
+      else "abnormal"  # 空值/未知值统一归 abnormal，触发提醒便于排查
+      end
+    end
+
+    # 仅在判定为 abnormal 时给出排查信息；接口正常返回的 abnormal 不额外说明
+    def abnormal_error(raw)
+      s = raw.to_s.strip
+      return "接口未返回 status 字段" if s.empty?
+      return nil if s.downcase == "abnormal"
+      "未知状态值: #{raw.inspect}"
     end
 
     # 若某平台未登录或检查异常，发钉钉提醒
@@ -120,7 +134,7 @@ class DomesticLoginStatusChecker
       end
 
       if abnormals.any?
-        names = abnormals.map { |name, r| "#{name}（#{r[:error]}）" }.join("、")
+        names = abnormals.map { |name, r| r[:error].present? ? "#{name}（#{r[:error]}）" : name }.join("、")
         content = "账号登录状态检查异常：#{names}，请检查运营机器接口"
         ok = Dingtalk.send_text(NOTIFY_ROBOT, content)
         if ok
