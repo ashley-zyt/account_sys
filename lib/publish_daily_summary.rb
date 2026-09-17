@@ -19,10 +19,11 @@ class PublishDailySummary
 
   # 计算某天的发文统计
   # @param date [Date] 统计日期，默认今天
+  # @param include_failed_accounts [Boolean] 是否附带「最终失败账号明细」（后台弹窗需要；日报等只取 success 数的场景可传 false 省查询）
   # @return [Hash] { date:, platforms:, total:, failed_accounts: }
   #   platforms: [{ key:, name:, normal:, success:, failed: }]
   #   failed_accounts: [{ account_id:, account_name:, platform: }]
-  def self.compute(date = Date.today)
+  def self.compute(date = Date.today, include_failed_accounts: true)
     today_start = date.beginning_of_day
     today_end = date.end_of_day
 
@@ -81,15 +82,14 @@ class PublishDailySummary
     end
 
     # 失败账号详情（含账号名，账号已删则 name 为 nil）
-    failed_accounts = failed_account_ids.map do |account_id, platform|
-      acc = Account.unscoped.find_by(id: account_id)
-      {
-        account_id: account_id,
-        account_name: acc&.account_name,
-        platform: platform
-      }
+    failed_accounts = if include_failed_accounts
+      failed_account_ids.map do |account_id, platform|
+        acc = Account.unscoped.find_by(id: account_id)
+        { account_id: account_id, account_name: acc&.account_name, platform: platform }
+      end.sort_by { |f| [f[:platform].to_s, f[:account_id].to_i] }
+    else
+      []
     end
-    failed_accounts.sort_by! { |f| [f[:platform].to_s, f[:account_id].to_i] }
 
     platforms = PLATFORM_NAMES.map do |key, name|
       {

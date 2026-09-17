@@ -12,8 +12,9 @@
 #   # 指定两个日期对比（后者显示与前一天的变化：账号数/发文数）
 #   bundle exec rails runner scripts/publish_status_snapshots.rb diff 2026-09-12 2026-09-13
 #
-# 表格单元格含义：账号数/发文数
-#   账号数 = 当日正常状态账号总数（快照值）；发文数 = 当日正常账号发文条数
+# 表格单元格含义：账号数/发文数/成功数
+#   账号数 = 当日正常状态账号总数（快照值）；发文数 = 当日正常账号发文条数；
+#   成功数 = 当日最终成功发文账号数（按账号去重取最后一次为成功）
 
 args = ARGV.dup
 mode = args.first
@@ -47,7 +48,7 @@ when 'diff'
   puts "快照对比（#{date_a} → #{date_b}）"
   puts PublishStatusReport.snapshot_diff_table(snap_a, snap_b)
   puts ""
-  puts "注：变化列 = 后一天 − 前一天，格式「账号数变化/发文数变化」"
+  puts "注：变化列 = 后一天 − 前一天，格式「账号数变化/发文数变化/成功数变化」"
 else
   days = mode.to_s =~ /\A\d+\z/ ? mode.to_i : 14
   snapshots = PublishStatusReport.all_snapshots.last(days)
@@ -58,7 +59,7 @@ else
     exit 0
   end
 
-  puts "发布状况快照（最近 #{snapshots.size} 天，单元格=账号数/发文数）"
+  puts "发布状况快照（最近 #{snapshots.size} 天，单元格=账号数/发文数/成功数）"
   puts PublishStatusReport.snapshot_table(snapshots)
   puts ""
   puts "快照目录：#{PublishStatusReport.snapshot_dir}"
