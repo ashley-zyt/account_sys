@@ -8,7 +8,7 @@
 #   - 今日成功/失败：按「账号」去重，取每个账号今日最后一次发文日志（run_at 最大的那条）
 #     的 status 作为该账号今日的最终结果。失败重试后成功的，以最后一次为准。
 #   - 平台归属：优先用日志的 account_id 快照关联 accounts.platform；
-#     若账号已物理删除，则回退用 task_uuid 关联任务表(MoveTask等)的 platform。
+#     账号已物理删除的，回退用 task_uuid 关联任务表(MoveTask等)的 platform。
 
 # 平台显示名（key 用 Account.platforms 的 enum 名称：facebook/twitter/...）
 PLATFORM_NAMES = {
@@ -18,9 +18,6 @@ PLATFORM_NAMES = {
   "youtube"   => "YouTube",
   "instagram" => "Instagram"
 }.freeze
-
-# 平台整数值 → enum 名称（Account.platforms 是 名称→整数，反转为 整数→名称）
-PLATFORM_BY_INT = Account.platforms.invert.freeze
 
 # 中文/全角字符按双宽计算，保证表格对齐
 def display_width(str)
@@ -40,6 +37,7 @@ today_end = today.end_of_day
 normal_counts = Account.where(status: 0).group(:platform).count
 
 # 2. 今日发文日志，按账号取「最后一次」执行结果
+# 注意：pluck 对 enum 列(platform/status)返回的是 enum 名称字符串，不是整数
 rows = TaskLog.where(run_at: today_start..today_end)
               .pluck(:account_id, :status, :run_at, :task_uuid)
 
@@ -53,14 +51,14 @@ rows.each do |account_id, status, run_at, task_uuid|
   end
 end
 
-# 3. 账号 id → 平台名称：先走 accounts 表（unscoped 含软删除）
+# 3. 账号 id → 平台名称（pluck 返回 enum 名称，直接用）
 account_ids = last_by_account.keys
 platform_by_account = {}
 Account.unscoped.where(id: account_ids).pluck(:id, :platform).each do |id, p|
-  platform_by_account[id] = PLATFORM_BY_INT[p]
+  platform_by_account[id] = p
 end
 
-# 4. 回退：账号已物理删除的，用 task_uuid 关联任务表拿 platform
+# 4. 回退：账号已物理删除的，用 task_uuid 关联任务表拿 platform（任务表 platform 也是 enum 名称）
 missing_uuids = last_by_account
                 .select { |id, _e| platform_by_account[id].nil? }
                 .map { |_id, e| e[:task_uuid] }
@@ -70,7 +68,7 @@ task_platform_by_uuid = {}
 unless missing_uuids.empty?
   WorkMode.resource_modes.each do |mode|
     mode.task_model_class.where(task_uuid: missing_uuids).pluck(:task_uuid, :platform).each do |uuid, p|
-      task_platform_by_uuid[uuid] = PLATFORM_BY_INT[p] if p.present?
+      task_platform_by_uuid[uuid] = p if p.present?
     end
   end
 end
@@ -79,14 +77,14 @@ last_by_account.each do |id, e|
   platform_by_account[id] = task_platform_by_uuid[e[:task_uuid]] if platform_by_account[id].nil?
 end
 
-# 5. 按平台统计成功/失败
+# 5. 按平台统计成功/失败（status 是 enum 名称 "success"/"failed"）
 success_counts = Hash.new(0)
 failed_counts = Hash.new(0)
 last_by_account.each do |account_id, e|
   platform = platform_by_account[account_id]
-  if e[:status] == 0   # success
+  if e[:status].to_s == "success"
     success_counts[platform] += 1
-  else                 # failed
+  else
     failed_counts[platform] += 1
   end
 end
@@ -119,10 +117,3 @@ puts "#{pad('未知平台', 12)}#{pad('-', 10)}#{pad(u_s, 10)}#{pad(u_f, 10)}" i
 
 puts
 puts "#{pad('合计', 12)}#{pad(total_normal, 10)}#{pad(total_success, 10)}#{pad(total_failed, 10)}"
-
-# 调试：定位「未知平台」的来源
-puts
-puts "--- 调试 ---"
-puts "今日日志总数: #{rows.size}"
-puts "有发文日志的账号数(去重): #{last_by_account.size}"
-puts "仍查不到平台的账号数: #{last_by_account.count { |id, _e| platform_by_account[id].nil? }}"
