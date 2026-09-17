@@ -10,14 +10,17 @@
 #     这里「最终成功」= 今日至少成功过一次的任务；「最终失败」= 今日只有失败记录、
 #     从未成功的任务。避免「失败后重试成功」被重复计入。
 
-# 平台枚举整数值 → 显示名（与 app/models/account.rb 的 enum platform 一致）
-PLATFORMS = {
-  1 => "Facebook",
-  2 => "X",
-  3 => "TikTok",
-  4 => "YouTube",
-  5 => "Instagram"
+# 平台显示名（key 用 Account.platforms 的 enum 名称：facebook/twitter/...）
+PLATFORM_NAMES = {
+  "facebook"  => "Facebook",
+  "twitter"   => "X",
+  "tiktok"    => "TikTok",
+  "youtube"   => "YouTube",
+  "instagram" => "Instagram"
 }.freeze
+
+# 平台整数值 → enum 名称（Account.platforms 是 名称→整数，反转为 整数→名称）
+PLATFORM_BY_INT = Account.platforms.invert.freeze
 
 # 中文/全角字符按双宽计算，保证表格对齐
 def display_width(str)
@@ -29,28 +32,24 @@ def pad(str, width)
   str + (" " * [width - display_width(str), 0].max)
 end
 
-# group().count 的 key 可能是整数或字符串（取决于是否为 raw SQL group），统一转整数
-def int_key(k)
-  return nil if k.nil?
-  k.to_i
-end
-
 today = Date.today
 today_start = today.beginning_of_day
 today_end = today.end_of_day
 
-# 1. 各平台正常账号数
-normal_counts = {}
-Account.where(status: 0).group(:platform).count.each { |p, c| normal_counts[int_key(p)] = c }
+# 1. 各平台正常账号数（group(:platform) 对 enum 列返回 enum 名称 key）
+normal_counts = Account.where(status: 0).group(:platform).count
 
 # 2. 今日发文日志，按任务(task_uuid)去重统计最终成功/失败
 logs = TaskLog.where(run_at: today_start..today_end)
               .select(:task_uuid, :status, :account_id)
               .to_a
 
-# 账号 id → 平台（unscoped 绕过软删除过滤，保证已删账号的日志也能归到平台）
+# 账号 id → 平台 enum 名称（unscoped 绕过软删除，保证已删账号的日志也能归到平台）
 account_ids = logs.map(&:account_id).compact.uniq
-platform_map = Account.unscoped.where(id: account_ids).pluck(:id, :platform).to_h
+account_platform = {}
+Account.unscoped.where(id: account_ids).pluck(:id, :platform).each do |id, p|
+  account_platform[id] = PLATFORM_BY_INT[p]
+end
 
 # 按 task_uuid 聚合：只要今日出现过 success 就算最终成功；平台以成功那次账号为准
 final = {}
@@ -67,7 +66,7 @@ end
 success_counts = Hash.new(0)
 failed_counts = Hash.new(0)
 final.each_value do |e|
-  platform = int_key(platform_map[e[:account_id]])
+  platform = account_platform[e[:account_id]]
   if e[:success]
     success_counts[platform] += 1
   else
@@ -84,10 +83,10 @@ total_normal = 0
 total_success = 0
 total_failed = 0
 
-PLATFORMS.each do |p, name|
-  normal = normal_counts[p] || 0
-  s = success_counts[p] || 0
-  f = failed_counts[p] || 0
+PLATFORM_NAMES.each do |key, name|
+  normal = normal_counts[key] || 0
+  s = success_counts[key] || 0
+  f = failed_counts[key] || 0
   total_normal += normal
   total_success += s
   total_failed += f
