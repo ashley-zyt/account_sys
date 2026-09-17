@@ -14,7 +14,7 @@ require 'fileutils'
 #     Account.where(status: 0, platform: X).count 一致。该值只有当前快照、
 #     无历史，因此跨天对比依赖每日快照文件（前天取快照值）
 #   - 正常发文数：正常状态账号当天（post_stats.post_date = 当日）的发文条数
-#   - 最终成功发文数：按账号去重、取最后一次发文为成功的账号数（复用 PublishDailySummary）
+#   - 日志成功数/失败数：按账号去重、取最后一次发文的结果（成功/失败账号数，复用 PublishDailySummary）
 #   - 对比：报告日（昨天） vs 基准日（前天）
 #
 # 说明：
@@ -23,7 +23,7 @@ require 'fileutils'
 #
 # 快照文件：storage/publish_status_snapshots/YYYY-MM-DD.json
 #   - normal_accounts = 当日正常状态账号总数（当前快照值），posts = 当日正常账号发文条数，
-#     success = 当日最终成功发文账号数
+#     success = 当日日志成功账号数，failed = 当日日志失败账号数
 #   - 首写为准（文件已存在则不覆盖），保证「昨天报告里看到的数字」与
 #     「今天报告里作为对比基准的数字」一致，历史数字不会因补采数据而漂移
 #   - 对比时优先读基准日快照；快照缺失则回退用今天的数值作为基准
@@ -55,13 +55,17 @@ class PublishStatusReport
       report_date = Date.yesterday
       base_date   = report_date - 1
 
-      # 各平台「最终成功发文数」：按账号去重、取最后一次发文为成功的账号数（复用 PublishDailySummary）
-      cur_success = PublishDailySummary.compute(report_date, include_failed_accounts: false)
-                                       .fetch(:platforms)
-                                       .to_h { |p| [p[:key], p[:success]] }
+      # 各平台「日志成功数/失败数」：按账号去重、取最后一次发文的结果（复用 PublishDailySummary）
+      cur_platforms = PublishDailySummary.compute(report_date, include_failed_accounts: false)
+                                         .fetch(:platforms)
+                                         .to_h { |p| [p[:key], p] }
 
       rows = PLATFORMS.map do |platform, label|
-        stats = stats_for(platform, report_date).merge(success: cur_success[platform] || 0)
+        cp = cur_platforms[platform] || {}
+        stats = stats_for(platform, report_date).merge(
+          success: cp[:success] || 0,
+          failed:  cp[:failed] || 0
+        )
         { platform: platform, label: label, stats: stats }
       end
 
@@ -144,7 +148,8 @@ class PublishStatusReport
           'label'           => row[:label],
           'normal_accounts' => row[:stats][:accounts].to_i,
           'posts'           => row[:stats][:posts].to_i,
-          'success'         => row[:stats][:success].to_i
+          'success'         => row[:stats][:success].to_i,
+          'failed'          => row[:stats][:failed].to_i
         }
       end
 
@@ -155,7 +160,8 @@ class PublishStatusReport
         'totals'       => {
           'normal_accounts' => platforms.values.sum { |v| v['normal_accounts'] },
           'posts'           => platforms.values.sum { |v| v['posts'] },
-          'success'         => platforms.values.sum { |v| v['success'] }
+          'success'         => platforms.values.sum { |v| v['success'] },
+          'failed'          => platforms.values.sum { |v| v['failed'] }
         }
       }
 
@@ -170,11 +176,9 @@ class PublishStatusReport
     def prev_stats_for(platform, date, fallback)
       snap = load_snapshot(date)
       from_snapshot = snapshot_stats(snap, platform)
-      return fallback unless from_snapshot
+      return from_snapshot if from_snapshot
 
-      # 旧版快照可能没有 success 字段，此时用 fallback（昨日值）兜底
-      from_snapshot[:success] ||= fallback[:success]
-      from_snapshot
+      fallback
     end
 
     # 默认取快照目录下的所有快照（按日期升序）
@@ -193,14 +197,13 @@ class PublishStatusReport
     # ---- 展示 ----
 
     # 组装单个平台的播报行
-    # 示例：正常状态YouTube账号数 12 个，比昨日**多**1个；正常发文数 30 条，比昨日**少**2条；最终成功发文 10 次，比昨日**多**1次
+    # 示例：正常状态YouTube账号数 145 个，比昨日**少**5个；正常发文数 118 条，比昨日**多**11条；日志成功数 133 次，日志失败数 10 次
     def build_line(label, cur, prev)
       account_diff = diff_text(cur[:accounts], prev[:accounts], '个')
       post_diff    = diff_text(cur[:posts],    prev[:posts],    '条')
-      success_diff = diff_text(cur[:success],  prev[:success],  '次')
       "正常状态#{label}账号数 #{cur[:accounts]} 个，#{account_diff}；" \
         "正常发文数 #{cur[:posts]} 条，#{post_diff}；" \
-        "最终成功发文 #{cur[:success]} 次，#{success_diff}"
+        "日志成功数 #{cur[:success]} 次，日志失败数 #{cur[:failed]} 次"
     end
 
     # 对比文案：多/少加粗；差异为 0 时显示「与昨日持平」
@@ -212,17 +215,17 @@ class PublishStatusReport
       "比昨日#{word}#{delta.abs}#{unit}"
     end
 
-    # 快照列表表格（列：日期 + 各平台「账号数/发文数/成功数」+ 合计）
+    # 快照列表表格（列：日期 + 各平台「账号数/发文数/成功数/失败数」+ 合计）
     def snapshot_table(snapshots)
       header = ['日期'] + PLATFORMS.map { |_p, label| label } + ['合计']
       rows = snapshots.map do |snap|
         platforms = snap['platforms'] || {}
         cells = PLATFORMS.map do |platform, _label|
           s = platforms[platform] || {}
-          "#{s['normal_accounts'].to_i}/#{s['posts'].to_i}/#{s['success'].to_i}"
+          "#{s['normal_accounts'].to_i}/#{s['posts'].to_i}/#{s['success'].to_i}/#{s['failed'].to_i}"
         end
         totals = snap['totals'] || {}
-        [snap['stat_date'].to_s] + cells + ["#{totals['normal_accounts'].to_i}/#{totals['posts'].to_i}/#{totals['success'].to_i}"]
+        [snap['stat_date'].to_s] + cells + ["#{totals['normal_accounts'].to_i}/#{totals['posts'].to_i}/#{totals['success'].to_i}/#{totals['failed'].to_i}"]
       end
       render_table([header] + rows)
     end
@@ -234,7 +237,7 @@ class PublishStatusReport
         platforms = snap['platforms'] || {}
         cells = PLATFORMS.map do |platform, _label|
           s = platforms[platform] || {}
-          "#{s['normal_accounts'].to_i}/#{s['posts'].to_i}/#{s['success'].to_i}"
+          "#{s['normal_accounts'].to_i}/#{s['posts'].to_i}/#{s['success'].to_i}/#{s['failed'].to_i}"
         end
         [snap['stat_date'].to_s] + cells
       end
@@ -246,7 +249,8 @@ class PublishStatusReport
         d_accounts = b['normal_accounts'].to_i - a['normal_accounts'].to_i
         d_posts    = b['posts'].to_i - a['posts'].to_i
         d_success  = b['success'].to_i - a['success'].to_i
-        "#{signed(d_accounts)}/#{signed(d_posts)}/#{signed(d_success)}"
+        d_failed   = b['failed'].to_i - a['failed'].to_i
+        "#{signed(d_accounts)}/#{signed(d_posts)}/#{signed(d_success)}/#{signed(d_failed)}"
       end
       rows << ['变化'] + delta_cells
 
@@ -262,11 +266,7 @@ class PublishStatusReport
       s = (snap['platforms'] || {})[platform]
       return nil unless s
 
-      {
-        accounts: s['normal_accounts'].to_i,
-        posts: s['posts'].to_i,
-        success: s.key?('success') ? s['success'].to_i : nil
-      }
+      { accounts: s['normal_accounts'].to_i, posts: s['posts'].to_i }
     end
 
     # 基准日数字来源说明（日志用）
