@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%= csrf_meta_tags %>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 24px;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #f1f5f9;
+    }
+    .modal-subtitle {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #1e293b;
+    }
+    th {
+      color: #94a3b8;
+      font-weight: 500;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    td.failed-num {
+      color: #f87171;
+      font-weight: 600;
+    }
+    tr.total-row td {
+      border-top: 2px solid #334155;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 10px;
+    }
+    .failed-list {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .failed-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      background: #1e293b;
+      color: #e2e8f0;
+      text-decoration: none;
+      border: 1px solid #334155;
+      transition: all 0.15s;
+    }
+    .failed-item:hover {
+      background: #334155;
+      border-color: #f87171;
+    }
+    .failed-item .id {
+      color: #f87171;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .failed-item.muted {
+      color: #64748b;
+      cursor: default;
+    }
+    .failed-item.muted:hover {
+      background: #1e293b;
+      border-color: #334155;
+    }
+    .failed-item .platform-tag {
+      color: #94a3b8;
+      font-size: 11px;
+    }
+    .empty-tip {
+      color: #64748b;
+      font-size: 13px;
+      text-align: center;
+      padding: 20px;
+    }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .btn {
+      padding: 9px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary {
+      background: #334155;
+      color: #e2e8f0;
+    }
+    .btn-secondary:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div class="modal-title">今日发布状况</div>
+  <div class="modal-subtitle"><%= @summary[:date].strftime('%Y-%m-%d') %> · 按账号去重，取今日最后一次执行结果</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>平台</th>
+        <th style="text-align: right;">正常账号</th>
+        <th style="text-align: right;">最终成功</th>
+        <th style="text-align: right;">最终失败</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @summary[:platforms].each do |p| %>
+        <tr>
+          <td><%= p[:name] %></td>
+          <td class="num"><%= p[:normal] %></td>
+          <td class="num"><%= p[:success] %></td>
+          <td class="num failed-num"><%= p[:failed] %></td>
+        </tr>
+      <% end %>
+      <tr class="total-row">
+        <td>合计</td>
+        <td class="num"><%= @summary[:total][:normal] %></td>
+        <td class="num"><%= @summary[:total][:success] %></td>
+        <td class="num failed-num"><%= @summary[:total][:failed] %></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">最终失败账号（<%= @summary[:failed_accounts].size %> 个，点击跳转账号页）</div>
+  <% if @summary[:failed_accounts].any? %>
+    <div class="failed-list">
+      <% @summary[:failed_accounts].each do |f| %>
+        <% platform_name = PublishDailySummary::PLATFORM_NAMES[f[:platform]] || f[:platform] || "未知平台" %>
+        <% if f[:account_name].present? %>
+          <a href="<%= admin_account_path(f[:account_id]) %>" target="_top" class="failed-item">
+            <span class="id">#<%= f[:account_id] %></span>
+            <%= f[:account_name] %>
+            <span class="platform-tag"><%= platform_name %></span>
+          </a>
+        <% else %>
+          <span class="failed-item muted">
+            <span class="id">#<%= f[:account_id] %></span>
+            账号已删除
+            <span class="platform-tag"><%= platform_name %></span>
+          </span>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="empty-tip">今日无最终失败账号。</div>
+  <% end %>
+
+  <div class="form-actions">
+    <button type="button" class="btn btn-secondary" onclick="closeModal()">关闭</button>
+  </div>
+
+  <script>
+    function closeModal() {
+      if (window.parent && window.parent.closePublishStatusModal) {
+        window.parent.closePublishStatusModal();
+      }
+    }
+  </script>
+</body>
+</html>

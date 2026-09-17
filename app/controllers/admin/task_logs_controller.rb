@@ -13,4 +13,10 @@ class Admin::TaskLogsController < Admin::BaseController
 	def show
 		@task_log = TaskLog.find(params[:id])
 	end
+
+	# 今日发布状况弹窗：统计各平台正常账号数、今日最终成功/失败，及最终失败账号列表
+	def publish_status
+		@summary = PublishDailySummary.compute(Date.today)
+		render layout: false
+	end
 end

@@ -3,21 +3,9 @@
 #
 # 用法：bundle exec rails runner scripts/publish_daily_summary.rb
 #
-# 口径（参考账号列表页「最后一次是否成功」）：
-#   - 正常账号数：Account.status = 0（正常）的账号数，按平台分组
-#   - 今日成功/失败：按「账号」去重，取每个账号今日最后一次发文日志（run_at 最大的那条）
-#     的 status 作为该账号今日的最终结果。失败重试后成功的，以最后一次为准。
-#   - 平台归属：优先用日志的 account_id 快照关联 accounts.platform；
-#     账号已物理删除的，回退用 task_uuid 关联任务表(MoveTask等)的 platform。
+# 统计逻辑见 lib/publish_daily_summary.rb（与后台「今日发布状况」弹窗共用同一口径）
 
-# 平台显示名（key 用 Account.platforms 的 enum 名称：facebook/twitter/...）
-PLATFORM_NAMES = {
-  "facebook"  => "Facebook",
-  "twitter"   => "X",
-  "tiktok"    => "TikTok",
-  "youtube"   => "YouTube",
-  "instagram" => "Instagram"
-}.freeze
+summary = PublishDailySummary.compute(Date.today)
 
 # 中文/全角字符按双宽计算，保证表格对齐
 def display_width(str)
@@ -29,91 +17,26 @@ def pad(str, width)
   str + (" " * [width - display_width(str), 0].max)
 end
 
-today = Date.today
-today_start = today.beginning_of_day
-today_end = today.end_of_day
-
-# 1. 各平台正常账号数（group(:platform) 对 enum 列返回 enum 名称 key）
-normal_counts = Account.where(status: 0).group(:platform).count
-
-# 2. 今日发文日志，按账号取「最后一次」执行结果
-# 注意：pluck 对 enum 列(platform/status)返回的是 enum 名称字符串，不是整数
-rows = TaskLog.where(run_at: today_start..today_end)
-              .pluck(:account_id, :status, :run_at, :task_uuid)
-
-# 按账号取今日最后一次日志（run_at 最大）
-last_by_account = {}
-rows.each do |account_id, status, run_at, task_uuid|
-  next if account_id.nil?
-  cur = last_by_account[account_id]
-  if cur.nil? || (run_at && (!cur[:run_at] || run_at > cur[:run_at]))
-    last_by_account[account_id] = { status: status, run_at: run_at, task_uuid: task_uuid }
-  end
-end
-
-# 3. 账号 id → 平台名称（pluck 返回 enum 名称，直接用）
-account_ids = last_by_account.keys
-platform_by_account = {}
-Account.unscoped.where(id: account_ids).pluck(:id, :platform).each do |id, p|
-  platform_by_account[id] = p
-end
-
-# 4. 回退：账号已物理删除的，用 task_uuid 关联任务表拿 platform（任务表 platform 也是 enum 名称）
-missing_uuids = last_by_account
-                .select { |id, _e| platform_by_account[id].nil? }
-                .map { |_id, e| e[:task_uuid] }
-                .compact.uniq
-
-task_platform_by_uuid = {}
-unless missing_uuids.empty?
-  WorkMode.resource_modes.each do |mode|
-    mode.task_model_class.where(task_uuid: missing_uuids).pluck(:task_uuid, :platform).each do |uuid, p|
-      task_platform_by_uuid[uuid] = p if p.present?
-    end
-  end
-end
-
-last_by_account.each do |id, e|
-  platform_by_account[id] = task_platform_by_uuid[e[:task_uuid]] if platform_by_account[id].nil?
-end
-
-# 5. 按平台统计成功/失败（status 是 enum 名称 "success"/"failed"）
-success_counts = Hash.new(0)
-failed_counts = Hash.new(0)
-last_by_account.each do |account_id, e|
-  platform = platform_by_account[account_id]
-  if e[:status].to_s == "success"
-    success_counts[platform] += 1
-  else
-    failed_counts[platform] += 1
-  end
-end
-
-puts "===== 发文统计（#{today.strftime('%Y-%m-%d')}）====="
+puts "===== 发文统计（#{summary[:date].strftime('%Y-%m-%d')}）====="
 puts "（成功/失败按账号去重，取今日最后一次执行结果）"
 puts
 puts "#{pad('平台', 12)}#{pad('正常账号', 10)}#{pad('最终成功', 10)}#{pad('最终失败', 10)}"
 
-total_normal = 0
-total_success = 0
-total_failed = 0
-
-PLATFORM_NAMES.each do |key, name|
-  normal = normal_counts[key] || 0
-  s = success_counts[key] || 0
-  f = failed_counts[key] || 0
-  total_normal += normal
-  total_success += s
-  total_failed += f
-  puts "#{pad(name, 12)}#{pad(normal, 10)}#{pad(s, 10)}#{pad(f, 10)}"
+summary[:platforms].each do |p|
+  puts "#{pad(p[:name], 12)}#{pad(p[:normal], 10)}#{pad(p[:success], 10)}#{pad(p[:failed], 10)}"
 end
 
-# 未知平台（账号和任务都查不到平台）
-u_s = success_counts[nil] || 0
-u_f = failed_counts[nil] || 0
-total_success += u_s
-total_failed += u_f
-puts "#{pad('未知平台', 12)}#{pad('-', 10)}#{pad(u_s, 10)}#{pad(u_f, 10)}" if u_s.positive? || u_f.positive?
-
+t = summary[:total]
 puts
-puts "#{pad('合计', 12)}#{pad(total_normal, 10)}#{pad(total_success, 10)}#{pad(total_failed, 10)}"
+puts "#{pad('合计', 12)}#{pad(t[:normal], 10)}#{pad(t[:success], 10)}#{pad(t[:failed], 10)}"
+
+# 最终失败的账号 ID 列表
+failed = summary[:failed_accounts]
+if failed.any?
+  puts
+  puts "--- 最终失败账号（#{failed.size} 个）---"
+  failed.each do |f|
+    name = f[:account_name] || "（账号已删除）"
+    puts "##{f[:account_id]}  #{name}  [#{f[:platform] || '未知平台'}]"
+  end
+end

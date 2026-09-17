@@ -58,7 +58,11 @@ Rails.application.routes.draw do
       end
     end
     resources :browsers, only: [:index, :show, :new, :create, :edit, :update, :destroy]
-    resources :task_logs, only: [:index, :show]
+    resources :task_logs, only: [:index, :show] do
+      collection do
+        get :publish_status
+      end
+    end
     resources :themes, only: [:index, :create, :edit, :update, :destroy] do
       collection do
         get :new_modal
