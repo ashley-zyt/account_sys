@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
-# 统计各平台：正常状态账号数、今日发文成功数、今日发文失败数
+# 统计各平台：正常状态账号数、今日发文最终成功数、最终失败数
 #
 # 用法：bundle exec rails runner scripts/publish_daily_summary.rb
 #
-# 口径：
+# 口径（重要）：
 #   - 正常账号数：Account.status = 0（正常）的账号数，按平台分组
-#   - 今日成功/失败：TaskLog（发文日志）run_at 在今天范围内，按 status(success=0/failed=1) 统计，
-#     平台由日志的 account_id 快照关联到 accounts.platform
+#   - 今日最终成功/失败：按「任务(task_uuid)」去重统计最终结果。
+#     一个任务可能因失败重试产生多条日志（第一次 failed、第二次 success），
+#     这里「最终成功」= 今日至少成功过一次的任务；「最终失败」= 今日只有失败记录、
+#     从未成功的任务。避免「失败后重试成功」被重复计入。
 
 # 平台枚举整数值 → 显示名（与 app/models/account.rb 的 enum platform 一致）
 PLATFORMS = {
@@ -41,25 +43,42 @@ today_end = today.end_of_day
 normal_counts = {}
 Account.where(status: 0).group(:platform).count.each { |p, c| normal_counts[int_key(p)] = c }
 
-# 2. 今日发文日志，按「账号平台 + 状态」统计（LEFT JOIN 保留 account_id 为空的日志，避免漏计）
-success_counts = {}
-failed_counts = {}
-TaskLog.where(run_at: today_start..today_end)
-       .joins("LEFT JOIN accounts a ON a.id = task_logs.account_id")
-       .group("a.platform", "task_logs.status")
-       .count
-       .each do |(p, s), c|
-  platform = int_key(p)
-  if int_key(s) == 1   # failed
-    failed_counts[platform] = c
-  else                 # success（0）
-    success_counts[platform] = c
+# 2. 今日发文日志，按任务(task_uuid)去重统计最终成功/失败
+logs = TaskLog.where(run_at: today_start..today_end)
+              .select(:task_uuid, :status, :account_id)
+              .to_a
+
+# 账号 id → 平台（unscoped 绕过软删除过滤，保证已删账号的日志也能归到平台）
+account_ids = logs.map(&:account_id).compact.uniq
+platform_map = Account.unscoped.where(id: account_ids).pluck(:id, :platform).to_h
+
+# 按 task_uuid 聚合：只要今日出现过 success 就算最终成功；平台以成功那次账号为准
+final = {}
+logs.each do |log|
+  entry = final[log.task_uuid] ||= { success: false, account_id: nil }
+  if log[:status] == 0   # success
+    entry[:success] = true
+    entry[:account_id] = log.account_id if log.account_id.present?
+  else                   # failed
+    entry[:account_id] = log.account_id if entry[:account_id].nil? && log.account_id.present?
+  end
+end
+
+success_counts = Hash.new(0)
+failed_counts = Hash.new(0)
+final.each_value do |e|
+  platform = int_key(platform_map[e[:account_id]])
+  if e[:success]
+    success_counts[platform] += 1
+  else
+    failed_counts[platform] += 1
   end
 end
 
 puts "===== 发文统计（#{today.strftime('%Y-%m-%d')}）====="
+puts "（成功/失败按任务去重：失败后重试成功的任务只计成功一次）"
 puts
-puts "#{pad('平台', 12)}#{pad('正常账号', 10)}#{pad('今日成功', 10)}#{pad('今日失败', 10)}"
+puts "#{pad('平台', 12)}#{pad('正常账号', 10)}#{pad('最终成功', 10)}#{pad('最终失败', 10)}"
 
 total_normal = 0
 total_success = 0
