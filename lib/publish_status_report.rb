@@ -80,14 +80,10 @@ class PublishStatusReport
       end
 
       content = lines.join("\n\n")
-      # 【临时验证】先注释掉钉钉发送，打印到控制台核对；验证无误后恢复发送
-      # ok = Dingtalk.send_markdown(NOTIFY_ROBOT, '发布状况', content)
-      puts "\n===== 发布状况（验证模式，未发送钉钉）====="
-      puts content
-      puts "===== 结束 =====\n"
+      ok = Dingtalk.send_markdown(NOTIFY_ROBOT, '发布状况', content)
       Rails.logger.info "[PublishStatusReport] 快照=#{path || '已存在，未覆盖'}；" \
-                        "（验证模式，未发送钉钉）报告日=#{report_date} 基准日=#{base_date}，基准来源=#{prev_source(base_date, rows)}"
-      true
+                        "推送#{ok ? '成功' : '失败'}（报告日=#{report_date} 基准日=#{base_date}，基准来源=#{prev_source(base_date, rows)}）"
+      ok
     rescue => e
       Rails.logger.error "[PublishStatusReport] 执行异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
       false
