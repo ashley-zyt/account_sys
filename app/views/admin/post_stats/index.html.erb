@@ -60,6 +60,10 @@
         <label class="admin-filter-label">标题</label>
         <%= f.search_field :title_cont, class: "admin-input admin-filter-input", placeholder: "搜索标题..." %>
       </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">链接</label>
+        <%= f.search_field :url_cont, class: "admin-input admin-filter-input", placeholder: "搜索发文链接..." %>
+      </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
         <%= link_to "重置", admin_post_stats_path, class: "admin-button-secondary" %>
