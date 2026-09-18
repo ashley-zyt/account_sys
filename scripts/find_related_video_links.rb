@@ -88,6 +88,18 @@ if group_id.blank?
 end
 puts "源视频组 group_id：#{group_id}"
 
+# 资源表视频链接：按注册表 video_field 取（搬运/剪映/花生/Notebooklm 均为 oss_url）
+mode = WorkMode.for_model(task_model)
+video_field = mode&.video_field || 'oss_url'
+video_url = task.respond_to?(video_field) ? task.public_send(video_field) : nil
+puts "原视频链接（资源表 #{video_field}）：#{video_url.presence || '（空）'}"
+
+# 搬运任务额外显示更原始的源视频链接（move_video.source_video_url）
+if task_model == MoveTask
+  src = task.move_video&.source_video_url
+  puts "源视频链接（move_video.source_video_url）：#{src.presence || '（空）'}"
+end
+
 group_tasks = task_model.where(group_id: group_id).order(:platform)
 
 puts
