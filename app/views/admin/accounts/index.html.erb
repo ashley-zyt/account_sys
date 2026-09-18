@@ -19,7 +19,7 @@
     </div>
     <div class="admin-card-header-right">
       <%= link_to "新增账号", new_admin_account_path(q: request.query_parameters[:q], page: params[:page]), class: "admin-button-secondary" %>
-      <%= link_to "导出", admin_accounts_export_path(q: request.query_parameters[:q]), class: "admin-button-secondary" %>
+      <%= link_to "导出", export_admin_accounts_path(q: request.query_parameters[:q]), class: "admin-button-secondary" %>
       <span class="admin-tag">
         共 <%= @accounts.total_count %> 条
       </span>
