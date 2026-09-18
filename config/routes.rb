@@ -16,6 +16,7 @@ Rails.application.routes.draw do
       collection do
         get :shipinhao_login_qrcode
         get :shipinhao_login_qrcode_data
+        get :export
       end
     end
     resources :move_tasks, only: [:index, :show] do

@@ -12,6 +12,60 @@ class Admin::AccountsController < Admin::BaseController
 		             .per(10)
 	end
 
+	# 一键导出：按当前搜索条件导出全部账号（所有字段 + 页面上的最后使用时间/最后运行错误）
+	def export
+		require 'csv'
+		@q = Account.ransack(params[:q])
+		accounts = @q.result(distinct: true)
+		             .left_joins(:browser)
+		             .includes(:browser)
+		             .order(created_at: :desc)
+
+		filename = "账号列表_#{Time.now.strftime('%Y%m%d_%H%M%S')}.csv"
+		response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+		response.headers['Content-Disposition'] = "attachment; filename=#{filename}"
+
+		csv_data = CSV.generate(encoding: 'utf-8') do |csv|
+			csv << ['ID', '账号名', '账号链接', '主题', '平台', '状态', '工作模式', '运营人员',
+			        '浏览器ID', '绑定浏览器', '最后使用时间', '最后运行错误', '备注',
+			        'KOL休眠截止', '创建时间', '更新时间', '删除时间']
+
+			accounts.find_each do |a|
+				last_log = a.last_task_log
+				last_error = if last_log && last_log.status == 'failed'
+					last_log.error_msg
+				elsif last_log && last_log.status == 'success'
+					'正常（最后运行成功）'
+				else
+					''
+				end
+
+				csv << [
+					a.id,
+					a.account_name,
+					a.source_url,
+					a.theme,
+					a.platform,
+					a.status,
+					a.work_type,
+					a.operator.presence || '-',
+					a.browser_id,
+					a.browser&.profile_name || '-',
+					a.last_used_at&.strftime('%Y-%m-%d %H:%M') || '-',
+					last_error.to_s,
+					a.remark,
+					a.kol_sleep_until&.strftime('%Y-%m-%d %H:%M') || '-',
+					a.created_at&.strftime('%Y-%m-%d %H:%M'),
+					a.updated_at&.strftime('%Y-%m-%d %H:%M'),
+					a.deleted_at&.strftime('%Y-%m-%d %H:%M') || '-'
+				]
+			end
+		end
+
+		csv_data = "\xEF\xBB\xBF" + csv_data
+		render plain: csv_data
+	end
+
 	def new
 		@account = Account.new
 	end
