@@ -53,8 +53,27 @@ class PostDatas
     # 2. 过滤掉未设置machine_ip的浏览器
     accounts = accounts.select { |a| a.browser.present? && a.browser.machine_ip.present? }
 
+    # 3. 优先采集「今天还没更新过数据」的账号：
+    #    今天 post_stats 有更新 或 account_stat 有今日快照 的账号视为「已更新」，排到后面；
+    #    其余（今天还没更新）排前面，先采它们。
+    today_start = Date.today.beginning_of_day
+    today_end   = Date.today.end_of_day
+    account_ids = accounts.map(&:id)
+
+    updated_post_ids = PostStat.where(account_id: account_ids)
+                               .where('data_updated_at >= ? AND data_updated_at <= ?', today_start, today_end)
+                               .distinct.pluck(:account_id)
+    updated_stat_ids = AccountStat.where(account_id: account_ids)
+                                  .where(stat_date: Date.today)
+                                  .distinct.pluck(:account_id)
+    updated_ids = (updated_post_ids + updated_stat_ids).uniq
+
+    accounts.sort_by! { |a| updated_ids.include?(a.id) ? 1 : 0 }
+
     total = accounts.size
+    not_updated = accounts.count { |a| !updated_ids.include?(a.id) }
     Rails.logger.info "[PostDatas] 共筛选出 #{total} 个待采集账号（非Facebook、正常状态、绑定浏览器且有IP）"
+    Rails.logger.info "[PostDatas] 排序：今天未更新 #{not_updated} 个排前面优先采集，已更新 #{total - not_updated} 个排后面"
 
     return { success_count: 0, fail_count: 0, total: 0, failed_items: [] } if accounts.empty?
 
