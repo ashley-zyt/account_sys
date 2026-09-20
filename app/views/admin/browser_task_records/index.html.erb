@@ -1,0 +1,116 @@
+<% content_for :page_title do %>
+  异步任务
+<% end %>
+<% content_for :page_subtitle do %>
+  下发到机器端的异步浏览器任务执行状态
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        异步任务
+      </div>
+      <div class="admin-card-subtitle">
+        按提交时间倒序展示（pending=执行中/排队中，success/failed=机器端已回调结果）
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "同步状态", sync_admin_browser_task_records_path, method: :post, class: "admin-button-secondary", data: { confirm: "将主动查机器端真实状态并补结果/重置超时任务，确认？" } %>
+      <span class="admin-tag">
+        共 <%= @records.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <% if @records.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>机器端任务ID</th>
+            <th>业务标识(ref)</th>
+            <th>任务类型</th>
+            <th>浏览器</th>
+            <th>机器</th>
+            <th>状态</th>
+            <th>消息</th>
+            <th>提交时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @records.each do |r| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted" title="<%= r.machine_task_id %>">
+                  <%= truncate(r.machine_task_id.to_s, length: 18) %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= r.ref %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-pill-status" style="background: rgba(99, 102, 241, 0.12); color: #818cf8;">
+                  <%= r.task_type %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= r.profile_name.presence || "-" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= r.machine_ip.presence || "-" %>
+                </span>
+              </td>
+              <td>
+                <% case r.status
+                   when 'success' %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>
+                    成功
+                  </span>
+                <% when 'failed' %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>
+                    失败
+                  </span>
+                <% when 'unknown' %>
+                  <span class="admin-pill-status" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">
+                    <span class="admin-pill-status-dot"></span>
+                    已丢失
+                  </span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <span class="admin-pill-status-dot"></span>
+                    执行中
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted" title="<%= r.message %>">
+                  <%= truncate(r.message.to_s, length: 40) %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= r.created_at&.strftime("%m-%d %H:%M") %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @records %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无异步任务记录。
+    </div>
+  <% end %>
+</div>

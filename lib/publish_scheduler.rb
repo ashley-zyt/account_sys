@@ -380,6 +380,13 @@ class PublishScheduler
   def self.handle_response(task, response)
     # 异步受理：机器端已接收任务，后台执行中，等 /api/v1/browser_tasks/result 回调后再更新状态
     if response['type'] == 'accepted'
+      BrowserTaskRecord.track!(
+        machine_task_id: response['task_id'],
+        ref: "#{task.class.name}:#{task.id}",
+        task_type: "#{task.platform}_publish",
+        profile_name: task.browser&.profile_name,
+        machine_ip: task.browser&.machine_ip
+      )
       Rails.logger.info "[PublishScheduler] 任务 #{task.id} 已受理（异步），task_id=#{response['task_id']}，等待回调"
       return
     end

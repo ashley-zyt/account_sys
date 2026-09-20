@@ -138,12 +138,30 @@ class TaskScheduler
 		end
 	end
 
-	# 检查超时任务并自动重置
-	# 异步化后：任务下发为 async（机器端排队+执行），从「下发」到「回调」可能远超原来 8 分钟，
-	# 故阈值放宽到 30 分钟；超时仍未收到回调（机器端重启丢任务 / 回调失败）则重置回 pending 重新调度。
+	# 检查超时任务：优先基于「登记记录」主动查机器端真实状态，查不到才盲重置。
+	# 异步化后，任务下发为 async（机器端排队+执行），排队等待 20 分钟属正常，故阈值放宽到 45 分钟。
+	# 兜底两类边界：① 回调失败（Best Effort）→ 主动查机器端补结果；② 机器重启丢任务 → 查不到则重置。
 	def self.check_timeout_tasks
-		timeout_ago = 30.minutes.ago
+		timeout_ago = 45.minutes.ago
 
+		# 1. 查超时仍未回调的登记记录，逐个查机器端真实状态
+		overdue = BrowserTaskRecord.pending.where("created_at <= ?", timeout_ago).to_a
+		overdue.each do |record|
+			remote = fetch_remote_task(record.machine_ip, record.machine_task_id)
+			if remote && remote['status'].present?
+				# 机器端已有结果：补处理（等价于补一次回调）
+				Rails.logger.info "[TaskScheduler] 超时任务 #{record.machine_task_id} 机器端状态=#{remote['status']}，补处理"
+				BrowserTaskResultHandler.process(ref: record.ref, status: remote['status'], message: remote['message'], result: remote['result'])
+				BrowserTaskRecord.mark_result!(record.machine_task_id, remote['status'], remote['message'])
+			else
+				# 机器端查不到（任务丢失/重启）：重置对应任务
+				Rails.logger.warn "[TaskScheduler] 超时任务 #{record.machine_task_id} 机器端查不到，重置 #{record.ref}"
+				reset_task_by_ref(record.ref)
+				record.update!(status: BrowserTaskRecord::STATUS_UNKNOWN, message: '机器端任务丢失（超时未回调且查询不到）')
+			end
+		end
+
+		# 2. 兜底：无登记记录但仍卡在 executing 的任务（老数据/记录丢失）也重置
 		WorkMode.resource_modes.each do |mode|
 			mode.task_model_class.where(status: :executing)
 			                     .where("start_at IS NOT NULL AND start_at <= ?", timeout_ago)
@@ -152,10 +170,40 @@ class TaskScheduler
 					status: :pending,
 					account_id: nil,
 					browser_id: nil,
-					error_msg: "任务执行超时（超过30分钟未收到回调）",
+					error_msg: "任务执行超时（超过45分钟未收到回调）",
 					start_at: nil
 				)
 			end
+		end
+	end
+
+	# 查机器端单个任务真实状态
+	def self.fetch_remote_task(machine_ip, machine_task_id)
+		return nil if machine_ip.blank? || machine_task_id.blank?
+		response = RemoteApiClient.get("https://#{machine_ip}/tasks/#{machine_task_id}", open_timeout: 10, read_timeout: 20)
+		return nil unless response.code.to_i == 200
+		JSON.parse(response.body)
+	rescue => e
+		Rails.logger.error "[TaskScheduler] 查询机器端任务状态异常 #{machine_task_id}: #{e.message}"
+		nil
+	end
+
+	# 按 ref 重置对应任务（机器端任务丢失时兜底）
+	def self.reset_task_by_ref(ref)
+		model_name, id = ref.to_s.split(':', 2)
+		id = id.to_i
+
+		if model_name == 'WarmupTask'
+			# 养号任务：执行中超时且机器端丢失 → 标记失败（养号无重新分配语义）
+			WarmupTask.where(id: id, status: :executing)
+			          .update_all(status: :failed, error_msg: '机器端任务丢失（超时未回调且查询不到）', executed_at: Time.current)
+		else
+			task_model = model_name.safe_constantize
+			return unless task_model.is_a?(Class) && task_model < ApplicationRecord && WorkMode.for_model(task_model)
+			# 发文任务：重置回 pending（清账号/浏览器），等重新分配
+			task_model.where(id: id, status: :executing)
+			          .update_all(status: :pending, account_id: nil, browser_id: nil, start_at: nil,
+			                      error_msg: '机器端任务丢失（超时未回调且查询不到）')
 		end
 	end
 end

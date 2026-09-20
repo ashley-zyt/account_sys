@@ -206,6 +206,23 @@
                 </div>
               <% end %>
             </li>
+
+            <% bt_active = controller_path == "admin/browser_task_records" %>
+            <li class="admin-nav-item <%= "active" if bt_active %>">
+              <%= link_to admin_browser_task_records_path, class: "admin-nav-link", data: { tooltip: "异步任务" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🔄
+                  </div>
+                  <div class="admin-nav-label">
+                    异步任务
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Async Tasks
+                </div>
+              <% end %>
+            </li>
           </ul>
         </div>
 

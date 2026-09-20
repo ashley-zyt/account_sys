@@ -64,6 +64,11 @@ Rails.application.routes.draw do
         get :publish_status
       end
     end
+    resources :browser_task_records, only: [:index] do
+      collection do
+        post :sync
+      end
+    end
     resources :themes, only: [:index, :create, :edit, :update, :destroy] do
       collection do
         get :new_modal

@@ -21,6 +21,14 @@ end
 #   runner 'Heygen.fetch_video_info'
 # end
 
+# ==================== 异步任务超时兜底 ====================
+# 每 10 分钟检查一次：下发超时（45 分钟）仍无回调的异步任务，主动查机器端真实状态补结果或重置
+set :output, "log/task_timeout_check.log"
+every 10.minutes do
+  runner 'TaskScheduler.check_timeout_tasks'
+end
+
+
 # ==================== 平台分批发布配置 ====================
 # Instagram: 8:00 发布，7:50 分配资源
 set :output, "log/taskscheduler_assignresources_instagram.log"

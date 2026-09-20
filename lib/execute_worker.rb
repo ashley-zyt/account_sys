@@ -38,6 +38,13 @@ class ExecuteWorker
 
       # 异步受理：机器端后台执行中，等 /api/v1/browser_tasks/result 回调再更新状态
       if response['type'] == 'accepted'
+        BrowserTaskRecord.track!(
+          machine_task_id: response['task_id'],
+          ref: "WarmupTask:#{warmup_task.id}",
+          task_type: 'nurture',
+          profile_name: browser.profile_name,
+          machine_ip: machine_ip
+        )
         Rails.logger.info "[ExecuteWorker] 养号已受理（异步），task_id=#{response['task_id']}，等待回调"
         return
       end
