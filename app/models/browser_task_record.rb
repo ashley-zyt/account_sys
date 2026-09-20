@@ -19,11 +19,6 @@
 #  index_browser_task_records_on_machine_task_id  (machine_task_id) UNIQUE
 #  index_browser_task_records_on_status           (status)
 #
-# 异步浏览器任务登记表 —— 记录 account_sys 下发到机器端的 async 任务的机器端 task_id。
-#
-# 用途：
-#   1. 后台页面展示「哪些异步任务下发中 / 成功 / 失败」；
-#   2. 超时兜底：下发后长时间无回调时，用 machine_task_id 主动查机器端真实状态。
 class BrowserTaskRecord < ApplicationRecord
   # 本地记录状态
   STATUS_PENDING = 'pending'.freeze

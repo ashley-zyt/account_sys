@@ -2,21 +2,27 @@
 #
 # Table name: kol_action_logs
 #
-#  id                                             :bigint           not null, primary key
-#  action_type(动作类型：send_message/check_reply) :string(255)      not null
-#  account_id(执行用的内部账号)                   :bigint
-#  kol_contact_id(关联联系方式)                   :bigint
-#  kol_id(关联 KOL)                               :bigint
-#  machine_task_id(机器端返回的 task_id)          :string(255)
-#  status(记录状态：pending/success/failed)       :string(255)      default("pending")
-#  message(结果/错误信息)                         :text(65535)
-#  created_at                                     :datetime         not null
-#  updated_at                                     :datetime         not null
+#  id                                                                  :bigint           not null, primary key
+#  action_type(动作类型：send_message(发私信) / check_reply(检查回复)) :string(255)      not null
+#  message(结果/错误信息)                                              :text(65535)
+#  status(记录状态：pending/success/failed)                            :string(255)      default("pending")
+#  created_at                                                          :datetime         not null
+#  updated_at                                                          :datetime         not null
+#  account_id(执行用的内部账号（可空）)                                :bigint
+#  kol_contact_id(关联联系方式)                                        :bigint
+#  kol_id(关联 KOL)                                                    :bigint
+#  machine_task_id(机器端返回的 task_id（可空，用于回调时定位）)       :string(255)
 #
-# KOL 触达动作日志 —— 记录「发私信」「检查回复」每次动作的执行流水。
+# Indexes
 #
-# 与 KolMessage 的区别：KolMessage 记录的是「消息」本身（内容、方向、会话状态），
-# 本表记录的是「动作」流水（每次调用机器端发消息/查回复，无论最终有无消息产生）。
+#  index_kol_action_logs_on_account_id       (account_id)
+#  index_kol_action_logs_on_action_type      (action_type)
+#  index_kol_action_logs_on_created_at       (created_at)
+#  index_kol_action_logs_on_kol_contact_id   (kol_contact_id)
+#  index_kol_action_logs_on_kol_id           (kol_id)
+#  index_kol_action_logs_on_machine_task_id  (machine_task_id)
+#  index_kol_action_logs_on_status           (status)
+#
 class KolActionLog < ApplicationRecord
   belongs_to :kol, optional: true
   belongs_to :kol_contact, optional: true
