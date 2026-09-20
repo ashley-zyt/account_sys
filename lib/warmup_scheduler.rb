@@ -6,6 +6,10 @@ class WarmupScheduler
   INTER_ACCOUNT_PAUSE_MAX = 40
   # 每台运营机器单次运行时长上限（小时）；超时自动停止，下次从上次位置继续
   TIME_WINDOW_HOURS = 6
+  # 每台机器单次运行最多下发的养号账号数。
+  # 机器端全局并发才 3，一次性把整台机器的账号全下发会瞬间堆积卡死，
+  # 故限制每台机器单次最多筛 40 个，下发完即结束（下次调度再取下一批）。
+  MAX_ACCOUNTS_PER_MACHINE = 40
 
   # 统一入口：按 browser.machine_ip 分组，多台机器并行运行、互不影响
   def self.run
@@ -79,7 +83,7 @@ class WarmupScheduler
            .pluck(:machine_ip)
   end
 
-  # 查询指定机器下需要养号的账号
+  # 查询指定机器下需要养号的账号（每台机器单次最多 MAX_ACCOUNTS_PER_MACHINE 个）
   # 排序：1) 从未养号优先 2) 上次报错优先 3) 上次养号时间更久优先
   def self.fetch_target_accounts_for_machine(machine_ip)
     browser_ids = Browser.where(machine_ip: machine_ip).pluck(:id)
@@ -88,6 +92,7 @@ class WarmupScheduler
            .where.not(status: ["未登录", "封禁/停用"])
            .where(warmup_profiles: { warmup_enabled: true })
            .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.warmup_status = 'failed' DESC, warmup_profiles.last_warmup_at ASC"))
+           .limit(MAX_ACCOUNTS_PER_MACHINE)
   end
 
   # 养号单个账号（异步下发）
