@@ -19,6 +19,7 @@
     </div>
     <div class="admin-card-header-right">
       <%= link_to "同步状态", sync_admin_browser_task_records_path, data: { turbo_method: :post, turbo_confirm: "将主动查机器端真实状态并补结果/重置超时任务，确认？" }, class: "admin-button-secondary" %>
+      <%= link_to "重跑丢失任务", retry_interrupted_admin_browser_task_records_path, data: { turbo_method: :post, turbo_confirm: "将把「机器端丢失/超时被重置」的发布任务立即重新分配并下发，不等平台固定时间窗口。\n\n只会补发受影响账号，且今天已发布成功的不会重复发。确认执行？" }, class: "admin-button-secondary" %>
       <span class="admin-tag">
         共 <%= @records.total_count %> 条
       </span>

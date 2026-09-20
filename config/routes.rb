@@ -67,6 +67,8 @@ Rails.application.routes.draw do
     resources :browser_task_records, only: [:index] do
       collection do
         post :sync
+        # 主动重跑被中断（机器端丢失/超时被重置）的发布任务，不等平台固定分配窗口
+        post :retry_interrupted
       end
     end
     resources :themes, only: [:index, :create, :edit, :update, :destroy] do

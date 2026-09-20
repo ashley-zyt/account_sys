@@ -9,10 +9,19 @@ class TaskScheduler
 		end
 	end
 
-	def self.assign_resources(platform: nil)
-		logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'taskscheduler_assignresources.log'))
-		logger.formatter = Rails.logger.formatter
-		Rails.logger = logger
+	# @param platform [String, nil] 限定平台
+	# @param only_combos [Array<Array>, nil] 只处理指定的 [platform, theme] 组合
+	#        （用于「重跑被中断任务」时精准补发，避免顺带把同平台其它正常账号提前发掉）；
+	#        为 nil 时处理全部 —— 保持原有行为，既有调用点不受影响。
+	# @param redirect_logger [Boolean] 是否把 Rails.logger 重定向到独立日志文件。
+	#        默认 true（定时任务用，便于单独排查）；从 web 请求的后台线程调用时传 false，
+	#        否则会把整个进程的日志都写到这个文件里，造成日志错乱。
+	def self.assign_resources(platform: nil, only_combos: nil, redirect_logger: true)
+		if redirect_logger
+			logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'taskscheduler_assignresources.log'))
+			logger.formatter = Rails.logger.formatter
+			Rails.logger = logger
+		end
 
 		today = Date.today
 		today_start = today.beginning_of_day
@@ -24,6 +33,8 @@ class TaskScheduler
 				type_name = mode.name
 				accounts = Account.active.where(work_type: mode.name)
 				accounts = accounts.where(platform: platform) if platform.present?
+				# 只补发指定 [platform, theme] 组合的账号（重跑被中断任务时用）
+				accounts = accounts.select { |a| only_combos.include?([a.platform, a.theme]) } if only_combos.present?
 
 				accounts.each do |account|
 					has_posted_today = task_model.exists?(
@@ -67,6 +78,83 @@ class TaskScheduler
 		end
 
 		TaskScheduler.find_locked_browsers_in_pending_tasks
+	end
+
+	# 任务被兜底重置时写入 error_msg 的关键词 —— 用于识别「被中断」的任务。
+	#   ① 机器端进程重启/任务丢失 → reset_task_by_ref
+	#   ② 长时间无回调超时        → check_timeout_tasks 第二段兜底
+	INTERRUPTED_ERROR_KEYWORDS = ['机器端任务丢失', '任务执行超时'].freeze
+
+	# 找出「被中断后已被重置回 pending」的发布类任务（各平台资源队列）。
+	#
+	# 说明：重置时 account_id / browser_id 会被清空，所以无法直接知道它原本属于哪个账号，
+	# 但任务自身的 platform / theme 仍在 —— 这正是重新分配所需的匹配键。
+	#
+	# @param platform [String, nil] 限定平台
+	# @return [Array] 任务实例数组（跨模型合并）
+	def self.interrupted_pending_tasks(platform: nil)
+		conds  = INTERRUPTED_ERROR_KEYWORDS.map { 'error_msg LIKE ?' }.join(' OR ')
+		values = INTERRUPTED_ERROR_KEYWORDS.map { |k| "%#{k}%" }
+
+		WorkMode.scheduler_assign_modes.flat_map do |mode|
+			scope = mode.task_model_class.where(status: :pending).where(conds, *values)
+			scope = scope.where(platform: platform) if platform.present?
+			scope.to_a
+		end
+	end
+
+	# 主动重跑「被中断」的发布任务：立即重新分配资源并下发，不等平台固定分配窗口。
+	#
+	# 场景：机器端进程重启/崩溃后，被兜底重置回 pending 的任务要等该平台下一个固定分配窗口
+	# （如 IG 早上崩掉、得等到第二天 7:50）才会重跑，表现为「重启后任务长时间没动静」。
+	# 本方法供后台「异步任务」页的「重跑丢失任务」按钮调用，点了就立刻补一次。
+	#
+	# 设计与安全：
+	#   - 只针对「确实有被中断任务」的 [platform, theme] 组合补发（仅这些账号会被分配），
+	#     不会顺带把同平台其它正常账号的发布提前；
+	#   - 防重复发布的两道闸门依然生效：assign_resources 的 has_posted_today / has_active_task，
+	#     以及 PublishScheduler.attempt_task 的「该账号今天已发布成功则重置跳过」；
+	#   - 养号任务不在范围内（中断后标记为 failed，无重新分配语义，由每日养号调度负责）。
+	#
+	# @param platform [String, nil] 限定平台
+	# @return [Hash] { interrupted_count:, details:, errors: }
+	def self.retry_interrupted_tasks(platform: nil)
+		interrupted = interrupted_pending_tasks(platform: platform)
+		return { interrupted_count: 0, details: [], errors: [] } if interrupted.empty?
+
+		details = []
+		errors  = []
+
+		interrupted.group_by(&:platform).each do |pf, tasks|
+			combos = tasks.map { |t| [t.platform, t.theme] }.uniq
+			begin
+				Rails.logger.info "[TaskScheduler] 重跑被中断任务：平台 #{pf}，组合 #{combos.inspect}，共 #{tasks.size} 条（#{tasks.map { |t| "#{t.class.name}:#{t.id}" }.join(', ')}）"
+
+				# 1. 只给「有被中断任务」的账号补发资源
+				#    redirect_logger: false —— 这里是 web 请求的后台线程，不能全局替换 Rails.logger
+				assign_resources(platform: pf, only_combos: combos, redirect_logger: false)
+
+				# 2. 只下发刚补发的这批任务。
+				#    不用 PublishScheduler.run —— 它内部会再跑一次「不带过滤的 assign_resources」，
+				#    那会把该平台其它正常账号的资源也一并分配并下发（等于提前触发整个平台的发布）。
+				tasks_to_publish = PublishScheduler.fetch_all_tasks(platform: pf)
+				                              .select { |t| combos.include?([t.platform, t.theme]) }
+
+				if tasks_to_publish.empty?
+					Rails.logger.info "[TaskScheduler] 平台 #{pf} 本轮无任务可下发（对应账号今天已发布成功，或已有进行中/待发布任务）"
+				else
+					PublishScheduler.run_tasks_with_pool(tasks_to_publish)
+				end
+
+				details << "#{pf}(识别#{tasks.size}/下发#{tasks_to_publish.size})"
+			rescue => e
+				Rails.logger.error "[TaskScheduler] 重跑平台 #{pf} 的被中断任务异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+				errors << "#{pf}: #{e.message}"
+			end
+		end
+
+		Rails.logger.info "[TaskScheduler] 重跑被中断任务完成：#{details.join(' / ')}#{errors.any? ? "，失败：#{errors.join('; ')}" : ''}"
+		{ interrupted_count: interrupted.size, details: details, errors: errors }
 	end
 
 	# 找出待执行任务中与锁定接口重合的指纹浏览器名称
