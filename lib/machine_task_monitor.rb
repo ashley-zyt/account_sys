@@ -13,10 +13,18 @@ class MachineTaskMonitor
   #   养号     lib/warmup_scheduler.rb / lib/execute_worker.rb → "WarmupTask:#{id}"
   #   发私信   → "kol_message:#{id}"
   #   查回复   → "kol_contact:#{id}"
-  #   发布     → "MoveTask:123" / "OperationTask:123" 等（模型名:ID）
+  #   发布     → "<TaskModel>:<id>"（如 MoveTask:123 / OperationTask:123，模型名即前缀）
   OWN_REF_PREFIXES = ['Account:', 'WarmupTask:', 'kol_message:', 'kol_contact:'].freeze
 
-  # 发布类的 ref 是「模型名:ID」，没有统一前缀 —— 这类走 type 过滤即可（见 TRACKED_TYPES）
+  # 发布类任务的 ref 前缀（模型名 + 冒号），由工作模式注册表动态生成，
+  # 保证新增发布模型时自动纳入，不会被 ref_prefix 过滤误伤。
+  # 注意：ref_prefix 是全局过滤（对 type 参数里的所有类型都生效），
+  # 所以发布类也必须列进来，否则「type 里指定了发布类型、但 ref 前缀不匹配」会被机器端排除，
+  # 导致监控页发布类永远显示 0。
+  def self.publish_ref_prefixes
+    WorkMode.resource_modes.map { |m| "#{m.task_model}:" }
+  end
+
   TRACKED_TYPES = %w[
     fetch nurture send_message check_reply
     facebook_publish twitter_publish youtube_publish tiktok_publish instagram_publish
@@ -70,7 +78,10 @@ class MachineTaskMonitor
     # 查询单台机器。任何异常都收敛成 Result(ok: false)，不向上抛。
     def fetch_one(machine_ip, types: TRACKED_TYPES, own_only: true)
       query = { type: types.join(',') }
-      query[:ref_prefix] = OWN_REF_PREFIXES.join(',') if own_only
+      if own_only
+        # 非发布类固定前缀 + 发布类模型名前缀，全部列出，避免发布类被 ref_prefix 误过滤
+        query[:ref_prefix] = (OWN_REF_PREFIXES + publish_ref_prefixes).join(',')
+      end
 
       url = "https://#{machine_ip}/tasks/summary?#{query.to_query}"
       response = RemoteApiClient.get(url, open_timeout: 5, read_timeout: 15)
