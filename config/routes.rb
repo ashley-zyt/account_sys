@@ -213,6 +213,8 @@ Rails.application.routes.draw do
       post "jianying_tasks/batch", to: "jianying_tasks#batch"
       # 机器端异步浏览器任务完成回调（养号/发文/采集）
       post "browser_tasks/result", to: "browser_tasks#result"
+      # 机器端进程启动上报：立即触发一次「忽略时间窗口」的丢失任务兜底扫描
+      post "browser_tasks/machine_restarted", to: "browser_tasks#machine_restarted"
       # 搬运视频按ID范围查询
       get "move_video_queries", to: "move_video_queries#index"
     end

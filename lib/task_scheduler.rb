@@ -138,21 +138,38 @@ class TaskScheduler
 		end
 	end
 
+	# 机器端返回的终态状态：只有这两个代表任务真正结束、可以补处理。
+	# queued / running 表示任务还在机器端排队或执行中，绝不能当失败处理。
+	MACHINE_TERMINAL_STATUSES = %w[success failed].freeze
+
 	# 检查超时任务：优先基于「登记记录」主动查机器端真实状态，查不到才盲重置。
 	# 异步化后，任务下发为 async（机器端排队+执行），排队等待 20 分钟属正常，故阈值放宽到 45 分钟。
 	# 兜底两类边界：① 回调失败（Best Effort）→ 主动查机器端补结果；② 机器重启丢任务 → 查不到则重置。
-	def self.check_timeout_tasks
-		timeout_ago = 45.minutes.ago
+	#
+	# @param threshold [ActiveSupport::Duration] 判定超时的时间窗口，默认 45 分钟。
+	#        机器端启动上报时传 0，表示「忽略时间窗口，立即检查全部登记记录」。
+	# @param machine_ip [String, nil] 只处理这台机器上的登记记录；不传则处理全部机器。
+	# @param include_untracked [Boolean] 是否额外兜底「无登记记录但卡在 executing」的任务。
+	#        默认 true；机器端重启上报时传 false，否则会把其它机器正在执行的任务一并重置。
+	def self.check_timeout_tasks(threshold: 45.minutes, machine_ip: nil, include_untracked: true)
+		timeout_ago = threshold.ago
 
 		# 1. 查超时仍未回调的登记记录，逐个查机器端真实状态
-		overdue = BrowserTaskRecord.pending.where("created_at <= ?", timeout_ago).to_a
+		scope = BrowserTaskRecord.pending
+		scope = scope.where(machine_ip: machine_ip) if machine_ip.present?
+		overdue = scope.where("created_at <= ?", timeout_ago).to_a
 		overdue.each do |record|
 			remote = fetch_remote_task(record.machine_ip, record.machine_task_id)
-			if remote && remote['status'].present?
-				# 机器端已有结果：补处理（等价于补一次回调）
+			if remote && MACHINE_TERMINAL_STATUSES.include?(remote['status'].to_s)
+				# 机器端已有终态结果：补处理（等价于补一次回调）
 				Rails.logger.info "[TaskScheduler] 超时任务 #{record.machine_task_id} 机器端状态=#{remote['status']}，补处理"
 				BrowserTaskResultHandler.process(ref: record.ref, status: remote['status'], message: remote['message'], result: remote['result'])
 				BrowserTaskRecord.mark_result!(record.machine_task_id, remote['status'], remote['message'])
+			elsif remote
+				# 机器端仍在排队/执行中：保持 pending，下一轮再查。
+				# （排队不计入执行超时后，长排队会让任务超过 45 分钟仍未回调，属正常情况，
+				#   不能拿 queued/running 去 process —— 那会被当成失败处理、误伤正在跑的任务。）
+				Rails.logger.info "[TaskScheduler] 任务 #{record.machine_task_id} 仍在机器端执行中(status=#{remote['status']})，跳过"
 			else
 				# 机器端查不到（任务丢失/重启）：重置对应任务
 				Rails.logger.warn "[TaskScheduler] 超时任务 #{record.machine_task_id} 机器端查不到，重置 #{record.ref}"
@@ -162,6 +179,10 @@ class TaskScheduler
 		end
 
 		# 2. 兜底：无登记记录但仍卡在 executing 的任务（老数据/记录丢失）也重置
+		#    注意：这一段不带机器过滤条件，只有在常规定时兜底（阈值 45 分钟）时才执行；
+		#    机器端重启上报走的是「按机器 + 忽略时间窗口」路径，必须跳过，否则会误伤其它机器。
+		return unless include_untracked
+
 		WorkMode.resource_modes.each do |mode|
 			mode.task_model_class.where(status: :executing)
 			                     .where("start_at IS NOT NULL AND start_at <= ?", timeout_ago)
