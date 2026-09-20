@@ -71,6 +71,12 @@ Rails.application.routes.draw do
         post :retry_interrupted
       end
     end
+    # 运营机器任务监控（实时查机器端，不落库）
+    resources :machine_tasks, only: [:index] do
+      collection do
+        get :summary   # JSON 版本（可选，用于外部监控）
+      end
+    end
     resources :themes, only: [:index, :create, :edit, :update, :destroy] do
       collection do
         get :new_modal

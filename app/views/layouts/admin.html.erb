@@ -223,6 +223,23 @@
                 </div>
               <% end %>
             </li>
+
+            <% mt_active = controller_path == "admin/machine_tasks" %>
+            <li class="admin-nav-item <%= "active" if mt_active %>">
+              <%= link_to admin_machine_tasks_path, class: "admin-nav-link", data: { tooltip: "机器任务监控" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📡
+                  </div>
+                  <div class="admin-nav-label">
+                    机器任务监控
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Machine Tasks
+                </div>
+              <% end %>
+            </li>
           </ul>
         </div>
 
