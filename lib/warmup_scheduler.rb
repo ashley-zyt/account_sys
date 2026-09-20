@@ -9,7 +9,7 @@ class WarmupScheduler
   # 每台机器单次运行最多下发的养号账号数。
   # 机器端全局并发才 3，一次性把整台机器的账号全下发会瞬间堆积卡死，
   # 故限制每台机器单次最多筛 40 个，下发完即结束（下次调度再取下一批）。
-  MAX_ACCOUNTS_PER_MACHINE = 40
+  MAX_ACCOUNTS_PER_MACHINE = 20
 
   # 统一入口：按 browser.machine_ip 分组，多台机器并行运行、互不影响
   def self.run
