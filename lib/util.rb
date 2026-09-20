@@ -176,6 +176,10 @@ class Util
     payload = {
       id: account.browser.id,
       profile_name: account.browser.profile_name,
+      # 异步模式：机器端立即返回 accepted+task_id，后台执行，完成后回调 /api/v1/browser_tasks/result
+      async: true,
+      # 业务透传标识：回调时机器端原样带回（采集数据仍由 /api/v1/post_stats 回传落库）
+      ref: "Account:#{account.id}",
       active_accounts: [
         {
           id: account.id,

@@ -138,19 +138,21 @@ class TaskScheduler
 		end
 	end
 
-	# 检查超时任务（超过8分钟未完成）并自动重置
+	# 检查超时任务并自动重置
+	# 异步化后：任务下发为 async（机器端排队+执行），从「下发」到「回调」可能远超原来 8 分钟，
+	# 故阈值放宽到 30 分钟；超时仍未收到回调（机器端重启丢任务 / 回调失败）则重置回 pending 重新调度。
 	def self.check_timeout_tasks
-		eight_minutes_ago = 8.minutes.ago
+		timeout_ago = 30.minutes.ago
 
 		WorkMode.resource_modes.each do |mode|
 			mode.task_model_class.where(status: :executing)
-			                     .where("start_at IS NOT NULL AND start_at <= ?", eight_minutes_ago)
+			                     .where("start_at IS NOT NULL AND start_at <= ?", timeout_ago)
 			                     .each do |task|
 				task.update!(
 					status: :pending,
 					account_id: nil,
 					browser_id: nil,
-					error_msg: "任务执行超时（超过8分钟）",
+					error_msg: "任务执行超时（超过30分钟未收到回调）",
 					start_at: nil
 				)
 			end

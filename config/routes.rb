@@ -206,8 +206,8 @@ Rails.application.routes.draw do
       post "notebooklm/report_result",    to: "notebooklm#report_result"
       # 剪映任务批量接收
       post "jianying_tasks/batch", to: "jianying_tasks#batch"
-      # 浏览器占用状态回传（采集端/运营机器用完后精确释放）
-      post "browser_occupations/release", to: "browser_occupations#release"
+      # 机器端异步浏览器任务完成回调（养号/发文/采集）
+      post "browser_tasks/result", to: "browser_tasks#result"
       # 搬运视频按ID范围查询
       get "move_video_queries", to: "move_video_queries#index"
     end

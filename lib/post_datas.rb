@@ -4,8 +4,8 @@
 # 调度模型：
 #   - 查询所有状态为"正常"且非Facebook的账号（包含特殊账号）
 #   - 仅处理绑定了浏览器且设置了machine_ip的账号
-#   - 按浏览器分组，多个 worker 并行采集；每个浏览器分组开始前通过 BrowserOccupationManager
-#     申请占用（同浏览器互斥 + 每机器上限 + 释放后冷却），组内顺序执行、账号间间隔 15 秒
+#   - 按浏览器分组，多个 worker 并行下发采集指令；并发/占用已交给机器端
+#     （async 模式下机器端自己排队 + profile 锁 + 完成后回传 release）
 #   - 依次调用 Util.fetch_account_post_data 推送单个账号采集指令
 class PostDatas
 
@@ -78,22 +78,21 @@ class PostDatas
     return { success_count: 0, fail_count: 0, total: 0, failed_items: [] } if accounts.empty?
 
     # 3. 按浏览器分组：一个分组 = 一个指纹浏览器下的所有账号。
-    #    组内顺序执行（同一浏览器一次只能开一个），组间由 worker 并行；
-    #    具体并发上限由 BrowserOccupationManager 统一把关（同浏览器互斥 + 每机器≤4 + 冷却）。
+    #    组内顺序执行（同一浏览器一次只能开一个），组间由 worker 并行下发；
+    #    并发/占用由机器端统一把关（单机额度 + profile 串行锁 + 释放占用）。
     groups = accounts.group_by(&:browser_id).values.sort_by { |g| g.first.browser_id || 0 }
     machine_count = accounts.map { |a| a.browser.machine_ip }.uniq.size
     browser_names = groups.map { |g| "#{g.first.browser.profile_name}(#{g.size}个)" }
     Rails.logger.info "[PostDatas] 待采集浏览器 #{groups.size} 个（机器 #{machine_count} 台）: #{browser_names.join('、')}"
 
-    # 4. worker 池并行采集：每个 worker 取一个浏览器分组，非阻塞占用，
-    #    忙的分组放回队尾稍后重试（谁空闲谁先走），空闲的执行完再取下一个。
-    #    注意：worker 数受数据库连接池大小限制，不能超过连接池，否则 ConnectionTimeoutError。
+    # 4. worker 池并行下发采集指令：并发/占用已交给机器端（async 模式），
+    #    worker 只负责并行「下发指令」，仅受数据库连接池大小限制。
     db_pool_size = ActiveRecord::Base.connection_pool.size
-    pool_size = [groups.size, BrowserOccupationManager::MAX_BROWSER_PER_IP * machine_count, db_pool_size].min
+    pool_size = [groups.size, db_pool_size].min
     pool_size = 1 if pool_size <= 0
 
     dlog.info "[fetch] 账号=#{total} 机器=#{machine_count} 浏览器=#{groups.size} 连接池=#{db_pool_size}"
-    dlog.info "[fetch] pool_size=min(浏览器=#{groups.size}, 4×机器=#{BrowserOccupationManager::MAX_BROWSER_PER_IP * machine_count}, 连接池=#{db_pool_size})=#{pool_size}"
+    dlog.info "[fetch] pool_size=min(浏览器=#{groups.size}, 连接池=#{db_pool_size})=#{pool_size}"
 
     mutex     = Mutex.new
     queue     = groups.dup          # 待处理浏览器分组（忙的会放回队尾）
@@ -112,13 +111,13 @@ class PostDatas
             group = mutex.synchronize { queue.shift }
             unless group
               break if mutex.synchronize { remaining <= 0 }
-              sleep(BrowserOccupationManager::POLL_INTERVAL)
+              sleep(10)
               next
             end
 
             if fetch_browser_group(group, wid, mutex, stats) == :busy
               mutex.synchronize { queue << group }
-              sleep(BrowserOccupationManager::POLL_INTERVAL)
+              sleep(10)
             else
               mutex.synchronize { remaining -= 1 }
             end
@@ -151,32 +150,17 @@ class PostDatas
     { success_count: 0, fail_count: 0, total: 0, failed_items: [], error: e.message }
   end
 
-  # 采集一个浏览器分组（该浏览器下的所有账号）：非阻塞占用，组内顺序执行，最后释放。
-  # @return [Symbol] :done（已执行或跳过）/ :busy（浏览器忙，放回队尾稍后重试）
+  # 采集一个浏览器分组（该浏览器下的所有账号）：组内顺序执行。
+  # 并发/占用已交给机器端（async 模式下机器端自己排队 + profile 锁），不再前置占用控制。
+  # @return [Symbol] :done（已执行）
   def self.fetch_browser_group(group, worker_idx, mutex, stats)
     browser = group.first.browser
     label = "[worker#{worker_idx}]"
 
-    result = BrowserOccupationManager.try_acquire(
-      BrowserOccupation.key_for_browser(browser),
-      machine_ip: browser.machine_ip,
-      profile_name: browser.profile_name,
-      operation: :collect,
-      task_ref: "collect(accounts:#{group.size})",
-      ttl: 1800
-    )
-    active_now = BrowserOccupationManager.active_count(browser.machine_ip)
-    if result[:status] == :ok
-      dlog.info "#{label} ACQUIRE_OK browser=#{browser.profile_name} ip=#{browser.machine_ip} active=#{active_now}/#{BrowserOccupationManager::MAX_BROWSER_PER_IP} accounts=#{group.size}"
-    else
-      dlog.info "#{label} ACQUIRE_#{result[:status].to_s.upcase} browser=#{browser.profile_name} ip=#{browser.machine_ip} active=#{active_now}/#{BrowserOccupationManager::MAX_BROWSER_PER_IP}"
-      Rails.logger.info "[PostDatas] #{label} 浏览器 #{browser.profile_name} 占用失败（#{result[:status]}：#{result[:message]}），放回队尾稍后重试"
-      return :busy
-    end
+    dlog.info "#{label} START browser=#{browser.profile_name} ip=#{browser.machine_ip} accounts=#{group.size}"
 
     Rails.logger.info "[PostDatas] #{label} 开始采集浏览器 #{browser.profile_name}（#{group.size} 个账号，IP=#{browser.machine_ip}）"
 
-    # 注意：占用不在此处释放，由采集端真正采集完成后回传 release 接口精确释放（ttl 兜底）
     group.each_with_index do |account, index|
       begin
         Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 开始采集账号 #{account.account_name}(ID=#{account.id}, 平台=#{account.platform}, 浏览器=#{browser.profile_name}, IP=#{browser.machine_ip})"
@@ -216,7 +200,7 @@ class PostDatas
       end
     end
 
-    dlog.info "#{label} GROUP_DONE browser=#{browser.profile_name} accounts=#{group.size}（指令已发完，占用等回传释放）"
+    dlog.info "#{label} GROUP_DONE browser=#{browser.profile_name} accounts=#{group.size}"
 
     :done
   end
@@ -262,9 +246,7 @@ class PostDatas
 
   # 对未更新数据的账号重试一次采集推送
   # all_stale 超过阈值时由 check_stale_accounts_and_alert 触发。
-  # 与主流程一致：按浏览器分组，每组先经过 BrowserOccupationManager 非阻塞占用
-  # （同浏览器互斥 + 每机器上限 + 冷却），占用成功才发采集指令；忙/机器满的跳过，
-  # 避免绕过占用中心导致「开了浏览器却没记录」「单机浏览器超限」。
+  # 与主流程一致：按浏览器分组，直接下发采集指令（async 模式，并发/占用由机器端把关）。
   # @param stale_account_ids [Array<Integer>] 未更新数据的账号ID列表
   # @return [Hash] { total: Integer, success_count: Integer, fail_count: Integer }
   def self.retry_fetch_for_stale_accounts(stale_account_ids)
@@ -292,23 +274,9 @@ class PostDatas
     groups.each do |group|
       browser = group.first.browser
 
-      # 接入占用中心：非阻塞占用，浏览器忙/机器满则跳过（下次 stale 检查会再次触发补采）
-      occ = BrowserOccupationManager.try_acquire(
-        BrowserOccupation.key_for_browser(browser),
-        machine_ip: browser.machine_ip,
-        profile_name: browser.profile_name,
-        operation: :collect,
-        task_ref: "retry(accounts:#{group.size})",
-        ttl: 1800
-      )
-      active_now = BrowserOccupationManager.active_count(browser.machine_ip)
-      dlog.info "[retry] ACQUIRE_#{occ[:status].to_s.upcase} browser=#{browser.profile_name} ip=#{browser.machine_ip} active=#{active_now}/#{BrowserOccupationManager::MAX_BROWSER_PER_IP}"
-      unless occ[:status] == :ok
-        Rails.logger.info "[PostDatas] 重试 浏览器 #{browser.profile_name} 占用失败（#{occ[:status]}：#{occ[:message]}），跳过"
-        next
-      end
+      dlog.info "[retry] START browser=#{browser.profile_name} ip=#{browser.machine_ip} accounts=#{group.size}"
 
-      # 注意：占用不在此处释放，由采集端回传 release 接口精确释放（ttl 兜底），与主流程一致
+      # 并发/占用已交给机器端（async 模式），直接下发采集指令
       group.each_with_index do |account, index|
         begin
           Rails.logger.info "[PostDatas] 重试 [#{index + 1}/#{group.size}] 账号 #{account.account_name}(##{account.id}, 平台=#{account.platform}, 浏览器=#{browser.profile_name})"

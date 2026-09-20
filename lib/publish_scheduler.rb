@@ -60,7 +60,9 @@ class PublishScheduler
 
     machine_count ||= tasks.map { |t| t.browser&.machine_ip }.compact.uniq.size
     db_pool_size = ActiveRecord::Base.connection_pool.size
-    pool_size = [tasks.size, BrowserOccupationManager::MAX_BROWSER_PER_IP * machine_count, db_pool_size].min
+    # 并发已交给机器端（async 模式下机器端自己排队），worker 池只负责并行「下发指令」，
+    # 不再受「每机器 N 浏览器」约束，仅受连接池大小限制。
+    pool_size = [tasks.size, db_pool_size].min
     pool_size = 1 if pool_size <= 0
 
     Rails.logger.info "[PublishScheduler] 本轮待发布任务 #{tasks.size} 个，worker 池=#{pool_size}（机器=#{machine_count}，连接池=#{db_pool_size}）"
@@ -81,13 +83,13 @@ class PublishScheduler
             task = mutex.synchronize { queue.shift }
             unless task
               break if mutex.synchronize { remaining <= 0 }
-              sleep(BrowserOccupationManager::POLL_INTERVAL)
+              sleep(10)
               next
             end
 
             if attempt_task(task) == :busy
               mutex.synchronize { queue << task }
-              sleep(BrowserOccupationManager::POLL_INTERVAL)
+              sleep(10)
             else
               mutex.synchronize { remaining -= 1 }
             end
@@ -115,21 +117,11 @@ class PublishScheduler
       return :done
     end
 
-    # 非阻塞占用：忙/机器满则放回重试
-    result = BrowserOccupationManager.try_acquire(
-      BrowserOccupation.key_for_browser(browser),
-      machine_ip: browser.machine_ip,
-      profile_name: browser.profile_name,
-      operation: :publish,
-      task_ref: "#{task_type_name(task)}##{task.id}",
-      ttl: 900
-    )
-    return :busy unless result[:status] == :ok
+    # 并发/占用已完全交给机器端（async 模式下机器端自己排队 + profile 锁），
+    # account_sys 侧不再前置占用控制，直接锁定任务并下发异步指令。
+    task_type = task_type_name(task)
 
-    occupation = result[:occupation]
-    task_type  = task_type_name(task)
-
-    # 事务锁定任务，避免重复执行；抢不到则释放占用并放弃本轮
+    # 事务锁定任务，避免重复执行；抢不到则放弃本轮
     executed = false
     ActiveRecord::Base.transaction do
       task.lock!
@@ -138,12 +130,9 @@ class PublishScheduler
         executed = true
       end
     end
-    unless executed
-      BrowserOccupationManager.release(occupation)
-      return :done
-    end
+    return :done unless executed
 
-    execute_task(task, task_type, browser.machine_ip, occupation: occupation)
+    execute_task(task, task_type, browser.machine_ip)
     :done
   end
 
@@ -225,7 +214,7 @@ class PublishScheduler
 
   # === 任务执行 ===
 
-  def self.execute_task(task, task_type, machine_ip, occupation: nil)
+  def self.execute_task(task, task_type, machine_ip)
     return if task.account.nil? || task.browser.nil?
 
     # 端点由浏览器所属运营机器决定；端口固定 8080
@@ -238,27 +227,8 @@ class PublishScheduler
 
     endpoint = "https://#{machine_ip}/#{task.platform}/publish"
 
-    # 占用：调用方已非阻塞拿到 occupation 则复用；否则此处阻塞等待（兼容手动立即执行）
-    acquired = occupation
-    unless acquired
-      acquired = BrowserOccupationManager.acquire(
-        BrowserOccupation.key_for_browser(task.browser),
-        machine_ip: machine_ip,
-        profile_name: task.browser.profile_name,
-        operation: :publish,
-        task_ref: "#{task_type}##{task.id}",
-        ttl: 900
-      )
-      unless acquired
-        Rails.logger.error "[PublishScheduler] 任务 #{task_type}:#{task.id} 获取浏览器占用失败，回退为待发布"
-        task.update(status: :waiting_publish)
-        return
-      end
-    end
-
     Rails.logger.info "[PublishScheduler] 开始执行任务 #{task_type}:#{task.id} - #{task.title} (浏览器: #{task.browser.profile_name}, 机器: #{machine_ip}) → #{endpoint}"
 
-    # 注意：占用不在此处释放，由机器端发布完成后回传 release 接口精确释放（ttl 兜底）
     begin
       request_data = build_request_data(task)
       response = send_publish_request(endpoint, request_data)
@@ -388,7 +358,11 @@ class PublishScheduler
       profile_name: ensure_utf8(task.browser.profile_name),
       title: ensure_utf8(task.title),
       video_oss_url: ensure_utf8(video_url),
-      description: ensure_utf8(description)
+      description: ensure_utf8(description),
+      # 异步模式：机器端立即返回 accepted+task_id，后台执行，完成后回调 /api/v1/browser_tasks/result
+      async: true,
+      # 业务透传标识：回调时机器端原样带回，用于精确关联到本任务
+      ref: "#{task.class.name}:#{task.id}"
     }
   end
 
@@ -404,6 +378,13 @@ class PublishScheduler
   end
 
   def self.handle_response(task, response)
+    # 异步受理：机器端已接收任务，后台执行中，等 /api/v1/browser_tasks/result 回调后再更新状态
+    if response['type'] == 'accepted'
+      Rails.logger.info "[PublishScheduler] 任务 #{task.id} 已受理（异步），task_id=#{response['task_id']}，等待回调"
+      return
+    end
+
+    # 同步兜底（机器端未启用 async 时）：按原逻辑立即更新状态
     snapshot_account_id = task.account_id
     snapshot_browser_id = task.browser_id
 

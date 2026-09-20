@@ -21,33 +21,28 @@ class ExecuteWorker
 
     endpoint = "https://#{machine_ip}/accounts/nurture"
 
-    # 申请浏览器占用（等待重试），避免与发文/采集等并发冲突
-    occupation = BrowserOccupationManager.acquire(
-      BrowserOccupation.key_for_browser(browser),
-      machine_ip: machine_ip,
-      profile_name: browser.profile_name,
-      operation: :nurture,
-      task_ref: "WarmupTask##{warmup_task.id}",
-      ttl: 420
-    )
-    unless occupation
-      error_msg = "浏览器 #{browser.profile_name} 正被占用，获取占用失败"
-      Rails.logger.error "[ExecuteWorker] #{error_msg}"
-      warmup_task.update!(status: :failed, error_msg: error_msg, executed_at: Time.current)
-      return
-    end
-
     # 更新任务状态为执行中，并记录执行机器
     warmup_task.update!(status: :executing, machine: machine_ip)
 
     begin
       request_data = {
         profile_name: browser.profile_name,
-        platform: account.platform
+        platform: account.platform,
+        # 异步模式：机器端立即返回 accepted+task_id，后台执行，完成后回调 /api/v1/browser_tasks/result
+        async: true,
+        # 业务透传标识：回调时机器端原样带回，用于精确定位到本养号任务
+        ref: "WarmupTask:#{warmup_task.id}"
       }
 
       response = WarmupScheduler.send_request(endpoint, request_data)
 
+      # 异步受理：机器端后台执行中，等 /api/v1/browser_tasks/result 回调再更新状态
+      if response['type'] == 'accepted'
+        Rails.logger.info "[ExecuteWorker] 养号已受理（异步），task_id=#{response['task_id']}，等待回调"
+        return
+      end
+
+      # 同步兜底（机器端未启用 async 时）：按原逻辑立即更新
       if response['status'] == 'success'
         warmup_task.update!(status: :success, executed_at: Time.current, error_msg: response['info'])
         profile = account.warmup_profile || account.create_warmup_profile
@@ -66,7 +61,5 @@ class ExecuteWorker
       profile = account.warmup_profile || account.create_warmup_profile
       profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
     end
-
-    # 注意：占用不在此处释放，由机器端养号完成后回传 release 接口精确释放（ttl 兜底）
   end
 end

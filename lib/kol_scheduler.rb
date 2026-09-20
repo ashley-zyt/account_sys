@@ -165,6 +165,8 @@ class KolScheduler
           next_action_at: deadline
         )
         { ok: true }
+      when :async_accepted
+        { ok: true, async: true, message: "已受理，发送结果稍后更新" }
       when :account_risk
         { ok: false, error: "内部账号异常（已自动休眠），请更换账号后重试" }
       else
@@ -198,6 +200,8 @@ class KolScheduler
           )
         end
         { ok: true }
+      when :async_accepted
+        { ok: true, async: true, message: "已受理，发送结果稍后更新" }
       when :account_risk
         { ok: false, error: "内部账号异常（已自动休眠），请更换账号后重试" }
       else
@@ -220,7 +224,7 @@ class KolScheduler
         result = deliver_message(kol, contact, account, source: :auto, scenario: scenario)
 
         case result
-        when :success then return :success
+        when :success, :async_accepted then return :success
         when :missing_variables then return :suspended
         else
           # account_risk / other：换下一个账号；同平台换满 max_accounts_per_platform 个仍失败则换平台
@@ -265,36 +269,21 @@ class KolScheduler
         platform: contact.platform,
         account: account,
         contact: contact,
-        content: content
+        content: content,
+        message_id: message.id
       )
 
+      # 异步受理：机器端后台执行，等 /api/v1/browser_tasks/result 回调后由 apply_send_result 更新状态
+      return :async_accepted if result[:async]
+
       if result[:success]
-        deadline = next_wait_time
-        message.update!(status: :sent_success, wait_until: deadline, occurred_at: Time.current)
-
-        # 联系方式状态流转：未回复的 → 监测中（30 天窗口）；已回复的保持 replied
-        if contact.replied?
-          contact.update!(last_used_at: Time.current)
-        else
-          contact.update!(status: :contacting, monitor_until: reply_monitor_days.days.from_now, last_used_at: Time.current)
-        end
-
-        unless source.to_s == "manual"
-          kol.update!(
-            status: :contacting,
-            current_contact_id: contact.id,
-            current_account_id: account.id,
-            last_contacted_at: Time.current,
-            next_action_at: deadline
-          )
-        end
+        KolOutreachApi.apply_send_result(message, success: true)
         :success
       elsif result[:reason] == "account_risk"
-        message.update!(status: :sent_failed, error_msg: result[:error].presence || "内部账号异常")
-        KolAccountAllocator.sleep_account(account)
+        KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "account_risk")
         :account_risk
       else
-        message.update!(status: :sent_failed, error_msg: result[:error].presence || result[:reason] || "发送失败")
+        KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "network")
         :other
       end
     end

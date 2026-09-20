@@ -63,7 +63,7 @@ class WarmupScheduler
 
       break if still_busy.empty?
       pending = still_busy
-      sleep(BrowserOccupationManager::POLL_INTERVAL) unless progressed
+      sleep(10) unless progressed
     end
 
     Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 养号任务执行完成"
@@ -90,23 +90,12 @@ class WarmupScheduler
            .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.warmup_status = 'failed' DESC, warmup_profiles.last_warmup_at ASC"))
   end
 
-  # 养号单个账号（非阻塞占用）
-  # @return [Symbol] :executed（已执行）/ :busy（浏览器忙，稍后重试）/ :skipped（无浏览器）
+  # 养号单个账号（异步下发）
+  # @return [Symbol] :executed（已执行）/ :skipped（无浏览器）
   def self.execute_warmup_for_account(account, machine_ip)
     return :skipped if account.browser.nil?
 
     endpoint = "https://#{machine_ip}/accounts/nurture"
-
-    # 非阻塞占用：忙/机器满则返回 :busy，由上层跳过、回头再试
-    result = BrowserOccupationManager.try_acquire(
-      BrowserOccupation.key_for_browser(account.browser),
-      machine_ip: machine_ip,
-      profile_name: account.browser.profile_name,
-      operation: :nurture,
-      task_ref: "account##{account.id}",
-      ttl: 420
-    )
-    return :busy unless result[:status] == :ok
 
     Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 开始养号: #{account.account_name} (#{account.platform}) → #{endpoint}"
 
@@ -121,11 +110,22 @@ class WarmupScheduler
     begin
       request_data = {
         profile_name: account.browser.profile_name,
-        platform: account.platform
+        platform: account.platform,
+        # 异步模式：机器端立即返回 accepted+task_id，后台执行，完成后回调 /api/v1/browser_tasks/result
+        async: true,
+        # 业务透传标识：回调时机器端原样带回，用于精确定位到本养号任务
+        ref: "WarmupTask:#{warmup_task.id}"
       }
 
       response = send_request(endpoint, request_data)
 
+      # 异步受理：机器端后台执行中，等 /api/v1/browser_tasks/result 回调再更新状态
+      if response['type'] == 'accepted'
+        Rails.logger.info "[WarmupScheduler] 养号已受理（异步），task_id=#{response['task_id']}，等待回调"
+        return :executed
+      end
+
+      # 同步兜底（机器端未启用 async 时）：按原逻辑立即更新
       if response['status'] == 'success'
         Rails.logger.info "[WarmupScheduler] 养号成功: #{account.account_name} - #{response['info']}"
         # 从 info 中提取总时长（秒），如 "总时长 720 秒, 浏览帖子: 30, 点赞: 1, 评论: 7, 关注: 0"
@@ -152,7 +152,6 @@ class WarmupScheduler
       profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
     end
 
-    # 注意：占用不在此处释放，由机器端养号完成后回传 release 接口精确释放（ttl 兜底）
     :executed
   end
 

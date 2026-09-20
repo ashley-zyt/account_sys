@@ -65,17 +65,6 @@ class DomesticLoginStatusChecker
     def check(platform_key)
       url = "#{HOST}/accounts/login_status?profile_name=#{PROFILE_NAME}&platform=#{platform_key}"
 
-      # 申请 domestic01 浏览器占用（等待重试，避免与发布并发冲突）
-      # 注意：占用不在此处释放，由机器端完成后回传 release 接口精确释放（ttl 兜底）
-      BrowserOccupationManager.acquire(
-        BrowserOccupation.key_for_virtual(PROFILE_NAME),
-        machine_ip: MACHINE_IP,
-        profile_name: PROFILE_NAME,
-        operation: :domestic,
-        task_ref: "login_check",
-        ttl: 120
-      )
-
       Rails.logger.info "[DomesticLoginStatusChecker] 请求 #{url}"
       response = RemoteApiClient.get(url, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT)
       body = response.body.to_s.dup.force_encoding('UTF-8')

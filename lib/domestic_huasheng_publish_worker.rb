@@ -60,16 +60,6 @@ class DomesticHuashengPublishWorker
       # 依次发布抖音、视频号，每次 API 调用间隔 40-60 秒
       results = {}
       TARGETS.each do |platform_name, platform_key|
-        # 申请 domestic01 浏览器占用（等待重试，避免与登录检查等并发冲突）
-        # 注意：占用不在此处释放，由机器端发布完成后回传 release 接口精确释放（ttl 兜底）
-        BrowserOccupationManager.acquire(
-          BrowserOccupation.key_for_virtual(PROFILE_NAME),
-          machine_ip: MACHINE_IP,
-          profile_name: PROFILE_NAME,
-          operation: :domestic,
-          task_ref: "HuashengTask##{task.id}",
-          ttl: 900
-        )
         result = publish(task, platform_key, platform_name)
         Rails.logger.info "[DySphHuashengPublishWorker] #{platform_name} 发布结果: #{result.inspect}"
 

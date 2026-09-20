@@ -26,48 +26,14 @@ class KolReplyPoller
       return if account.nil?
 
       result = KolOutreachApi.check_reply(platform: contact.platform, account: account, contact: contact)
+      # 异步受理：机器端后台执行，等 /api/v1/browser_tasks/result 回调后由 apply_reply_result 处理
+      return if result[:async]
       return unless result[:has_reply]
 
-      created = 0
-      Array(result[:replies]).each do |reply|
-        content = reply["content"].to_s.strip
-        next if content.blank?
-        next if already_stored?(kol, contact, content)
-
-        KolMessage.create!(
-          kol: kol,
-          kol_contact: contact,
-          account: account,
-          platform: contact.platform,
-          direction: :incoming,
-          source: :auto,
-          content: content,
-          status: :replied,
-          occurred_at: parse_time(reply["observed_at"]) || Time.current
-        )
-        created += 1
-      end
-
-      return if created.zero?
-
-      # 该联系方式已回复，停止监测；KOL 转入待人工处理
-      contact.update!(status: :replied, monitor_until: nil)
-      kol.update!(status: :replied_unprocessed, next_action_at: nil)
-      Rails.logger.info "[KolReplyPoller] KOL##{kol.id} 联系方式##{contact.id} 收到 #{created} 条回复，已转入待人工处理"
+      KolOutreachApi.apply_reply_result(contact, result[:replies])
     end
 
     private
-
-    # 按内容去重（同一 KOL + 同一联系方式），避免重复轮询重复入库
-    def already_stored?(kol, contact, content)
-      KolMessage.exists?(kol_id: kol.id, kol_contact_id: contact.id, direction: KolMessage.directions[:incoming], content: content)
-    end
-
-    def parse_time(str)
-      Time.zone.parse(str)
-    rescue
-      nil
-    end
 
     def safely(kol)
       yield
