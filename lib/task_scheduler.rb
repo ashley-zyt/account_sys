@@ -146,18 +146,20 @@ class TaskScheduler
 	# 异步化后，任务下发为 async（机器端排队+执行），排队等待 20 分钟属正常，故阈值放宽到 45 分钟。
 	# 兜底两类边界：① 回调失败（Best Effort）→ 主动查机器端补结果；② 机器重启丢任务 → 查不到则重置。
 	#
-	# @param threshold [ActiveSupport::Duration] 判定超时的时间窗口，默认 45 分钟。
-	#        机器端启动上报时传 0，表示「忽略时间窗口，立即检查全部登记记录」。
+	# @param threshold [ActiveSupport::Duration, Integer] 判定超时的时间窗口，默认 45 分钟。
+	#        传 0（机器端启动上报）表示「忽略时间窗口，立即检查全部登记记录」。
 	# @param machine_ip [String, nil] 只处理这台机器上的登记记录；不传则处理全部机器。
 	# @param include_untracked [Boolean] 是否额外兜底「无登记记录但卡在 executing」的任务。
 	#        默认 true；机器端重启上报时传 false，否则会把其它机器正在执行的任务一并重置。
 	def self.check_timeout_tasks(threshold: 45.minutes, machine_ip: nil, include_untracked: true)
-		timeout_ago = threshold.ago
+		# threshold 为 0 表示「忽略时间窗口，立即检查全部」；此时 timeout_ago 置 nil，
+		# 下面的 overdue 查询就不再按 created_at 过滤，直接取全部登记记录。
+		timeout_ago = threshold.to_i.zero? ? nil : Time.now - threshold
 
 		# 1. 查超时仍未回调的登记记录，逐个查机器端真实状态
 		scope = BrowserTaskRecord.pending
 		scope = scope.where(machine_ip: machine_ip) if machine_ip.present?
-		overdue = scope.where("created_at <= ?", timeout_ago).to_a
+		overdue = timeout_ago ? scope.where("created_at <= ?", timeout_ago).to_a : scope.to_a
 		overdue.each do |record|
 			remote = fetch_remote_task(record.machine_ip, record.machine_task_id)
 			if remote && MACHINE_TERMINAL_STATUSES.include?(remote['status'].to_s)
@@ -182,6 +184,7 @@ class TaskScheduler
 		#    注意：这一段不带机器过滤条件，只有在常规定时兜底（阈值 45 分钟）时才执行；
 		#    机器端重启上报走的是「按机器 + 忽略时间窗口」路径，必须跳过，否则会误伤其它机器。
 		return unless include_untracked
+		return if timeout_ago.nil?
 
 		WorkMode.resource_modes.each do |mode|
 			mode.task_model_class.where(status: :executing)
