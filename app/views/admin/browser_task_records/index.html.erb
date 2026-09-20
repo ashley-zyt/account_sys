@@ -16,7 +16,7 @@
       </div>
     </div>
     <div class="admin-card-header-right">
-      <%= link_to "同步状态", sync_admin_browser_task_records_path, method: :post, class: "admin-button-secondary", data: { confirm: "将主动查机器端真实状态并补结果/重置超时任务，确认？" } %>
+      <%= link_to "同步状态", sync_admin_browser_task_records_path, data: { turbo_method: :post, turbo_confirm: "将主动查机器端真实状态并补结果/重置超时任务，确认？" }, class: "admin-button-secondary" %>
       <span class="admin-tag">
         共 <%= @records.total_count %> 条
       </span>

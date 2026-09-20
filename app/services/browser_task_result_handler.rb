@@ -10,6 +10,9 @@ class BrowserTaskResultHandler
   # @param message [String] 动作统计或错误信息
   # @param result [Object, nil] 任务详细结果
   # @return [Hash] { type:, message: }
+  #
+  # 注意：ref 指向的不是本系统任务（如外部系统直接调用机器端后回传）时，不会报错，
+  # 而是静默忽略并返回 success —— 这类任务本就不该由 account_sys 处理。
   def self.process(ref:, status:, message:, result: nil)
     model_name, id = ref.to_s.split(':', 2)
     id = id.to_i
@@ -27,7 +30,10 @@ class BrowserTaskResultHandler
   def self.handle_publish(model_name, id, status, message)
     task_model = model_name.safe_constantize
     unless task_model.is_a?(Class) && task_model < ApplicationRecord && WorkMode.for_model(task_model)
-      return { type: 'error', message: "未知任务模型: #{model_name}" }
+      # ref 指向的不是本系统的任务模型：说明该任务不是 account_sys 下发的（如外部系统直接调用机器端接口后回传），
+      # 静默忽略即可，不当作错误返回。
+      Rails.logger.info "[BrowserTaskResult] 非本系统任务（model=#{model_name.inspect} id=#{id}），忽略"
+      return { type: 'success', message: '非本系统任务，忽略' }
     end
 
     task = task_model.find_by(id: id)

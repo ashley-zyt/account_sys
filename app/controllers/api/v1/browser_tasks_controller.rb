@@ -11,6 +11,8 @@ module Api
     #   采集任务：Account:<account_id>  如 "Account:234"
     #   发私信：  kol_message:<id>      如 "kol_message:12"
     #   查回复：  kol_contact:<id>      如 "kol_contact:34"
+    # 以上 ref 均由 account_sys 下发时生成。若回调未带 ref，或 ref 指向的不是本系统的任务模型，
+    # 说明该任务来自外部直接调用（非 account_sys 下发），一律静默忽略并返回 success，不报错。
     class BrowserTasksController < ApplicationController
       skip_before_action :verify_authenticity_token
 
@@ -21,8 +23,11 @@ module Api
         status  = params[:status].to_s
         message = params[:message].to_s
 
+        # 没有 ref：说明该任务不是 account_sys 下发的（如外部系统/人工直接调用机器端接口后回传结果），
+        # 静默忽略即可，不当作错误返回，避免调用方误判、也避免污染日志。
         if ref.blank?
-          return render json: { type: 'error', message: 'ref 不能为空' }
+          Rails.logger.info "[BrowserTasks] 回调未携带 ref（task_id=#{params[:task_id]}），判定为非本系统任务，忽略"
+          return render json: { type: 'success', message: '未携带 ref，忽略（非本系统任务）' }
         end
 
         # 更新本地登记记录状态（供后台页面查看 / 超时兜底判断）
