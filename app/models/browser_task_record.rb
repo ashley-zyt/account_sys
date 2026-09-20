@@ -33,7 +33,44 @@ class BrowserTaskRecord < ApplicationRecord
 
   validates :machine_task_id, presence: true, uniqueness: true
 
+  # 任务类型可读标签（与机器端 task_type 枚举对应）
+  TASK_TYPE_LABELS = {
+    'nurture'           => '养号',
+    'fetch'             => '采集',
+    'send_message'      => '发私信',
+    'check_reply'       => '检查回复',
+    'facebook_publish'  => 'Facebook发布',
+    'twitter_publish'   => 'X发布',
+    'youtube_publish'   => 'YouTube发布',
+    'tiktok_publish'    => 'TikTok发布',
+    'instagram_publish' => 'Instagram发布'
+  }.freeze
+
+  STATUS_LABELS = {
+    STATUS_PENDING => '执行中',
+    STATUS_SUCCESS => '成功',
+    STATUS_FAILED  => '失败',
+    STATUS_UNKNOWN => '已丢失'
+  }.freeze
+
   scope :pending, -> { where(status: STATUS_PENDING) }
+
+  # 供后台列表展示用：任务类型的可读名称
+  def task_type_label
+    TASK_TYPE_LABELS[task_type] || task_type.to_s
+  end
+
+  def status_label
+    STATUS_LABELS[status] || status.to_s
+  end
+
+  def self.ransackable_attributes(auth_object = nil)
+    %w[id machine_task_id ref task_type profile_name machine_ip status message created_at updated_at]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    %w[]
+  end
 
   # 下发 async 任务、机器端返回 accepted 时登记
   def self.track!(machine_task_id:, ref:, task_type:, profile_name:, machine_ip:)

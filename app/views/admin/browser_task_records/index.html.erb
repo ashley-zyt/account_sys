@@ -5,6 +5,8 @@
   下发到机器端的异步浏览器任务执行状态
 <% end %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
@@ -21,6 +23,35 @@
         共 <%= @records.total_count %> 条
       </span>
     </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.searchable_select :status_eq, BrowserTaskRecord::STATUS_LABELS.map { |k, v| [v, k] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">任务类型</label>
+        <%= f.searchable_select :task_type_eq, BrowserTaskRecord::TASK_TYPE_LABELS.map { |k, v| [v, k] }, { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">浏览器</label>
+        <%= f.search_field :profile_name_cont, class: "admin-input admin-filter-input", placeholder: "指纹浏览器名..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">机器</label>
+        <%= f.search_field :machine_ip_cont, class: "admin-input admin-filter-input", placeholder: "IP/域名..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">任务ID</label>
+        <%= f.search_field :machine_task_id_cont, class: "admin-input admin-filter-input", placeholder: "机器端 task_id..." %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_browser_task_records_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
   </div>
 
   <% if @records.any? %>
