@@ -133,6 +133,11 @@ class WarmupScheduler
           profile_name: account.browser.profile_name,
           machine_ip: machine_ip
         )
+        # 下发后立即标记 last_warmup_at，避免「从未养号优先」的排序在回调回来前
+        # 把同一批账号再次排到最前重复选中，导致反复创建养号任务。
+        # （warmup_status 先不动，等机器端回调成功/失败后再由 handle_warmup 更新）
+        profile = account.warmup_profile || account.create_warmup_profile
+        profile.update!(last_warmup_at: Time.current)
         Rails.logger.info "[WarmupScheduler] 养号已受理（异步），task_id=#{response['task_id']}，等待回调"
         return :executed
       end
