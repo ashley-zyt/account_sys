@@ -168,6 +168,7 @@ Rails.application.routes.draw do
         get :new_modal
       end
     end
+    resources :kol_action_logs, only: [:index]
   end
 
   namespace :api do

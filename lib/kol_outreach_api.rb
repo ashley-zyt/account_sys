@@ -36,7 +36,18 @@ class KolOutreachApi
 
       response = post_json(url, body)
       accepted = accepted_response(response)
-      return { async: true, task_id: accepted["task_id"] } if accepted
+      if accepted
+        track_browser_task!(accepted["task_id"], body[:ref], 'send_message', body[:profile_name], account)
+        KolActionLog.track!(
+          action_type: KolActionLog::ACTION_SEND,
+          kol_id: contact&.kol_id,
+          kol_contact_id: contact&.id,
+          account_id: account&.id,
+          machine_task_id: accepted["task_id"],
+          message: "发送私信"
+        )
+        return { async: true, task_id: accepted["task_id"] }
+      end
 
       parse_send_response(response)
     rescue => e
@@ -60,7 +71,18 @@ class KolOutreachApi
 
       response = post_json(url, body)
       accepted = accepted_response(response)
-      return { async: true, task_id: accepted["task_id"] } if accepted
+      if accepted
+        track_browser_task!(accepted["task_id"], body[:ref], 'check_reply', body[:profile_name], account)
+        KolActionLog.track!(
+          action_type: KolActionLog::ACTION_CHECK,
+          kol_id: contact&.kol_id,
+          kol_contact_id: contact&.id,
+          account_id: account&.id,
+          machine_task_id: accepted["task_id"],
+          message: "检查回复"
+        )
+        return { async: true, task_id: accepted["task_id"] }
+      end
 
       parse_reply_response(response)
     rescue => e
@@ -164,6 +186,18 @@ class KolOutreachApi
     end
 
     private
+
+    # 登记异步任务到 BrowserTaskRecord，供后台「异步任务」页统一展示发私信/查回复进度
+    def track_browser_task!(machine_task_id, ref, task_type, profile_name, account)
+      return if machine_task_id.blank?
+      BrowserTaskRecord.track!(
+        machine_task_id: machine_task_id,
+        ref: ref,
+        task_type: task_type,
+        profile_name: profile_name,
+        machine_ip: account&.browser&.machine_ip
+      )
+    end
 
     # 判断响应是否为「异步受理」，是则返回解析后的 data（含 task_id），否则返回 nil
     def accepted_response(response)

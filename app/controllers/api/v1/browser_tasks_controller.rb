@@ -32,6 +32,8 @@ module Api
 
         # 更新本地登记记录状态（供后台页面查看 / 超时兜底判断）
         BrowserTaskRecord.mark_result!(params[:task_id].to_s, status, message)
+        # 同步更新 KOL 触达动作日志（发私信/查回复的流水）
+        KolActionLog.mark_result!(params[:task_id].to_s, status, message)
 
         render json: BrowserTaskResultHandler.process(ref: ref, status: status, message: message, result: params[:result])
       rescue => e

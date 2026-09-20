@@ -1,0 +1,143 @@
+<% content_for :page_title do %>
+  KOL 触达日志
+<% end %>
+<% content_for :page_subtitle do %>
+  发私信 / 检查回复 的动作执行流水
+<% end %>
+
+<%= render "admin/shared/select_widgets" %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        KOL 触达日志
+      </div>
+      <div class="admin-card-subtitle">
+        按时间倒序展示（执行中=已下发待回调，成功/失败=机器端已回调结果）
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">
+        共 <%= @logs.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">动作类型</label>
+        <%= f.searchable_select :action_type_eq, KolActionLog::ACTION_TYPE_LABELS.map { |k, v| [v, k] }, { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.searchable_select :status_eq, KolActionLog::STATUS_LABELS.map { |k, v| [v, k] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">KOL</label>
+        <%= f.search_field :kol_name_cont, class: "admin-input admin-filter-input", placeholder: "KOL 名称..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">内部账号</label>
+        <%= f.search_field :account_account_name_cont, class: "admin-input admin-filter-input", placeholder: "账号名..." %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_kol_action_logs_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @logs.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>动作</th>
+            <th>KOL</th>
+            <th>联系方式</th>
+            <th>内部账号</th>
+            <th>机器端任务ID</th>
+            <th>状态</th>
+            <th>消息</th>
+            <th>时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @logs.each do |log| %>
+            <tr>
+              <td>
+                <% if log.action_type == KolActionLog::ACTION_CHECK %>
+                  <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.12); color: #22c55e;">
+                    检查回复
+                  </span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(99, 102, 241, 0.12); color: #818cf8;">
+                    发私信
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= log.kol&.name || "-" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted" title="<%= log.kol_contact&.url %>">
+                  <%= log.kol_contact&.nickname.presence || log.kol_contact&.url.presence || "-" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= log.account&.account_name || "-" %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted" title="<%= log.machine_task_id %>">
+                  <%= truncate(log.machine_task_id.to_s, length: 18) %>
+                </span>
+              </td>
+              <td>
+                <% case log.status
+                   when KolActionLog::STATUS_SUCCESS %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>
+                    成功
+                  </span>
+                <% when KolActionLog::STATUS_FAILED %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>
+                    失败
+                  </span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <span class="admin-pill-status-dot"></span>
+                    执行中
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted" title="<%= log.message %>">
+                  <%= truncate(log.message.to_s, length: 40) %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= log.created_at&.strftime("%m-%d %H:%M") %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @logs %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无 KOL 触达日志。
+    </div>
+  <% end %>
+</div>
