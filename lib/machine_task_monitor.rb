@@ -45,14 +45,15 @@ class MachineTaskMonitor
     'instagram_publish' => 'Instagram发布'
   }.freeze
 
-  STATUSES = %w[queued running success failed interrupted].freeze
+  STATUSES = %w[queued running success failed interrupted paused].freeze
 
   STATUS_LABELS = {
     'queued'      => '排队',
     'running'     => '执行中',
     'success'     => '成功',
     'failed'      => '失败',
-    'interrupted' => '已中断'
+    'interrupted' => '已中断',
+    'paused'      => '已暂停'
   }.freeze
 
   # 单台机器的查询结果。ok=false 时 data 为 nil、error 为原因（机器不可达 / 超时 / HTTP 非 200）
@@ -110,6 +111,7 @@ class MachineTaskMonitor
           success:     row['success'].to_i,
           failed:      row['failed'].to_i,
           interrupted: row['interrupted'].to_i,
+          paused:      row['paused'].to_i,
           total:       row.values.sum(&:to_i)
         }
       end.reject { |r| r[:total].zero? }

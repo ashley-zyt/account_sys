@@ -110,4 +110,30 @@ class Admin::TaskCenterController < Admin::BaseController
       redirect_back fallback_location: admin_task_center_index_path, alert: "清除异常：#{e.message}"
     end
   end
+
+  # 人工确认启动：调指定机器的 POST /tasks/resume，
+  # 让机器端重新探测 Undetectable，成功后恢复所有「因未启动而暂停」的发布任务。
+  def resume
+    machine_ip = params[:machine_ip].to_s.strip
+    if machine_ip.empty?
+      redirect_back fallback_location: admin_task_center_index_path, alert: "请选择要确认启动的机器"
+      return
+    end
+
+    url = "https://#{machine_ip}/tasks/resume"
+    begin
+      # 机器端 resume 会探测 Undetectable（必要时拉起，最多约 20 秒），超时放宽到 70 秒。
+      resp = RemoteApiClient.post(url, {}, read_timeout: 70)
+      if resp.code.to_i == 200
+        count = (JSON.parse(resp.body) rescue {})['count']
+        redirect_back fallback_location: admin_task_center_index_path,
+                      notice: "已确认启动 #{machine_ip}，恢复 #{count || 0} 个暂停的发布任务"
+      else
+        redirect_back fallback_location: admin_task_center_index_path,
+                      alert: "确认启动失败：HTTP #{resp.code} #{resp.body.to_s[0, 200]}"
+      end
+    rescue => e
+      redirect_back fallback_location: admin_task_center_index_path, alert: "确认启动异常：#{e.message}"
+    end
+  end
 end

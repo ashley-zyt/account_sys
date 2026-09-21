@@ -234,6 +234,10 @@ class TaskScheduler
 	# 机器端任务记录已持久化（重启后仍可查到，状态=interrupted），不再返回 404，
 	# 所以 interrupted 与「查不到(nil)」一样，都需要重置对应任务。
 	MACHINE_INTERRUPTED_STATUS = 'interrupted'.freeze
+	# 机器端「因 Undetectable 未启动而暂停」状态：任务未回调、本机挂起等待人工确认启动。
+	# 兜底扫描遇到它必须保持 pending 跳过，绝不能当「丢失」重置——否则会重复下发，
+	# 与「等人工确认后再恢复执行」的语义冲突。
+	MACHINE_PAUSED_STATUS = 'paused'.freeze
 
 	# 检查超时任务：优先基于「登记记录」主动查机器端真实状态，查不到才盲重置。
 	# 异步化后，任务下发为 async（机器端排队+执行），排队等待 20 分钟属正常，故阈值放宽到 45 分钟。
@@ -262,10 +266,9 @@ class TaskScheduler
 				Rails.logger.info "[TaskScheduler] 超时任务 #{record.machine_task_id} 机器端状态=#{status}，补处理"
 				BrowserTaskResultHandler.process(ref: record.ref, status: status, message: remote['message'], result: remote['result'])
 				BrowserTaskRecord.mark_result!(record.machine_task_id, status, remote['message'])
-			elsif status && MACHINE_RUNNING_STATUSES.include?(status)
-				# 机器端仍在排队/执行中：保持 pending，下一轮再查。
-				# （排队不计入执行超时后，长排队会让任务超过 45 分钟仍未回调，属正常情况，
-				#   不能拿 queued/running 去 process —— 那会被当成失败处理、误伤正在跑的任务。）
+			elsif status && (MACHINE_RUNNING_STATUSES.include?(status) || status == MACHINE_PAUSED_STATUS)
+				# 机器端仍在排队/执行中，或因 Undetectable 未启动而暂停（等人工确认启动）：
+				# 保持 pending，下一轮再查，绝不重置/重复下发。
 				Rails.logger.info "[TaskScheduler] 任务 #{record.machine_task_id} 仍在机器端执行中(status=#{status})，跳过"
 			else
 				# 查不到（超期/clear）或 interrupted（服务重启中断）：都重置对应任务

@@ -23,7 +23,8 @@
     { label: '执行中',      value: g['running'],             color: '#3b82f6' },
     { label: '成功',        value: g['success'],             color: '#22c55e' },
     { label: '失败',        value: g['failed'],              color: '#ef4444' },
-    { label: '已中断',      value: g['interrupted'],         color: '#94a3b8' }
+    { label: '已中断',      value: g['interrupted'],         color: '#94a3b8' },
+    { label: '已暂停',      value: g['paused'],              color: '#e879f9' }
   ]
 %>
 
@@ -65,6 +66,29 @@
     <div class="admin-card-header-right">
       <%= link_to "同步状态", sync_admin_task_center_index_path, data: { turbo_method: :post, turbo_confirm: "将主动查机器端真实状态并补结果/重置超时任务，确认？" }, class: "admin-button-secondary" %>
       <%= link_to "重跑丢失任务", retry_interrupted_admin_task_center_index_path, data: { turbo_method: :post, turbo_confirm: "将把「机器端丢失/超时被重置」的发布任务立即重新分配并下发，不等平台固定时间窗口。\n\n只会补发受影响账号，且今天已发布成功的不会重复发。确认执行？" }, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <%# 确认启动：非破坏性，恢复因 Undetectable 未启动而暂停的任务 %>
+  <div style="padding: 0 16px 16px;">
+    <div style="border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 8px; padding: 12px 16px; background: rgba(34, 197, 94, 0.05);">
+      <div style="color: #86efac; font-size: 13px; margin-bottom: 10px;">
+        ✅ 确认启动：当 Undetectable 已手动启动后，点这里恢复该机器上「因未启动而暂停」的发布任务（不回调、不标失败，等确认后才恢复）
+      </div>
+      <%= form_with url: resume_admin_task_center_index_path, method: :post, data: { turbo_confirm: "确认该机器的 Undetectable 已启动？将立即探测并恢复其暂停的发布任务。" } do |f| %>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+          <div class="admin-filter-group">
+            <label class="admin-filter-label">机器（必选）</label>
+            <%= f.select :machine_ip,
+                         options_for_select(@machines.map { |m| [m, m] }),
+                         { include_blank: "选择机器..." },
+                         { class: "admin-input admin-filter-input", required: true } %>
+          </div>
+          <div>
+            <%= f.submit "确认启动并恢复", class: "admin-button-primary" %>
+          </div>
+        </div>
+      <% end %>
     </div>
   </div>
 
@@ -177,7 +201,7 @@
             <% if result.ok %>
               排队 <%= queued %> · 执行中 <%= running %> ·
               成功 <%= sc['success'].to_i %> · 失败 <%= sc['failed'].to_i %> ·
-              中断 <%= sc['interrupted'].to_i %>
+              中断 <%= sc['interrupted'].to_i %> · 暂停 <%= sc['paused'].to_i %>
               <% if oldest.positive? %>
                 · 最久排队 <%= (oldest / 60.0).round(1) %> 分钟
               <% end %>
@@ -210,6 +234,7 @@
                         <td style="color: #22c55e;"><%= row[:success] %></td>
                         <td style="color: #ef4444;"><%= row[:failed] %></td>
                         <td style="color: #94a3b8;"><%= row[:interrupted] %></td>
+                        <td style="color: #e879f9;"><%= row[:paused] %></td>
                         <td><%= row[:total] %></td>
                       </tr>
                     <% end %>
