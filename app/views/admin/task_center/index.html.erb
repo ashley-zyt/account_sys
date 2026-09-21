@@ -5,6 +5,8 @@
   实时查看各运营机器任务的执行进度与堆积，统一管理下发中的异步任务
 <% end %>
 
+<%= render "admin/shared/select_widgets" %>
+
 <% statuses = MachineTaskMonitor::STATUSES %>
 <% if @auto %>
   <script>
@@ -315,6 +317,10 @@
       <div class="admin-filter-group">
         <label class="admin-filter-label">任务ID</label>
         <%= f.search_field :machine_task_id_cont, class: "admin-input admin-filter-input", placeholder: "机器端 task_id..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">错误信息</label>
+        <%= f.search_field :message_cont, class: "admin-input admin-filter-input", placeholder: "按错误信息内容搜索..." %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
