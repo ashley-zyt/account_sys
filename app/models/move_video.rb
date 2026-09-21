@@ -9,7 +9,6 @@
 #  platforms(目标平台列表，逗号分隔，如 youtube,facebook,twitter,tiktok)                 :string(255)
 #  process_started_at(剪映领取时间)                                                      :datetime
 #  processed_at(剪映完成时间)                                                            :datetime
-#  processed_oss_url(剪映处理后 OSS URL（发布用）)                                       :text(65535)
 #  raw_oss_url(下载后原始视频 OSS URL)                                                   :text(65535)
 #  source_account_url(来源账号主页链接)                                                  :string(255)
 #  source_title(原视频标题)                                                              :string(255)
