@@ -288,7 +288,10 @@
         下发到机器端的异步任务登记（pending=执行中/排队中，success/failed=机器端已回调结果）
       </div>
     </div>
-    <span class="admin-tag">共 <%= @records.total_count %> 条</span>
+    <div class="admin-card-header-right">
+      <button type="button" class="admin-button-primary" onclick="submitRetrySelected()">重新启动选中</button>
+      <span class="admin-tag">共 <%= @records.total_count %> 条</span>
+    </div>
   </div>
 
   <div class="admin-filter-form">
@@ -325,6 +328,7 @@
       <table class="admin-table">
         <thead>
           <tr>
+            <th style="width: 36px;"><input type="checkbox" id="retry-check-all" onclick="toggleAllRetry()" title="全选失败任务"></th>
             <th>机器端任务ID</th>
             <th>业务标识(ref)</th>
             <th>任务类型</th>
@@ -338,6 +342,11 @@
         <tbody>
           <% @records.each do |r| %>
             <tr>
+              <td>
+                <% if r.status == 'failed' %>
+                  <input type="checkbox" class="retry-check" value="<%= r.id %>" title="重新启动该失败任务">
+                <% end %>
+              </td>
               <td>
                 <span class="admin-label-muted" title="<%= r.machine_task_id %>">
                   <%= truncate(r.machine_task_id.to_s, length: 18) %>
@@ -397,3 +406,37 @@
     <div class="admin-empty-state">暂无异步任务记录。</div>
   <% end %>
 </div>
+
+<script>
+  function toggleAllRetry() {
+    var all = document.getElementById('retry-check-all').checked;
+    document.querySelectorAll('.retry-check').forEach(function (c) { c.checked = all; });
+  }
+
+  function submitRetrySelected() {
+    var ids = [];
+    document.querySelectorAll('.retry-check:checked').forEach(function (c) { ids.push(c.value); });
+    if (ids.length === 0) { alert('请先勾选要重新启动的失败任务'); return; }
+    if (!confirm('确定重新启动选中的 ' + ids.length + ' 条失败任务？')) return;
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '<%= retry_failed_admin_task_center_index_path %>';
+
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    if (csrf) {
+      var t = document.createElement('input');
+      t.type = 'hidden'; t.name = 'authenticity_token'; t.value = csrf.content;
+      form.appendChild(t);
+    }
+
+    ids.forEach(function (id) {
+      var i = document.createElement('input');
+      i.type = 'hidden'; i.name = 'record_ids[]'; i.value = id;
+      form.appendChild(i);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+</script>

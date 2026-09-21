@@ -72,6 +72,7 @@ Rails.application.routes.draw do
         post :retry_interrupted
         post :clear
         post :resume           # 人工确认启动：调机器端 /tasks/resume 恢复暂停任务
+        post :retry_failed     # 批量重新启动失败的任务
       end
     end
     resources :themes, only: [:index, :create, :edit, :update, :destroy] do

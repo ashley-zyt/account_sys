@@ -157,6 +157,118 @@ class TaskScheduler
 		{ interrupted_count: interrupted.size, details: details, errors: errors }
 	end
 
+	# 重新启动失败的任务（后台「异步任务」页批量选择失败记录后触发）
+	# 按 ref 前缀分派：
+	#   - 发文任务（资源队列模型）→ 重新分配资源并下发发布
+	#   - 养号（WarmupTask）→ 重新下发养号
+	#   - 采集（Account）→ 重新下发采集指令
+	#   - 私信/查回复（kol_message / kol_contact）→ 跳过（有 KolScheduler 自动重试）
+	# @param record_ids [Array<Integer>] 选中的 BrowserTaskRecord id
+	# @return [Hash] { publish:, nurture:, fetch:, skipped: }
+	def self.retry_failed_records(record_ids)
+		records = BrowserTaskRecord.where(id: record_ids, status: BrowserTaskRecord::STATUS_FAILED).to_a
+		return { publish: 0, nurture: 0, fetch: 0, skipped: 0 } if records.empty?
+
+		publish_refs = []
+		nurture_refs = []
+		fetch_refs   = []
+		skipped      = 0
+
+		records.each do |r|
+			model_name = r.ref.to_s.split(':', 2).first
+			case model_name
+			when 'WarmupTask' then nurture_refs << r.ref
+			when 'Account'    then fetch_refs << r.ref
+			when 'kol_message', 'kol_contact' then skipped += 1
+			else publish_refs << r.ref
+			end
+		end
+
+		publish_count = retry_publish_by_refs(publish_refs)
+		nurture_count = retry_nurture_by_refs(nurture_refs)
+		fetch_count   = retry_fetch_by_refs(fetch_refs)
+
+		Rails.logger.info "[TaskScheduler] 重新启动失败任务完成：发文=#{publish_count} 养号=#{nurture_count} 采集=#{fetch_count} 跳过=#{skipped}"
+		{ publish: publish_count, nurture: nurture_count, fetch: fetch_count, skipped: skipped }
+	end
+
+	# 重新发布失败的发文任务：按 ref 定位任务，再按平台+主题组合重新分配 + 下发
+	def self.retry_publish_by_refs(refs)
+		return 0 if refs.empty?
+
+		tasks = []
+		refs.each do |ref|
+			model_name, id = ref.split(':', 2)
+			task_model = model_name.safe_constantize
+			next unless task_model.is_a?(Class) && task_model < ApplicationRecord && WorkMode.for_model(task_model)
+			t = task_model.find_by(id: id.to_i)
+			tasks << t if t
+		end
+		return 0 if tasks.empty?
+
+		details = []
+		tasks.group_by(&:platform).each do |pf, ts|
+			combos = ts.map { |t| [t.platform, t.theme] }.uniq
+			begin
+				Rails.logger.info "[TaskScheduler] 重新启动失败发文任务：平台 #{pf}，组合 #{combos.inspect}，共 #{ts.size} 条"
+				assign_resources(platform: pf, only_combos: combos, redirect_logger: false)
+				to_publish = PublishScheduler.fetch_all_tasks(platform: pf)
+				                              .select { |t| combos.include?([t.platform, t.theme]) }
+				if to_publish.empty?
+					Rails.logger.info "[TaskScheduler] 平台 #{pf} 无任务可下发（账号今天已发布成功或已有进行中任务）"
+				else
+					PublishScheduler.run_tasks_with_pool(to_publish)
+				end
+				details << "#{pf}(#{to_publish.size})"
+			rescue => e
+				Rails.logger.error "[TaskScheduler] 重新启动平台 #{pf} 失败任务异常: #{e.message}"
+			end
+		end
+
+		Rails.logger.info "[TaskScheduler] 重新启动失败发文任务完成：#{details.join(' / ')}"
+		tasks.size
+	end
+
+	# 重新下发失败的养号任务
+	def self.retry_nurture_by_refs(refs)
+		return 0 if refs.empty?
+
+		count = 0
+		refs.each do |ref|
+			_, id = ref.split(':', 2)
+			warmup_task = WarmupTask.find_by(id: id.to_i)
+			next unless warmup_task && warmup_task.account && warmup_task.account.browser&.machine_ip.present?
+
+			begin
+				result = WarmupScheduler.execute_warmup_for_account(warmup_task.account, warmup_task.account.browser.machine_ip)
+				count += 1 if result == :executed
+			rescue => e
+				Rails.logger.error "[TaskScheduler] 重新启动养号 #{ref} 异常: #{e.message}"
+			end
+		end
+		count
+	end
+
+	# 重新下发失败的采集任务
+	def self.retry_fetch_by_refs(refs)
+		return 0 if refs.empty?
+
+		count = 0
+		refs.each do |ref|
+			_, id = ref.split(':', 2)
+			account = Account.find_by(id: id.to_i)
+			next unless account && account.browser&.machine_ip.present?
+
+			begin
+				result = Util.fetch_account_post_data(account_id: account.id)
+				count += 1 if result[:success]
+			rescue => e
+				Rails.logger.error "[TaskScheduler] 重新启动采集 #{ref} 异常: #{e.message}"
+			end
+		end
+		count
+	end
+
 	# 找出待执行任务中与锁定接口重合的指纹浏览器名称
 	# 遍历所有运营机器（browser.machine_ip）查询锁定状态，避免遗漏其他机器上的锁
 	def self.find_locked_browsers_in_pending_tasks

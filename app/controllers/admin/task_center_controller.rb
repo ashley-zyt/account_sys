@@ -75,6 +75,30 @@ class Admin::TaskCenterController < Admin::BaseController
                   notice: "已开始重跑 #{interrupted.size} 条被中断的发布任务（#{summary}），后台执行中，请稍后刷新查看")
   end
 
+  # 批量重新启动失败的任务（本地登记明细勾选失败记录后触发）
+  def retry_failed
+    ids = Array(params[:record_ids]).map(&:to_i).reject(&:zero?)
+    if ids.empty?
+      redirect_back fallback_location: admin_task_center_index_path, alert: "请先勾选要重新启动的任务"
+      return
+    end
+
+    # 发文/养号/采集下发都要走 HTTP，可能较慢，放到后台线程执行，接口立即返回
+    Thread.new do
+      ActiveRecord::Base.connection_pool.with_connection do
+        begin
+          result = TaskScheduler.retry_failed_records(ids)
+          Rails.logger.info "[TaskCenter] 重新启动失败任务完成: #{result.inspect}"
+        rescue => e
+          Rails.logger.error "[TaskCenter] 重新启动失败任务异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        end
+      end
+    end
+
+    redirect_back fallback_location: admin_task_center_index_path,
+                  notice: "已开始重新启动 #{ids.size} 条失败任务，后台执行中，请稍后刷新查看"
+  end
+
   # 清除任务：调指定机器的 POST /tasks/clear（可指定类型/状态）
   #
   # 安全约束：必须选机器；类型/状态至少指定一项（避免误触全量清空）。
