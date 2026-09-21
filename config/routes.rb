@@ -176,8 +176,10 @@ Rails.application.routes.draw do
       get  "move_videos/fetch_for_download", to: "move_videos#fetch_for_download"
       post "move_videos/report_download",    to: "move_videos#report_download"
       get  "move_videos/fetch_for_processing", to: "move_videos#fetch_for_processing"
+      get  "move_videos/fetch_pending_process_batch", to: "move_videos#fetch_pending_process_batch"
       post "move_videos/report_processing",  to: "move_videos#report_processing"
       post "move_videos/report_result",      to: "move_videos#report_result"
+      post "move_videos/report_merge_result", to: "move_videos#report_merge_result"
 
       get "task/fetch_next_executable_task", to: "tasks#fetch_next_executable_task"
       get "task/report", to: "tasks#report"

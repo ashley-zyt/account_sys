@@ -130,6 +130,32 @@ module Api
 				})
 			end
 
+			# ---------- 4.1 批量领取待处理视频 ----------
+			# GET /api/v1/move_videos/fetch_pending_process_batch
+			# 入参：theme（可选，主题名）
+			#   指定 theme：该主题最多取 100 条（不足 100 全取）
+			#   不指定 theme：遍历所有主题，每个主题各取 50 条（不足 50 全取该主题）
+			# 原子 claim：每条 pending_process → processing，并发安全，被抢的自动跳过
+			def fetch_pending_process_batch
+				theme = params[:theme].to_s.strip
+
+				candidates = if theme.present?
+					MoveVideo.pending_process.where(theme: theme).order(created_at: :asc).limit(100).to_a
+				else
+					pending_process_candidates_across_themes(50)
+				end
+
+				claimed = []
+				candidates.each do |record|
+					claimed << record if record.claim_process!
+				end
+
+				render_success(data: {
+					count: claimed.size,
+					items: claimed.map { |v| build_pending_process_item(v) }
+				})
+			end
+
 			# ---------- 5. 剪映完成回调 ----------
 		# POST /api/v1/move_videos/report_processing
 		# 入参：id、status('success'|'error')、processed_oss_url、error_msg
@@ -147,6 +173,39 @@ module Api
 			elsif status == 'error'
 				move_video.mark_failed!("剪映失败：#{params[:error_msg].to_s}")
 				render_success(message: '剪映失败已记录')
+			else
+				render_error('status 必须为 success 或 error')
+			end
+		end
+
+		# ---------- 5.5 双视频合并结果回传 ----------
+		# POST /api/v1/move_videos/report_merge_result
+		# 入参：video_ids(两个 move_video id 数组)、status(success|error)、
+		#       processed_oss_url / title / description / platforms(success 时)、error_msg(error 时)
+		# success：两个 video → processed，按 platforms 每平台建一条 move_task，
+		#          task_uuid = "MOVE-{id1}-{id2}-{uuid}"，move_video_id = 第一个 video id
+		# error：两个 video → pending_process（重置回待处理，可重新领取）
+		def report_merge_result
+			video_ids = params[:video_ids]
+			video_ids = JSON.parse(video_ids) if video_ids.is_a?(String)
+			return render_error('video_ids 必须是两个不同的 id') unless video_ids.is_a?(Array) && video_ids.size == 2 && video_ids.map(&:to_i).uniq.size == 2
+
+			videos = video_ids.map { |id| MoveVideo.find_by(id: id.to_i) }
+			return render_error('两个 move_video 必须都存在') if videos.any?(&:nil?)
+
+			status = params[:status].to_s.strip
+			if status == 'success'
+				processed_oss_url = params[:processed_oss_url].to_s.strip
+				title = params[:title].to_s.strip
+				description = params[:description].to_s.strip
+				platforms = params[:platforms].to_s.strip
+
+				return render_error('processed_oss_url 不能为空') if processed_oss_url.blank?
+				return render_error('title 不能为空') if title.blank?
+
+				handle_merge_success(videos, processed_oss_url, title, description, platforms)
+			elsif status == 'error'
+				handle_merge_error(videos, params[:error_msg].to_s)
 			else
 				render_error('status 必须为 success 或 error')
 			end
@@ -170,6 +229,53 @@ module Api
 		end
 
 		private
+
+		# 双视频合并成功：两个 video → processed，按平台建 move_task（task_uuid 编码两个 video id）
+		def handle_merge_success(videos, processed_oss_url, title, description, platforms)
+			v1 = videos.first
+			v2 = videos.second
+			platforms_str = platforms.present? ? platforms : v1.platforms.to_s
+			platform_names = platforms_str.split(',').map(&:strip).reject(&:blank?)
+
+			MoveVideo.transaction do
+				videos.each do |v|
+					raise MoveVideo::StateError, "视频 #{v.id} 状态=#{v.status}，非 processing，无法标记合并完成" unless v.processing?
+					v.update!(status: :processed, processed_at: Time.current, error_msg: nil)
+				end
+
+				platform_names.each do |platform_name|
+					platform_value = MoveTask.platforms[platform_name.to_sym]
+					next unless platform_value
+
+					MoveTask.find_or_create_by!(move_video_id: v1.id, platform: platform_value) do |t|
+						t.task_uuid = "MOVE-#{v1.id}-#{v2.id}-#{SecureRandom.uuid}"
+						t.theme = v1.theme
+						t.title = title
+						t.description = description
+						t.oss_url = processed_oss_url
+						t.group_id = v1.group_id
+						t.status = :pending
+					end
+				end
+			end
+
+			# 事务提交后删除两个 video 的 raw OSS 文件（失败不影响主流程）
+			videos.each { |v| delete_raw_oss_file(v) }
+
+			render_success(message: '合并结果已记录，已创建发布任务')
+		end
+
+		# 双视频合并失败：两个 video 重置回 pending_process（可重新领取重试）
+		def handle_merge_error(videos, error_msg)
+			videos.each do |v|
+				v.update!(
+					status: :pending_process,
+					process_started_at: nil,
+					error_msg: error_msg.presence || '合并失败'
+				)
+			end
+			render_success(message: '合并失败已记录，两个视频已重置回待处理')
+		end
 
 		# 处理单条回传数据
 		def process_report_item(item)
@@ -262,6 +368,27 @@ module Api
 					source_account_url: move_video.source_account_url,
 					theme: move_video.theme,
 					group_id: move_video.group_id
+				}
+			end
+
+			# 不指定主题时：遍历所有有 pending_process 的主题，每个主题各取 limit_per_theme 条
+			def pending_process_candidates_across_themes(limit_per_theme)
+				themes = MoveVideo.pending_process.where.not(theme: [nil, '']).distinct.pluck(:theme).sort
+				themes.flat_map do |t|
+					MoveVideo.pending_process.where(theme: t).order(created_at: :asc).limit(limit_per_theme).to_a
+				end
+			end
+
+			# 组装单条待处理视频的返回结构
+			def build_pending_process_item(video)
+				{
+					id: video.id,
+					theme: video.theme,
+					group_id: video.group_id,
+					raw_oss_url: video.raw_oss_url,
+					source_title: video.source_title,
+					source_video_url: video.source_video_url,
+					platforms: video.platforms
 				}
 			end
 
