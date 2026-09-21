@@ -12,6 +12,7 @@
 #  processed_oss_url(剪映处理后 OSS URL（发布用）)                                       :text(65535)
 #  raw_oss_url(下载后原始视频 OSS URL)                                                   :text(65535)
 #  source_account_url(来源账号主页链接)                                                  :string(255)
+#  source_title(原视频标题)                                                              :string(255)
 #  source_video_url(源视频链接（核心幂等）)                                              :string(255)      not null
 #  status(状态 pending_download/downloading/pending_process/processing/processed/failed) :integer          default("pending_download"), not null
 #  theme(内容主题)                                                                       :string(255)
@@ -47,7 +48,7 @@ class MoveVideo < ApplicationRecord
   scope :pending_process, -> { where(status: :pending_process) }
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id source_video_url source_account_url theme group_id platforms status
+    %w[id source_video_url source_title source_account_url theme group_id platforms status
        raw_oss_url error_msg created_at updated_at]
   end
 
@@ -75,8 +76,9 @@ class MoveVideo < ApplicationRecord
   end
 
   # 录入：find_or_create 幂等，重复录入同一 source_video_url 返回已存在记录，不重置状态
-  def self.create_from_import!(source_video_url:, source_account_url:, theme:, platforms:)
+  def self.create_from_import!(source_video_url:, source_account_url:, theme:, platforms:, source_title: nil)
     find_or_create_by!(source_video_url: source_video_url) do |v|
+      v.source_title = source_title
       v.source_account_url = source_account_url
       v.theme = theme
       v.group_id = SecureRandom.uuid
@@ -118,6 +120,7 @@ class MoveVideo < ApplicationRecord
 
       existed = exists?(source_video_url: video_url)
       find_or_create_by!(source_video_url: video_url) do |v|
+        v.source_title = record["source_title"].presence || record["title"]
         v.source_account_url = record["source_account_url"]
         v.theme = record["theme"]
         v.group_id = record["group_id"].presence || SecureRandom.uuid

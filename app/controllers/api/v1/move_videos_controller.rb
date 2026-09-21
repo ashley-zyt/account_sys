@@ -32,6 +32,7 @@ module Api
 				source_url = params[:source_url].to_s.strip
 				video_url  = params[:video_url].to_s.strip
 				platforms  = params[:platforms].to_s.strip
+				source_title = params[:source_title].to_s.strip
 
 				if source_url.blank? || video_url.blank?
 					return render_error('source_url 和 video_url 不能为空')
@@ -48,7 +49,8 @@ module Api
 						source_video_url: video_url,
 						source_account_url: source_url,
 						theme: theme,
-						platforms: platforms_str
+						platforms: platforms_str,
+						source_title: source_title.presence
 					)
 				rescue ActiveRecord::RecordNotUnique
 					# 并发下同 video_url 重复创建，直接取已存在记录
@@ -59,6 +61,7 @@ module Api
 				render_success(data: {
 					id: move_video.id,
 					video_url: move_video.source_video_url,
+					source_title: move_video.source_title,
 					source_account_url: move_video.source_account_url,
 					theme: move_video.theme,
 					group_id: move_video.group_id,

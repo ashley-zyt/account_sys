@@ -31,6 +31,10 @@
         <%= f.search_field :source_video_url_cont, class: "admin-input admin-filter-input", placeholder: "搜索源视频链接..." %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">原视频标题</label>
+        <%= f.search_field :source_title_cont, class: "admin-input admin-filter-input", placeholder: "搜索原视频标题..." %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>
         <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
       </div>
@@ -77,6 +81,11 @@
                 <span class="admin-label-muted"><%= video.id %></span>
               </td>
               <td style="white-space: normal; word-break: break-all;">
+                <% if video.source_title.present? %>
+                  <div style="font-weight: 600; margin-bottom: 2px;">
+                    <%= link_to truncate(video.source_title, length: 60), admin_move_video_path(video), class: "admin-link-quiet", style: "color: var(--text);" %>
+                  </div>
+                <% end %>
                 <%= link_to video.source_video_url, admin_move_video_path(video), class: "admin-link-quiet", style: "word-break: break-all;" %>
               </td>
               <td>
