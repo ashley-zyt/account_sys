@@ -28,7 +28,10 @@ class PostDatas
     end
   end
 
-  def self.fetch
+  # 采集入口
+  # @param only_uncollected [Boolean] true 时只采集「今日还没采集过数据」的账号（跳过已更新的），
+  #         false 时全量采集（今日未更新的排前面优先）。默认 false。
+  def self.fetch(only_uncollected: false)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_fetch.log'))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
@@ -53,9 +56,7 @@ class PostDatas
     # 2. 过滤掉未设置machine_ip的浏览器
     accounts = accounts.select { |a| a.browser.present? && a.browser.machine_ip.present? }
 
-    # 3. 优先采集「今天还没更新过数据」的账号：
-    #    今天 post_stats 有更新 或 account_stat 有今日快照 的账号视为「已更新」，排到后面；
-    #    其余（今天还没更新）排前面，先采它们。
+    # 3. 计算「今天已更新」的账号：今天 post_stats 有更新 或 account_stat 有今日快照 视为「已更新」。
     today_start = Date.today.beginning_of_day
     today_end   = Date.today.end_of_day
     account_ids = accounts.map(&:id)
@@ -68,12 +69,22 @@ class PostDatas
                                   .distinct.pluck(:account_id)
     updated_ids = (updated_post_ids + updated_stat_ids).uniq
 
-    accounts.sort_by! { |a| updated_ids.include?(a.id) ? 1 : 0 }
+    if only_uncollected
+      # 只采集今日未更新的账号：跳过今天已经采过的
+      accounts.select! { |a| !updated_ids.include?(a.id) }
+    else
+      # 全量采集：今日未更新的排前面优先采集，已更新的排后面
+      accounts.sort_by! { |a| updated_ids.include?(a.id) ? 1 : 0 }
+    end
 
     total = accounts.size
     not_updated = accounts.count { |a| !updated_ids.include?(a.id) }
     Rails.logger.info "[PostDatas] 共筛选出 #{total} 个待采集账号（非Facebook、正常状态、绑定浏览器且有IP）"
-    Rails.logger.info "[PostDatas] 排序：今天未更新 #{not_updated} 个排前面优先采集，已更新 #{total - not_updated} 个排后面"
+    if only_uncollected
+      Rails.logger.info "[PostDatas] 仅采集今日未更新的 #{total} 个账号"
+    else
+      Rails.logger.info "[PostDatas] 排序：今天未更新 #{not_updated} 个排前面优先采集，已更新 #{total - not_updated} 个排后面"
+    end
 
     return { success_count: 0, fail_count: 0, total: 0, failed_items: [] } if accounts.empty?
 
@@ -142,12 +153,21 @@ class PostDatas
     end
 
     # 5. 采集完成后检查未更新数据的账号数量，超过阈值则发送钉钉告警
-    check_stale_accounts_and_alert(total, success_count, fail_count)
+    #    只在全量采集时执行；「只补采未更新」模式下跳过（本来就是只采未更新的，无需再检查+重试）
+    check_stale_accounts_and_alert(total, success_count, fail_count) unless only_uncollected
 
     { success_count: success_count, fail_count: fail_count, total: total, failed_items: failed_items }
   rescue => e
     Rails.logger.error "[PostDatas] 执行异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
     { success_count: 0, fail_count: 0, total: 0, failed_items: [], error: e.message }
+  end
+
+  # 采集今日还没采集过数据的账号（只补采未更新的，跳过今天已经采过的）
+  # 判定「今日已更新」：post_stats 今天有 data_updated_at，或 account_stat 有今日 stat_date。
+  # 复用 fetch 的完整流程（筛选 → 过滤已更新 → 按浏览器分组 → worker 池并行下发），
+  # 只是把「全量排序」换成「只保留未更新」。
+  def self.fetch_uncollected_today
+    fetch(only_uncollected: true)
   end
 
   # 采集一个浏览器分组（该浏览器下的所有账号）：组内顺序执行。
