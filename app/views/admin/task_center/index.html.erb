@@ -18,9 +18,15 @@
 <%
   ok_results = @results.select(&:ok)
   g = Hash.new(0)
-  ok_results.each { |r| (r.data['status_counts'] || {}).each { |k, v| g[k] += v.to_i } }
+  src = Hash.new(0)
+  ok_results.each do |r|
+    (r.data['status_counts'] || {}).each { |k, v| g[k] += v.to_i }
+    (r.data['source_counts'] || {}).each { |k, v| src[k] += v.to_i }
+  end
   overview = [
     { label: '机器',        value: @results.size,            color: '#8b5cf6' },
+    { label: 'account_sys', value: src['account_sys'],       color: '#38bdf8' },
+    { label: '人工/外部',   value: src['manual'],            color: '#f472b6' },
     { label: '排队中',      value: g['queued'],              color: '#f59e0b' },
     { label: '执行中',      value: g['running'],             color: '#3b82f6' },
     { label: '成功',        value: g['success'],             color: '#22c55e' },
@@ -36,7 +42,7 @@
       <div class="admin-card-title">全局概览</div>
       <div class="admin-card-subtitle">
         采集于 <%= @fetched_at.strftime('%H:%M:%S') %> ·
-        只统计 account_sys 下发的任务（按 ref 前缀过滤）·
+        显示机器端全部任务（含 account_sys 下发 + 人工/外部调用）·
         数据来自机器端，实时读取
       </div>
     </div>
@@ -176,6 +182,7 @@
       <% data   = result.ok ? (result.data || {}) : {} %>
       <% table  = result.ok ? MachineTaskMonitor.rows(data) : { types: [], backlog: [] } %>
       <% sc     = data['status_counts'] || {} %>
+      <% src    = data['source_counts'] || {} %>
       <% queued = sc['queued'].to_i %>
       <% running = sc['running'].to_i %>
       <% oldest = data['oldest_queued_seconds'].to_i %>
@@ -203,7 +210,8 @@
             <% if result.ok %>
               排队 <%= queued %> · 执行中 <%= running %> ·
               成功 <%= sc['success'].to_i %> · 失败 <%= sc['failed'].to_i %> ·
-              中断 <%= sc['interrupted'].to_i %> · 暂停 <%= sc['paused'].to_i %>
+              中断 <%= sc['interrupted'].to_i %> · 暂停 <%= sc['paused'].to_i %> ·
+              account_sys <%= src['account_sys'].to_i %> · 人工/外部 <%= src['manual'].to_i %>
               <% if oldest.positive? %>
                 · 最久排队 <%= (oldest / 60.0).round(1) %> 分钟
               <% end %>

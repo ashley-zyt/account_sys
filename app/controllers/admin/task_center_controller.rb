@@ -6,8 +6,10 @@ class Admin::TaskCenterController < Admin::BaseController
   #   - 下半部分：本地登记明细（BrowserTaskRecord，分页 + 筛选）
   # 并集中三个管理操作：同步状态 / 重跑丢失任务 / 清除任务。
   def index
-    # 机器端实时数据（多机并行查询）
-    @results    = MachineTaskMonitor.fetch_all
+    # 机器端实时数据（多机并行查询）。
+    # own_only: false —— 不过滤 ref 前缀，把「人工/外部直接调 API 的任务」也一并展示，
+    # 让任务中心能看到机器端全部任务（含 account_sys 下发 + 人工调用）。
+    @results    = MachineTaskMonitor.fetch_all(own_only: false)
     @fetched_at = Time.current
     @auto       = params[:auto].present?
 
@@ -26,7 +28,7 @@ class Admin::TaskCenterController < Admin::BaseController
 
   # JSON 版本（保留自原「机器任务监控」页，供外部监控 / 钉钉告警调用）
   def summary
-    results = MachineTaskMonitor.fetch_all
+    results = MachineTaskMonitor.fetch_all(own_only: false)
 
     render json: {
       fetched_at: Time.current.strftime('%Y-%m-%d %H:%M:%S'),

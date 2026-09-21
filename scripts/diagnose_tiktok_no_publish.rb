@@ -91,9 +91,12 @@ else
   end
 
   # 3.4 是否有待发布/执行中的任务
-  has_active_task = task_model.exists?(account_id: account.id, status: [:waiting_publish, :executing])
-  if has_active_task
-    puts "  ✗ 已有待发布/执行中任务（has_active_task）→ 卡在这些任务上，需排查为何没执行/没完成"
+  active_tasks = task_model.where(account_id: account.id, status: [:waiting_publish, :executing]).order(:created_at).to_a
+  if active_tasks.any?
+    puts "  ✗ 已有待发布/执行中任务（has_active_task）→ 卡在这些任务上，需排查为何没执行/没完成："
+    active_tasks.each do |at|
+      puts "      ##{at.id} status=#{at.status} 录入于#{at.created_at} 开始执行=#{at.start_at} error=#{at.error_msg.to_s[0,40]}"
+    end
   else
     puts "  ✓ 无待发布/执行中任务"
   end
@@ -150,7 +153,7 @@ if task_model
     # 最近 5 条任务明细
     puts "  最近任务："
     task_model.where(account_id: account.id).order(created_at: :desc).limit(5).each do |t|
-      puts "    ##{t.id} status=#{t.status} theme=#{t.theme} 创建于#{t.created_at} 发布于#{t.actual_publish_time} error=#{t.error_msg.to_s[0,50]}"
+      puts "    ##{t.id} status=#{t.status} theme=#{t.theme} 录入于#{t.created_at} 开始执行=#{t.start_at} 发布于#{t.actual_publish_time} error=#{t.error_msg.to_s[0,50]}"
     end
   end
 end
