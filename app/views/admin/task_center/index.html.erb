@@ -67,9 +67,9 @@
       </div>
     </div>
     <div class="admin-card-header-right">
-      <%= link_to "刷新", admin_task_center_path, class: "admin-button-secondary" %>
+      <%= link_to "刷新", admin_task_center_index_path, class: "admin-button-secondary" %>
       <%= link_to(@auto ? "关闭自动刷新" : "开启自动刷新",
-                  admin_task_center_path(auto: @auto ? nil : 1),
+                  admin_task_center_index_path(auto: @auto ? nil : 1),
                   class: "admin-button-secondary") %>
       <span class="admin-tag">共 <%= @results.size %> 台机器</span>
     </div>
@@ -193,7 +193,7 @@
   </div>
 
   <div class="admin-filter-form">
-    <%= search_form_for [:admin, @q], url: admin_task_center_path, class: "admin-filter-form" do |f| %>
+    <%= search_form_for [:admin, @q], url: admin_task_center_index_path, class: "admin-filter-form" do |f| %>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
         <%= f.searchable_select :status_eq, BrowserTaskRecord::STATUS_LABELS.map { |k, v| [v, k] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
@@ -216,7 +216,7 @@
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
-        <%= link_to "重置", admin_task_center_path, class: "admin-button-secondary" %>
+        <%= link_to "重置", admin_task_center_index_path, class: "admin-button-secondary" %>
       </div>
     <% end %>
   </div>
