@@ -1,8 +1,8 @@
 <% content_for :page_title do %>
-  任务中心
+  异步任务
 <% end %>
 <% content_for :page_subtitle do %>
-  统一查看机器端实时进度/堆积与本地登记明细，并可执行同步、重跑、清除操作
+  实时查看各运营机器任务的执行进度与堆积，统一管理下发中的异步任务
 <% end %>
 
 <% statuses = MachineTaskMonitor::STATUSES %>
@@ -12,8 +12,51 @@
   </script>
 <% end %>
 
-<%# ============ 管理操作区 ============ %>
+<%# ============ 全局概览 ============ %>
+<%
+  ok_results = @results.select(&:ok)
+  g = Hash.new(0)
+  ok_results.each { |r| (r.data['status_counts'] || {}).each { |k, v| g[k] += v.to_i } }
+  overview = [
+    { label: '机器',        value: @results.size,            color: '#8b5cf6' },
+    { label: '排队中',      value: g['queued'],              color: '#f59e0b' },
+    { label: '执行中',      value: g['running'],             color: '#3b82f6' },
+    { label: '成功',        value: g['success'],             color: '#22c55e' },
+    { label: '失败',        value: g['failed'],              color: '#ef4444' },
+    { label: '已中断',      value: g['interrupted'],         color: '#94a3b8' }
+  ]
+%>
+
 <div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">全局概览</div>
+      <div class="admin-card-subtitle">
+        采集于 <%= @fetched_at.strftime('%H:%M:%S') %> ·
+        只统计 account_sys 下发的任务（按 ref 前缀过滤）·
+        数据来自机器端，实时读取
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "刷新", admin_task_center_index_path, class: "admin-button-secondary" %>
+      <%= link_to(@auto ? "关闭自动刷新" : "开启自动刷新",
+                  admin_task_center_index_path(auto: @auto ? nil : 1),
+                  class: "admin-button-secondary") %>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 12px; flex-wrap: wrap; padding: 16px;">
+    <% overview.each do |o| %>
+      <div style="flex: 1; min-width: 110px; background: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 8px; padding: 16px 12px; text-align: center;">
+        <div style="font-size: 26px; font-weight: 600; line-height: 1; color: <%= o[:color] %>;"><%= o[:value] %></div>
+        <div style="color: #94a3b8; font-size: 12px; margin-top: 8px;"><%= o[:label] %></div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# ============ 管理操作 ============ %>
+<div class="admin-card" style="margin-top: 16px;">
   <div class="admin-card-header">
     <div>
       <div class="admin-card-title">管理操作</div>
@@ -25,60 +68,52 @@
     </div>
   </div>
 
-  <div class="admin-filter-form">
-    <%= form_with url: clear_admin_task_center_index_path, method: :post, data: { turbo_confirm: "确定清除所选机器上指定类型/状态的任务？这会中断执行中/排队中的任务，且被清除任务不再回调。\n\n类型和状态都未选则会全量清空，请谨慎。" } do |f| %>
-      <div class="admin-filter-group">
-        <label class="admin-filter-label">机器（必选）</label>
-        <%= f.select :machine_ip,
-                     options_for_select(@machines.map { |m| [m, m] }),
-                     { include_blank: "选择机器..." },
-                     { class: "admin-input admin-filter-input", required: true } %>
+  <%# 清除任务：破坏性操作，独立成危险区 %>
+  <div style="padding: 0 16px 16px;">
+    <div style="border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 12px 16px; background: rgba(239, 68, 68, 0.05);">
+      <div style="color: #fca5a5; font-size: 13px; margin-bottom: 10px;">
+        ⚠️ 清除任务（破坏性）：会中断执行中/排队中的任务，被清除任务不再回调
       </div>
-      <div class="admin-filter-group">
-        <label class="admin-filter-label">任务类型</label>
-        <%= f.select :type,
-                     options_for_select(@task_types.map { |k, v| [v, k] }),
-                     {},
-                     { class: "admin-input admin-filter-input", multiple: true, size: 5 } %>
-      </div>
-      <div class="admin-filter-group">
-        <label class="admin-filter-label">状态</label>
-        <%= f.select :status,
-                     options_for_select(MachineTaskMonitor::STATUS_LABELS.map { |k, v| [v, k] }),
-                     {},
-                     { class: "admin-input admin-filter-input", multiple: true, size: 5 } %>
-      </div>
-      <div style="display: flex; align-items: flex-end;">
-        <%= f.submit "清除任务", class: "admin-button-danger" %>
-      </div>
-    <% end %>
+      <%= form_with url: clear_admin_task_center_index_path, method: :post, data: { turbo_confirm: "确定清除所选机器上指定类型/状态的任务？这会中断执行中/排队中的任务，且被清除任务不再回调。\n\n类型和状态都未选则会全量清空，请谨慎。" } do |f| %>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+          <div class="admin-filter-group">
+            <label class="admin-filter-label">机器（必选）</label>
+            <%= f.select :machine_ip,
+                         options_for_select(@machines.map { |m| [m, m] }),
+                         { include_blank: "选择机器..." },
+                         { class: "admin-input admin-filter-input", required: true } %>
+          </div>
+          <div class="admin-filter-group">
+            <label class="admin-filter-label">任务类型（可多选）</label>
+            <%= f.select :type,
+                         options_for_select(@task_types.map { |k, v| [v, k] }),
+                         {},
+                         { class: "admin-input admin-filter-input", multiple: true, size: 5 } %>
+          </div>
+          <div class="admin-filter-group">
+            <label class="admin-filter-label">状态（可多选）</label>
+            <%= f.select :status,
+                         options_for_select(MachineTaskMonitor::STATUS_LABELS.map { |k, v| [v, k] }),
+                         {},
+                         { class: "admin-input admin-filter-input", multiple: true, size: 5 } %>
+          </div>
+          <div>
+            <%= f.submit "清除任务", class: "admin-button-danger" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
   </div>
 </div>
 
-<%# ============ 机器端实时进度/堆积 ============ %>
-<div class="admin-card">
-  <div class="admin-card-header">
-    <div>
-      <div class="admin-card-title">机器端实时进度</div>
-      <div class="admin-card-subtitle">
-        采集于 <%= @fetched_at.strftime('%H:%M:%S') %> ·
-        只统计 account_sys 下发的任务（按 ref 前缀过滤）·
-        数据来自机器端数据库，机器端重启后排队发布任务会自动续跑
-      </div>
-    </div>
-    <div class="admin-card-header-right">
-      <%= link_to "刷新", admin_task_center_index_path, class: "admin-button-secondary" %>
-      <%= link_to(@auto ? "关闭自动刷新" : "开启自动刷新",
-                  admin_task_center_index_path(auto: @auto ? nil : 1),
-                  class: "admin-button-secondary") %>
-      <span class="admin-tag">共 <%= @results.size %> 台机器</span>
-    </div>
-  </div>
+<%# ============ 机器端实时进度 ============ %>
+<div style="margin-top: 20px; color: #e2e8f0; font-size: 15px; font-weight: 600;">各机器实时进度</div>
 
-  <% if @results.empty? %>
+<% if @results.empty? %>
+  <div class="admin-card" style="margin-top: 10px;">
     <div style="padding: 20px 16px;">没有配置 machine_ip 的浏览器，无需监控。</div>
-  <% end %>
-</div>
+  </div>
+<% end %>
 
 <% @results.each do |result| %>
   <% data   = result.ok ? (result.data || {}) : {} %>
@@ -88,21 +123,21 @@
   <% running = sc['running'].to_i %>
   <% oldest = data['oldest_queued_seconds'].to_i %>
 
-  <div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card" style="margin-top: 12px;">
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">
           <%= result.machine_ip %>
           <% if result.ok %>
             <% if queued >= 20 %>
-              <span class="admin-tag" style="background:#ffe5e5;color:#c00;">堆积 <%= queued %></span>
+              <span class="admin-tag" style="background:#fee2e2;color:#b91c1c;">堆积 <%= queued %></span>
             <% elsif queued.positive? %>
-              <span class="admin-tag">排队 <%= queued %></span>
+              <span class="admin-tag" style="background:#fef3c7;color:#b45309;">排队 <%= queued %></span>
             <% else %>
-              <span class="admin-tag">空闲</span>
+              <span class="admin-tag" style="background:#dcfce7;color:#15803d;">空闲</span>
             <% end %>
           <% else %>
-            <span class="admin-tag" style="background:#ffe5e5;color:#c00;">不可达</span>
+            <span class="admin-tag" style="background:#fee2e2;color:#b91c1c;">不可达</span>
           <% end %>
         </div>
         <div class="admin-card-subtitle">
@@ -137,11 +172,11 @@
               <% table[:types].each do |row| %>
                 <tr>
                   <td><%= row[:label] %></td>
-                  <td><%= row[:queued] %></td>
-                  <td><%= row[:running] %></td>
-                  <td><%= row[:success] %></td>
-                  <td><%= row[:failed] %></td>
-                  <td><%= row[:interrupted] %></td>
+                  <td style="color: #f59e0b; font-weight: 600;"><%= row[:queued] %></td>
+                  <td style="color: #3b82f6; font-weight: 600;"><%= row[:running] %></td>
+                  <td style="color: #22c55e;"><%= row[:success] %></td>
+                  <td style="color: #ef4444;"><%= row[:failed] %></td>
+                  <td style="color: #94a3b8;"><%= row[:interrupted] %></td>
                   <td><%= row[:total] %></td>
                 </tr>
               <% end %>
@@ -165,10 +200,10 @@
               <% table[:backlog].first(20).each do |p| %>
                 <tr>
                   <td><%= p['profile_name'] %></td>
-                  <td><%= p['queued'].to_i %></td>
-                  <td><%= p['running'].to_i %></td>
-                  <td><%= p['success'].to_i %></td>
-                  <td><%= p['failed'].to_i %></td>
+                  <td style="color: #f59e0b; font-weight: 600;"><%= p['queued'].to_i %></td>
+                  <td style="color: #3b82f6;"><%= p['running'].to_i %></td>
+                  <td style="color: #22c55e;"><%= p['success'].to_i %></td>
+                  <td style="color: #ef4444;"><%= p['failed'].to_i %></td>
                   <td><%= p['total'].to_i %></td>
                 </tr>
               <% end %>
@@ -181,12 +216,13 @@
 <% end %>
 
 <%# ============ 本地登记明细 ============ %>
-<div class="admin-card" style="margin-top: 16px;">
+<div style="margin-top: 20px; color: #e2e8f0; font-size: 15px; font-weight: 600;">本地登记明细</div>
+
+<div class="admin-card" style="margin-top: 10px;">
   <div class="admin-card-header">
     <div>
-      <div class="admin-card-title">本地登记明细</div>
       <div class="admin-card-subtitle">
-        按提交时间倒序展示（pending=执行中/排队中，success/failed=机器端已回调结果）
+        下发到机器端的异步任务登记（pending=执行中/排队中，success/failed=机器端已回调结果）
       </div>
     </div>
     <span class="admin-tag">共 <%= @records.total_count %> 条</span>
@@ -249,7 +285,7 @@
               </td>
               <td>
                 <span class="admin-pill-status" style="background: rgba(99, 102, 241, 0.12); color: #818cf8;">
-                  <%= r.task_type %>
+                  <%= r.task_type_label %>
                 </span>
               </td>
               <td>

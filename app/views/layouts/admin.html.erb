@@ -209,17 +209,17 @@
 
             <% tc_active = controller_path == "admin/task_center" %>
             <li class="admin-nav-item <%= "active" if tc_active %>">
-              <%= link_to admin_task_center_index_path, class: "admin-nav-link", data: { tooltip: "任务中心" } do %>
+              <%= link_to admin_task_center_index_path, class: "admin-nav-link", data: { tooltip: "异步任务" } do %>
                 <div class="admin-nav-link-main">
                   <div class="admin-nav-icon">
-                    🎯
+                    🔄
                   </div>
                   <div class="admin-nav-label">
-                    任务中心
+                    异步任务
                   </div>
                 </div>
                 <div class="admin-nav-meta">
-                  Task Center
+                  Async Tasks
                 </div>
               <% end %>
             </li>
