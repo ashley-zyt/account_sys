@@ -46,9 +46,10 @@ module OssSignedUrl
 		response.code == '200'
 	end
 
-	# 生成 OSS GET 签名 URL（签名基于 Expires，1 年有效期）
-	def generate_oss_signed_url(bucket_name, key, access_key_id, access_key_secret)
-		ts = Time.now.to_i + 31536000 # 1年有效期
+	# 生成 OSS GET 签名 URL（签名基于 Expires）
+	# expires_in：签名 URL 有效期（秒），默认 1 年（31536000）
+	def generate_oss_signed_url(bucket_name, key, access_key_id, access_key_secret, expires_in: 31536000)
+		ts = Time.now.to_i + expires_in
 
 		# 签名字符串中的 key 使用原始路径（不编码）
 		cano_res = "/#{bucket_name}/#{key}"
@@ -116,5 +117,48 @@ module OssSignedUrl
 
 		response = http.request(request)
 		['200', '204', '404'].include?(response.code)
+	end
+
+	# 将服务器本地文件上传到 OSS bucket，返回 OSS key + 签名 URL
+	# 文件名用 UUID + 原扩展名，剔除原始文件名，避免同名冲突与路径泄露
+	#
+	# @param path [String] 本地文件绝对路径
+	# @param bucket_name [String] OSS bucket 名称
+	# @param expires_in [Integer] 签名 URL 有效期（秒），默认半年 15552000（180 天）
+	# @return [Hash] 成功 { ok: true, key:, signed_url:, bucket:, filename:, expires_at: }
+	#                失败 { ok: false, reason: :no_credentials|:invalid_path|:file_not_found|:upload_failed, error: '...' }
+	def upload_local_file_to_oss(path, bucket_name, expires_in: 15552000)
+		return { ok: false, reason: :no_credentials, error: 'OSS 凭证未配置' } unless oss_credentials_configured?
+
+		path = path.to_s.strip
+		return { ok: false, reason: :invalid_path, error: '本地文件路径不能为空' } if path.blank?
+		return { ok: false, reason: :file_not_found, error: "本地文件不存在：#{path}" } unless File.file?(path)
+
+		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+
+		# 用 UUID 作为 key（保留原扩展名），放在 bucket 根目录
+		key = "#{SecureRandom.uuid}#{File.extname(path)}"
+
+		require 'aliyun/oss'
+		client = Aliyun::OSS::Client.new(
+			endpoint: "https://#{OSS_REGION_HOST}",
+			access_key_id: access_key_id,
+			access_key_secret: access_key_secret
+		)
+		client.get_bucket(bucket_name).put_object(key, file: path)
+
+		signed_url = generate_oss_signed_url(bucket_name, key, access_key_id, access_key_secret, expires_in: expires_in)
+
+		{
+			ok: true,
+			key: key,
+			signed_url: signed_url,
+			bucket: bucket_name,
+			filename: File.basename(path),
+			expires_at: Time.now + expires_in
+		}
+	rescue => e
+		{ ok: false, reason: :upload_failed, error: e.message }
 	end
 end
