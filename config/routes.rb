@@ -218,8 +218,8 @@ Rails.application.routes.draw do
       post "notebooklm/report_result",    to: "notebooklm#report_result"
       # 剪映任务批量接收
       post "jianying_tasks/batch", to: "jianying_tasks#batch"
-      # 本地视频上传 OSS（读取服务器本地路径转存到 OSS，返回签名 URL）
-      post "oss/upload_video", to: "oss#upload_video"
+      # 本地视频直传 OSS（返回 PostObject 上传凭证 + 下载签名 URL，客户端直传）
+      post "oss/upload_signature", to: "oss#upload_signature"
       # 机器端异步浏览器任务完成回调（养号/发文/采集）
       post "browser_tasks/result", to: "browser_tasks#result"
       # 机器端进程启动上报：立即触发一次「忽略时间窗口」的丢失任务兜底扫描

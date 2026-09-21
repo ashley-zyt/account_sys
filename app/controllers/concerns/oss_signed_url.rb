@@ -161,4 +161,34 @@ module OssSignedUrl
 	rescue => e
 		{ ok: false, reason: :upload_failed, error: e.message }
 	end
+
+	# 生成 OSS PostObject 直传签名：客户端拿到后直接 multipart POST 到 OSS，无需 Secret。
+	# policy 里对 bucket/key 做精确匹配，并限制文件大小。
+	#
+	# @param bucket_name [String] bucket 名
+	# @param key [String] 上传后的对象 key（policy 精确匹配，客户端表单的 key 字段必须等于它）
+	# @param policy_expires_in [Integer] 上传凭证有效期（秒），默认 1 小时
+	# @param max_size [Integer] 文件大小上限（字节），默认 500MB
+	# @return [Hash] { policy:, signature:, expire: }
+	def generate_post_object_signature(bucket_name, key, access_key_id, access_key_secret, policy_expires_in: 3600, max_size: 500 * 1024 * 1024)
+		require 'json'
+
+		expire_time = Time.now.to_i + policy_expires_in
+
+		policy = {
+			expiration: Time.at(expire_time).utc.iso8601,
+			conditions: [
+				{ bucket: bucket_name },
+				{ key: key },
+				['content-length-range', 0, max_size]
+			]
+		}
+
+		policy_base64 = Base64.strict_encode64(policy.to_json)
+		signature = Base64.strict_encode64(
+			OpenSSL::HMAC.digest('sha1', access_key_secret, policy_base64)
+		)
+
+		{ policy: policy_base64, signature: signature, expire: expire_time }
+	end
 end
