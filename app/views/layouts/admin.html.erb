@@ -207,36 +207,19 @@
               <% end %>
             </li>
 
-            <% bt_active = controller_path == "admin/browser_task_records" %>
-            <li class="admin-nav-item <%= "active" if bt_active %>">
-              <%= link_to admin_browser_task_records_path, class: "admin-nav-link", data: { tooltip: "异步任务" } do %>
+            <% tc_active = controller_path == "admin/task_center" %>
+            <li class="admin-nav-item <%= "active" if tc_active %>">
+              <%= link_to admin_task_center_path, class: "admin-nav-link", data: { tooltip: "任务中心" } do %>
                 <div class="admin-nav-link-main">
                   <div class="admin-nav-icon">
-                    🔄
+                    🎯
                   </div>
                   <div class="admin-nav-label">
-                    异步任务
+                    任务中心
                   </div>
                 </div>
                 <div class="admin-nav-meta">
-                  Async Tasks
-                </div>
-              <% end %>
-            </li>
-
-            <% mt_active = controller_path == "admin/machine_tasks" %>
-            <li class="admin-nav-item <%= "active" if mt_active %>">
-              <%= link_to admin_machine_tasks_path, class: "admin-nav-link", data: { tooltip: "机器任务监控" } do %>
-                <div class="admin-nav-link-main">
-                  <div class="admin-nav-icon">
-                    📡
-                  </div>
-                  <div class="admin-nav-label">
-                    机器任务监控
-                  </div>
-                </div>
-                <div class="admin-nav-meta">
-                  Machine Tasks
+                  Task Center
                 </div>
               <% end %>
             </li>

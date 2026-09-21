@@ -1,0 +1,300 @@
+<% content_for :page_title do %>
+  任务中心
+<% end %>
+<% content_for :page_subtitle do %>
+  统一查看机器端实时进度/堆积与本地登记明细，并可执行同步、重跑、清除操作
+<% end %>
+
+<% statuses = MachineTaskMonitor::STATUSES %>
+<% if @auto %>
+  <script>
+    setTimeout(function () { window.location.reload(); }, 30000);
+  </script>
+<% end %>
+
+<%# ============ 管理操作区 ============ %>
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">管理操作</div>
+      <div class="admin-card-subtitle">同步状态 / 重跑丢失任务 / 按机器清除任务</div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "同步状态", sync_admin_task_center_path, data: { turbo_method: :post, turbo_confirm: "将主动查机器端真实状态并补结果/重置超时任务，确认？" }, class: "admin-button-secondary" %>
+      <%= link_to "重跑丢失任务", retry_interrupted_admin_task_center_path, data: { turbo_method: :post, turbo_confirm: "将把「机器端丢失/超时被重置」的发布任务立即重新分配并下发，不等平台固定时间窗口。\n\n只会补发受影响账号，且今天已发布成功的不会重复发。确认执行？" }, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= form_with url: clear_admin_task_center_path, method: :post, data: { turbo_confirm: "确定清除所选机器上指定类型/状态的任务？这会中断执行中/排队中的任务，且被清除任务不再回调。\n\n类型和状态都未选则会全量清空，请谨慎。" } do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">机器（必选）</label>
+        <%= f.select :machine_ip,
+                     options_for_select(@machines.map { |m| [m, m] }),
+                     { include_blank: "选择机器..." },
+                     { class: "admin-input admin-filter-input", required: true } %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">任务类型</label>
+        <%= f.select :type,
+                     options_for_select(@task_types.map { |k, v| [v, k] }),
+                     {},
+                     { class: "admin-input admin-filter-input", multiple: true, size: 5 } %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.select :status,
+                     options_for_select(MachineTaskMonitor::STATUS_LABELS.map { |k, v| [v, k] }),
+                     {},
+                     { class: "admin-input admin-filter-input", multiple: true, size: 5 } %>
+      </div>
+      <div style="display: flex; align-items: flex-end;">
+        <%= f.submit "清除任务", class: "admin-button-danger" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# ============ 机器端实时进度/堆积 ============ %>
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">机器端实时进度</div>
+      <div class="admin-card-subtitle">
+        采集于 <%= @fetched_at.strftime('%H:%M:%S') %> ·
+        只统计 account_sys 下发的任务（按 ref 前缀过滤）·
+        数据来自机器端数据库，机器端重启后排队发布任务会自动续跑
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "刷新", admin_task_center_path, class: "admin-button-secondary" %>
+      <%= link_to(@auto ? "关闭自动刷新" : "开启自动刷新",
+                  admin_task_center_path(auto: @auto ? nil : 1),
+                  class: "admin-button-secondary") %>
+      <span class="admin-tag">共 <%= @results.size %> 台机器</span>
+    </div>
+  </div>
+
+  <% if @results.empty? %>
+    <div style="padding: 20px 16px;">没有配置 machine_ip 的浏览器，无需监控。</div>
+  <% end %>
+</div>
+
+<% @results.each do |result| %>
+  <% data   = result.ok ? (result.data || {}) : {} %>
+  <% table  = result.ok ? MachineTaskMonitor.rows(data) : { types: [], backlog: [] } %>
+  <% sc     = data['status_counts'] || {} %>
+  <% queued = sc['queued'].to_i %>
+  <% running = sc['running'].to_i %>
+  <% oldest = data['oldest_queued_seconds'].to_i %>
+
+  <div class="admin-card" style="margin-top: 16px;">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">
+          <%= result.machine_ip %>
+          <% if result.ok %>
+            <% if queued >= 20 %>
+              <span class="admin-tag" style="background:#ffe5e5;color:#c00;">堆积 <%= queued %></span>
+            <% elsif queued.positive? %>
+              <span class="admin-tag">排队 <%= queued %></span>
+            <% else %>
+              <span class="admin-tag">空闲</span>
+            <% end %>
+          <% else %>
+            <span class="admin-tag" style="background:#ffe5e5;color:#c00;">不可达</span>
+          <% end %>
+        </div>
+        <div class="admin-card-subtitle">
+          <% if result.ok %>
+            排队 <%= queued %> · 执行中 <%= running %> ·
+            成功 <%= sc['success'].to_i %> · 失败 <%= sc['failed'].to_i %> ·
+            中断 <%= sc['interrupted'].to_i %>
+            <% if oldest.positive? %>
+              · 最久排队 <%= (oldest / 60.0).round(1) %> 分钟
+            <% end %>
+          <% else %>
+            查询失败：<%= result.error %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <% if result.ok %>
+      <% if table[:types].any? %>
+        <div class="admin-table-wrapper admin-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>任务类型</th>
+                <% statuses.each do |st| %>
+                  <th><%= MachineTaskMonitor::STATUS_LABELS[st] %></th>
+                <% end %>
+                <th>小计</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% table[:types].each do |row| %>
+                <tr>
+                  <td><%= row[:label] %></td>
+                  <td><%= row[:queued] %></td>
+                  <td><%= row[:running] %></td>
+                  <td><%= row[:success] %></td>
+                  <td><%= row[:failed] %></td>
+                  <td><%= row[:interrupted] %></td>
+                  <td><%= row[:total] %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div style="padding: 16px;">暂无任务记录（机器端可能刚重启过）。</div>
+      <% end %>
+
+      <% if table[:backlog].any? %>
+        <div style="padding: 0 16px 16px;">
+          <div class="admin-card-subtitle" style="margin: 8px 0;">堆积落点（按排队数倒序，最多 20 个浏览器）</div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>指纹浏览器</th><th>排队</th><th>执行中</th><th>成功</th><th>失败</th><th>小计</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% table[:backlog].first(20).each do |p| %>
+                <tr>
+                  <td><%= p['profile_name'] %></td>
+                  <td><%= p['queued'].to_i %></td>
+                  <td><%= p['running'].to_i %></td>
+                  <td><%= p['success'].to_i %></td>
+                  <td><%= p['failed'].to_i %></td>
+                  <td><%= p['total'].to_i %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<%# ============ 本地登记明细 ============ %>
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">本地登记明细</div>
+      <div class="admin-card-subtitle">
+        按提交时间倒序展示（pending=执行中/排队中，success/failed=机器端已回调结果）
+      </div>
+    </div>
+    <span class="admin-tag">共 <%= @records.total_count %> 条</span>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], url: admin_task_center_path, class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.searchable_select :status_eq, BrowserTaskRecord::STATUS_LABELS.map { |k, v| [v, k] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">任务类型</label>
+        <%= f.searchable_select :task_type_eq, BrowserTaskRecord::TASK_TYPE_LABELS.map { |k, v| [v, k] }, { include_blank: "所有类型" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">浏览器</label>
+        <%= f.search_field :profile_name_cont, class: "admin-input admin-filter-input", placeholder: "指纹浏览器名..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">机器</label>
+        <%= f.search_field :machine_ip_cont, class: "admin-input admin-filter-input", placeholder: "IP/域名..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">任务ID</label>
+        <%= f.search_field :machine_task_id_cont, class: "admin-input admin-filter-input", placeholder: "机器端 task_id..." %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_task_center_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @records.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>机器端任务ID</th>
+            <th>业务标识(ref)</th>
+            <th>任务类型</th>
+            <th>浏览器</th>
+            <th>机器</th>
+            <th>状态</th>
+            <th>消息</th>
+            <th>提交时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @records.each do |r| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted" title="<%= r.machine_task_id %>">
+                  <%= truncate(r.machine_task_id.to_s, length: 18) %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= r.ref %></span>
+              </td>
+              <td>
+                <span class="admin-pill-status" style="background: rgba(99, 102, 241, 0.12); color: #818cf8;">
+                  <%= r.task_type %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= r.profile_name.presence || "-" %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= r.machine_ip.presence || "-" %></span>
+              </td>
+              <td>
+                <% case r.status
+                   when 'success' %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>成功
+                  </span>
+                <% when 'failed' %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>失败
+                  </span>
+                <% when 'unknown' %>
+                  <span class="admin-pill-status" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">
+                    <span class="admin-pill-status-dot"></span>已丢失
+                  </span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <span class="admin-pill-status-dot"></span>执行中
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted" title="<%= r.message %>">
+                  <%= truncate(r.message.to_s, length: 40) %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= r.created_at&.strftime("%m-%d %H:%M") %></span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @records %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无异步任务记录。</div>
+  <% end %>
+</div>
