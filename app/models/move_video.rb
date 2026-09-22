@@ -29,7 +29,7 @@
 class MoveVideo < ApplicationRecord
   has_many :move_tasks, dependent: :nullify
 
-  DEFAULT_PLATFORMS = %w[youtube facebook twitter tiktok].freeze
+  DEFAULT_PLATFORMS = %w[youtube instagram twitter tiktok].freeze
 
   enum status: {
     pending_download: 0,  # 待下载（录入后初始）
