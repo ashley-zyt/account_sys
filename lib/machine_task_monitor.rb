@@ -1,4 +1,8 @@
-# 运营机器任务监控 —— 实时聚合查询各机器端 GET /tasks/summary
+# 运营机器任务监控 —— 实时查询各机器端任务接口
+#
+#   聚合看板  GET /tasks/summary   → fetch_all / rows
+#   明细列表  GET /tasks           → fetch_tasks（支持 status/type/profile_name/batch/ref_prefix/limit）
+#   单任务详情 GET /tasks/{id}     → fetch_task
 #
 # 为什么实时查而不是落库：
 #   机器端任务记录是内存态、天然实时；落库需要在下发链路上为每类任务加登记
@@ -56,6 +60,41 @@ class MachineTaskMonitor
     'paused'      => '已暂停'
   }.freeze
 
+  # 状态配色 [文字色, 背景色]，页面徽章/数字统一取这里，避免各处硬编码
+  STATUS_COLORS = {
+    'queued'      => ['#f59e0b', 'rgba(245, 158, 11, 0.15)'],
+    'running'     => ['#3b82f6', 'rgba(59, 130, 246, 0.15)'],
+    'success'     => ['#22c55e', 'rgba(34, 197, 94, 0.15)'],
+    'failed'      => ['#ef4444', 'rgba(239, 68, 68, 0.15)'],
+    'interrupted' => ['#94a3b8', 'rgba(148, 163, 184, 0.15)'],
+    'paused'      => ['#e879f9', 'rgba(232, 121, 249, 0.15)']
+  }.freeze
+
+  SOURCE_LABELS = {
+    'account_sys' => 'account_sys',
+    'manual'      => '人工/外部'
+  }.freeze
+
+  # 明细列表分页（limit 由机器端控制，默认 50、上限 500）
+  LIST_DEFAULT_LIMIT = 50
+  LIST_MAX_LIMIT     = 500
+
+  # 机器端 TaskRecord 的字段名容错表（机器端字段可能演进，按候选键依次取值）。
+  # 取不到就回退下一个候选，全部取不到返回 nil，视图层显示 "—"。
+  TASK_FIELD_KEYS = {
+    id:          %w[task_id id],
+    type:        %w[type task_type],
+    status:      %w[status],
+    profile_name: %w[profile_name profile],
+    ref:         %w[ref],
+    batch:       %w[batch batch_id],
+    source:      %w[source src],
+    message:     %w[message error msg],
+    queued_at:   %w[queued_at created_at enqueued_at],
+    started_at:  %w[started_at start_at start_time],
+    finished_at: %w[finished_at ended_at finish_time]
+  }.freeze
+
   # 单台机器的查询结果。ok=false 时 data 为 nil、error 为原因（机器不可达 / 超时 / HTTP 非 200）
   Result = Struct.new(:machine_ip, :ok, :data, :error, keyword_init: true)
 
@@ -95,6 +134,107 @@ class MachineTaskMonitor
       Result.new(machine_ip: machine_ip, ok: true, data: JSON.parse(response.body))
     rescue => e
       Result.new(machine_ip: machine_ip, ok: false, error: e.message)
+    end
+
+    # 查询单台机器的任务明细列表（GET /tasks）。
+    # 过滤参数与机器端一致，均可逗号分隔多值：status / type / profile_name / batch / ref_prefix。
+    # own_only=true 且未显式传 ref_prefix 时，自动拼上本系统下发任务的前缀过滤
+    # （注意：与 summary 不同，明细列表不传过滤时机器端返回前 limit 条，全量混排）。
+    #
+    # @return [Result] ok=true 时 data 为 { total:, matched:, status_counts:, source_counts:,
+    #                  type_counts:, type_status_counts:, tasks: [...] }
+    def fetch_tasks(machine_ip, types: nil, statuses: nil, profile_name: nil,
+                    batch: nil, ref_prefix: nil, limit: LIST_DEFAULT_LIMIT, own_only: true)
+      return Result.new(machine_ip: machine_ip, ok: false, error: '未指定机器') if machine_ip.blank?
+
+      types    = split_multi(types)
+      statuses = split_multi(statuses)
+
+      query = {}
+      query[:type]   = types.join(',')    if types.any?
+      query[:status] = statuses.join(',') if statuses.any?
+      query[:profile_name] = profile_name.to_s.strip if profile_name.present?
+      query[:batch]        = batch.to_s.strip        if batch.present?
+      query[:ref_prefix]   = ref_prefix.to_s.strip   if ref_prefix.present?
+      if query[:ref_prefix].blank? && own_only
+        query[:ref_prefix] = (OWN_REF_PREFIXES + publish_ref_prefixes).join(',')
+      end
+      query[:limit] = normalize_limit(limit)
+
+      url = "https://#{machine_ip}/tasks?#{query.to_query}"
+      response = RemoteApiClient.get(url, open_timeout: 5, read_timeout: 20)
+
+      unless response.code.to_i == 200
+        return Result.new(machine_ip: machine_ip, ok: false,
+                          error: "HTTP #{response.code}: #{response.body.to_s[0, 200]}")
+      end
+
+      Result.new(machine_ip: machine_ip, ok: true, data: JSON.parse(response.body))
+    rescue => e
+      Result.new(machine_ip: machine_ip, ok: false, error: e.message)
+    end
+
+    # 查询机器端单个任务详情（GET /tasks/{id}）。
+    # 机器端也是靠这个接口做超时兜底对账（见 TaskScheduler.fetch_remote_task）。
+    # @return [Result] ok=true 时 data 为完整 TaskRecord 原始 Hash
+    def fetch_task(machine_ip, task_id)
+      return Result.new(machine_ip: machine_ip, ok: false, error: '未指定机器')   if machine_ip.blank?
+      return Result.new(machine_ip: machine_ip, ok: false, error: '未指定任务ID') if task_id.blank?
+
+      url = "https://#{machine_ip}/tasks/#{CGI.escape(task_id.to_s)}"
+      response = RemoteApiClient.get(url, open_timeout: 10, read_timeout: 20)
+
+      unless response.code.to_i == 200
+        return Result.new(machine_ip: machine_ip, ok: false,
+                          error: "HTTP #{response.code}: #{response.body.to_s[0, 200]}")
+      end
+
+      Result.new(machine_ip: machine_ip, ok: true, data: JSON.parse(response.body))
+    rescue => e
+      Result.new(machine_ip: machine_ip, ok: false, error: e.message)
+    end
+
+    # 逗号分隔 / 数组 统一拆成去空数组（过滤参数既可能来自多选数组，也可能来自手填字符串）
+    def split_multi(value)
+      Array(value).flat_map { |v| v.to_s.split(',') }.map(&:strip).reject(&:empty?)
+    end
+
+    # limit 收敛到 [1, 500]，非法/未传回落到默认 50
+    def normalize_limit(value)
+      n = value.to_i
+      n = LIST_DEFAULT_LIMIT if n <= 0
+      [n, LIST_MAX_LIMIT].min
+    end
+
+    # 状态配色（取不到时用中性灰）
+    def status_color(status)
+      STATUS_COLORS[status.to_s] || ['#94a3b8', 'rgba(148, 163, 184, 0.15)']
+    end
+
+    # 从机器端任务 Hash 里按候选键取值（值可能为 nil / 空串，都算取不到）
+    def pick_field(task, keys)
+      keys.each do |k|
+        v = task[k]
+        next if v.nil?
+        return v if !v.respond_to?(:empty?) || !v.empty?
+      end
+      nil
+    end
+
+    # 把机器端单条 TaskRecord 整理成视图用的统一结构（字段名做容错，另带 raw 原始 Hash）
+    def normalize_task(task)
+      task = task.to_h
+      norm = {}
+      TASK_FIELD_KEYS.each { |field, keys| norm[field] = pick_field(task, keys) }
+      norm[:type_label]   = TYPE_LABELS[norm[:type].to_s] || norm[:type].to_s
+      norm[:status_label] = STATUS_LABELS[norm[:status].to_s] || norm[:status].to_s
+      norm[:raw]          = task
+      norm
+    end
+
+    # 明细列表响应 → 统一结构数组
+    def normalize_tasks(data)
+      Array(data['tasks']).map { |t| normalize_task(t) }
     end
 
     # 便捷：把某台机器的响应整理成「按类型的小计 + 堆积落点」，供视图直接用

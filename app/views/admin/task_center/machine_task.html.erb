@@ -1,0 +1,142 @@
+<% content_for :page_title do %>
+  机器端任务详情
+<% end %>
+<% content_for :page_subtitle do %>
+  机器端单条任务的完整记录（GET /tasks/{id}）
+<% end %>
+
+<%
+  data = @result&.ok ? (@result.data || {}) : {}
+  norm = data.any? ? MachineTaskMonitor.normalize_task(data) : {}
+  fg, bg = MachineTaskMonitor.status_color(norm[:status])
+  src_labels = MachineTaskMonitor::SOURCE_LABELS
+  label_map = {
+    'task_id' => '任务ID', 'id' => '任务ID',
+    'type' => '类型', 'task_type' => '类型',
+    'status' => '状态',
+    'ref' => '业务标识(ref)',
+    'profile_name' => '浏览器', 'profile' => '浏览器',
+    'batch' => '批次', 'batch_id' => '批次',
+    'source' => '来源', 'src' => '来源',
+    'message' => '消息', 'error' => '错误', 'msg' => '消息',
+    'queued_at' => '排队时间', 'enqueued_at' => '排队时间',
+    'created_at' => '创建时间',
+    'started_at' => '开始时间', 'start_at' => '开始时间', 'start_time' => '开始时间',
+    'finished_at' => '结束时间', 'ended_at' => '结束时间', 'finish_time' => '结束时间',
+    'updated_at' => '更新时间',
+    'result' => '执行结果',
+    'payload' => '入参', 'params' => '入参', 'args' => '入参',
+    'retry' => '重试次数', 'attempts' => '尝试次数', 'retry_count' => '重试次数'
+  }
+  fmt_value = lambda do |v|
+    case v
+    when nil then '—'
+    when Hash, Array then JSON.pretty_generate(v)
+    else
+      s = v.to_s
+      s.empty? ? '—' : s
+    end
+  end
+%>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        任务详情
+        <span class="admin-label-muted" style="font-size: 13px; font-weight: 400;">#<%= @task_id.presence || '—' %></span>
+      </div>
+      <div class="admin-card-subtitle">
+        机器 <strong><%= @machine_ip.presence || '—' %></strong> ·
+        <% if @result&.ok %>
+          读取成功
+        <% else %>
+          <span style="color: #fca5a5;">读取失败：<%= @result&.error %></span>
+        <% end %>
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "← 返回任务列表", machines_admin_task_center_index_path(@back_params), class: "admin-button-secondary" %>
+      <%= link_to "任务总览", admin_task_center_index_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <% if @result&.ok %>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 0 16px 16px;">
+      <% if norm[:id].present? %>
+        <span class="admin-tag">ID <%= norm[:id] %></span>
+      <% end %>
+      <% if norm[:type_label].present? %>
+        <span class="admin-pill-status" style="background: rgba(99, 102, 241, 0.12); color: #818cf8;">
+          <%= norm[:type_label] %>
+        </span>
+      <% end %>
+      <% if norm[:status].present? %>
+        <span class="admin-pill-status" style="background: <%= bg %>; color: <%= fg %>;">
+          <span class="admin-pill-status-dot"></span><%= norm[:status_label].presence || norm[:status] %>
+        </span>
+      <% end %>
+      <% if norm[:profile_name].present? %>
+        <span class="admin-tag">浏览器 <%= norm[:profile_name] %></span>
+      <% end %>
+      <% if norm[:ref].present? %>
+        <span class="admin-tag">ref <%= norm[:ref] %></span>
+      <% end %>
+      <% if norm[:batch].present? %>
+        <span class="admin-tag">批次 <%= norm[:batch] %></span>
+      <% end %>
+      <% if norm[:source].present? %>
+        <span class="admin-tag">来源 <%= src_labels[norm[:source].to_s] || norm[:source] %></span>
+      <% end %>
+    </div>
+
+    <% if norm[:message].present? %>
+      <div style="padding: 0 16px 16px;">
+        <div class="admin-filter-label" style="margin-bottom: 6px;">消息</div>
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #1f2937; border-radius: 8px; padding: 10px 12px; color: #cbd5e1; font-size: 13px; white-space: pre-wrap; word-break: break-all;"><%= norm[:message] %></div>
+      </div>
+    <% end %>
+
+    <div style="padding: 0 16px 16px;">
+      <div class="admin-filter-label" style="margin-bottom: 6px;">完整字段</div>
+      <div class="admin-table-wrapper admin-table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr><th style="width: 200px;">字段</th><th>值</th></tr>
+          </thead>
+          <tbody>
+            <% data.each do |k, v| %>
+              <tr>
+                <td>
+                  <span class="admin-label-muted"><%= label_map[k.to_s] || k %></span>
+                  <div class="admin-label-muted" style="font-size: 11px; opacity: 0.6;"><%= k %></div>
+                </td>
+                <td style="white-space: normal; word-break: break-all;">
+                  <% if v.is_a?(Hash) || v.is_a?(Array) %>
+                    <pre style="margin: 0; padding: 8px 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid #1f2937; border-radius: 6px; color: #cbd5e1; font-size: 12px; max-height: 320px; overflow: auto;"><%= fmt_value.call(v) %></pre>
+                  <% else %>
+                    <span class="admin-label-muted" style="white-space: pre-wrap;"><%= fmt_value.call(v) %></span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="padding: 0 16px 16px;">
+      <details>
+        <summary style="cursor: pointer; color: #94a3b8; font-size: 12px;">查看机器端原始 JSON 响应</summary>
+        <pre style="margin: 10px 0 0; padding: 10px 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid #1f2937; border-radius: 6px; color: #cbd5e1; font-size: 12px; max-height: 420px; overflow: auto;"><%= JSON.pretty_generate(data) %></pre>
+      </details>
+    </div>
+  <% else %>
+    <div class="admin-empty-state" style="color: #fca5a5;">
+      <%= @result ? @result.error : '未发起查询' %>
+      <div style="color: #94a3b8; margin-top: 8px; font-size: 13px;">
+        常见原因：任务已从机器端移除（超期清理 / 被 clear 清空 / 机器端重启导致内存态丢失）。
+      </div>
+    </div>
+  <% end %>
+</div>

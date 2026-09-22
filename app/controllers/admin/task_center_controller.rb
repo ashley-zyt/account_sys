@@ -137,6 +137,56 @@ class Admin::TaskCenterController < Admin::BaseController
     end
   end
 
+  # 机器端任务明细列表（GET /tasks）—— 从各机器卡片「查看任务明细」进入
+  #
+  # 支持机器端全部过滤参数：type / status / profile_name / batch / ref_prefix（后三个单值，前两个逗号分隔多值）+ limit。
+  def machines
+    @machines   = MachineTaskMonitor.machine_ips
+    @machine_ip = params[:machine_ip].to_s.strip
+    @machine_ip = @machines.first if @machine_ip.empty?
+
+    @task_types = MachineTaskMonitor::TYPE_LABELS
+
+    @filters = {
+      type:         params[:type],
+      status:       params[:status],
+      profile_name: params[:profile_name].to_s.strip,
+      batch:        params[:batch].to_s.strip,
+      ref_prefix:   params[:ref_prefix].to_s.strip
+    }
+    # 默认「全部任务」，与总览页各机器卡片的统计口径保持一致
+    @own_only = params[:own_only].to_s == '1'
+    @limit    = MachineTaskMonitor.normalize_limit(
+      params[:limit].presence || MachineTaskMonitor::LIST_DEFAULT_LIMIT
+    )
+
+    @result = if @machine_ip.present?
+                MachineTaskMonitor.fetch_tasks(
+                  @machine_ip,
+                  types:        @filters[:type],
+                  statuses:     @filters[:status],
+                  profile_name: @filters[:profile_name],
+                  batch:        @filters[:batch],
+                  ref_prefix:   @filters[:ref_prefix],
+                  limit:        @limit,
+                  own_only:     @own_only
+                )
+              end
+    @tasks      = @result&.ok ? MachineTaskMonitor.normalize_tasks(@result.data) : []
+    @fetched_at = Time.current
+    @back_params = task_filter_params
+  end
+
+  # 机器端单个任务详情（GET /tasks/{id}）
+  def machine_task
+    @machine_ip = params[:machine_ip].to_s.strip
+    @task_id    = params[:task_id].to_s.strip
+    @result     = MachineTaskMonitor.fetch_task(@machine_ip, @task_id)
+
+    # 返回列表时保留筛选条件
+    @back_params = task_filter_params
+  end
+
   # 人工确认启动：调指定机器的 POST /tasks/resume，
   # 让机器端重新探测 Undetectable，成功后恢复所有「因未启动而暂停」的发布任务。
   def resume
@@ -161,5 +211,18 @@ class Admin::TaskCenterController < Admin::BaseController
     rescue => e
       redirect_back fallback_location: admin_task_center_index_path, alert: "确认启动异常：#{e.message}"
     end
+  end
+
+  private
+
+  # 机器端明细列表的筛选条件（type/status 归一成数组），用于「刷新 / 返回列表」保留条件
+  def task_filter_params
+    permitted = params.permit(:machine_ip, :profile_name, :batch, :ref_prefix,
+                              :limit, :own_only).to_h
+    %w[type status].each do |key|
+      values = MachineTaskMonitor.split_multi(params[key])
+      permitted[key] = values if values.any?
+    end
+    permitted
   end
 end

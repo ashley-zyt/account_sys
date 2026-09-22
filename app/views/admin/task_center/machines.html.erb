@@ -1,0 +1,255 @@
+<% content_for :page_title do %>
+  机器端任务明细
+<% end %>
+<% content_for :page_subtitle do %>
+  实时读取机器端任务队列（GET /tasks），可按类型 / 状态 / 浏览器 / 批次 / ref 前缀筛选；点任务 ID 查看单条详情
+<% end %>
+
+<%
+  status_labels = MachineTaskMonitor::STATUS_LABELS
+  src_labels    = MachineTaskMonitor::SOURCE_LABELS
+  limit_options = [50, 100, 200, 500]
+  data = @result&.ok ? (@result.data || {}) : {}
+  sc   = data['status_counts'] || {}
+  tc   = data['source_counts'] || {}
+  sel_type   = Array(params[:type])
+  sel_status = Array(params[:status])
+  fmt_time = lambda do |v|
+    s = v.to_s
+    s.empty? ? '—' : s.tr('T', ' ')[0, 19]
+  end
+%>
+
+<%# ============ 筛选 ============ %>
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">筛选条件</div>
+      <div class="admin-card-subtitle">
+        <%= @machine_ip.presence || '未选择机器' %>
+        · 采集于 <%= @fetched_at.strftime('%H:%M:%S') %>（机器端内存态，实时读取）
+        <% if @result && !@result.ok %>
+          · <span style="color: #fca5a5;">查询失败：<%= @result.error %></span>
+        <% end %>
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "刷新", machines_admin_task_center_index_path(@back_params), class: "admin-button-secondary" %>
+      <%= link_to "← 返回总览", admin_task_center_index_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <%= form_with url: machines_admin_task_center_index_path, method: :get, local: true, class: "admin-filter-form" do %>
+    <div class="admin-filter-group">
+      <label class="admin-filter-label">机器</label>
+      <%= select_tag :machine_ip,
+                     options_for_select(@machines.map { |m| [m, m] }, @machine_ip),
+                     include_blank: "选择机器...",
+                     class: "admin-input admin-filter-input",
+                     onchange: "this.form.submit()" %>
+    </div>
+
+    <div class="admin-filter-group">
+      <label class="admin-filter-label">任务类型（可多选）</label>
+      <%= select_tag :type,
+                     options_for_select(@task_types.map { |k, v| [v, k] }, sel_type),
+                     multiple: true, size: 5, class: "admin-input admin-filter-input" %>
+    </div>
+
+    <div class="admin-filter-group">
+      <label class="admin-filter-label">状态（可多选）</label>
+      <%= select_tag :status,
+                     options_for_select(status_labels.map { |k, v| [v, k] }, sel_status),
+                     multiple: true, size: 5, class: "admin-input admin-filter-input" %>
+    </div>
+
+    <div class="admin-filter-group">
+      <label class="admin-filter-label">浏览器</label>
+      <%= text_field_tag :profile_name, @filters[:profile_name],
+                         class: "admin-input admin-filter-input", placeholder: "profile_name..." %>
+    </div>
+
+    <div class="admin-filter-group">
+      <label class="admin-filter-label">批次</label>
+      <%= text_field_tag :batch, @filters[:batch],
+                         class: "admin-input admin-filter-input", placeholder: "batch..." %>
+    </div>
+
+    <div class="admin-filter-group">
+      <label class="admin-filter-label">ref 前缀</label>
+      <%= text_field_tag :ref_prefix, @filters[:ref_prefix],
+                         class: "admin-input admin-filter-input", placeholder: "如 MoveTask: / Account:" %>
+    </div>
+
+    <div class="admin-filter-group">
+      <label class="admin-filter-label">任务范围</label>
+      <%= select_tag :own_only,
+                     options_for_select([['全部（含人工/外部）', '0'], ['仅本系统下发', '1']], @own_only ? '1' : '0'),
+                     class: "admin-input admin-filter-input" %>
+    </div>
+
+    <div class="admin-filter-group">
+      <label class="admin-filter-label">返回条数</label>
+      <%= select_tag :limit,
+                     options_for_select(limit_options.map { |n| ["#{n} 条", n] }, @limit),
+                     class: "admin-input admin-filter-input" %>
+    </div>
+
+    <div style="margin-left: auto;">
+      <%= submit_tag "筛选", class: "admin-button-primary" %>
+      <%= link_to "重置", machines_admin_task_center_index_path(machine_ip: @machine_ip), class: "admin-button-secondary" %>
+    </div>
+  <% end %>
+
+  <% if @result&.ok %>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 0 16px 16px;">
+      <span class="admin-tag">总数 <%= data['total'].to_i %></span>
+      <% if data.key?('matched') %>
+        <span class="admin-tag">命中 <%= data['matched'].to_i %></span>
+      <% end %>
+      <% sc.each do |k, v| %>
+        <% fg, bg = MachineTaskMonitor.status_color(k) %>
+        <span class="admin-pill-status" style="background: <%= bg %>; color: <%= fg %>;">
+          <span class="admin-pill-status-dot"></span><%= status_labels[k.to_s] || k %> <%= v.to_i %>
+        </span>
+      <% end %>
+      <% tc.each do |k, v| %>
+        <span class="admin-tag"><%= src_labels[k.to_s] || k %> <%= v.to_i %></span>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<%# ============ 任务列表 ============ %>
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">任务列表</div>
+      <div class="admin-card-subtitle">
+        显示 <%= @tasks.size %> 条
+        <% if data.key?('matched') && data['matched'].to_i > @tasks.size %>
+          （命中 <%= data['matched'].to_i %> 条，受「返回条数」限制只显示前 <%= @tasks.size %> 条）
+        <% end %>
+        · 按机器端返回顺序
+      </div>
+    </div>
+  </div>
+
+  <% if @result.nil? %>
+    <div class="admin-empty-state">没有配置 machine_ip 的浏览器，无可查询的机器。</div>
+  <% elsif !@result.ok %>
+    <div class="admin-empty-state" style="color: #fca5a5;">查询失败：<%= @result.error %></div>
+  <% elsif @tasks.empty? %>
+    <div class="admin-empty-state">该筛选条件下没有任务。</div>
+  <% else %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>任务ID</th>
+            <th>类型</th>
+            <th>状态</th>
+            <th>浏览器</th>
+            <th>业务标识(ref)</th>
+            <th>批次</th>
+            <th>来源</th>
+            <th>消息</th>
+            <th>排队时间</th>
+            <th>开始</th>
+            <th>结束</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @tasks.each do |t| %>
+            <% fg, bg = MachineTaskMonitor.status_color(t[:status]) %>
+            <tr>
+              <td>
+                <% if t[:id].present? %>
+                  <%= link_to truncate(t[:id].to_s, length: 22),
+                              machine_task_admin_task_center_index_path(@back_params.merge('task_id' => t[:id])),
+                              class: "admin-link-quiet", title: t[:id].to_s %>
+                <% else %>
+                  <span class="admin-label-muted">—</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-pill-status" style="background: rgba(99, 102, 241, 0.12); color: #818cf8;">
+                  <%= t[:type_label].presence || '—' %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-pill-status" style="background: <%= bg %>; color: <%= fg %>;">
+                  <span class="admin-pill-status-dot"></span><%= t[:status_label].presence || '—' %>
+                </span>
+              </td>
+              <td><span class="admin-label-muted"><%= t[:profile_name].presence || '—' %></span></td>
+              <td><span class="admin-label-muted"><%= t[:ref].presence || '—' %></span></td>
+              <td><span class="admin-label-muted"><%= t[:batch].presence || '—' %></span></td>
+              <td><span class="admin-label-muted"><%= src_labels[t[:source].to_s] || t[:source].presence || '—' %></span></td>
+              <td>
+                <span class="admin-label-muted" title="<%= t[:message] %>">
+                  <%= truncate(t[:message].to_s, length: 40).presence || '—' %>
+                </span>
+              </td>
+              <td><span class="admin-label-muted"><%= fmt_time.call(t[:queued_at]) %></span></td>
+              <td><span class="admin-label-muted"><%= fmt_time.call(t[:started_at]) %></span></td>
+              <td><span class="admin-label-muted"><%= fmt_time.call(t[:finished_at]) %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</div>
+
+<%# ============ 任务操作（预填当前机器与筛选，直接作用于这批任务） ============ %>
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">任务操作</div>
+      <div class="admin-card-subtitle">对 <strong><%= @machine_ip.presence || '（未选机器）' %></strong> 上符合条件的任务中断/清空，或确认启动恢复暂停任务</div>
+    </div>
+  </div>
+
+  <div style="padding: 0 16px 16px;">
+    <div style="border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 8px; padding: 12px 16px; background: rgba(34, 197, 94, 0.05);">
+      <div style="color: #86efac; font-size: 13px; margin-bottom: 10px;">
+        ✅ 确认启动：Undetectable 已手动启动后，探测并恢复该机器上「因未启动而暂停」的发布任务
+      </div>
+      <%= form_with url: resume_admin_task_center_index_path, method: :post,
+                    data: { turbo_confirm: "确认 #{@machine_ip} 的 Undetectable 已启动？将立即探测并恢复其暂停的发布任务。" } do %>
+        <%= hidden_field_tag :machine_ip, @machine_ip %>
+        <%= submit_tag "确认启动并恢复", class: "admin-button-primary" %>
+      <% end %>
+    </div>
+  </div>
+
+  <div style="padding: 0 16px 16px;">
+    <div style="border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 12px 16px; background: rgba(239, 68, 68, 0.05);">
+      <div style="color: #fca5a5; font-size: 13px; margin-bottom: 10px;">
+        ⚠️ 清除任务（破坏性）：会中断执行中/排队中的任务，被清除的任务不再回调。类型与状态都不选即全量清空该机器任务
+      </div>
+      <%= form_with url: clear_admin_task_center_index_path, method: :post,
+                    data: { turbo_confirm: "确定清除 #{@machine_ip} 上所选类型/状态的任务？这会中断执行中/排队中的任务，且被清除任务不再回调。" } do %>
+        <%= hidden_field_tag :machine_ip, @machine_ip %>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+          <div class="admin-filter-group">
+            <label class="admin-filter-label">任务类型（可多选，默认取当前筛选）</label>
+            <%= select_tag :type,
+                           options_for_select(@task_types.map { |k, v| [v, k] }, sel_type),
+                           multiple: true, size: 5, class: "admin-input admin-filter-input" %>
+          </div>
+          <div class="admin-filter-group">
+            <label class="admin-filter-label">状态（可多选，默认取当前筛选）</label>
+            <%= select_tag :status,
+                           options_for_select(status_labels.map { |k, v| [v, k] }, sel_status),
+                           multiple: true, size: 5, class: "admin-input admin-filter-input" %>
+          </div>
+          <div>
+            <%= submit_tag "清除任务", class: "admin-button-danger" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

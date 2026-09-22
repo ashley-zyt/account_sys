@@ -282,6 +282,13 @@
           <% else %>
             <div style="color: #fca5a5; font-size: 13px;">该机器查询失败：<%= result.error %></div>
           <% end %>
+
+          <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <%= link_to "查看任务明细 →",
+                        machines_admin_task_center_index_path(machine_ip: result.machine_ip),
+                        class: "admin-button-secondary" %>
+            <span style="color: #64748b; font-size: 12px;">机器端任务列表，可筛选、看单条详情</span>
+          </div>
         </div>
       </details>
     <% end %>

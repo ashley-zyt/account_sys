@@ -68,6 +68,8 @@ Rails.application.routes.draw do
     resources :task_center, only: [:index] do
       collection do
         get  :summary          # JSON 版本（供外部监控 / 钉钉告警）
+        get  :machines         # 机器端任务明细列表（机器端 GET /tasks）
+        get  :machine_task     # 机器端单个任务详情（机器端 GET /tasks/{id}）
         post :sync
         post :retry_interrupted
         post :clear
