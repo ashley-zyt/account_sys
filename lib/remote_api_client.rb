@@ -77,8 +77,11 @@ module RemoteApiClient
       ENV['REMOTE_API_KEY'].to_s
     end
 
+    # 与远端一致：REMOTE_API_SECRET 未配置时回退用 API_KEY 作为签名密钥
+    # （远端文档：secret = API_SECRET，未设置时回退为 API_KEY）
     def api_secret
-      ENV['REMOTE_API_SECRET'].to_s
+      secret = ENV['REMOTE_API_SECRET'].to_s
+      secret.strip.empty? ? api_key : secret
     end
   end
 end

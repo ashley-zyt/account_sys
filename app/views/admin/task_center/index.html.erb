@@ -180,7 +180,7 @@
   <div class="machine-grid">
     <% @results.each do |result| %>
       <% data   = result.ok ? (result.data || {}) : {} %>
-      <% table  = result.ok ? MachineTaskMonitor.rows(data) : { types: [], backlog: [] } %>
+      <% table  = result.ok ? MachineTaskMonitor.rows(data) : { types: [], backlog: [], batches: [], batch_total: 0, unbatched: 0 } %>
       <% sc     = data['status_counts'] || {} %>
       <% src    = data['source_counts'] || {} %>
       <% queued = sc['queued'].to_i %>
@@ -261,7 +261,7 @@
                 <table class="admin-table">
                   <thead>
                     <tr>
-                      <th>指纹浏览器</th><th>排队</th><th>执行中</th><th>成功</th><th>失败</th><th>小计</th>
+                      <th>指纹浏览器</th><th>排队</th><th>执行中</th><th>成功</th><th>失败</th><th>中断</th><th>暂停</th><th>小计</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -272,7 +272,53 @@
                         <td style="color: #3b82f6;"><%= p['running'].to_i %></td>
                         <td style="color: #22c55e;"><%= p['success'].to_i %></td>
                         <td style="color: #ef4444;"><%= p['failed'].to_i %></td>
+                        <td style="color: #94a3b8;"><%= p['interrupted'].to_i %></td>
+                        <td style="color: #e879f9;"><%= p['paused'].to_i %></td>
                         <td><%= p['total'].to_i %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% end %>
+
+            <% if table[:batches].any? %>
+              <div style="margin-top: 10px;">
+                <div class="admin-card-subtitle" style="margin: 4px 0 8px;">
+                  批次进度（按首次提交时间倒序，最多 50 个批次 · 共 <%= table[:batch_total] %> 个批次 · 未分批 <%= table[:unbatched] %> 条）
+                </div>
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>批次</th>
+                      <th>排队</th><th>执行中</th><th>成功</th><th>失败</th><th>中断</th><th>暂停</th>
+                      <th>合计</th><th>待执行</th><th>状态</th><th>耗时</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% table[:batches].each do |b| %>
+                      <tr>
+                        <td><span class="admin-label-muted"><%= b[:batch] %></span></td>
+                        <td style="color: #f59e0b; font-weight: 600;"><%= b[:queued] %></td>
+                        <td style="color: #3b82f6; font-weight: 600;"><%= b[:running] %></td>
+                        <td style="color: #22c55e;"><%= b[:success] %></td>
+                        <td style="color: #ef4444;"><%= b[:failed] %></td>
+                        <td style="color: #94a3b8;"><%= b[:interrupted] %></td>
+                        <td style="color: #e879f9;"><%= b[:paused] %></td>
+                        <td><%= b[:total] %></td>
+                        <td><%= b[:pending] %></td>
+                        <td>
+                          <% if b[:done] %>
+                            <% if b[:failed].to_i.zero? && b[:interrupted].to_i.zero? %>
+                              <span class="admin-tag" style="background:#dcfce7;color:#15803d;">完成</span>
+                            <% else %>
+                              <span class="admin-tag" style="background:#fef3c7;color:#b45309;" title="done=true 只表示没有待执行任务，仍可能含失败/中断">跑完但有失败</span>
+                            <% end %>
+                          <% else %>
+                            <span class="admin-tag" style="background:#dbeafe;color:#1d4ed8;">运行中</span>
+                          <% end %>
+                        </td>
+                        <td><span class="admin-label-muted"><%= (b[:duration_seconds] / 60.0).round(1) %> 分钟</span></td>
                       </tr>
                     <% end %>
                   </tbody>

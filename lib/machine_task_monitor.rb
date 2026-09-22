@@ -79,24 +79,26 @@ class MachineTaskMonitor
   LIST_DEFAULT_LIMIT = 50
   LIST_MAX_LIMIT     = 500
 
-  # 机器端 TaskRecord 的字段名容错表（机器端字段可能演进，按候选键依次取值）。
-  # 取不到就回退下一个候选，全部取不到返回 nil，视图层显示 "—"。
+  # 机器端 TaskRecord 的字段名容错表（按候选键依次取值，取不到返回 nil、视图显示 "—"）。
+  # 主键取自《任务查看与操作API.md》3.1「每条 task 的字段」；候选项仅为字段演进兜底。
+  # 注意：机器端 TaskRecord **没有** source 字段，来源由 dingtalk_webhook 有无推导（见 task_source）。
   TASK_FIELD_KEYS = {
-    id:          %w[task_id id],
-    type:        %w[type task_type],
-    status:      %w[status],
-    profile_name: %w[profile_name profile],
-    ref:         %w[ref],
-    batch:       %w[batch batch_id],
-    source:      %w[source src],
-    message:     %w[message error msg],
-    queued_at:   %w[queued_at created_at enqueued_at],
-    started_at:  %w[started_at start_at start_time],
-    finished_at: %w[finished_at ended_at finish_time]
+    id:               %w[task_id id],
+    type:             %w[type task_type],
+    status:           %w[status],
+    profile_name:     %w[profile_name profile],
+    ref:              %w[ref],
+    batch:            %w[batch batch_id],
+    message:          %w[message],
+    created_at:       %w[created_at],
+    updated_at:       %w[updated_at],
+    payload:          %w[payload],
+    dingtalk_webhook: %w[dingtalk_webhook]
   }.freeze
 
-  # 单台机器的查询结果。ok=false 时 data 为 nil、error 为原因（机器不可达 / 超时 / HTTP 非 200）
-  Result = Struct.new(:machine_ip, :ok, :data, :error, keyword_init: true)
+  # 单台机器的查询结果。ok=false 时 data 为 nil、error 为原因（机器不可达 / 超时 / HTTP 非 200、404…），
+  # code 为 HTTP 状态码（网络异常时为 nil）。
+  Result = Struct.new(:machine_ip, :ok, :data, :error, :code, keyword_init: true)
 
   class << self
     # 所有配置了 machine_ip 的机器（去重、去空白、排序）
@@ -127,11 +129,11 @@ class MachineTaskMonitor
       response = RemoteApiClient.get(url, open_timeout: 5, read_timeout: 15)
 
       unless response.code.to_i == 200
-        return Result.new(machine_ip: machine_ip, ok: false,
-                          error: "HTTP #{response.code}: #{response.body.to_s[0, 200]}")
+        return Result.new(machine_ip: machine_ip, ok: false, code: response.code.to_i,
+                          error: http_error_message(response))
       end
 
-      Result.new(machine_ip: machine_ip, ok: true, data: JSON.parse(response.body))
+      Result.new(machine_ip: machine_ip, ok: true, code: 200, data: JSON.parse(response.body))
     rescue => e
       Result.new(machine_ip: machine_ip, ok: false, error: e.message)
     end
@@ -139,10 +141,11 @@ class MachineTaskMonitor
     # 查询单台机器的任务明细列表（GET /tasks）。
     # 过滤参数与机器端一致，均可逗号分隔多值：status / type / profile_name / batch / ref_prefix。
     # own_only=true 且未显式传 ref_prefix 时，自动拼上本系统下发任务的前缀过滤
-    # （注意：与 summary 不同，明细列表不传过滤时机器端返回前 limit 条，全量混排）。
+    # （注意：与 summary 不同，/tasks 的 total / status_counts 等是「全局口径、不受过滤影响」，
+    #   过滤后的真实命中数要看 matched）。
     #
-    # @return [Result] ok=true 时 data 为 { total:, matched:, status_counts:, source_counts:,
-    #                  type_counts:, type_status_counts:, tasks: [...] }
+    # @return [Result] ok=true 时 data 为 { total:, matched:, returned:, has_more:, store:,
+    #                  status_counts:, source_counts:, type_counts:, type_status_counts:, tasks: [...] }
     def fetch_tasks(machine_ip, types: nil, statuses: nil, profile_name: nil,
                     batch: nil, ref_prefix: nil, limit: LIST_DEFAULT_LIMIT, own_only: true)
       return Result.new(machine_ip: machine_ip, ok: false, error: '未指定机器') if machine_ip.blank?
@@ -165,17 +168,18 @@ class MachineTaskMonitor
       response = RemoteApiClient.get(url, open_timeout: 5, read_timeout: 20)
 
       unless response.code.to_i == 200
-        return Result.new(machine_ip: machine_ip, ok: false,
-                          error: "HTTP #{response.code}: #{response.body.to_s[0, 200]}")
+        return Result.new(machine_ip: machine_ip, ok: false, code: response.code.to_i,
+                          error: http_error_message(response))
       end
 
-      Result.new(machine_ip: machine_ip, ok: true, data: JSON.parse(response.body))
+      Result.new(machine_ip: machine_ip, ok: true, code: 200, data: JSON.parse(response.body))
     rescue => e
       Result.new(machine_ip: machine_ip, ok: false, error: e.message)
     end
 
     # 查询机器端单个任务详情（GET /tasks/{id}）。
     # 机器端也是靠这个接口做超时兜底对账（见 TaskScheduler.fetch_remote_task）。
+    # 404 = 记录已超期（保留 30 天）或被 /tasks/clear 清掉；**服务重启不会 404**（已落 SQLite）。
     # @return [Result] ok=true 时 data 为完整 TaskRecord 原始 Hash
     def fetch_task(machine_ip, task_id)
       return Result.new(machine_ip: machine_ip, ok: false, error: '未指定机器')   if machine_ip.blank?
@@ -185,13 +189,21 @@ class MachineTaskMonitor
       response = RemoteApiClient.get(url, open_timeout: 10, read_timeout: 20)
 
       unless response.code.to_i == 200
-        return Result.new(machine_ip: machine_ip, ok: false,
-                          error: "HTTP #{response.code}: #{response.body.to_s[0, 200]}")
+        return Result.new(machine_ip: machine_ip, ok: false, code: response.code.to_i,
+                          error: http_error_message(response))
       end
 
-      Result.new(machine_ip: machine_ip, ok: true, data: JSON.parse(response.body))
+      Result.new(machine_ip: machine_ip, ok: true, code: 200, data: JSON.parse(response.body))
     rescue => e
       Result.new(machine_ip: machine_ip, ok: false, error: e.message)
+    end
+
+    # 机器端错误响应统一格式：{"type":"error","error_info":"..."}
+    # 优先取 error_info（比原始 JSON 片段可读），取不到再回退 HTTP 码 + body 片段
+    def http_error_message(response)
+      info = (JSON.parse(response.body.to_s)['error_info'] rescue nil)
+      return "HTTP #{response.code}：#{info}" if info.present?
+      "HTTP #{response.code}: #{response.body.to_s[0, 200]}"
     end
 
     # 逗号分隔 / 数组 统一拆成去空数组（过滤参数既可能来自多选数组，也可能来自手填字符串）
@@ -221,6 +233,12 @@ class MachineTaskMonitor
       nil
     end
 
+    # 来源推导：机器端 TaskRecord **没有** source 字段，统计里的 source_counts 依据是
+    # 「是否带 dingtalk_webhook」—— 有 = 人工/外部直接调 API，无 = account_sys 下发。
+    def task_source(task)
+      pick_field(task.to_h, TASK_FIELD_KEYS[:dingtalk_webhook]).present? ? 'manual' : 'account_sys'
+    end
+
     # 把机器端单条 TaskRecord 整理成视图用的统一结构（字段名做容错，另带 raw 原始 Hash）
     def normalize_task(task)
       task = task.to_h
@@ -228,6 +246,8 @@ class MachineTaskMonitor
       TASK_FIELD_KEYS.each { |field, keys| norm[field] = pick_field(task, keys) }
       norm[:type_label]   = TYPE_LABELS[norm[:type].to_s] || norm[:type].to_s
       norm[:status_label] = STATUS_LABELS[norm[:status].to_s] || norm[:status].to_s
+      norm[:source]       = task_source(task)
+      norm[:source_label] = SOURCE_LABELS[norm[:source]]
       norm[:raw]          = task
       norm
     end
@@ -237,8 +257,8 @@ class MachineTaskMonitor
       Array(data['tasks']).map { |t| normalize_task(t) }
     end
 
-    # 便捷：把某台机器的响应整理成「按类型的小计 + 堆积落点」，供视图直接用
-    # @return [Hash] { types: [{type:, label:, queued:, running:, success:, failed:, total:}], backlog: [...] }
+    # 便捷：把某台机器的 summary 响应整理成「类型小计 + 堆积落点 + 批次进度」，供视图直接用
+    # @return [Hash] { types: [...], backlog: [...], batches: [...], batch_total:, unbatched: }
     def rows(data)
       ts = data['type_status_counts'] || {}
       types = TRACKED_TYPES.map do |type|
@@ -258,7 +278,32 @@ class MachineTaskMonitor
 
       backlog = (data['profiles'] || []).select { |p| p['queued'].to_i > 0 || p['running'].to_i > 0 }
 
-      { types: types, backlog: backlog }
+      batches = (data['batches'] || []).map do |b|
+        {
+          batch:       b['batch'],
+          queued:      b['queued'].to_i,
+          running:     b['running'].to_i,
+          success:     b['success'].to_i,
+          failed:      b['failed'].to_i,
+          interrupted: b['interrupted'].to_i,
+          paused:      b['paused'].to_i,
+          total:       b['total'].to_i,
+          pending:     b['pending'].to_i,
+          # done 只代表「没有待执行任务」，仍可能含 failed/interrupted
+          done:        b['done'] == true,
+          first_seen:  b['first_seen'],
+          last_update: b['last_update'],
+          duration_seconds: b['duration_seconds'].to_i
+        }
+      end
+
+      {
+        types:       types,
+        backlog:     backlog,
+        batches:     batches,
+        batch_total: data['batch_total'].to_i,
+        unbatched:   data['unbatched'].to_i
+      }
     end
   end
 end

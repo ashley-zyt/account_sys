@@ -11,22 +11,19 @@
   fg, bg = MachineTaskMonitor.status_color(norm[:status])
   src_labels = MachineTaskMonitor::SOURCE_LABELS
   label_map = {
-    'task_id' => '任务ID', 'id' => '任务ID',
-    'type' => '类型', 'task_type' => '类型',
+    'task_id' => '任务ID',
+    'type' => '任务类型',
     'status' => '状态',
     'ref' => '业务标识(ref)',
-    'profile_name' => '浏览器', 'profile' => '浏览器',
-    'batch' => '批次', 'batch_id' => '批次',
-    'source' => '来源', 'src' => '来源',
-    'message' => '消息', 'error' => '错误', 'msg' => '消息',
-    'queued_at' => '排队时间', 'enqueued_at' => '排队时间',
-    'created_at' => '创建时间',
-    'started_at' => '开始时间', 'start_at' => '开始时间', 'start_time' => '开始时间',
-    'finished_at' => '结束时间', 'ended_at' => '结束时间', 'finish_time' => '结束时间',
-    'updated_at' => '更新时间',
-    'result' => '执行结果',
-    'payload' => '入参', 'params' => '入参', 'args' => '入参',
-    'retry' => '重试次数', 'attempts' => '尝试次数', 'retry_count' => '重试次数'
+    'profile_name' => '指纹浏览器',
+    'batch' => '批次标识',
+    'message' => '结果说明',
+    'created_at' => '提交时间',
+    'updated_at' => '最近状态变更',
+    'payload' => '原始请求体（重启重放用）',
+    'dingtalk_webhook' => '钉钉 Webhook（仅人工/外部调用）',
+    'dingtalk_keyword' => '钉钉关键字（仅人工/外部调用）',
+    'dingtalk_owner' => '钉钉接收人（仅人工/外部调用）'
   }
   fmt_value = lambda do |v|
     case v
@@ -134,9 +131,21 @@
   <% else %>
     <div class="admin-empty-state" style="color: #fca5a5;">
       <%= @result ? @result.error : '未发起查询' %>
-      <div style="color: #94a3b8; margin-top: 8px; font-size: 13px;">
-        常见原因：任务已从机器端移除（超期清理 / 被 clear 清空 / 机器端重启导致内存态丢失）。
-      </div>
+      <% if @result&.code.to_i == 404 %>
+        <div style="color: #94a3b8; margin-top: 8px; font-size: 13px;">
+          <strong>HTTP 404 · task not found</strong>：该记录已不在机器端。只有两种可能——
+          超出保留期（默认 30 天）被清理，或被 <code>POST /tasks/clear</code> 清掉。
+          机器端任务已落盘 SQLite，<strong>服务重启不会导致 404</strong>。
+        </div>
+      <% elsif @result&.code.to_i == 400 %>
+        <div style="color: #94a3b8; margin-top: 8px; font-size: 13px;">
+          <strong>HTTP 400</strong>：task_id 为空或格式不合法（含 <code>/</code>）。
+        </div>
+      <% else %>
+        <div style="color: #94a3b8; margin-top: 8px; font-size: 13px;">
+          常见原因：机器不可达 / 网络超时 / 鉴权失败（401）、或任务已被清理。
+        </div>
+      <% end %>
     </div>
   <% end %>
 </div>

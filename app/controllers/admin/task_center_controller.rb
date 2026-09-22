@@ -130,7 +130,7 @@ class Admin::TaskCenterController < Admin::BaseController
         redirect_back fallback_location: admin_task_center_index_path, notice: "已清除 #{machine_ip} 上 #{count || 'N'} 个任务"
       else
         redirect_back fallback_location: admin_task_center_index_path,
-                      alert: "清除失败：HTTP #{resp.code} #{resp.body.to_s[0, 200]}"
+                      alert: "清除失败：#{remote_error_message(resp)}"
       end
     rescue => e
       redirect_back fallback_location: admin_task_center_index_path, alert: "清除异常：#{e.message}"
@@ -206,7 +206,7 @@ class Admin::TaskCenterController < Admin::BaseController
                       notice: "已确认启动 #{machine_ip}，恢复 #{count || 0} 个暂停的发布任务"
       else
         redirect_back fallback_location: admin_task_center_index_path,
-                      alert: "确认启动失败：HTTP #{resp.code} #{resp.body.to_s[0, 200]}"
+                      alert: "确认启动失败：#{remote_error_message(resp)}"
       end
     rescue => e
       redirect_back fallback_location: admin_task_center_index_path, alert: "确认启动异常：#{e.message}"
@@ -214,6 +214,13 @@ class Admin::TaskCenterController < Admin::BaseController
   end
 
   private
+
+  # 机器端错误响应统一格式 {"type":"error","error_info":"..."}，优先取可读原因
+  # （如 resume 的 503「Undetectable 仍不可用…」、详情页的 404「task not found」）
+  def remote_error_message(resp)
+    info = (JSON.parse(resp.body.to_s)['error_info'] rescue nil)
+    info.present? ? info : "HTTP #{resp.code} #{resp.body.to_s[0, 200]}"
+  end
 
   # 机器端明细列表的筛选条件（type/status 归一成数组），用于「刷新 / 返回列表」保留条件
   def task_filter_params
