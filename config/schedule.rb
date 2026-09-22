@@ -5,10 +5,12 @@ set :environment, :development
 #   runner 'TaskScheduler.pending_task'
 # end
 
-# 每日推送浏览器账号数据到Windows机器采集发文数据
+# 每日凌晨 02:00 - 07:00 分批采集发文数据：每小时一轮，每台机器每轮取 30 个「今日未获取」的账号。
+# 幂等：今天已采到数据的账号（post_stats 有更新 / account_stat 有今日快照）自动跳过；
+# 每轮按 id 升序取前 30 个，采完变「已更新」下轮自然轮转到下一批，避免一次性堆积 + 中断自愈。
 set :output, "log/postdatas_fetch.log"
-every :day, at: '00:40' do
-  runner 'PostDatas.fetch'
+every :day, at: ['02:00', '03:00', '04:00', '05:00', '06:00', '07:00'] do
+  runner 'PostDatas.fetch_uncollected_by_machine'
 end
 # 做数字货币视频
 # set :output, "log/heygen_crypto_video_pipeline.log"
@@ -133,12 +135,19 @@ end
 
 
 # ==================== 养号任务配置 ====================
-# 按 browser.machine_ip 分组，多台机器并行运行、互不影响
-# - 每台机器独立 5 小时时间窗口
+# 每晚 21:00 - 次日 01:00 每小时一轮，按 browser.machine_ip 分组，多台机器并行运行、互不影响。
+# - 每轮每台机器最多下发 5 个账号（MAX_ACCOUNTS_PER_MACHINE），按顺序轮转、每轮不重复
 # - 机器IP在浏览器页面动态管理，无需改代码
 set :output, "log/warmup_scheduler.log"
-every :day, at: '21:00' do
+every :day, at: ['21:00', '22:00', '23:00', '00:00', '01:00'] do
   runner 'WarmupScheduler.run'
+end
+
+# 养号卡死兜底：每小时回收「卡在 executing 超过 3 小时仍无回调」的养号任务（机器中断/重启/丢失），
+# 标 failed 释放账号，下一轮重新养号。
+set :output, "log/warmup_stuck_recovery.log"
+every 1.hour do
+  runner 'WarmupScheduler.recover_stuck_tasks'
 end
 
 

@@ -31,7 +31,9 @@ class PostDatas
   # 采集入口
   # @param only_uncollected [Boolean] true 时只采集「今日还没采集过数据」的账号（跳过已更新的），
   #         false 时全量采集（今日未更新的排前面优先）。默认 false。
-  def self.fetch(only_uncollected: false)
+  # @param per_machine [Integer, nil] 每台机器每轮最多采集的账号数（按 id 升序取前 N 个）。
+  #         传 nil 不限额。用于「凌晨分批采集」，每轮每机器取固定数量、自然轮转。
+  def self.fetch(only_uncollected: false, per_machine: nil)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_fetch.log'))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
@@ -75,6 +77,14 @@ class PostDatas
     else
       # 全量采集：今日未更新的排前面优先采集，已更新的排后面
       accounts.sort_by! { |a| updated_ids.include?(a.id) ? 1 : 0 }
+    end
+
+    # 每台机器每轮限额：按 machine_ip 分组，每台机器按 id 升序取前 per_machine 个。
+    # 采完的账号下轮因数据回传变「已更新」被排除，自然轮转到下一批，无需额外游标。
+    if per_machine && per_machine.to_i > 0
+      accounts = accounts.group_by { |a| a.browser.machine_ip }
+                         .flat_map { |_ip, list| list.sort_by(&:id).first(per_machine.to_i) }
+      Rails.logger.info "[PostDatas] 每台机器限额 #{per_machine.to_i} 个，本轮实际采集 #{accounts.size} 个账号"
     end
 
     total = accounts.size
@@ -168,6 +178,35 @@ class PostDatas
   # 只是把「全量排序」换成「只保留未更新」。
   def self.fetch_uncollected_today
     fetch(only_uncollected: true)
+  end
+
+  # 每台机器每轮采集 N 个「今日未获取」的账号（用于凌晨分批采集，避免一次性堆积 + 中断自愈）。
+  # 按 machine_ip 分组，每台机器按 id 升序取前 per_machine 个，采完的账号下轮变「已更新」被排除。
+  # @param clear_pending [Boolean] 下发前是否先清掉机器端「排队中/执行中」的采集任务（fetch），
+  #        避免上一轮未完成的任务与本轮重叠、堆积。默认 true。
+  def self.fetch_uncollected_by_machine(per_machine: 30, clear_pending: true)
+    clear_pending_fetch_tasks if clear_pending
+    fetch(only_uncollected: true, per_machine: per_machine)
+  end
+
+  # 清掉运营机器上「排队中(queued)/执行中(running)」的采集任务（type=fetch），
+  # 用于每轮分批采集下发前，把上一轮还没跑完的采集任务停掉，避免重叠与堆积。
+  # 被清掉的 running 任务会中断（数据未回传 → 账号仍「未获取」→ 下一轮重采，多花一轮但能补齐）。
+  # @param machine_ips [Array<String>, nil] 要清理的机器 IP；nil 时清理全部配置了 machine_ip 的机器。
+  # @return [Integer] 清除的任务总数
+  def self.clear_pending_fetch_tasks(machine_ips = nil)
+    machine_ips ||= Browser.where.not(machine_ip: [nil, ""]).distinct.pluck(:machine_ip)
+    cleared = 0
+    machine_ips.each do |ip|
+      url = "https://#{ip}/tasks/clear?type=fetch&status=queued,running"
+      resp = RemoteApiClient.post(url, {}, read_timeout: 30)
+      count = (JSON.parse(resp.body.to_s)['count'] rescue 0).to_i
+      cleared += count
+      Rails.logger.info "[PostDatas] #{ip} 清理采集队列（queued/running）：清除 #{count} 个"
+    rescue => e
+      Rails.logger.warn "[PostDatas] #{ip} 清理采集队列失败：#{e.message}"
+    end
+    cleared
   end
 
   # 采集一个浏览器分组（该浏览器下的所有账号）：组内顺序执行。

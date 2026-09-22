@@ -8,8 +8,10 @@ class WarmupScheduler
   TIME_WINDOW_HOURS = 6
   # 每台机器单次运行最多下发的养号账号数。
   # 机器端全局并发才 3，一次性把整台机器的账号全下发会瞬间堆积卡死，
-  # 故限制每台机器单次最多筛 40 个，下发完即结束（下次调度再取下一批）。
-  MAX_ACCOUNTS_PER_MACHINE = 20
+  # 故每轮（每小时）每台机器最多下发 5 个，下发完即结束，下一轮按顺序取下一批。
+  MAX_ACCOUNTS_PER_MACHINE = 5
+  # 养号任务卡在 executing 超过此时长（小时）仍无回调，判定为中断，标 failed 释放账号
+  STUCK_TIMEOUT_HOURS = 3
 
   # 统一入口：按 browser.machine_ip 分组，多台机器并行运行、互不影响
   def self.run
@@ -73,6 +75,31 @@ class WarmupScheduler
     Rails.logger.info "[WarmupScheduler] 机器 #{machine_ip} 养号任务执行完成"
   end
 
+  # 卡死超时兜底：养号任务下发后长时间仍处于 executing（机器端中断/重启/任务丢失
+  # 导致永远无回调），把它们标 failed 并释放账号，让账号下一轮重新被选中养号。
+  # 配合「成功回调才更新 last_warmup_at」实现养号中断自愈。
+  # @return [Integer] 回收的卡死任务数
+  def self.recover_stuck_tasks
+    stuck = WarmupTask.where(status: :executing)
+                      .where('created_at <= ?', STUCK_TIMEOUT_HOURS.hours.ago)
+    return 0 if stuck.empty?
+
+    count = 0
+    stuck.find_each do |task|
+      task.update!(status: :failed,
+                   error_msg: "养号中断超时（超过 #{STUCK_TIMEOUT_HOURS} 小时未收到回调）",
+                   executed_at: Time.current)
+      # 标 warmup_status=failed，让排序「失败优先」下一轮优先重试；
+      # 不更新 last_warmup_at，避免中断账号进入冷却而永远不被重选。
+      if (profile = task.account&.warmup_profile)
+        profile.update!(warmup_status: 'failed')
+      end
+      count += 1
+    end
+    Rails.logger.info "[WarmupScheduler] 回收卡死养号任务 #{count} 条"
+    count
+  end
+
   private
 
   # 当前需要参与养号的所有运营机器 IP（来自浏览器配置）
@@ -84,12 +111,16 @@ class WarmupScheduler
   end
 
   # 查询指定机器下需要养号的账号（每台机器单次最多 MAX_ACCOUNTS_PER_MACHINE 个）
+  # 排除「已有执行中(executing)养号任务」的账号：靠它实现每轮顺序轮转不重复
+  #   （刚下发的账号已有 executing 记录，下一轮被跳过，取到下一批）。
   # 排序：1) 从未养号优先 2) 上次报错优先 3) 上次养号时间更久优先
   def self.fetch_target_accounts_for_machine(machine_ip)
     browser_ids = Browser.where(machine_ip: machine_ip).pluck(:id)
+    executing_account_ids = WarmupTask.where(status: :executing).select(:account_id)
     Account.joins(:warmup_profile)
            .where(browser_id: browser_ids)
            .where.not(status: ["未登录", "封禁/停用"])
+           .where.not(id: executing_account_ids)
            .where(warmup_profiles: { warmup_enabled: true })
            .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.warmup_status = 'failed' DESC, warmup_profiles.last_warmup_at ASC"))
            .limit(MAX_ACCOUNTS_PER_MACHINE)
@@ -133,11 +164,10 @@ class WarmupScheduler
           profile_name: account.browser.profile_name,
           machine_ip: machine_ip
         )
-        # 下发后立即标记 last_warmup_at，避免「从未养号优先」的排序在回调回来前
-        # 把同一批账号再次排到最前重复选中，导致反复创建养号任务。
-        # （warmup_status 先不动，等机器端回调成功/失败后再由 handle_warmup 更新）
-        profile = account.warmup_profile || account.create_warmup_profile
-        profile.update!(last_warmup_at: Time.current)
+        # 注意：这里【不再】下发即更新 last_warmup_at。轮转去重改由
+        # 「fetch_target_accounts_for_machine 排除 executing 账号」保证；
+        # last_warmup_at 只在机器端回调成功/失败后（handle_warmup）才更新，
+        # 这样养号中断（无回调）的账号不会进入冷却，下一轮能被重新选中自愈。
         Rails.logger.info "[WarmupScheduler] 养号已受理（异步），task_id=#{response['task_id']}，等待回调"
         return :executed
       end
