@@ -56,7 +56,12 @@ class TaskScheduler
 						next
 					end
 
-					pending_task = task_model.where(status: :pending, platform: account.platform, theme: account.theme).order(created_at: :asc).first
+					# 只分配「今天创建」的待发布任务：前一日遗留的 pending 不参与分配，
+					# 避免「一天一条」的账号在次日被补发昨天的内容（任务仍保留 pending 留档、不进分配队列）。
+					pending_task = task_model
+						.where(status: :pending, platform: account.platform, theme: account.theme)
+						.where(created_at: today_start..today_end)
+						.order(created_at: :asc).first
 
 					if pending_task
 						ActiveRecord::Base.transaction do
@@ -100,6 +105,8 @@ class TaskScheduler
 
 		WorkMode.scheduler_assign_modes.flat_map do |mode|
 			scope = mode.task_model_class.where(status: :pending).where(conds, *values)
+			# 只识别「今天创建」的被中断任务：跨天遗留的 pending 不再被重跑（与 assign_resources 的当天过滤一致）
+			scope = scope.where(created_at: Date.today.all_day)
 			scope = scope.where(platform: platform) if platform.present?
 			scope.to_a
 		end
