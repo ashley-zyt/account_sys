@@ -28,6 +28,15 @@ every 10.minutes do
   runner 'TaskScheduler.check_timeout_tasks'
 end
 
+# ==================== Undetectable 暂停任务自动恢复 ====================
+# 每 5 分钟检查各机器是否有「因 Undetectable 未启动而暂停」的任务：
+#   有 → 调 POST /tasks/resume 自动恢复（熔断已清 + Undetectable 可用时，机器端会重放发布类任务）；
+#   非发布类（养号/采集/私信）由本任务重新下发；超过 20 分钟仍未恢复 → 用 agic_zyt 发一次钉钉告警。
+set :output, "log/machine_pause_monitor.log"
+every 5.minutes do
+  runner 'MachinePauseMonitor.run'
+end
+
 
 # ==================== 平台分批发布配置 ====================
 # Instagram: 8:00 发布，7:50 分配资源

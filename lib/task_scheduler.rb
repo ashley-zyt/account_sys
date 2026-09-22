@@ -369,6 +369,12 @@ class TaskScheduler
 		scope = BrowserTaskRecord.pending
 		scope = scope.where(machine_ip: machine_ip) if machine_ip.present?
 		overdue = timeout_ago ? scope.where("created_at <= ?", timeout_ago).to_a : scope.to_a
+
+		# 第 1 段里「判定为仍在机器端排队/执行、或因 Undetectable 未启动而暂停」的 ref。
+		# 这些任务是有意在等（尤其 paused：等人工启动或等 MachinePauseMonitor 自动恢复），
+		# 第 2 段必须跳过，否则会一边跳过、一边盲重置，还会引发重复下发。
+		kept_refs = []
+
 		overdue.each do |record|
 			remote = fetch_remote_task(record.machine_ip, record.machine_task_id)
 			status = remote ? remote['status'].to_s : nil
@@ -380,7 +386,8 @@ class TaskScheduler
 				BrowserTaskRecord.mark_result!(record.machine_task_id, status, remote['message'])
 			elsif status && (MACHINE_RUNNING_STATUSES.include?(status) || status == MACHINE_PAUSED_STATUS)
 				# 机器端仍在排队/执行中，或因 Undetectable 未启动而暂停（等人工确认启动）：
-				# 保持 pending，下一轮再查，绝不重置/重复下发。
+				# 保持 pending，下一轮再查，绝不重置/重复下发（并把 ref 记下来供第 2 段跳过）。
+				kept_refs << record.ref.to_s if record.ref.present?
 				Rails.logger.info "[TaskScheduler] 任务 #{record.machine_task_id} 仍在机器端执行中(status=#{status})，跳过"
 			else
 				# 查不到（超期/clear）或 interrupted（服务重启中断）：都重置对应任务
@@ -402,6 +409,13 @@ class TaskScheduler
 			mode.task_model_class.where(status: :executing)
 			                     .where("start_at IS NOT NULL AND start_at <= ?", timeout_ago)
 			                     .each do |task|
+				# 第 1 段已确认「机器端仍在排队/执行中或因 Undetectable 未启动暂停」的任务：
+				# 跳过，交给机器端继续跑 / 等 MachinePauseMonitor 自动恢复，不在这里当超时重置。
+				if kept_refs.include?("#{task.class.name}:#{task.id}")
+					Rails.logger.info "[TaskScheduler] 任务 #{task.class.name}##{task.id} 机器端仍在执行或已暂停，跳过超时重置"
+					next
+				end
+
 				task.update!(
 					status: :pending,
 					account_id: nil,
