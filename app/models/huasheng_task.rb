@@ -56,7 +56,10 @@ class HuashengTask < ApplicationRecord
     '抖音-视频号': 6
   }
 
-  ALL_PLATFORMS = %w[facebook twitter tiktok youtube instagram '抖音-视频号'].freeze
+  # 海外 5 平台（常规主题：每个平台各生成一条资源队列记录）
+  OVERSEAS_PLATFORMS = %w[facebook twitter tiktok youtube instagram].freeze
+  # 仅该主题走「抖音-视频号」单条合并任务（一条任务同时发抖音 + 视频号）
+  DOUYIN_SHIPINHAO_THEME = "花生视频-抖音号视频号".freeze
 
   validates :task_uuid, presence: true, uniqueness: true
   validates :oss_url, presence: true
@@ -121,7 +124,9 @@ class HuashengTask < ApplicationRecord
       "&Signature=#{percent_encode(signature)}"
   end
 
-  # 将已完成的 HuashengKeyword 推送到花生资源队列：每条关键词生成 5 条任务（每平台一条）。
+  # 将已完成的 HuashengKeyword 推送到花生资源队列：
+  #   - 常规主题          → 海外 5 平台各一条（facebook/twitter/tiktok/youtube/instagram）
+  #   - 抖音号视频号 主题  → 仅「抖音-视频号」一条（一条任务同时发抖音 + 视频号）
   #
   # 字段映射规则（result_data.Script 含 title/caption）：
   #   - youtube：huasheng_task.title   = Script.title  （截断 100 字符）
@@ -166,12 +171,11 @@ class HuashengTask < ApplicationRecord
     group_id   = SecureRandom.uuid
 
     created = 0
-    platforms = ALL_PLATFORMS
-    if huasheng_keyword.keyword&.include?("|")
-      platforms= ["抖音-视频号"]
-    else
-      platforms.delete("抖音-视频号")
-    end
+    platforms = if theme == DOUYIN_SHIPINHAO_THEME
+                  ["抖音-视频号"]
+                else
+                  OVERSEAS_PLATFORMS
+                end
     platforms.each do |platform_name|
       if platform_name == "youtube"
         # youtube: title = Script.title（限 100），description = Script.caption（限 280）
