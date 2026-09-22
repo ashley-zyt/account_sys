@@ -257,5 +257,139 @@ class MoveVideo < ApplicationRecord
     list.any? ? list : DEFAULT_PLATFORMS
   end
 
+  # ---------- 删除（含 OSS 同步删除） ----------
+  # OSS 杭州区域 endpoint（bucket 名从 URL host 自动解析，无需硬编码）
+  OSS_ENDPOINT = 'https://oss-cn-hangzhou.aliyuncs.com'.freeze
+
+  # 删除单条 move_video，并同步删除其名下的 OSS 视频文件（原始视频 raw_oss_url + 关联成片）。
+  #
+  # 策略：
+  #   1. 先收集要删的 OSS URL（删库前必须拿到，记录删完就无法回溯）
+  #   2. 事务内删除 DB 记录（move_tasks 可选连带删除，move_video 本体 destroy!）
+  #   3. 事务外删除 OSS 文件（尽力而为：404 视为已不存在，OSS 失败不影响 DB 删除结果）
+  #
+  # @param delete_move_tasks [Boolean] 是否连带删除关联 move_tasks 及其成片 OSS
+  #        true  → 彻底删除这条视频的所有产物（raw 原始视频 + 成片 + move_tasks 记录）
+  #        false → 只删 move_video 与 raw 原始视频；move_tasks 走 dependent: :nullify 保留，成片 OSS 不动
+  # @param delete_oss [Boolean] 是否删除 OSS 文件，默认 true（置 false 可只删库、留文件）
+  # @return [Hash] { deleted_video:, deleted_tasks:, oss_ok:, oss_failed:, oss_skipped:, oss_urls:, oss_errors: }
+  def destroy_with_oss!(delete_move_tasks: true, delete_oss: true)
+    # ① 先收集要删的 OSS URL
+    oss_urls = []
+    oss_urls << raw_oss_url if raw_oss_url.present?
+    oss_urls += move_tasks.where.not(oss_url: [nil, '']).pluck(:oss_url) if delete_move_tasks
+    oss_urls = oss_urls.compact.map(&:to_s).reject(&:blank?).uniq
+
+    deleted_tasks = 0
+    transaction do
+      deleted_tasks = move_tasks.delete_all if delete_move_tasks
+      # delete_move_tasks=false 时，剩余 move_tasks 由 dependent: :nullify 置空引用并保留
+      destroy!
+    end
+
+    # ② 删除 OSS 文件（尽力而为，失败只记录不抛出）
+    oss_ok = oss_failed = oss_skipped = 0
+    oss_errors = []
+    if delete_oss
+      oss_urls.each do |url|
+        status, msg = self.class.send(:delete_oss_object, url)
+        case status
+        when :ok   then oss_ok += 1
+        when :skip then oss_skipped += 1
+        when :fail
+          oss_failed += 1
+          oss_errors << "#{url[0, 80]}: #{msg}"
+        end
+      end
+    else
+      oss_skipped = oss_urls.size
+    end
+
+    {
+      deleted_video: 1,
+      deleted_tasks: deleted_tasks,
+      oss_ok: oss_ok,
+      oss_failed: oss_failed,
+      oss_skipped: oss_skipped,
+      oss_urls: oss_urls,
+      oss_errors: oss_errors
+    }
+  end
+
+  # 批量删除：对传入的集合逐条调用 destroy_with_oss!，返回汇总统计。
+  # 用法示例：
+  #   MoveVideo.destroy_all_with_oss!(MoveVideo.where(status: :failed))
+  #   MoveVideo.destroy_all_with_oss!(MoveVideo.where('created_at < ?', 7.days.ago))
+  #   MoveVideo.destroy_all_with_oss!(MoveVideo.where(id: [1, 2, 3]), delete_move_tasks: false)
+  # @return [Hash] { deleted_video:, deleted_tasks:, oss_ok:, oss_failed:, oss_skipped:, oss_errors: }
+  def self.destroy_all_with_oss!(records = nil, delete_move_tasks: true, delete_oss: true)
+    records ||= all
+    summary = { deleted_video: 0, deleted_tasks: 0, oss_ok: 0, oss_failed: 0, oss_skipped: 0, oss_errors: [] }
+    records.find_each do |video|
+      r = video.destroy_with_oss!(delete_move_tasks: delete_move_tasks, delete_oss: delete_oss)
+      summary[:deleted_video] += r[:deleted_video]
+      summary[:deleted_tasks] += r[:deleted_tasks]
+      summary[:oss_ok] += r[:oss_ok]
+      summary[:oss_failed] += r[:oss_failed]
+      summary[:oss_skipped] += r[:oss_skipped]
+      summary[:oss_errors].concat(r[:oss_errors])
+    end
+    summary
+  end
+
+  class << self
+    private
+
+    # OSS 凭证是否已配置
+    def oss_credentials_configured?
+      ENV['ALIYUN_ACCESS_KEY_ID'].present? && ENV['ALIYUN_ACCESS_KEY_SECRET'].present?
+    end
+
+    # 从 OSS URL 解析 bucket 与 key（兼容签名 URL，query 参数忽略）
+    def parse_oss_url(url)
+      require 'uri'
+      uri = URI.parse(url.to_s)
+      bucket = uri.host.to_s.split('.').first
+      key = uri.path.to_s.sub(%r{\A/}, '')
+      begin
+        key = URI.decode_www_form_component(key)
+      rescue StandardError
+        # 解码失败则用原始 path
+      end
+      [bucket, key]
+    end
+
+    # 懒加载 OSS client（复用，避免每个文件新建）
+    def oss_client
+      @oss_client ||= begin
+        require 'aliyun/oss'
+        Aliyun::OSS::Client.new(
+          endpoint: OSS_ENDPOINT,
+          access_key_id: ENV['ALIYUN_ACCESS_KEY_ID'],
+          access_key_secret: ENV['ALIYUN_ACCESS_KEY_SECRET']
+        )
+      end
+    end
+
+    # 删除单个 OSS 对象，返回 [结果, 消息]；404 视为「已不存在」算成功
+    def delete_oss_object(url)
+      return [:skip, 'URL 为空'] if url.blank?
+      return [:skip, 'OSS 凭证未配置'] unless oss_credentials_configured?
+
+      bucket, key = parse_oss_url(url)
+      return [:fail, "无法解析 bucket/key: #{url[0, 80]}"] if bucket.blank? || key.blank?
+
+      oss_client.get_bucket(bucket).delete_object(key)
+      [:ok, nil]
+    rescue => e
+      msg = e.message.to_s
+      if msg.include?('404') || msg.include?('NoSuchKey') || msg.include?('NoSuchFile')
+        [:ok, '对象已不存在']
+      else
+        [:fail, msg]
+      end
+    end
+  end
+
   class StateError < StandardError; end
 end
