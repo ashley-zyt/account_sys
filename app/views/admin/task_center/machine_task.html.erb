@@ -8,8 +8,14 @@
 <%
   data = @result&.ok ? (@result.data || {}) : {}
   norm = data.any? ? MachineTaskMonitor.normalize_task(data) : {}
-  fg, bg = MachineTaskMonitor.status_color(norm[:status])
   src_labels = MachineTaskMonitor::SOURCE_LABELS
+
+  pill_class = lambda do |status|
+    key = status.to_s
+    MachineTaskMonitor::STATUS_COLORS.key?(key) ? "admin-pill--#{key}" : 'admin-pill--interrupted'
+  end
+
+  # 字段中文名（顶层字段）
   label_map = {
     'task_id' => '任务ID',
     'type' => '任务类型',
@@ -25,6 +31,7 @@
     'dingtalk_keyword' => '钉钉关键字（仅人工/外部调用）',
     'dingtalk_owner' => '钉钉接收人（仅人工/外部调用）'
   }
+
   fmt_value = lambda do |v|
     case v
     when nil then '—'
@@ -34,6 +41,21 @@
       s.empty? ? '—' : s
     end
   end
+
+  # 关键字段（按机器端字段名取，缺的自动跳过）
+  key_fields = [
+    ['任务ID',        norm[:id]],
+    ['任务类型',      norm[:type_label].presence || norm[:type]],
+    ['状态',          norm[:status_label].presence || norm[:status]],
+    ['指纹浏览器',    norm[:profile_name]],
+    ['业务标识(ref)', norm[:ref]],
+    ['批次标识',      norm[:batch]],
+    ['来源',          src_labels[norm[:source].to_s] || norm[:source]],
+    ['提交时间',      norm[:created_at]],
+    ['最近状态变更',  norm[:updated_at]]
+  ].reject { |(_, v)| v.nil? || v.to_s.strip.empty? }
+
+  failed = norm[:status].to_s == 'failed'
 %>
 
 <div class="admin-card">
@@ -41,14 +63,14 @@
     <div>
       <div class="admin-card-title">
         任务详情
-        <span class="admin-label-muted" style="font-size: 13px; font-weight: 400;">#<%= @task_id.presence || '—' %></span>
+        <span class="admin-label-muted">#<%= @task_id.presence || '—' %></span>
       </div>
       <div class="admin-card-subtitle">
         机器 <strong><%= @machine_ip.presence || '—' %></strong> ·
         <% if @result&.ok %>
           读取成功
         <% else %>
-          <span style="color: #fca5a5;">读取失败：<%= @result&.error %></span>
+          <span class="admin-tx-failed">读取失败：<%= @result&.error %></span>
         <% end %>
       </div>
     </div>
@@ -59,90 +81,90 @@
   </div>
 
   <% if @result&.ok %>
-    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 0 16px 16px;">
-      <% if norm[:id].present? %>
-        <span class="admin-tag">ID <%= norm[:id] %></span>
-      <% end %>
-      <% if norm[:type_label].present? %>
-        <span class="admin-pill-status" style="background: rgba(99, 102, 241, 0.12); color: #818cf8;">
-          <%= norm[:type_label] %>
-        </span>
-      <% end %>
-      <% if norm[:status].present? %>
-        <span class="admin-pill-status" style="background: <%= bg %>; color: <%= fg %>;">
+    <% if norm[:status].present? %>
+      <div class="admin-chip-row">
+        <span class="admin-pill-status <%= pill_class.call(norm[:status]) %>">
           <span class="admin-pill-status-dot"></span><%= norm[:status_label].presence || norm[:status] %>
         </span>
-      <% end %>
-      <% if norm[:profile_name].present? %>
-        <span class="admin-tag">浏览器 <%= norm[:profile_name] %></span>
-      <% end %>
-      <% if norm[:ref].present? %>
-        <span class="admin-tag">ref <%= norm[:ref] %></span>
-      <% end %>
-      <% if norm[:batch].present? %>
-        <span class="admin-tag">批次 <%= norm[:batch] %></span>
-      <% end %>
-      <% if norm[:source].present? %>
-        <span class="admin-tag">来源 <%= src_labels[norm[:source].to_s] || norm[:source] %></span>
-      <% end %>
-    </div>
-
-    <% if norm[:message].present? %>
-      <div style="padding: 0 16px 16px;">
-        <div class="admin-filter-label" style="margin-bottom: 6px;">消息</div>
-        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #1f2937; border-radius: 8px; padding: 10px 12px; color: #cbd5e1; font-size: 13px; white-space: pre-wrap; word-break: break-all;"><%= norm[:message] %></div>
+        <% if norm[:type_label].present? %>
+          <span class="admin-pill-status admin-pill--info"><%= norm[:type_label] %></span>
+        <% end %>
+        <% if norm[:source].present? %>
+          <span class="admin-pill-status <%= norm[:source] == 'manual' ? 'admin-pill--source-manual' : 'admin-pill--source' %>">
+            <%= src_labels[norm[:source].to_s] || norm[:source] %>
+          </span>
+        <% end %>
       </div>
     <% end %>
 
-    <div style="padding: 0 16px 16px;">
-      <div class="admin-filter-label" style="margin-bottom: 6px;">完整字段</div>
-      <div class="admin-table-wrapper admin-table-scroll">
-        <table class="admin-table">
-          <thead>
-            <tr><th style="width: 200px;">字段</th><th>值</th></tr>
-          </thead>
-          <tbody>
-            <% data.each do |k, v| %>
-              <tr>
-                <td>
-                  <span class="admin-label-muted"><%= label_map[k.to_s] || k %></span>
-                  <div class="admin-label-muted" style="font-size: 11px; opacity: 0.6;"><%= k %></div>
-                </td>
-                <td style="white-space: normal; word-break: break-all;">
-                  <% if v.is_a?(Hash) || v.is_a?(Array) %>
-                    <pre style="margin: 0; padding: 8px 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid #1f2937; border-radius: 6px; color: #cbd5e1; font-size: 12px; max-height: 320px; overflow: auto;"><%= fmt_value.call(v) %></pre>
-                  <% else %>
-                    <span class="admin-label-muted" style="white-space: pre-wrap;"><%= fmt_value.call(v) %></span>
-                  <% end %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+    <% if key_fields.any? %>
+      <div class="admin-detail-grid">
+        <% key_fields.each do |(label, value)| %>
+          <div class="admin-detail-item">
+            <div class="admin-detail-label"><%= label %></div>
+            <div class="admin-detail-value"><%= value %></div>
+          </div>
+        <% end %>
       </div>
+    <% end %>
+
+    <% if norm[:message].present? %>
+      <div class="admin-callout admin-gap-top <%= failed ? 'admin-callout-danger' : 'admin-callout-info' %>">
+        <div class="admin-callout-title"><%= failed ? '⚠️ 结果说明' : 'ℹ️ 结果说明' %></div>
+        <div class="admin-code admin-code-plain"><%= norm[:message] %></div>
+      </div>
+    <% end %>
+
+    <div class="tc-subtable-title">完整字段</div>
+    <div class="admin-table-wrapper tc-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th class="admin-field-key">字段</th>
+            <th>值</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% data.each do |k, v| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted"><%= label_map[k.to_s] || k %></span>
+                <div class="admin-label-muted admin-detail-hint"><%= k %></div>
+              </td>
+              <td class="admin-cell-wrap">
+                <% if v.is_a?(Hash) || v.is_a?(Array) %>
+                  <pre class="admin-code"><%= fmt_value.call(v) %></pre>
+                <% else %>
+                  <span class="admin-label-muted admin-cell-pre"><%= fmt_value.call(v) %></span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
 
-    <div style="padding: 0 16px 16px;">
-      <details>
-        <summary style="cursor: pointer; color: #94a3b8; font-size: 12px;">查看机器端原始 JSON 响应</summary>
-        <pre style="margin: 10px 0 0; padding: 10px 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid #1f2937; border-radius: 6px; color: #cbd5e1; font-size: 12px; max-height: 420px; overflow: auto;"><%= JSON.pretty_generate(data) %></pre>
-      </details>
-    </div>
+    <details class="admin-raw-toggle">
+      <summary>查看机器端原始 JSON 响应</summary>
+      <pre class="admin-code admin-code-tall"><%= JSON.pretty_generate(data) %></pre>
+    </details>
   <% else %>
-    <div class="admin-empty-state" style="color: #fca5a5;">
+    <div class="admin-callout admin-callout-danger">
+      <div class="admin-callout-title">读取失败</div>
       <%= @result ? @result.error : '未发起查询' %>
+
       <% if @result&.code.to_i == 404 %>
-        <div style="color: #94a3b8; margin-top: 8px; font-size: 13px;">
+        <div class="admin-callout-note">
           <strong>HTTP 404 · task not found</strong>：该记录已不在机器端。只有两种可能——
           超出保留期（默认 30 天）被清理，或被 <code>POST /tasks/clear</code> 清掉。
           机器端任务已落盘 SQLite，<strong>服务重启不会导致 404</strong>。
         </div>
       <% elsif @result&.code.to_i == 400 %>
-        <div style="color: #94a3b8; margin-top: 8px; font-size: 13px;">
+        <div class="admin-callout-note">
           <strong>HTTP 400</strong>：task_id 为空或格式不合法（含 <code>/</code>）。
         </div>
       <% else %>
-        <div style="color: #94a3b8; margin-top: 8px; font-size: 13px;">
+        <div class="admin-callout-note">
           常见原因：机器不可达 / 网络超时 / 鉴权失败（401）、或任务已被清理。
         </div>
       <% end %>

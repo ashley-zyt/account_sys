@@ -8,32 +8,49 @@
 <%
   status_labels = MachineTaskMonitor::STATUS_LABELS
   limit_options = [50, 100, 200, 500]
-  data = @result&.ok ? (@result.data || {}) : {}
-  sc   = data['status_counts'] || {}    # /tasks 上是全局口径，不受筛选影响
-  tc   = data['source_counts'] || {}    # 同上
-  store = data['store'] || {}
+
+  data   = @result&.ok ? (@result.data || {}) : {}
+  sc     = data['status_counts'] || {}   # /tasks 上是全局口径，不受筛选影响
+  tc     = data['source_counts'] || {}   # 同上
+  store  = data['store'] || {}
+
   # 支持逗号分隔多值，也兼容多选数组
   sel_type   = MachineTaskMonitor.split_multi(params[:type])
   sel_status = MachineTaskMonitor.split_multi(params[:status])
+
   matched  = data['matched'].to_i
   returned = data.key?('returned') ? data['returned'].to_i : @tasks.size
   has_more = data['has_more'] == true
+
   fmt_time = lambda do |v|
     s = v.to_s
     s.empty? ? '—' : s.tr('T', ' ')[0, 19]
   end
+
+  pill_class = lambda do |status|
+    key = status.to_s
+    MachineTaskMonitor::STATUS_COLORS.key?(key) ? "admin-pill--#{key}" : 'admin-pill--interrupted'
+  end
+
+  stat_items = [
+    { label: '库内总数 · 全局', value: data['total'].to_i,            tx: '',                  hint: '不受筛选影响' },
+    { label: '筛选命中 · 截断前', value: matched,                     tx: 'admin-tx-running',  hint: '当前条件的真实条数' },
+    { label: '本次返回',         value: returned,                    tx: '',                  hint: '受「返回条数」限制' },
+    { label: '是否被截断',       value: has_more ? '是' : '否',       tx: has_more ? 'admin-tx-failed' : 'admin-tx-success', hint: has_more ? '命中数大于返回条数' : '命中已全部返回' }
+  ]
 %>
 
-<%# ============ 筛选 ============ %>
+<%# ============ 1. 筛选条件 ============ %>
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
       <div class="admin-card-title">筛选条件</div>
       <div class="admin-card-subtitle">
-        <%= @machine_ip.presence || '未选择机器' %>
-        · 采集于 <%= @fetched_at.strftime('%H:%M:%S') %>（机器端落盘 SQLite，重启不丢、保留 30 天）
+        机器 <strong><%= @machine_ip.presence || '未选择机器' %></strong>
+        · 采集于 <%= @fetched_at.strftime('%H:%M:%S') %>
+        （机器端落盘 SQLite，重启不丢、保留 30 天）
         <% if @result && !@result.ok %>
-          · <span style="color: #fca5a5;">查询失败：<%= @result.error %></span>
+          · <span class="admin-tx-failed">查询失败：<%= @result.error %></span>
         <% end %>
       </div>
     </div>
@@ -54,35 +71,21 @@
     </div>
 
     <div class="admin-filter-group">
-      <label class="admin-filter-label">状态（可多选）</label>
-      <%= select_tag :status,
-                     options_for_select(status_labels.map { |k, v| [v, k] }, sel_status),
-                     multiple: true, size: 6, class: "admin-input admin-filter-input" %>
-    </div>
-
-    <div class="admin-filter-group">
-      <label class="admin-filter-label">任务类型（可多选）</label>
-      <%= select_tag :type,
-                     options_for_select(@task_types.map { |k, v| [v, k] }, sel_type),
-                     multiple: true, size: 6, class: "admin-input admin-filter-input" %>
-    </div>
-
-    <div class="admin-filter-group">
-      <label class="admin-filter-label">浏览器</label>
+      <label class="admin-filter-label">浏览器 profile_name</label>
       <%= text_field_tag :profile_name, @filters[:profile_name],
-                         class: "admin-input admin-filter-input", placeholder: "profile_name，可逗号分隔多个" %>
+                         class: "admin-input admin-filter-input", placeholder: "可逗号分隔多个" %>
     </div>
 
     <div class="admin-filter-group">
-      <label class="admin-filter-label">批次</label>
+      <label class="admin-filter-label">批次 batch</label>
       <%= text_field_tag :batch, @filters[:batch],
-                         class: "admin-input admin-filter-input", placeholder: "batch，可逗号分隔多个" %>
+                         class: "admin-input admin-filter-input", placeholder: "可逗号分隔多个" %>
     </div>
 
     <div class="admin-filter-group">
       <label class="admin-filter-label">ref 前缀</label>
       <%= text_field_tag :ref_prefix, @filters[:ref_prefix],
-                         class: "admin-input admin-filter-input", placeholder: "如 MoveTask:,Account:（前缀匹配，可多个）" %>
+                         class: "admin-input admin-filter-input", placeholder: "如 MoveTask:,Account:" %>
     </div>
 
     <div class="admin-filter-group">
@@ -99,89 +102,107 @@
                      class: "admin-input admin-filter-input" %>
     </div>
 
-    <div style="margin-left: auto;">
+    <div class="admin-filter-group admin-filter-group-full">
+      <label class="admin-filter-label">状态（多选，可任意组合）</label>
+      <div class="admin-check-group">
+        <% status_labels.each do |k, v| %>
+          <label class="admin-check">
+            <input type="checkbox" name="status[]" value="<%= k %>" <%= "checked" if sel_status.include?(k) %>>
+            <%= v %>
+          </label>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="admin-filter-group admin-filter-group-full">
+      <label class="admin-filter-label">任务类型（多选，可任意组合）</label>
+      <div class="admin-check-group">
+        <% @task_types.each do |k, v| %>
+          <label class="admin-check">
+            <input type="checkbox" name="type[]" value="<%= k %>" <%= "checked" if sel_type.include?(k) %>>
+            <%= v %>
+          </label>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="admin-filter-actions">
       <%= submit_tag "筛选", class: "admin-button-primary" %>
       <%= link_to "重置", machines_admin_task_center_index_path(machine_ip: @machine_ip), class: "admin-button-secondary" %>
     </div>
   <% end %>
 
-  <div style="padding: 0 16px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-    <span style="color: #64748b; font-size: 12px;">快捷筛选：</span>
-    <%= link_to "排队 + 执行中", machines_admin_task_center_index_path(machine_ip: @machine_ip, status: 'queued,running'), class: "admin-tag" %>
-    <%= link_to "失败", machines_admin_task_center_index_path(machine_ip: @machine_ip, status: 'failed'), class: "admin-tag" %>
-    <%= link_to "已暂停", machines_admin_task_center_index_path(machine_ip: @machine_ip, status: 'paused'), class: "admin-tag" %>
+  <div class="admin-chip-row">
+    <span class="admin-label-muted">快捷筛选：</span>
+    <%= link_to "排队 + 执行中", machines_admin_task_center_index_path(machine_ip: @machine_ip, status: 'queued,running'), class: "admin-chip" %>
+    <%= link_to "失败",         machines_admin_task_center_index_path(machine_ip: @machine_ip, status: 'failed'),         class: "admin-chip" %>
+    <%= link_to "已暂停",       machines_admin_task_center_index_path(machine_ip: @machine_ip, status: 'paused'),         class: "admin-chip" %>
   </div>
 </div>
 
-<%# ============ 统计 ============ %>
+<%# ============ 2. 统计 ============ %>
 <% if @result&.ok %>
-  <div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card tc-section">
     <div class="admin-card-header">
       <div>
         <div class="admin-card-title">统计</div>
         <div class="admin-card-subtitle">
-          ⚠️ 机器端 <code>/tasks</code> 的「库内总数 / 各状态 / 来源」是<strong>全局口径，不受上面筛选影响</strong>；
+          机器端 <code>/tasks</code> 的「库内总数 / 各状态 / 来源」是<strong>全局口径，不受筛选影响</strong>；
           「筛选命中」才是当前条件的真实条数（limit 截断前）
         </div>
       </div>
     </div>
 
-    <div style="padding: 0 16px 16px; display: flex; gap: 12px; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 140px; background: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 8px; padding: 12px;">
-        <div style="color: #94a3b8; font-size: 12px;">库内总数 · 全局</div>
-        <div style="font-size: 24px; font-weight: 600; color: #e2e8f0; margin-top: 6px;"><%= data['total'].to_i %></div>
-      </div>
-      <div style="flex: 1; min-width: 140px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 8px; padding: 12px;">
-        <div style="color: #93c5fd; font-size: 12px;">筛选命中 · 截断前</div>
-        <div style="font-size: 24px; font-weight: 600; color: #3b82f6; margin-top: 6px;"><%= matched %></div>
-      </div>
-      <div style="flex: 1; min-width: 140px; background: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 8px; padding: 12px;">
-        <div style="color: #94a3b8; font-size: 12px;">本次返回</div>
-        <div style="font-size: 24px; font-weight: 600; color: #e2e8f0; margin-top: 6px;"><%= returned %></div>
-      </div>
-      <div style="flex: 1; min-width: 140px; background: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 8px; padding: 12px;">
-        <div style="color: #94a3b8; font-size: 12px;">是否被截断</div>
-        <div style="font-size: 24px; font-weight: 600; margin-top: 6px; color: <%= has_more ? '#ef4444' : '#22c55e' %>;"><%= has_more ? '是' : '否' %></div>
-      </div>
+    <div class="admin-stat-grid">
+      <% stat_items.each do |s| %>
+        <div class="admin-stat">
+          <div class="admin-stat-value <%= s[:tx] %>"><%= s[:value] %></div>
+          <div class="admin-stat-label"><%= s[:label] %></div>
+          <div class="admin-stat-hint"><%= s[:hint] %></div>
+        </div>
+      <% end %>
     </div>
 
-    <div style="padding: 0 16px 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-      <span class="admin-label-muted" style="font-size: 12px;">全局状态分布：</span>
+    <div class="admin-chip-row">
+      <span class="admin-label-muted">全局状态分布：</span>
       <% sc.each do |k, v| %>
-        <% fg, bg = MachineTaskMonitor.status_color(k) %>
-        <span class="admin-pill-status" style="background: <%= bg %>; color: <%= fg %>;">
+        <span class="admin-pill-status <%= pill_class.call(k) %>">
           <span class="admin-pill-status-dot"></span><%= status_labels[k.to_s] || k %> <%= v.to_i %>
         </span>
       <% end %>
-      <span class="admin-label-muted" style="font-size: 12px;">· 全局来源：</span>
+      <span class="admin-label-muted">· 全局来源：</span>
       <% tc.each do |k, v| %>
-        <span class="admin-tag"><%= MachineTaskMonitor::SOURCE_LABELS[k.to_s] || k %> <%= v.to_i %></span>
+        <span class="admin-chip"><%= MachineTaskMonitor::SOURCE_LABELS[k.to_s] || k %> <%= v.to_i %></span>
       <% end %>
     </div>
 
     <% if store.present? %>
-      <div style="padding: 0 16px 16px; color: #64748b; font-size: 12px;">
-        存储：<%= store['file'] || '—' %> ·
-        保留 <%= store['retention_days'] || '—' %> 天 ·
-        大小 <%= (store['size_bytes'].to_i / 1024.0).round(1) %> KB ·
-        最近落盘 <%= fmt_time.call(store['saved_at']) %>
+      <div class="admin-chip-row">
+        <span class="admin-label-muted">
+          存储：<%= store['file'] || '—' %> ·
+          保留 <%= store['retention_days'] || '—' %> 天 ·
+          大小 <%= (store['size_bytes'].to_i / 1024.0).round(1) %> KB ·
+          最近落盘 <%= fmt_time.call(store['saved_at']) %>
+        </span>
         <% if store['enabled'] == false %>
-          · <span style="color: #fca5a5;">⚠️ 落盘未启用（重启后历史会丢）</span>
+          <span class="admin-pill-status admin-pill--failed">
+            <span class="admin-pill-status-dot"></span>落盘未启用（重启后历史会丢）
+          </span>
         <% end %>
       </div>
     <% end %>
   </div>
 <% end %>
 
-<%# ============ 任务列表 ============ %>
-<div class="admin-card" style="margin-top: 16px;">
+<%# ============ 3. 任务列表 ============ %>
+<div class="admin-card tc-section">
   <div class="admin-card-header">
     <div>
       <div class="admin-card-title">任务列表</div>
       <div class="admin-card-subtitle">
         显示 <%= @tasks.size %> 条 · 按提交时间倒序
         <% if has_more %>
-          · <span style="color: #fca5a5;">命中 <%= matched %> 条，被「返回条数」截断</span>
+          · <span class="admin-tx-failed">命中 <%= matched %> 条，被「返回条数」截断</span>
         <% end %>
       </div>
     </div>
@@ -190,11 +211,14 @@
   <% if @result.nil? %>
     <div class="admin-empty-state">没有配置 machine_ip 的浏览器，无可查询的机器。</div>
   <% elsif !@result.ok %>
-    <div class="admin-empty-state" style="color: #fca5a5;">查询失败：<%= @result.error %></div>
+    <div class="admin-callout admin-callout-danger">
+      <div class="admin-callout-title">查询失败</div>
+      <%= @result.error %>
+    </div>
   <% elsif @tasks.empty? %>
     <div class="admin-empty-state">该筛选条件下没有任务。</div>
   <% else %>
-    <div class="admin-table-wrapper admin-table-scroll">
+    <div class="admin-table-wrapper tc-scroll">
       <table class="admin-table">
         <thead>
           <tr>
@@ -212,7 +236,6 @@
         </thead>
         <tbody>
           <% @tasks.each do |t| %>
-            <% fg, bg = MachineTaskMonitor.status_color(t[:status]) %>
             <tr>
               <td>
                 <% if t[:id].present? %>
@@ -224,12 +247,10 @@
                 <% end %>
               </td>
               <td>
-                <span class="admin-pill-status" style="background: rgba(99, 102, 241, 0.12); color: #818cf8;">
-                  <%= t[:type_label].presence || '—' %>
-                </span>
+                <span class="admin-pill-status admin-pill--info"><%= t[:type_label].presence || '—' %></span>
               </td>
               <td>
-                <span class="admin-pill-status" style="background: <%= bg %>; color: <%= fg %>;">
+                <span class="admin-pill-status <%= pill_class.call(t[:status]) %>">
                   <span class="admin-pill-status-dot"></span><%= t[:status_label].presence || '—' %>
                 </span>
               </td>
@@ -237,7 +258,7 @@
               <td><span class="admin-label-muted"><%= t[:ref].presence || '—' %></span></td>
               <td><span class="admin-label-muted"><%= t[:batch].presence || '—' %></span></td>
               <td>
-                <span class="admin-tag" style="<%= t[:source] == 'manual' ? 'color:#f472b6;' : 'color:#38bdf8;' %>">
+                <span class="admin-pill-status <%= t[:source] == 'manual' ? 'admin-pill--source-manual' : 'admin-pill--source' %>">
                   <%= t[:source_label] %>
                 </span>
               </td>
@@ -253,63 +274,95 @@
         </tbody>
       </table>
     </div>
-    <div style="padding: 12px 16px; color: #64748b; font-size: 12px;">
-      来源判定：带 dingtalk_webhook ＝ 人工/外部直接调 API；不带 ＝ account_sys 下发。
-      想看某类堆积的真实总量，可把「返回条数」调小（如 1 条），「筛选命中」即总数。
+
+    <div class="admin-chip-row">
+      <span class="admin-label-muted">
+        来源判定：带 dingtalk_webhook ＝ 人工/外部直接调 API；不带 ＝ account_sys 下发。
+        想看某类堆积的真实总量，可把「返回条数」调小（如 1 条），「筛选命中」即总数。
+      </span>
     </div>
   <% end %>
 </div>
 
-<%# ============ 任务操作（预填当前机器与筛选，直接作用于这批任务） ============ %>
-<div class="admin-card" style="margin-top: 16px;">
+<%# ============ 4. 任务操作（作用于当前机器） ============ %>
+<div class="admin-card tc-section">
   <div class="admin-card-header">
     <div>
       <div class="admin-card-title">任务操作</div>
-      <div class="admin-card-subtitle">对 <strong><%= @machine_ip.presence || '（未选机器）' %></strong> 上符合条件的任务中断/清空，或确认启动恢复暂停任务</div>
+      <div class="admin-card-subtitle">
+        对 <strong><%= @machine_ip.presence || '（未选机器）' %></strong> 上符合条件的任务中断/清空，或确认启动恢复暂停任务
+      </div>
     </div>
   </div>
 
-  <div style="padding: 0 16px 16px;">
-    <div style="border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 8px; padding: 12px 16px; background: rgba(34, 197, 94, 0.05);">
-      <div style="color: #86efac; font-size: 13px; margin-bottom: 10px;">
-        ✅ 确认启动：Undetectable 已手动启动后，探测并恢复该机器上「因未启动而暂停」的发布任务
-        （只恢复 paused 且类型以 <code>_publish</code> 结尾、带 payload 的任务）
-      </div>
-      <%= form_with url: resume_admin_task_center_index_path, method: :post,
-                    data: { turbo_confirm: "确认 #{@machine_ip} 的 Undetectable 已启动？将立即探测（最长约 60 秒）并恢复其暂停的发布任务。" } do %>
+  <div class="admin-callout admin-callout-success">
+    <div class="admin-callout-title">✅ 确认启动</div>
+    Undetectable 已手动启动后，探测并恢复该机器上「因未启动而暂停」的发布任务
+    （只恢复 paused、类型以 <code>_publish</code> 结尾且带 payload 的任务）。
+
+    <%= form_with url: resume_admin_task_center_index_path, method: :post,
+                  data: { turbo_confirm: "确认 #{@machine_ip} 的 Undetectable 已启动？将立即探测（最长约 60 秒）并恢复其暂停的发布任务。" } do %>
+      <div class="admin-form-row">
         <%= hidden_field_tag :machine_ip, @machine_ip %>
         <%= submit_tag "确认启动并恢复", class: "admin-button-primary" %>
-      <% end %>
-    </div>
+      </div>
+    <% end %>
   </div>
 
-  <div style="padding: 0 16px 16px;">
-    <div style="border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 12px 16px; background: rgba(239, 68, 68, 0.05);">
-      <div style="color: #fca5a5; font-size: 13px; margin-bottom: 10px;">
-        ⚠️ 清除任务（破坏性）：queued 会被取消、running 会被中断，记录从机器端删除且<strong>不再回调 account_sys</strong>。
-        类型与状态都不选即全量清空该机器任务
+  <details class="admin-danger-zone">
+    <summary>清除任务（破坏性操作，点开查看）</summary>
+
+    <div class="admin-danger-zone-body">
+      <div class="admin-callout admin-callout-danger">
+        <div class="admin-callout-title">⚠️ 被清除的任务不再回调 account_sys</div>
+        queued 会被取消、running 会被中断，记录从机器端删除。
+        类型与状态都不选 = 全量清空该机器任务。
       </div>
+
       <%= form_with url: clear_admin_task_center_index_path, method: :post,
                     data: { turbo_confirm: "确定清除 #{@machine_ip} 上所选类型/状态的任务？这会中断执行中/排队中的任务，且被清除任务不再回调。" } do %>
-        <%= hidden_field_tag :machine_ip, @machine_ip %>
-        <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+        <div class="admin-form-stack">
+          <%= hidden_field_tag :machine_ip, @machine_ip %>
+
           <div class="admin-filter-group">
-            <label class="admin-filter-label">状态（可多选，默认取当前筛选）</label>
-            <%= select_tag :status,
-                           options_for_select(status_labels.map { |k, v| [v, k] }, sel_status),
-                           multiple: true, size: 6, class: "admin-input admin-filter-input" %>
+            <label class="admin-filter-label">状态（默认取当前筛选，可改）</label>
+            <div class="admin-check-group">
+              <% status_labels.each do |k, v| %>
+                <label class="admin-check">
+                  <input type="checkbox" name="status[]" value="<%= k %>" <%= "checked" if sel_status.include?(k) %>>
+                  <%= v %>
+                </label>
+              <% end %>
+            </div>
           </div>
+
           <div class="admin-filter-group">
-            <label class="admin-filter-label">任务类型（可多选，默认取当前筛选）</label>
-            <%= select_tag :type,
-                           options_for_select(@task_types.map { |k, v| [v, k] }, sel_type),
-                           multiple: true, size: 6, class: "admin-input admin-filter-input" %>
+            <label class="admin-filter-label">任务类型（默认取当前筛选，可改）</label>
+            <div class="admin-check-group">
+              <% @task_types.each do |k, v| %>
+                <label class="admin-check">
+                  <input type="checkbox" name="type[]" value="<%= k %>" <%= "checked" if sel_type.include?(k) %>>
+                  <%= v %>
+                </label>
+              <% end %>
+            </div>
           </div>
+
           <div>
             <%= submit_tag "清除任务", class: "admin-button-danger" %>
           </div>
         </div>
       <% end %>
     </div>
-  </div>
+  </details>
 </div>
+
+<script>
+  // 复选胶囊选中态（不依赖 :has()，兼容性更稳）
+  document.querySelectorAll('.admin-check input[type="checkbox"]').forEach(function (cb) {
+    var box = cb.closest('.admin-check');
+    var sync = function () { box.classList.toggle('admin-check-on', cb.checked); };
+    cb.addEventListener('change', sync);
+    sync();
+  });
+</script>

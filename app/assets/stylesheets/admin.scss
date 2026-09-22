@@ -1466,3 +1466,469 @@ body.admin {
 		max-width: 100%;
 	}
 }
+
+/* =====================================================================
+   异步任务页（admin/task_center 下的 index / machines / machine_task）
+   统一组件：全部走主题变量，页面里不再写内联颜色和尺寸。
+   ===================================================================== */
+
+/* --- 页面分区：卡片之间的统一间距 --- */
+.tc-section {
+  margin-top: 16px;
+}
+
+/* 卡片头部按钮：去掉 admin-button-secondary 自带的 margin-left（靠 gap 控制间距） */
+.admin-card-header-right .admin-button-secondary {
+  margin-left: 0;
+}
+
+/* --- 危险按钮（清除任务） --- */
+.admin-button-danger {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  background: rgba(239, 68, 68, 0.14);
+  color: #fecaca;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.admin-button-danger:hover {
+  background: rgba(239, 68, 68, 0.26);
+  border-color: rgba(239, 68, 68, 0.85);
+  color: #fff;
+}
+
+/* --- 状态色彩工具类（数字/文本着色） --- */
+.admin-tx-queued { color: #f59e0b; }
+.admin-tx-running { color: #3b82f6; }
+.admin-tx-success { color: #22c55e; }
+.admin-tx-failed { color: #ef4444; }
+.admin-tx-interrupted { color: #94a3b8; }
+.admin-tx-paused { color: #e879f9; }
+.admin-tx-accent { color: var(--accent); }
+.admin-tx-muted { color: var(--text-muted); }
+
+/* 数字：等宽 + 加粗，成列时便于对比 */
+.tc-num {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 状态胶囊按状态取色（替代页面里的内联 background/color） --- */
+.admin-pill--queued { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+.admin-pill--queued .admin-pill-status-dot { background: #f59e0b; }
+.admin-pill--running { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
+.admin-pill--running .admin-pill-status-dot { background: #3b82f6; }
+.admin-pill--success { background: rgba(34, 197, 94, 0.18); color: #86efac; }
+.admin-pill--success .admin-pill-status-dot { background: #22c55e; }
+.admin-pill--failed { background: rgba(239, 68, 68, 0.2); color: #fecaca; }
+.admin-pill--failed .admin-pill-status-dot { background: #ef4444; }
+.admin-pill--interrupted { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
+.admin-pill--interrupted .admin-pill-status-dot { background: #94a3b8; }
+.admin-pill--paused { background: rgba(232, 121, 249, 0.16); color: #f5d0fe; }
+.admin-pill--paused .admin-pill-status-dot { background: #e879f9; }
+.admin-pill--info { background: rgba(99, 102, 241, 0.16); color: #a5b4fc; }
+.admin-pill--info .admin-pill-status-dot { background: #6366f1; }
+.admin-pill--source { background: rgba(56, 189, 248, 0.14); color: #7dd3fc; }
+.admin-pill--source-manual { background: rgba(244, 114, 182, 0.16); color: #f9a8d4; }
+
+/* --- 指标条 --- */
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 10px;
+}
+
+.admin-stat {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 12px 10px;
+}
+
+.admin-stat-value {
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-stat-label {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.admin-stat-hint {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+/* --- 提示条 --- */
+.admin-callout {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.6);
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.admin-callout + .admin-callout {
+  margin-top: 10px;
+}
+
+.admin-callout-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.admin-callout-info { border-color: rgba(59, 130, 246, 0.32); background: rgba(59, 130, 246, 0.06); }
+.admin-callout-info .admin-callout-title { color: #93c5fd; }
+.admin-callout-success { border-color: rgba(34, 197, 94, 0.32); background: rgba(34, 197, 94, 0.06); }
+.admin-callout-success .admin-callout-title { color: #86efac; }
+.admin-callout-warn { border-color: rgba(234, 179, 8, 0.32); background: rgba(234, 179, 8, 0.06); }
+.admin-callout-warn .admin-callout-title { color: #facc15; }
+.admin-callout-danger { border-color: rgba(239, 68, 68, 0.32); background: rgba(239, 68, 68, 0.06); }
+.admin-callout-danger .admin-callout-title { color: #fca5a5; }
+
+/* 提示条内的表单行 */
+.admin-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.admin-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-top: 10px;
+}
+
+/* --- 危险操作折叠区 --- */
+.admin-danger-zone {
+  margin-top: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.admin-danger-zone > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 11px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fca5a5;
+  user-select: none;
+}
+
+.admin-danger-zone > summary::-webkit-details-marker { display: none; }
+.admin-danger-zone > summary::marker { content: ''; }
+
+.admin-danger-zone > summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  color: #f87171;
+  transition: transform 0.15s;
+}
+
+.admin-danger-zone[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.admin-danger-zone > summary:hover {
+  background: rgba(239, 68, 68, 0.07);
+}
+
+.admin-danger-zone-body {
+  padding: 0 14px 14px;
+}
+
+/* --- 复选胶囊（多选筛选 / 多选清除） --- */
+.admin-check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(15, 23, 42, 0.8);
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-check:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  color: var(--text-primary);
+}
+
+.admin-check input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.admin-check-on {
+  border-color: rgba(59, 130, 246, 0.8);
+  background: var(--accent-soft);
+  color: #dbeafe;
+}
+
+/* --- 筛选区 --- */
+.admin-filter-group-full {
+  flex-basis: 100%;
+}
+
+.admin-filter-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- 卡片内子表标题 / 表格滚动 / 数字右对齐 --- */
+.tc-subtable-title {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 12px 0 6px;
+}
+
+.tc-subtable-title:first-child {
+  margin-top: 0;
+}
+
+.tc-scroll {
+  overflow-x: auto;
+}
+
+.admin-table th.tc-right,
+.admin-table td.tc-right {
+  text-align: right;
+}
+
+/* --- 机器卡片（两列并排，点击展开） --- */
+.tc-machine-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+@media (max-width: 1200px) {
+  .tc-machine-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.tc-machine {
+  background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.94));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  align-self: start;
+  overflow: hidden;
+}
+
+.tc-machine[open] {
+  border-color: rgba(59, 130, 246, 0.38);
+}
+
+.tc-machine > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  display: block;
+  user-select: none;
+}
+
+.tc-machine > summary::-webkit-details-marker { display: none; }
+.tc-machine > summary::marker { content: ''; }
+
+.tc-machine > summary:hover {
+  background: rgba(30, 41, 59, 0.3);
+}
+
+.tc-machine[open] > summary {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tc-machine-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tc-machine-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tc-machine-arrow {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.tc-machine[open] .tc-machine-arrow {
+  transform: rotate(90deg);
+}
+
+.tc-kv-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 14px;
+  margin-top: 7px;
+}
+
+.tc-kv {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tc-kv b {
+  margin-left: 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-machine-body {
+  padding: 12px 14px 14px;
+}
+
+.tc-machine-actions {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* --- 详情页字段网格 --- */
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px 18px;
+  margin-top: 12px;
+}
+
+.admin-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-detail-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.admin-detail-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+/* --- 代码块 / 原始 JSON --- */
+.admin-code {
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.55;
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 去掉外框的纯文本代码块（用于提示条里的长文案） */
+.admin-code-plain {
+  background: transparent;
+  border: none;
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.admin-code-tall {
+  max-height: 420px;
+}
+
+/* --- 表格 / 详情页小工具类 --- */
+.admin-gap-top { margin-top: 12px; }
+.admin-field-key { width: 200px; }
+.admin-col-check { width: 36px; }
+.admin-cell-wrap { white-space: normal; word-break: break-all; }
+.admin-cell-pre { white-space: pre-wrap; word-break: break-all; }
+.admin-detail-hint { font-size: 10px; opacity: 0.6; }
+.admin-callout-note { margin-top: 8px; color: var(--text-muted); }
+
+.admin-raw-toggle {
+  margin-top: 12px;
+}
+
+.admin-raw-toggle > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.admin-raw-toggle > summary:hover {
+  color: var(--text-primary);
+}
+
+.admin-raw-toggle[open] > summary {
+  margin-bottom: 8px;
+}
+
+/* --- pill 作为链接（快捷筛选） --- */
+a.admin-chip {
+  text-decoration: none;
+}
+
+a.admin-chip:hover {
+  border-color: rgba(59, 130, 246, 0.6);
+  color: var(--text-primary);
+}
+
+a.admin-tag {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+a.admin-tag:hover {
+  border-color: rgba(59, 130, 246, 0.6);
+  color: var(--text-primary);
+}
