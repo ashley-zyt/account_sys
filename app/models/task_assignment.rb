@@ -1,3 +1,26 @@
+# == Schema Information
+#
+# Table name: task_assignments
+#
+#  id                                                                       :bigint           not null, primary key
+#  assigned_at(本次发活时间)                                                :datetime
+#  release_reason(释放原因)                                                 :string(255)
+#  released_at(本次归属被释放的时间（重置/中断/失败回退时写入）)            :datetime
+#  task_type(工作模式 key（move/operation/jianying/grok/heygen），便于排查) :string(255)
+#  task_uuid(资源队列任务的 task_uuid（与 task_logs 同一关联方式）)         :string(255)      not null
+#  created_at                                                               :datetime         not null
+#  updated_at                                                               :datetime         not null
+#  account_id(发活时分配的账号（任务释放后仍保留）)                         :bigint
+#  browser_id(发活时分配的浏览器（任务释放后仍保留）)                       :string(255)
+#
+# Indexes
+#
+#  index_task_assignments_on_account_id            (account_id)
+#  index_task_assignments_on_assigned_at           (assigned_at)
+#  index_task_assignments_on_browser_id            (browser_id)
+#  index_task_assignments_on_task_uuid             (task_uuid)
+#  index_task_assignments_on_uuid_and_released_at  (task_uuid,released_at)
+#
 # == 任务「发活」时的账号/浏览器归属快照
 #
 # 为什么需要它（2026-09-22 排查结论）：
