@@ -112,6 +112,9 @@ class Util
       assigned_task = pending_task.reload
     end
 
+    # 发活那一刻固化归属（释放时只标记、不删除，供迟到的回调归档日志）
+    TaskAssignment.record!(assigned_task)
+
     type_name = work_type
     Rails.logger.info "[Util] 账号 #{account.account_name} 分配 #{type_name} 资源成功，任务 ID=#{assigned_task.id}，开始执行发布..."
 

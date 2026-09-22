@@ -65,6 +65,8 @@ class TaskScheduler
 								browser_id: account.browser_id,
 								status: :waiting_publish
 							)
+							# 发活那一刻固化归属（释放时只标记、不删除，供迟到的回调归档日志）
+							TaskAssignment.record!(pending_task)
 						end
 						Rails.logger.info "#{type_name}账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配 #{type_name} 资源成功"
 					else
@@ -416,6 +418,9 @@ class TaskScheduler
 					next
 				end
 
+				# 先把归属标为「已释放」（只标记、不删记录）：下面要清空任务上的 account_id/browser_id，
+				# 而回调可能还在路上，届时要靠 TaskAssignment 认人。
+				TaskAssignment.release!(task.task_uuid, '任务执行超时，重置待重新分配')
 				task.update!(
 					status: :pending,
 					account_id: nil,
@@ -451,9 +456,12 @@ class TaskScheduler
 			task_model = model_name.safe_constantize
 			return unless task_model.is_a?(Class) && task_model < ApplicationRecord && WorkMode.for_model(task_model)
 			# 发文任务：重置回 pending（清账号/浏览器），等重新分配
-			task_model.where(id: id, status: :executing)
-			          .update_all(status: :pending, account_id: nil, browser_id: nil, start_at: nil,
-			                      error_msg: '机器端任务丢失（超时未回调且查询不到）')
+			scope = task_model.where(id: id, status: :executing)
+			# 先把归属标为「已释放」（只标记、不删记录）：下面就要把任务上的 account_id/browser_id 清空，
+			# 而这条任务的回调可能还在路上，届时要靠 TaskAssignment 认人，否则 task_logs 对不上账号/浏览器。
+			TaskAssignment.release_many!(scope.pluck(:task_uuid), '机器端任务丢失，重置待重新分配')
+			scope.update_all(status: :pending, account_id: nil, browser_id: nil, start_at: nil,
+			                 error_msg: '机器端任务丢失（超时未回调且查询不到）')
 		end
 	end
 end

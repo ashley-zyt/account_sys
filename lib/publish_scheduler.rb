@@ -113,6 +113,8 @@ class PublishScheduler
     if task.account_id.present? &&
        task.class.exists?(account_id: task.account_id, status: :success, actual_publish_time: today_range)
       Rails.logger.info "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 对应账号 ##{task.account_id} 今天已发布成功，重置为 pending 跳过"
+      # 归属即将从任务上清空，先标进 TaskAssignment 留档（只标记、不删）
+      TaskAssignment.release!(task.task_uuid, '账号今日已发布成功，释放待重新分配')
       task.update!(status: :pending, account_id: nil, browser_id: nil, start_at: nil)
       return :done
     end
@@ -345,6 +347,8 @@ class PublishScheduler
       task.lock!
       return unless task.pending?
       task.update!(account_id: account.id, browser_id: account.browser_id, status: :waiting_publish)
+      # 发活那一刻固化归属（释放时只标记、不删除，供迟到的回调归档日志）
+      TaskAssignment.record!(task)
     end
   end
 

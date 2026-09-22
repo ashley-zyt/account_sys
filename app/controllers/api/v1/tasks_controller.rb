@@ -11,12 +11,17 @@ module Api
 						task = MoveTask.where(status:"pending").where(platform:account.platform,theme:account["theme"]).order("created_at asc").first
 						if !task.nil?
 							task.update(account_id: account.id,browser_id: account.browser_id,status:"waiting_publish")
+							# 发活那一刻固化归属（释放时只标记、不删除，供迟到的回调归档日志）
+							TaskAssignment.record!(task)
 						end
 					end
 				end
 				return render json: {id: nil,video_url: nil,social_account_id: nil,adspower_user_name: nil,account_type: nil,title: nil} if next_task.nil?
 				id = next_task.id
-				next_task.update(status:"executing")
+				# 补上 start_at：超时兜底（TaskScheduler.check_timeout_tasks 第 2 段）是按 start_at 判定的，
+				# 原先这里不写 start_at，导致这条链路的任务一旦被机器端弄丢、再也不回调，
+				# 就会永远卡在 executing，没有任何机制会来收回它。
+				next_task.update(status:"executing", start_at: Time.current)
 				next_task = MoveTask.find_by(id:id)
 				return render json: {id: next_task.id,video_url: next_task.video_url,social_account_id: next_task.source_account_url,adspower_user_name: next_task.browser.profile_name,account_type: next_task.platform,title: next_task.title}
 			end
@@ -77,9 +82,10 @@ module Api
 				end
 
 				ActiveRecord::Base.transaction do
-					# 先快照执行时的账号/浏览器，避免后续运营任务释放资源后丢失关联
-					snapshot_account_id = task.account_id
-					snapshot_browser_id = task.browser_id
+					# 先快照执行时的账号/浏览器，避免后续运营任务释放资源后丢失关联。
+					# 任务若已在回调前被中断释放（字段被清空），这里会回退到 TaskAssignment
+					# 里「发活那一刻」固化的归属 —— 否则 task_logs 会对应不上账号和浏览器。
+					snapshot_account_id, snapshot_browser_id = TaskReportHelper.resolve_snapshot(task)
 
 					update_task_status!(task, status)
 					create_task_log!(task, status, snapshot_account_id, snapshot_browser_id)
@@ -121,6 +127,8 @@ module Api
 							error_msg: nil,
 							start_at: nil
 						)
+						# 归属已随释放从任务上清空，标进 TaskAssignment 留档（归档日志时还要用）
+						TaskAssignment.release!(task.task_uuid, '任务失败，重置待重新分配')
 					else
 						task.update!(
 							status: :failed,
