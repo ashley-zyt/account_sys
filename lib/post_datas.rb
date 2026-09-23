@@ -36,7 +36,8 @@ class PostDatas
   # @param cooldown_hours [Integer, nil] 退避窗口（小时）：跳过「最近这么长时间内尝试过采集」的账号，
   #         避免出错账号（浏览器打不开/页面打不开，数据不回传）每轮都被选中占满配额、饿死正常账号。
   #         传 nil 不退避。仅 when only_uncollected 时生效。
-  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil)
+  # @param machine_ips [Array<String>, nil] 只采集指定机器（machine_ip）的账号；nil 采集全部机器。
+  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil, machine_ips: nil)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_fetch.log'))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
@@ -58,8 +59,11 @@ class PostDatas
                                 .to_a
     accounts = (accounts + special_accounts).uniq { |a| a.id }
 
-    # 2. 过滤掉未设置machine_ip的浏览器
-    accounts = accounts.select { |a| a.browser.present? && a.browser.machine_ip.present? }
+    # 2. 过滤掉未设置machine_ip的浏览器；指定 machine_ips 时只保留这些机器
+    accounts = accounts.select do |a|
+      a.browser.present? && a.browser.machine_ip.present? &&
+        (machine_ips.nil? || machine_ips.include?(a.browser.machine_ip))
+    end
 
     # 3. 计算「今天已更新」的账号：今天 post_stats 有更新 或 account_stat 有今日快照 视为「已更新」。
     today_start = Date.today.beginning_of_day
