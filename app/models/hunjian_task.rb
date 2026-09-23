@@ -83,12 +83,24 @@ class HunjianTask < ApplicationRecord
     platform_names.each do |platform_name|
       next unless HunjianTask.platforms.key?(platform_name.to_sym)
 
+      # YouTube 标题限 100 字符、描述可更长；mashup 回传的 title（长、含话题）与
+      # description（短）语义正好相反，故 YouTube 平台反过来存储：
+      #   title ← mashup 的 description，description ← mashup 的 title
+      # 其他平台只存 title，description 不存（保持 nil）。
+      # description 为空时不交换（避免 YouTube 标题被置空）。
+      task_title = title
+      task_description = nil
+      if platform_name == 'youtube' && description.present?
+        task_title = description
+        task_description = title
+      end
+
       create!(
         move_video_ids: Array(move_video_ids).join(','),
         oss_url: oss_url,
         full_oss_url: full_oss_url,
-        title: title,
-        description: description,
+        title: task_title,
+        description: task_description,
         platform: platform_name,
         theme: theme,
         group_id: gid,
