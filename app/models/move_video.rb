@@ -31,24 +31,42 @@ class MoveVideo < ApplicationRecord
 
   DEFAULT_PLATFORMS = %w[youtube instagram twitter tiktok].freeze
 
+  # 下载状态（status）：只跟踪「源视频是否已下载到 OSS」
   enum status: {
     pending_download: 0,  # 待下载（录入后初始）
     downloading: 1,       # 下载中（下载软件已 claim，回调前）
-    pending_process: 2,   # 待剪映处理（下载完成，raw_oss_url 已回写）
-    processing: 3,        # 剪映处理中（剪映项目已 claim，回调前）
-    processed: 4,         # 剪映完成（可发布）
-    failed: 5             # 失败（暂为终态，重试逻辑后续补）
+    downloaded: 2,        # 下载完成（raw_oss_url 已回写）
+    failed: 3             # 下载失败
+  }
+
+  # 剪映流程状态（与混剪并行，互不影响）
+  enum jianying_status: {
+    pending: 0,     # 待剪映
+    processing: 1,  # 剪映中
+    completed: 2,   # 已完成
+    failed: 3       # 失败
+  }
+
+  # 混剪流程状态（与剪映并行，互不影响）
+  enum hunjian_status: {
+    pending: 0,     # 待混剪
+    processing: 1,  # 混剪中
+    completed: 2,   # 已完成
+    failed: 3       # 失败
   }
 
   validates :source_video_url, presence: true, uniqueness: true
   validates :group_id, presence: true
 
   scope :pending_download, -> { where(status: :pending_download) }
-  scope :pending_process, -> { where(status: :pending_process) }
+  # 待剪映：下载完成 + 剪映流程未开始
+  scope :pending_process, -> { where(status: :downloaded, jianying_status: :pending) }
+  # 待混剪：下载完成 + 混剪流程未开始
+  scope :pending_hunjian, -> { where(status: :downloaded, hunjian_status: :pending) }
 
   def self.ransackable_attributes(auth_object = nil)
     %w[id source_video_url source_title source_account_url theme group_id platforms status
-       raw_oss_url error_msg created_at updated_at]
+       jianying_status hunjian_status raw_oss_url error_msg created_at updated_at]
   end
 
   def self.ransackable_associations(auth_object = nil)
@@ -59,10 +77,22 @@ class MoveVideo < ApplicationRecord
   STATUS_LABELS = {
     'pending_download' => '待下载',
     'downloading' => '下载中',
-    'pending_process' => '待剪映',
+    'downloaded' => '已下载',
+    'failed' => '下载失败'
+  }.freeze
+
+  JIANYING_STATUS_LABELS = {
+    'pending' => '待剪映',
     'processing' => '剪映中',
-    'processed' => '已完成',
-    'failed' => '失败'
+    'completed' => '已完成',
+    'failed' => '剪映失败'
+  }.freeze
+
+  HUNJIAN_STATUS_LABELS = {
+    'pending' => '待混剪',
+    'processing' => '混剪中',
+    'completed' => '已完成',
+    'failed' => '混剪失败'
   }.freeze
 
   def self.human_status(status)
@@ -72,6 +102,14 @@ class MoveVideo < ApplicationRecord
 
   def human_status
     self.class.human_status(status)
+  end
+
+  def jianying_status_label
+    JIANYING_STATUS_LABELS[jianying_status] || jianying_status
+  end
+
+  def hunjian_status_label
+    HUNJIAN_STATUS_LABELS[hunjian_status] || hunjian_status
   end
 
   # 录入：find_or_create 幂等，重复录入同一 source_video_url 返回已存在记录，不重置状态
@@ -181,11 +219,13 @@ class MoveVideo < ApplicationRecord
     updated == 1 ? reload : false
   end
 
-  # 下载完成回调：downloading → pending_process，写 raw_oss_url
+  # 下载完成回调：downloading → downloaded，写 raw_oss_url，两个流程均进入「待」状态
   def mark_downloaded!(raw_oss_url)
     raise StateError, "当前状态 #{status} 不允许标记下载完成" unless downloading?
     update!(
-      status: :pending_process,
+      status: :downloaded,
+      jianying_status: :pending,
+      hunjian_status: :pending,
       raw_oss_url: raw_oss_url,
       downloaded_at: Time.current,
       error_msg: nil
@@ -193,7 +233,7 @@ class MoveVideo < ApplicationRecord
   end
 
   # ---------- 剪映阶段领取（原子） ----------
-  # 拉取一条 pending_process 并原子置为 processing，并发安全
+  # 拉取一条「待剪映」并原子置为「剪映中」，并发安全
   # @return [MoveVideo, nil]
   def self.claim_for_processing!
     pending_process.order(created_at: :asc).limit(50).each do |record|
@@ -205,19 +245,19 @@ class MoveVideo < ApplicationRecord
   def claim_process!
     now = Time.current
     updated = self.class
-      .where(id: id, status: MoveVideo.statuses[:pending_process])
-      .update_all(status: MoveVideo.statuses[:processing], process_started_at: now, updated_at: now)
+      .where(id: id, status: MoveVideo.statuses[:downloaded], jianying_status: MoveVideo.jianying_statuses[:pending])
+      .update_all(jianying_status: MoveVideo.jianying_statuses[:processing], process_started_at: now, updated_at: now)
     updated == 1 ? reload : false
   end
 
-  # 剪映完成回调：processing → processed，并按 platforms 创建多平台 move_task
+  # 剪映完成回调：剪映中 → 已完成，并按 platforms 创建多平台 move_task
   # 成片 OSS URL 写到每条 move_task.oss_url（与 jianying_task 等资源队列一致，发布时直接用）
   def mark_processed!(processed_oss_url)
-    raise StateError, "当前状态 #{status} 不允许标记剪映完成" unless processing?
+    raise StateError, "当前剪映状态 #{jianying_status} 不允许标记剪映完成" unless jianying_processing?
 
     transaction do
       update!(
-        status: :processed,
+        jianying_status: :completed,
         processed_at: Time.current,
         error_msg: nil
       )
@@ -225,9 +265,54 @@ class MoveVideo < ApplicationRecord
     end
   end
 
-  # 失败回调：暂为终态（重试逻辑后续补）
-  def mark_failed!(error_msg)
+  # ---------- 混剪阶段领取（原子） ----------
+  # 拉取一条「待混剪」并原子置为「混剪中」，并发安全
+  # @return [MoveVideo, nil]
+  def self.claim_for_hunjian!
+    pending_hunjian.order(created_at: :asc).limit(100).each do |record|
+      return record if record.claim_hunjian!
+    end
+    nil
+  end
+
+  # 批量认领「待混剪」源视频（混剪程序一次性认领一大批，逐个处理）
+  # @param limit [Integer] 最多认领条数
+  # @return [Array<MoveVideo>] 成功认领的视频（已置「混剪中」）
+  def self.claim_hunjian_batch!(limit: 100)
+    claimed = []
+    pending_hunjian.order(created_at: :asc).limit(limit).each do |record|
+      claimed << record if record.claim_hunjian!
+    end
+    claimed
+  end
+
+  def claim_hunjian!
+    now = Time.current
+    updated = self.class
+      .where(id: id, status: MoveVideo.statuses[:downloaded], hunjian_status: MoveVideo.hunjian_statuses[:pending])
+      .update_all(hunjian_status: MoveVideo.hunjian_statuses[:processing], process_started_at: now, updated_at: now)
+    updated == 1 ? reload : false
+  end
+
+  # 混剪完成回调：混剪中 → 已完成
+  def mark_hunjian_completed!
+    raise StateError, "当前混剪状态 #{hunjian_status} 不允许标记混剪完成" unless hunjian_processing?
+    update!(hunjian_status: :completed, error_msg: nil)
+  end
+
+  # 混剪失败回调：混剪中 → 失败
+  def mark_hunjian_failed!(error_msg)
+    update!(hunjian_status: :failed, error_msg: error_msg)
+  end
+
+  # 下载失败回调
+  def mark_download_failed!(error_msg)
     update!(status: :failed, error_msg: error_msg)
+  end
+
+  # 剪映失败回调
+  def mark_jianying_failed!(error_msg)
+    update!(jianying_status: :failed, error_msg: error_msg)
   end
 
   # ---------- 私有 ----------

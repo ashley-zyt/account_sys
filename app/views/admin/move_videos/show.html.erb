@@ -24,8 +24,16 @@
         <div class="admin-field-value"><%= @move_video.id %></div>
       </div>
       <div>
-        <div class="admin-field-label">状态</div>
+        <div class="admin-field-label">下载状态</div>
         <div class="admin-field-value"><%= @move_video.human_status %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">剪映状态</div>
+        <div class="admin-field-value"><%= @move_video.jianying_status_label %></div>
+      </div>
+      <div>
+        <div class="admin-field-label">混剪状态</div>
+        <div class="admin-field-value"><%= @move_video.hunjian_status_label %></div>
       </div>
       <div>
         <div class="admin-field-label">主题</div>

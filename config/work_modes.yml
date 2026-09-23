@@ -25,7 +25,7 @@
 # ============================================================
 work_modes:
   - key: move
-    name: 视频搬运
+    name: 搬运剪映
     icon: "🎬"
     short_name: "搬运"
     sort: 10
@@ -33,6 +33,19 @@ work_modes:
     task_model: MoveTask
     type_name: move
     trend_color: "#f59e0b"
+    sidebar_section: tasks
+    video_field: oss_url
+    low_stock_track: true
+
+  - key: hunjian
+    name: 搬运混剪
+    icon: "🔀"
+    short_name: "混剪"
+    sort: 11
+    enum_value: 9
+    task_model: HunjianTask
+    type_name: hunjian
+    trend_color: "#f97316"
     sidebar_section: tasks
     video_field: oss_url
     low_stock_track: true

@@ -1,0 +1,149 @@
+<% content_for :page_title do %>
+  混剪任务队列
+<% end %>
+<% content_for :page_subtitle do %>
+  搬运混剪的发布任务列表
+<% end %>
+
+<%= render "admin/shared/select_widgets" %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        混剪任务列表
+      </div>
+      <div class="admin-card-subtitle">
+        监控和筛选混剪任务队列
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">
+        共 <%= @hunjian_tasks.total_count %> 条
+      </span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">标题</label>
+        <%= f.search_field :title_cont, class: "admin-input admin-filter-input", placeholder: "搜索标题..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">主题</label>
+        <%= f.searchable_select :theme_eq, @themes.map { |t| [t, t] }, { include_blank: "所有主题" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <%= f.searchable_select :platform_eq, HunjianTask.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.searchable_select :status_eq, HunjianTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_hunjian_tasks_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @hunjian_tasks.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>任务</th>
+            <th>源视频</th>
+            <th>主题</th>
+            <th>平台</th>
+            <th>状态</th>
+            <th>账号</th>
+            <th>浏览器</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @hunjian_tasks.each do |task| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted"><%= task.id %></span>
+              </td>
+              <td>
+                <%= link_to truncate(task.title.presence || "（无标题）", length: 40), admin_hunjian_task_path(task), class: "admin-link-quiet" %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.move_video_ids %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.theme %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.platform %></span>
+              </td>
+              <td>
+                <% case task.status %>
+                <% when "pending" %>
+                  <span class="admin-pill-status admin-pill-status-pending">
+                    <span class="admin-pill-status-dot"></span>
+                    待分配
+                  </span>
+                <% when "waiting_publish", "executing" %>
+                  <span class="admin-pill-status admin-pill-status-pending">
+                    <span class="admin-pill-status-dot"></span>
+                    队列中
+                  </span>
+                <% when "success" %>
+                  <span class="admin-pill-status admin-pill-status-success">
+                    <span class="admin-pill-status-dot"></span>
+                    成功
+                  </span>
+                <% when "failed" %>
+                  <span class="admin-pill-status admin-pill-status-failed">
+                    <span class="admin-pill-status-dot"></span>
+                    失败
+                  </span>
+                <% end %>
+              </td>
+              <td>
+                <% if task.account %>
+                  <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet" %>
+                <% else %>
+                  <span class="admin-label-muted">未分配</span>
+                <% end %>
+              </td>
+              <td>
+                <% if task.browser %>
+                  <%= link_to task.browser.profile_name, admin_browser_path(task.browser), class: "admin-link-quiet" %>
+                <% else %>
+                  <span class="admin-label-muted">未绑定</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.created_at&.strftime("%m-%d %H:%M") %></span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <% if task.waiting_publish? %>
+                    <%= link_to "立即执行", execute_admin_hunjian_task_path(task), data: { turbo_method: :post, turbo_confirm: "确定立即执行该任务吗？" }, class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% end %>
+                  <%= link_to "日志", admin_task_logs_path(q: { task_uuid_eq: task.task_uuid }), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @hunjian_tasks %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      暂无混剪任务数据。
+    </div>
+  <% end %>
+</div>

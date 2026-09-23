@@ -64,7 +64,8 @@ ActiveRecord::Base.transaction do
     deleted_logs = TaskLog.where(task_uuid: uuids).delete_all
 
     v.update_columns(
-      status: MoveVideo.statuses[:pending_process],
+      status: MoveVideo.statuses[:downloaded],
+      jianying_status: MoveVideo.jianying_statuses[:pending],
       processed_at: nil,
       process_started_at: nil,
       error_msg: nil,

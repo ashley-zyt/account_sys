@@ -27,6 +27,7 @@ class Browser < ApplicationRecord
 
 	# 一个浏览器可执行多个发布任务（任务执行时会记录快照 browser_id）
 	has_many :move_tasks, dependent: :nullify
+	has_many :hunjian_tasks, dependent: :nullify
 
 	# 养号接口固定端口
 	NURTURE_PORT = 8080

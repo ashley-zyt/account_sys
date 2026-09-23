@@ -89,7 +89,7 @@ class Load
 
 		  account.theme      = theme
 		  account.status     = "正常"
-		  account.work_type  = "视频搬运"
+		  account.work_type  = "搬运剪映"
 		  account.browser    = browser
 		  account.remark   ||= ""
 

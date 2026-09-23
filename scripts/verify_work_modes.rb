@@ -23,8 +23,8 @@ end
 
 puts "===== 1. 枚举映射（应与预期 9 个值完全一致） ====="
 expected_enum = {
-  "视频搬运" => 0, "coze" => 1, "剪映" => 2, "人工运营" => 3,
-  "Grok" => 4, "Heygen" => 5, "花生" => 6, "Notebooklm" => 7, "agent" => 8
+  "搬运剪映" => 0, "coze" => 1, "剪映" => 2, "人工运营" => 3,
+  "Grok" => 4, "Heygen" => 5, "花生" => 6, "Notebooklm" => 7, "agent" => 8, "搬运混剪" => 9
 }
 ok("Account.work_types", Account.work_types == expected_enum, Account.work_types.inspect)
 
@@ -35,8 +35,9 @@ end
 
 puts "\n===== 3. 中文名 -> 任务模型 映射 ====="
 {
-  "视频搬运" => "MoveTask", "剪映" => "JianyingTask", "人工运营" => "OperationTask",
-  "Grok" => "GrokTask", "Heygen" => "HeygenTask", "花生" => "HuashengTask", "Notebooklm" => "NotebooklmTask"
+  "搬运剪映" => "MoveTask", "剪映" => "JianyingTask", "人工运营" => "OperationTask",
+  "Grok" => "GrokTask", "Heygen" => "HeygenTask", "花生" => "HuashengTask", "Notebooklm" => "NotebooklmTask",
+  "搬运混剪" => "HunjianTask"
 }.each do |name, klass|
   m = WorkMode.all.find { |x| x.name == name }
   ok("#{name} -> #{klass}", m && m.task_model == klass)
@@ -48,16 +49,16 @@ ok("agent 不参与调度/发布/手动分配/低库存",
 ok("agent 参与仪表盘账号矩阵", WorkMode.dashboard_track_modes.map(&:name).include?('agent'))
 
 puts "\n===== 4. 各调用点集合 ====="
-assert_set("自动分配 scheduler_assign", WorkMode.scheduler_assign_modes.map(&:name), %w[视频搬运 剪映 花生 Notebooklm 人工运营 Grok])
-assert_set("发布 publishable", WorkMode.publishable_modes.map(&:name), %w[视频搬运 剪映 花生 Notebooklm 人工运营 Grok Heygen])
-assert_set("手动分配 manual_assign", WorkMode.manual_assign_map.keys, %w[视频搬运 人工运营 Grok Heygen 剪映 花生])
-assert_set("低库存预警 low_stock", WorkMode.low_stock_track_modes.map(&:name), %w[视频搬运 剪映 Grok 花生])
+assert_set("自动分配 scheduler_assign", WorkMode.scheduler_assign_modes.map(&:name), %w[搬运剪映 剪映 花生 Notebooklm 人工运营 Grok 搬运混剪])
+assert_set("发布 publishable", WorkMode.publishable_modes.map(&:name), %w[搬运剪映 剪映 花生 Notebooklm 人工运营 Grok Heygen 搬运混剪])
+assert_set("手动分配 manual_assign", WorkMode.manual_assign_map.keys, %w[搬运剪映 人工运营 Grok Heygen 剪映 花生 搬运混剪])
+assert_set("低库存预警 low_stock", WorkMode.low_stock_track_modes.map(&:name), %w[搬运剪映 剪映 Grok 花生 搬运混剪])
 
 puts "\n===== 5. 关联动态生成 ====="
 bt = TaskLog.reflect_on_all_associations(:belongs_to).map(&:name)
-assert_set("TaskLog belongs_to", bt, %w[move_task jianying_task grok_task operation_task heygen_task huasheng_task notebooklm_task log_account log_browser])
+assert_set("TaskLog belongs_to", bt, %w[move_task jianying_task grok_task operation_task heygen_task huasheng_task notebooklm_task hunjian_task log_account log_browser])
 am = Account.reflect_on_all_associations(:has_many).map(&:name).map(&:to_s)
-missing = %w[move_tasks jianying_tasks operation_tasks grok_tasks heygen_tasks huasheng_tasks notebooklm_tasks] - am
+missing = %w[move_tasks jianying_tasks operation_tasks grok_tasks heygen_tasks huasheng_tasks notebooklm_tasks hunjian_tasks] - am
 ok("Account has_many 含全部资源队列(含 notebooklm)", missing.empty?, "缺失 #{missing.inspect}")
 
 puts "\n===== 6. 发布调度 dry-run（只读，不执行发布） ====="

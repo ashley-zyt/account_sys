@@ -24,6 +24,11 @@ Rails.application.routes.draw do
         post :execute
       end
     end
+    resources :hunjian_tasks, only: [:index, :show] do
+      member do
+        post :execute
+      end
+    end
     resources :move_videos, only: [:index, :show]
     resources :jianying_tasks, only: [:index, :show, :destroy] do
       collection do
@@ -182,6 +187,10 @@ Rails.application.routes.draw do
       post "move_videos/report_processing",  to: "move_videos#report_processing"
       post "move_videos/report_result",      to: "move_videos#report_result"
       post "move_videos/report_merge_result", to: "move_videos#report_merge_result"
+
+      # 搬运混剪接口（认领待混剪源视频 / 回传混剪成品）
+      get  "hunjian/fetch_pending", to: "hunjian#fetch_pending"
+      post "hunjian/report_result", to: "hunjian#report_result"
 
       get "task/fetch_next_executable_task", to: "tasks#fetch_next_executable_task"
       get "task/report", to: "tasks#report"

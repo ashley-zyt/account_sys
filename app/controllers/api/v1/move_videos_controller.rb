@@ -107,7 +107,7 @@ module Api
 					)
 				elsif result[:reason] == :not_found
 					# bucket 中不存在文件 → 视频下载失败
-					move_video.mark_failed!("下载失败：OSS 中未找到该文件")
+					move_video.mark_download_failed!("下载失败：OSS 中未找到该文件")
 					render_success(message: '下载失败已记录（OSS 中未找到文件）', data: { error: result[:error] })
 				else
 					# invalid_filename / no_credentials 等异常 → 不改动状态，直接返回错误
@@ -171,7 +171,7 @@ module Api
 				move_video.mark_processed!(processed_oss_url)
 				render_success(message: '剪映完成已记录，已创建发布任务')
 			elsif status == 'error'
-				move_video.mark_failed!("剪映失败：#{params[:error_msg].to_s}")
+				move_video.mark_jianying_failed!("剪映失败：#{params[:error_msg].to_s}")
 				render_success(message: '剪映失败已记录')
 			else
 				render_error('status 必须为 success 或 error')
@@ -239,8 +239,8 @@ module Api
 
 			MoveVideo.transaction do
 				videos.each do |v|
-					raise MoveVideo::StateError, "视频 #{v.id} 状态=#{v.status}，非 processing，无法标记合并完成" unless v.processing?
-					v.update!(status: :processed, processed_at: Time.current, error_msg: nil)
+					raise MoveVideo::StateError, "视频 #{v.id} 剪映状态=#{v.jianying_status}，非剪映中，无法标记合并完成" unless v.jianying_processing?
+					v.update!(jianying_status: :completed, processed_at: Time.current, error_msg: nil)
 				end
 
 				platform_names.each do |platform_name|
@@ -265,11 +265,11 @@ module Api
 			render_success(message: '合并结果已记录，已创建发布任务')
 		end
 
-		# 双视频合并失败：两个 video 重置回 pending_process（可重新领取重试）
+		# 双视频合并失败：两个 video 重置回待剪映（可重新领取重试）
 		def handle_merge_error(videos, error_msg)
 			videos.each do |v|
 				v.update!(
-					status: :pending_process,
+					jianying_status: :pending,
 					process_started_at: nil,
 					error_msg: error_msg.presence || '合并失败'
 				)
@@ -294,7 +294,7 @@ module Api
 
 			ActiveRecord::Base.transaction do
 				if status == 'processed'
-					move_video.update!(status: :processed, processed_at: Time.current, error_msg: nil)
+					move_video.update!(jianying_status: :completed, processed_at: Time.current, error_msg: nil)
 
 					# 从 themes 表按 theme 名称查找待选标题
 					theme_titles = Theme.find_by(name: move_video.theme)&.titles_array || []
@@ -323,7 +323,7 @@ module Api
 						move_task.save!
 					end
 				else
-					move_video.update!(status: :failed, error_msg: item['error_msg'].to_s)
+					move_video.update!(jianying_status: :failed, error_msg: item['error_msg'].to_s)
 				end
 			end
 
@@ -332,7 +332,7 @@ module Api
 				delete_raw_oss_file(move_video)
 			end
 
-			{ id: move_video.id, success: true, status: move_video.status }
+			{ id: move_video.id, success: true, jianying_status: move_video.jianying_status }
 		rescue => e
 			{ id: move_video&.id, success: false, error: e.message }
 		end

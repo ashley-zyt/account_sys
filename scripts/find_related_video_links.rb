@@ -17,7 +17,7 @@
 # 有「同源视频组」（字符串 group_id）的任务模型，同一视频按平台拆多条任务
 GROUPED_TASK_MODELS = [MoveTask, JianyingTask, HuashengTask, NotebooklmTask].freeze
 MODEL_NAMES = {
-  "MoveTask"      => "视频搬运",
+  "MoveTask"      => "搬运剪映",
   "JianyingTask"  => "剪映",
   "HuashengTask"  => "花生",
   "NotebooklmTask" => "Notebooklm"

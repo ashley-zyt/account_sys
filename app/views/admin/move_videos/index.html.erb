@@ -96,12 +96,12 @@
               </td>
               <td>
                 <% case video.status %>
-                <% when "pending_download", "downloading", "pending_process", "processing" %>
+                <% when "pending_download", "downloading" %>
                   <span class="admin-pill-status admin-pill-status-pending">
                     <span class="admin-pill-status-dot"></span>
                     <%= video.human_status %>
                   </span>
-                <% when "processed" %>
+                <% when "downloaded" %>
                   <span class="admin-pill-status admin-pill-status-success">
                     <span class="admin-pill-status-dot"></span>
                     <%= video.human_status %>
@@ -114,13 +114,8 @@
                 <% end %>
               </td>
               <td>
-                <% if video.processed? %>
-                  <span class="admin-label-muted">✓ 已剪映</span>
-                <% elsif video.raw_oss_url.present? %>
-                  <span class="admin-label-muted">已转存待剪映</span>
-                <% else %>
-                  <span class="admin-label-muted">—</span>
-                <% end %>
+                <div class="admin-label-muted">剪映：<%= video.jianying_status_label %></div>
+                <div class="admin-label-muted">混剪：<%= video.hunjian_status_label %></div>
               </td>
               <td>
                 <span class="admin-label-muted"><%= video.created_at&.strftime("%m-%d %H:%M") %></span>
