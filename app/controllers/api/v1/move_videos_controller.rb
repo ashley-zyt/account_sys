@@ -130,24 +130,24 @@ module Api
 				})
 			end
 
-			# ---------- 4.1 批量领取待处理视频 ----------
+			# ---------- 4.1 批量领取待混剪视频（mashup 混剪程序）----------
 			# GET /api/v1/move_videos/fetch_pending_process_batch
 			# 入参：theme（可选，主题名）
 			#   指定 theme：该主题最多取 100 条（不足 100 全取）
 			#   不指定 theme：遍历所有主题，每个主题各取 50 条（不足 50 全取该主题）
-			# 原子 claim：每条 pending_process → processing，并发安全，被抢的自动跳过
+			# 原子 claim：每条「待混剪」→「混剪中」，并发安全，被抢的自动跳过
 			def fetch_pending_process_batch
 				theme = params[:theme].to_s.strip
 
 				candidates = if theme.present?
-					MoveVideo.pending_process.where(theme: theme).order(created_at: :asc).limit(100).to_a
+					MoveVideo.pending_hunjian.where(theme: theme).order(created_at: :asc).limit(100).to_a
 				else
-					pending_process_candidates_across_themes(50)
+					pending_hunjian_candidates_across_themes(50)
 				end
 
 				claimed = []
 				candidates.each do |record|
-					claimed << record if record.claim_process!
+					claimed << record if record.claim_hunjian!
 				end
 
 				render_success(data: {
@@ -178,32 +178,26 @@ module Api
 			end
 		end
 
-		# ---------- 5.5 双视频合并结果回传 ----------
+		# ---------- 5.5 混剪结果回传（mashup 混剪程序）----------
 		# POST /api/v1/move_videos/report_merge_result
-		# 入参：video_ids(两个 move_video id 数组)、status(success|error)、
+		# 入参：video_ids(1~2 个 move_video id 数组)、status(success|error)、
 		#       processed_oss_url / title / description / platforms(success 时)、error_msg(error 时)
-		# success：两个 video → processed，按 platforms 每平台建一条 move_task，
-		#          task_uuid = "MOVE-{id1}-{id2}-{uuid}"，move_video_id = 第一个 video id
-		# error：两个 video → pending_process（重置回待处理，可重新领取）
+		# success：按 platforms 每平台建一条 hunjian_task，源视频置「混剪完成」；幂等（已入库忽略并回 success）
+		# error：源视频退回「待混剪」（可重新领取），接受单条 video_ids
 		def report_merge_result
 			video_ids = params[:video_ids]
 			video_ids = JSON.parse(video_ids) if video_ids.is_a?(String)
-			return render_error('video_ids 必须是两个不同的 id') unless video_ids.is_a?(Array) && video_ids.size == 2 && video_ids.map(&:to_i).uniq.size == 2
+			unless video_ids.is_a?(Array) && video_ids.size.between?(1, 2) && video_ids.map(&:to_i).uniq.size == video_ids.size
+				return render_error('video_ids 必须是 1~2 个不同的 id')
+			end
 
 			videos = video_ids.map { |id| MoveVideo.find_by(id: id.to_i) }
-			return render_error('两个 move_video 必须都存在') if videos.any?(&:nil?)
+			return render_error('video 必须都存在') if videos.any?(&:nil?)
 
 			status = params[:status].to_s.strip
 			if status == 'success'
-				processed_oss_url = params[:processed_oss_url].to_s.strip
-				title = params[:title].to_s.strip
-				description = params[:description].to_s.strip
-				platforms = params[:platforms].to_s.strip
-
-				return render_error('processed_oss_url 不能为空') if processed_oss_url.blank?
-				return render_error('title 不能为空') if title.blank?
-
-				handle_merge_success(videos, processed_oss_url, title, description, platforms)
+				return render_error('video_ids 成功时必须传 2 个') unless videos.size == 2
+				handle_merge_success(videos)
 			elsif status == 'error'
 				handle_merge_error(videos, params[:error_msg].to_s)
 			else
@@ -230,51 +224,55 @@ module Api
 
 		private
 
-		# 双视频合并成功：两个 video → processed，按平台建 move_task（task_uuid 编码两个 video id）
-		def handle_merge_success(videos, processed_oss_url, title, description, platforms)
+		# 混剪成功：源视频置「混剪完成」，按平台建 hunjian_task；幂等（全部已完成则忽略重复回传）
+		def handle_merge_success(videos)
+			processed_oss_url = params[:processed_oss_url].to_s.strip
+			title = params[:title].to_s.strip
+			description = params[:description].to_s.strip
+			platforms = params[:platforms].to_s.strip
+
+			return render_error('processed_oss_url 不能为空') if processed_oss_url.blank?
+			return render_error('title 不能为空') if title.blank?
+
 			v1 = videos.first
-			v2 = videos.second
 			platforms_str = platforms.present? ? platforms : v1.platforms.to_s
-			platform_names = platforms_str.split(',').map(&:strip).reject(&:blank?)
+
+			# 幂等：若这批源视频此前已全部混剪完成（已入库），直接回 success，不重复建任务
+			if videos.all?(&:hunjian_completed?)
+				return render_success(message: '已入库，忽略重复回传')
+			end
 
 			MoveVideo.transaction do
 				videos.each do |v|
-					raise MoveVideo::StateError, "视频 #{v.id} 剪映状态=#{v.jianying_status}，非剪映中，无法标记合并完成" unless v.jianying_processing?
-					v.update!(jianying_status: :completed, processed_at: Time.current, error_msg: nil)
+					v.update!(hunjian_status: :completed, error_msg: nil) unless v.hunjian_completed?
 				end
-
-				platform_names.each do |platform_name|
-					platform_value = MoveTask.platforms[platform_name.to_sym]
-					next unless platform_value
-
-					MoveTask.find_or_create_by!(move_video_id: v1.id, platform: platform_value) do |t|
-						t.task_uuid = "MOVE-#{v1.id}-#{v2.id}-#{SecureRandom.uuid}"
-						t.theme = v1.theme
-						t.title = title
-						t.description = description
-						t.oss_url = processed_oss_url
-						t.group_id = v1.group_id
-						t.status = :pending
-					end
-				end
+				HunjianTask.create_from_hunjian_result!(
+					move_video_ids: videos.map(&:id),
+					oss_url: processed_oss_url,
+					title: title,
+					description: description,
+					platforms: platforms_str,
+					theme: v1.theme,
+					group_id: v1.group_id
+				)
 			end
 
-			# 事务提交后删除两个 video 的 raw OSS 文件（失败不影响主流程）
+			# 事务提交后删除源视频 raw OSS 文件（失败不影响主流程）
 			videos.each { |v| delete_raw_oss_file(v) }
 
-			render_success(message: '合并结果已记录，已创建发布任务')
+			render_success(message: '混剪完成已记录，已创建发布任务')
 		end
 
-		# 双视频合并失败：两个 video 重置回待剪映（可重新领取重试）
+		# 混剪失败：源视频退回「待混剪」（可重新领取重试），接受单条
 		def handle_merge_error(videos, error_msg)
 			videos.each do |v|
 				v.update!(
-					jianying_status: :pending,
+					hunjian_status: :pending,
 					process_started_at: nil,
-					error_msg: error_msg.presence || '合并失败'
+					error_msg: error_msg.presence || '混剪失败'
 				)
 			end
-			render_success(message: '合并失败已记录，两个视频已重置回待处理')
+			render_success(message: '混剪失败已记录，源视频已退回待混剪')
 		end
 
 		# 处理单条回传数据
@@ -376,6 +374,14 @@ module Api
 				themes = MoveVideo.pending_process.where.not(theme: [nil, '']).distinct.pluck(:theme).sort
 				themes.flat_map do |t|
 					MoveVideo.pending_process.where(theme: t).order(created_at: :asc).limit(limit_per_theme).to_a
+				end
+			end
+
+			# 不指定主题时：遍历所有有「待混剪」的主题，每个主题各取 limit_per_theme 条
+			def pending_hunjian_candidates_across_themes(limit_per_theme)
+				themes = MoveVideo.pending_hunjian.where.not(theme: [nil, '']).distinct.pluck(:theme).sort
+				themes.flat_map do |t|
+					MoveVideo.pending_hunjian.where(theme: t).order(created_at: :asc).limit(limit_per_theme).to_a
 				end
 			end
 

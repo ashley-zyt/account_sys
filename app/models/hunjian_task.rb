@@ -81,7 +81,7 @@ class HunjianTask < ApplicationRecord
     created = 0
 
     platform_names.each do |platform_name|
-      next unless platforms.key?(platform_name.to_sym)
+      next unless HunjianTask.platforms.key?(platform_name.to_sym)
 
       create!(
         move_video_ids: Array(move_video_ids).join(','),
