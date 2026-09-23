@@ -39,8 +39,16 @@
         <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">状态</label>
+        <label class="admin-filter-label">下载状态</label>
         <%= f.searchable_select :status_eq, MoveVideo.statuses.map { |k, v| [MoveVideo.human_status(k), v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">剪映状态</label>
+        <%= f.searchable_select :jianying_status_eq, MoveVideo.jianying_statuses.map { |k, v| [MoveVideo::JIANYING_STATUS_LABELS[k.to_s], v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">混剪状态</label>
+        <%= f.searchable_select :hunjian_status_eq, MoveVideo.hunjian_statuses.map { |k, v| [MoveVideo::HUNJIAN_STATUS_LABELS[k.to_s], v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
@@ -114,8 +122,8 @@
                 <% end %>
               </td>
               <td>
-                <div class="admin-label-muted">剪映：<%= video.jianying_status_label %></div>
-                <div class="admin-label-muted">混剪：<%= video.hunjian_status_label %></div>
+                <div class="admin-label-muted">剪映：<%= link_to video.jianying_status_label, admin_move_videos_path(q: { jianying_status_eq: video[:jianying_status] }), class: "admin-link-quiet", style: "color: var(--accent);" %></div>
+                <div class="admin-label-muted">混剪：<%= link_to video.hunjian_status_label, admin_move_videos_path(q: { hunjian_status_eq: video[:hunjian_status] }), class: "admin-link-quiet", style: "color: var(--accent);" %></div>
               </td>
               <td>
                 <span class="admin-label-muted"><%= video.created_at&.strftime("%m-%d %H:%M") %></span>
