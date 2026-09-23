@@ -116,6 +116,26 @@ class MoveVideo < ApplicationRecord
     HUNJIAN_STATUS_LABELS[hunjian_status] || hunjian_status
   end
 
+  # 兼容旧单状态机的字符串状态（供外部「搬运剪映」客户端拉取/对账用）。
+  # 旧 status 六态：pending_download / downloading / pending_process / processing / processed / failed
+  # 新模型拆成 status(下载) + jianying_status(剪映) + hunjian_status(混剪)。
+  # 此处从「剪映流程视角」把下载状态 + 剪映状态映射回旧字符串，保持外部接口稳定不变。
+  def legacy_status
+    case status
+    when 'pending_download', 'downloading', 'failed'
+      status
+    when 'downloaded'
+      case jianying_status
+      when 'processing' then 'processing'
+      when 'completed'  then 'processed'
+      when 'failed'     then 'failed'
+      else 'pending_process'
+      end
+    else
+      'pending_download'
+    end
+  end
+
   # 录入：find_or_create 幂等，重复录入同一 source_video_url 返回已存在记录，不重置状态
   def self.create_from_import!(source_video_url:, source_account_url:, theme:, platforms:, source_title: nil)
     find_or_create_by!(source_video_url: source_video_url) do |v|
