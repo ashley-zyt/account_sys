@@ -44,12 +44,14 @@ class MoveVideo < ApplicationRecord
   }
 
   # 剪映流程状态（与混剪并行，互不影响）
+  # _prefix: :jianying 生成 jianying_pending?/jianying_processing? 等，
+  # 避免与 status / hunjian_status 的 failed?/pending?/processing?/completed? 方法名冲突
   enum jianying_status: {
     pending: 0,     # 待剪映
     processing: 1,  # 剪映中
     completed: 2,   # 已完成
     failed: 3       # 失败
-  }
+  }, _prefix: :jianying
 
   # 混剪流程状态（与剪映并行，互不影响）
   enum hunjian_status: {
@@ -57,7 +59,7 @@ class MoveVideo < ApplicationRecord
     processing: 1,  # 混剪中
     completed: 2,   # 已完成
     failed: 3       # 失败
-  }
+  }, _prefix: :hunjian
 
   validates :source_video_url, presence: true, uniqueness: true
   validates :group_id, presence: true
