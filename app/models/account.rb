@@ -6,6 +6,7 @@
 #  account_name(账号名)                                           :string(255)
 #  deleted_at(软删除时间（非空表示已删除，进回收站）)             :datetime
 #  kol_sleep_until(KOL触达休眠截止时间（内部账号风控后暂停调度）) :datetime
+#  last_fetch_attempted_at(最后采集尝试时间（分批采集退避用）)    :datetime
 #  last_used_at(最后一次使用时间)                                 :datetime
 #  operator                                                       :string(255)
 #  platform(平台：facebook/twitter/tiktok/youtube/instagram)      :integer          default("facebook")
@@ -20,13 +21,14 @@
 #
 # Indexes
 #
-#  idx_accounts_theme_status_lastused  (theme,status,last_used_at)
-#  index_accounts_on_browser_id        (browser_id)
-#  index_accounts_on_deleted_at        (deleted_at)
-#  index_accounts_on_kol_sleep_until   (kol_sleep_until)
-#  index_accounts_on_last_used_at      (last_used_at)
-#  index_accounts_on_platform          (platform)
-#  index_accounts_on_source_url        (source_url)
+#  idx_accounts_theme_status_lastused         (theme,status,last_used_at)
+#  index_accounts_on_browser_id               (browser_id)
+#  index_accounts_on_deleted_at               (deleted_at)
+#  index_accounts_on_kol_sleep_until          (kol_sleep_until)
+#  index_accounts_on_last_fetch_attempted_at  (last_fetch_attempted_at)
+#  index_accounts_on_last_used_at             (last_used_at)
+#  index_accounts_on_platform                 (platform)
+#  index_accounts_on_source_url               (source_url)
 #
 class Account < ApplicationRecord
 	# 每个账号可以绑定一个指纹浏览器（用于发布/养号）
