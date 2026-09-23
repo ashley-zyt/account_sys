@@ -2,24 +2,34 @@
 #
 # Table name: hunjian_tasks
 #
-#  id                                                              :bigint           not null, primary key
-#  actual_publish_time(实际发布时间)                               :datetime
-#  description(视频描述)                                           :string(255)
-#  error_msg(错误信息/失败原因)                                    :text(65535)
-#  full_oss_url(混剪成品 OSS object key)                           :text(65535)
-#  group_id(任务组ID)                                              :string(255)
-#  move_video_ids(源视频ID，逗号分隔)                              :string(255)
-#  oss_url(混剪成品 OSS 签名 URL)                                  :text(65535)
-#  platform(目标发布平台)                                          :integer
-#  start_at(任务开始时间)                                          :datetime
+#  id                                                                :bigint           not null, primary key
+#  actual_publish_time(实际发布时间)                                 :datetime
+#  description(视频描述)                                             :string(255)
+#  error_msg(错误信息/失败原因)                                      :text(65535)
+#  full_oss_url(混剪成品 OSS object key)                             :text(65535)
+#  move_video_ids(源视频ID（逗号分隔，混剪为2个）)                   :string(255)
+#  oss_url(混剪成品 OSS 签名 URL)                                    :text(65535)
+#  platform(目标发布平台)                                            :integer
+#  start_at(任务开始时间)                                            :datetime
 #  status(任务状态 pending/waiting_publish/executing/success/failed) :integer          default("pending")
-#  task_uuid(任务唯一标识)                                         :string(255)
-#  theme(内容主题)                                                 :string(255)
-#  title(发布标题)                                                 :text(65535)
-#  created_at                                                      :datetime         not null
-#  updated_at                                                      :datetime         not null
-#  account_id(发布账号ID)                                          :bigint
-#  browser_id(执行任务的浏览器ID)                                  :bigint
+#  task_uuid(任务唯一标识，用于关联日志)                             :string(255)
+#  theme(内容主题)                                                   :string(255)
+#  title(发布标题)                                                   :text(65535)
+#  created_at                                                        :datetime         not null
+#  updated_at                                                        :datetime         not null
+#  account_id(发布账号ID)                                            :bigint
+#  browser_id(执行任务的浏览器ID)                                    :bigint
+#  group_id(任务组ID（同一混剪成品的多平台任务共享）)                :string(255)
+#
+# Indexes
+#
+#  index_hunjian_tasks_on_account_id  (account_id)
+#  index_hunjian_tasks_on_browser_id  (browser_id)
+#  index_hunjian_tasks_on_group_id    (group_id)
+#  index_hunjian_tasks_on_platform    (platform)
+#  index_hunjian_tasks_on_status      (status)
+#  index_hunjian_tasks_on_task_uuid   (task_uuid) UNIQUE
+#  index_hunjian_tasks_on_theme       (theme)
 #
 class HunjianTask < ApplicationRecord
   belongs_to :browser, optional: true

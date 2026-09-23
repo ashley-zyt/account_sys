@@ -6,6 +6,8 @@
 #  download_started_at(下载领取时间)                                                     :datetime
 #  downloaded_at(下载完成时间)                                                           :datetime
 #  error_msg(错误信息/失败原因)                                                          :text(65535)
+#  hunjian_status(混剪流程状态 待混剪/混剪中/已完成/失败)                                :integer          default(0), not null
+#  jianying_status(剪映流程状态 待剪映/剪映中/已完成/失败)                               :integer          default("pending"), not null
 #  platforms(目标平台列表，逗号分隔，如 youtube,facebook,twitter,tiktok)                 :string(255)
 #  process_started_at(剪映领取时间)                                                      :datetime
 #  processed_at(剪映完成时间)                                                            :datetime
@@ -21,10 +23,12 @@
 #
 # Indexes
 #
-#  idx_move_videos_source_video_url  (source_video_url) UNIQUE
-#  idx_move_videos_status_created    (status,created_at)
-#  index_move_videos_on_group_id     (group_id)
-#  index_move_videos_on_status       (status)
+#  idx_move_videos_source_video_url      (source_video_url) UNIQUE
+#  idx_move_videos_status_created        (status,created_at)
+#  index_move_videos_on_group_id         (group_id)
+#  index_move_videos_on_hunjian_status   (hunjian_status)
+#  index_move_videos_on_jianying_status  (jianying_status)
+#  index_move_videos_on_status           (status)
 #
 class MoveVideo < ApplicationRecord
   has_many :move_tasks, dependent: :nullify
