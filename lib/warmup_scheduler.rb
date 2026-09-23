@@ -9,7 +9,7 @@ class WarmupScheduler
   # 每台机器单次运行最多下发的养号账号数。
   # 机器端全局并发才 3，一次性把整台机器的账号全下发会瞬间堆积卡死，
   # 故每轮（每小时）每台机器最多下发 5 个，下发完即结束，下一轮按顺序取下一批。
-  MAX_ACCOUNTS_PER_MACHINE = 9
+  MAX_ACCOUNTS_PER_MACHINE = 15
   # 养号任务卡在 executing 超过此时长（小时）仍无回调，判定为中断，标 failed 释放账号
   STUCK_TIMEOUT_HOURS = 3
 
