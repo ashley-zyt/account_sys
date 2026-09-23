@@ -202,7 +202,7 @@ class PostDatas
   #        避免上一轮未完成的任务与本轮重叠、堆积。默认 true。
   # @param cooldown_hours [Integer] 退避窗口（小时）：跳过「最近这么长时间内尝试过采集」的账号，
   #        避免出错账号（浏览器打不开等）每轮占满配额饿死正常账号。默认 3 小时。
-  def self.fetch_uncollected_by_machine(per_machine: 30, clear_pending: true, cooldown_hours: 3)
+  def self.fetch_uncollected_by_machine(per_machine: 42, clear_pending: true, cooldown_hours: 5)
     clear_pending_fetch_tasks if clear_pending
     fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours)
   end

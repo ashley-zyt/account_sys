@@ -9,7 +9,7 @@ set :environment, :development
 # 幂等：今天已采到数据的账号（post_stats 有更新 / account_stat 有今日快照）自动跳过；
 # 每轮按 id 升序取前 30 个，采完变「已更新」下轮自然轮转到下一批，避免一次性堆积 + 中断自愈。
 set :output, "log/postdatas_fetch.log"
-every :day, at: ['02:00', '03:00', '04:00', '05:00', '06:00', '07:00'] do
+every :day, at: ['01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00'] do
   runner 'PostDatas.fetch_uncollected_by_machine'
 end
 # 做数字货币视频
@@ -43,12 +43,12 @@ end
 # ==================== 平台分批发布配置 ====================
 # Instagram: 8:00 发布，7:50 分配资源
 set :output, "log/taskscheduler_assignresources_instagram.log"
-every :day, at: '7:50' do
+every :day, at: '08:55' do
   runner "TaskScheduler.assign_resources(platform: 'instagram')"
 end
 
 set :output, "log/publishscheduler_run_instagram.log"
-every :day, at: '8:00' do
+every :day, at: '9:00' do
   runner "PublishScheduler.run(platform: 'instagram')"
 end
 
@@ -139,7 +139,7 @@ end
 # - 每轮每台机器最多下发 5 个账号（MAX_ACCOUNTS_PER_MACHINE），按顺序轮转、每轮不重复
 # - 机器IP在浏览器页面动态管理，无需改代码
 set :output, "log/warmup_scheduler.log"
-every :day, at: ['21:00', '22:00', '23:00', '00:00', '01:00'] do
+every :day, at: ['20:00', '21:00', '22:00', '23:00', '00:00'] do
   runner 'WarmupScheduler.run'
 end
 
