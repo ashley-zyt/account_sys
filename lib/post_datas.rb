@@ -33,7 +33,10 @@ class PostDatas
   #         false 时全量采集（今日未更新的排前面优先）。默认 false。
   # @param per_machine [Integer, nil] 每台机器每轮最多采集的账号数（按 id 升序取前 N 个）。
   #         传 nil 不限额。用于「凌晨分批采集」，每轮每机器取固定数量、自然轮转。
-  def self.fetch(only_uncollected: false, per_machine: nil)
+  # @param cooldown_hours [Integer, nil] 退避窗口（小时）：跳过「最近这么长时间内尝试过采集」的账号，
+  #         避免出错账号（浏览器打不开/页面打不开，数据不回传）每轮都被选中占满配额、饿死正常账号。
+  #         传 nil 不退避。仅 when only_uncollected 时生效。
+  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_fetch.log'))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
@@ -77,6 +80,15 @@ class PostDatas
     else
       # 全量采集：今日未更新的排前面优先采集，已更新的排后面
       accounts.sort_by! { |a| updated_ids.include?(a.id) ? 1 : 0 }
+    end
+
+    # 退避：跳过「最近 cooldown_hours 小时内尝试过采集」的账号。
+    # 出错账号（指纹浏览器打不开等）数据不回传、永远「未获取」，若不加退避会每轮都被选中
+    # 占满前 per_machine 个配额，正常账号饿死。退避让它们歇几轮，正常账号才有机会轮转。
+    if only_uncollected && cooldown_hours && cooldown_hours.to_i > 0
+      cooldown_before = cooldown_hours.to_i.hours.ago
+      accounts.select! { |a| a.last_fetch_attempted_at.nil? || a.last_fetch_attempted_at <= cooldown_before }
+      Rails.logger.info "[PostDatas] 退避 #{cooldown_hours} 小时，跳过最近尝试过采集的账号，剩余候选 #{accounts.size} 个"
     end
 
     # 每台机器每轮限额：按 machine_ip 分组，每台机器按 id 升序取前 per_machine 个。
@@ -184,9 +196,11 @@ class PostDatas
   # 按 machine_ip 分组，每台机器按 id 升序取前 per_machine 个，采完的账号下轮变「已更新」被排除。
   # @param clear_pending [Boolean] 下发前是否先清掉机器端「排队中/执行中」的采集任务（fetch），
   #        避免上一轮未完成的任务与本轮重叠、堆积。默认 true。
-  def self.fetch_uncollected_by_machine(per_machine: 30, clear_pending: true)
+  # @param cooldown_hours [Integer] 退避窗口（小时）：跳过「最近这么长时间内尝试过采集」的账号，
+  #        避免出错账号（浏览器打不开等）每轮占满配额饿死正常账号。默认 3 小时。
+  def self.fetch_uncollected_by_machine(per_machine: 30, clear_pending: true, cooldown_hours: 3)
     clear_pending_fetch_tasks if clear_pending
-    fetch(only_uncollected: true, per_machine: per_machine)
+    fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours)
   end
 
   # 清掉运营机器上「排队中(queued)/执行中(running)」的采集任务（type=fetch），

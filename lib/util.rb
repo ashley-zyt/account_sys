@@ -201,6 +201,10 @@ class Util
     if result[:success]
       # 打印API返回结果（仅记录，落库由采集端通过API接口完成）
       Rails.logger.info "[Util] 账号 #{account.account_name} 采集指令推送成功，返回: #{result[:response].to_s[0..2000]}"
+      # 记录最后采集尝试时间：分批采集的退避机制据此跳过「刚试过还没回传」的账号，
+      # 避免出错账号（浏览器打不开等）每轮都被选中、占满配额饿死正常账号。
+      # 用 update_column 跳过回调（这里只是打时间戳，无需触发浏览器状态同步）。
+      account.update_column(:last_fetch_attempted_at, Time.current)
       msg = "账号 #{account.account_name} 采集指令推送成功"
       { success: true, message: msg, response: result[:response] }
     else
