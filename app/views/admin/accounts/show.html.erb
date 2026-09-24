@@ -206,14 +206,13 @@
 
     <div style="margin-top: 12px;">
       <% if pf&.authorizing? %>
-        <span class="admin-label-muted">
-          授权中，请在浏览器完成 OAuth 授权
+        <span class="admin-label-muted" style="margin-right: 12px;">
+          授权中（上次可能未完成），可重新发起
         </span>
-      <% else %>
-        <%= link_to (pf&.authorized? ? "重新授权" : "发起授权"), start_postforme_auth_admin_account_path(@account),
-            data: { turbo_method: :post, turbo_confirm: "将发起 postforme 授权，机器端会打开授权页，确定？" },
-            class: "admin-button-primary" %>
       <% end %>
+      <%= link_to (pf&.authorized? ? "重新授权" : "发起授权"), start_postforme_auth_admin_account_path(@account),
+          data: { turbo_method: :post, turbo_confirm: "将发起 postforme 授权，机器端会打开授权页，确定？" },
+          class: "admin-button-primary" %>
     </div>
 
     <div class="admin-section-title" style="margin-top: 14px;">
