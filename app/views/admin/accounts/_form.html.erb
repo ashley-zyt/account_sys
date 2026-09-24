@@ -65,6 +65,12 @@
     </div>
     <div>
       <div class="admin-field-label">
+        发布渠道
+      </div>
+      <%= f.searchable_select :publish_channel, Account.publish_channels.keys.map { |k| [k == 'ag_center' ? 'ag_center（浏览器模拟）' : 'postforme（第三方平台）', k] }, {}, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
         绑定浏览器
       </div>
       <%= f.searchable_select :browser_id, Browser.order(:profile_name).map { |o| [o.profile_name, o.id] }, { include_blank: "不绑定" }, class: "admin-input" %>

@@ -103,6 +103,9 @@ class PublishScheduler
   # 尝试执行单个待发布任务（非阻塞）。
   # @return [Symbol] :done 已执行/跳过（无需重试）；:busy 浏览器忙或机器满（需放回重试）
   def self.attempt_task(task)
+    # postforme 渠道：不依赖浏览器/机器端，走第三方 API 发布
+    return attempt_postforme_task(task) if task.account&.publish_channel == 'postforme'
+
     browser = task.browser
     return :done if browser.nil? || browser.machine_ip.blank?
 
@@ -135,6 +138,42 @@ class PublishScheduler
     return :done unless executed
 
     execute_task(task, task_type, browser.machine_ip)
+    :done
+  end
+
+  # postforme 渠道任务执行：锁定任务 → 调 postforme 提交发布（异步，结果由轮询回写）。
+  # 提交成功拿 post_id 后任务保持 executing，等 PostformeStatusPoller 轮询到终态回写；
+  # 提交失败则走 handle_error 重置任务。
+  def self.attempt_postforme_task(task)
+    today_range = Date.today.beginning_of_day..Date.today.end_of_day
+
+    # 防同账号多次发布：该账号今天已有成功发布记录，释放这条多余的 waiting_publish 任务
+    if task.account_id.present? &&
+       task.class.exists?(account_id: task.account_id, status: :success, actual_publish_time: today_range)
+      Rails.logger.info "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 对应账号 ##{task.account_id} 今天已发布成功，重置为 pending 跳过"
+      TaskAssignment.release!(task.task_uuid, '账号今日已发布成功，释放待重新分配')
+      task.update!(status: :pending, account_id: nil, browser_id: nil, start_at: nil)
+      return :done
+    end
+
+    # 事务锁定任务，避免重复执行；抢不到则放弃本轮
+    executed = false
+    ActiveRecord::Base.transaction do
+      task.lock!
+      if task.status == 'waiting_publish'
+        task.update!(status: :executing, start_at: Time.current)
+        executed = true
+      end
+    end
+    return :done unless executed
+
+    result = PostformePublisher.publish(task)
+    if result[:success]
+      Rails.logger.info "[PublishScheduler] postforme 任务 #{task.class.name}##{task.id} 已提交：#{result[:message]}"
+    else
+      Rails.logger.error "[PublishScheduler] postforme 任务 #{task.class.name}##{task.id} 提交失败：#{result[:message]}"
+      handle_error(task, result[:message])
+    end
     :done
   end
 

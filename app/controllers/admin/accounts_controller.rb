@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :destroy]
+	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :destroy]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -130,6 +130,16 @@ class Admin::AccountsController < Admin::BaseController
 		redirect_back fallback_location: admin_account_path(@account), notice: "已触发采集，粉丝与发文数据稍后更新（通常 1~2 分钟）"
 	end
 
+	# 发起 postforme 授权：拿授权 URL → 记录「授权中」→ 下发机器端打开授权页
+	def start_postforme_auth
+		result = PostformeAuthService.start_authorization(@account)
+		if result[:success]
+			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
+		else
+			redirect_back fallback_location: admin_account_path(@account), alert: result[:message]
+		end
+	end
+
 	# 软删除：写入 deleted_at 时间戳，不物理删除记录
 	def destroy
 		@account.soft_delete!
@@ -211,6 +221,7 @@ class Admin::AccountsController < Admin::BaseController
 			:platform,
 			:status,
 			:work_type,
+			:publish_channel,
 			:browser_id,
 			:operator,
 			:remark

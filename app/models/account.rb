@@ -41,6 +41,8 @@ class Account < ApplicationRecord
 	# 养号任务与账号强绑定（account_id 非空），账号删除时应一并删除，而非置空
 	has_many :warmup_tasks, dependent: :destroy
 	has_one :warmup_profile, dependent: :destroy
+	# postforme 授权关联（第三方发布平台，一对一）
+	has_one :postforme_account, dependent: :destroy
 	# 通过 task_logs.account_id 快照反查该账号的所有执行日志（兼容运营任务被释放资源的场景）
 	has_many :task_logs, foreign_key: :account_id, dependent: :nullify
 	# 账号可有多条发文数据记录
@@ -82,6 +84,14 @@ class Account < ApplicationRecord
 	# 工作模式枚举：由 WorkMode 注册表（config/work_modes.yml）动态生成，
 	# 新增工作模式只需修改该配置文件，无需改动本模型。
 	enum work_type: WorkMode.enum_mapping
+
+	# 发布渠道枚举：决定发布执行走哪条链路
+	# - ag_center : 原有指纹浏览器模拟发布（默认）
+	# - postforme : 第三方平台 API 发布
+	enum publish_channel: {
+		ag_center: 0,
+		postforme: 1
+	}
 
 	# 运营人员枚举
 	OPERATORS = ["张俊", "许淑雯", "石欢欢", "杜维"]
@@ -265,18 +275,15 @@ class Account < ApplicationRecord
 			status
 			theme
 			work_type
+			publish_channel
 			last_used_at
 			remark
+			operator
 			created_at
 			updated_at
 		]
 	end
 	def self.ransackable_associations(auth_object = nil)
-		["browser", "move_tasks", "warmup_profile"]
-	end
-
-	# Ransack 搜索允许的字段
-	def self.ransackable_attributes(auth_object = nil)
-		["id", "account_name", "theme", "platform", "status", "work_type", "browser_id", "last_used_at", "remark", "operator", "created_at", "updated_at"]
+		["browser", "move_tasks", "warmup_profile", "postforme_account"]
 	end
 end

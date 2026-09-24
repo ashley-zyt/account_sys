@@ -188,3 +188,11 @@ every :day, at: '15:00' do
   runner 'DomesticLoginStatusChecker.run'
 end
 
+# ==================== postforme 状态轮询 ====================
+# 每 1 分钟轮询：授权中的账号 + 处理中的发布任务，查 postforme 回写终态
+# （有未确认记录才实际调 postforme，否则空转）
+set :output, "log/postforme_status_poller.log"
+every 1.minute do
+  runner 'PostformeStatusPoller.run'
+end
+

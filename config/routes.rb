@@ -12,6 +12,7 @@ Rails.application.routes.draw do
       member do
         post :toggle_warmup
         post :refresh_stats
+        post :start_postforme_auth
       end
       collection do
         get :shipinhao_login_qrcode
@@ -237,6 +238,8 @@ Rails.application.routes.draw do
       post "browser_tasks/result", to: "browser_tasks#result"
       # 机器端进程启动上报：立即触发一次「忽略时间窗口」的丢失任务兜底扫描
       post "browser_tasks/machine_restarted", to: "browser_tasks#machine_restarted"
+      # postforme 授权回调：机器端用户点击授权按钮后主动上报「该账号已点击完成授权」
+      post "postforme/auth_callback", to: "postforme#auth_callback"
       # 搬运视频按ID范围查询
       get "move_video_queries", to: "move_video_queries#index"
     end
