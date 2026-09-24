@@ -23,7 +23,7 @@ module PostformePublisher
       external_id: "#{task.class.name}:#{task.id}"
     )
 
-    unless [200, 201].include?(resp[:code])
+    unless PostformeApi.success?(resp)
       return { success: false, message: "postforme 发布失败：#{resp[:raw]}" }
     end
 

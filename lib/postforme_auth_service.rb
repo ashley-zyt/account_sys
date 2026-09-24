@@ -12,10 +12,8 @@ module PostformeAuthService
     return { success: false, message: '账号未绑定指纹浏览器，无法授权' } if account.browser.blank?
 
     resp = PostformeApi.auth_url(platform: account.platform, external_id: account.id.to_s)
-    return { success: false, message: "获取授权 URL 失败：#{resp[:raw]}" } unless resp[:code] == 200
-
     url = resp[:body]['url'].to_s
-    return { success: false, message: 'postforme 未返回授权 URL' } if url.blank?
+    return { success: false, message: "获取授权 URL 失败：#{resp[:raw]}" } if url.blank?
 
     # 记录授权中
     pa = account.postforme_account || account.create_postforme_account
@@ -46,7 +44,7 @@ module PostformeAuthService
     return nil unless pa && pa.authorizing?
 
     resp = PostformeApi.social_accounts(external_id: account.id.to_s)
-    return nil unless resp[:code] == 200
+    return nil unless PostformeApi.success?(resp)
 
     connected = Array(resp[:body]).find { |a| a['status'] == 'connected' && a['id'].present? }
     return nil unless connected

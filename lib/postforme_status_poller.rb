@@ -34,7 +34,7 @@ module PostformeStatusPoller
       next unless task
 
       resp = PostformeApi.post_result(post_id: pp.post_id)
-      next unless resp[:code] == 200
+      next unless PostformeApi.success?(resp)
 
       results = Array(resp[:body])
       result = results.find { |r| r['post_id'] == pp.post_id } || results.first

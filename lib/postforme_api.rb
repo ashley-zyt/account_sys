@@ -75,6 +75,11 @@ module PostformeApi
       get("/v1/social-posts/#{post_id}")
     end
 
+    # 判断响应是否成功：2xx 都算成功（postforme 部分接口返回 201 而非 200，如 auth-url）
+    def success?(resp)
+      resp[:code].to_i.between?(200, 299)
+    end
+
     private
 
     # 平台名映射（twitter → x），未知平台原样返回
@@ -97,6 +102,11 @@ module PostformeApi
     end
 
     def perform(uri, req)
+      # API key 未配置时直接短路，避免发一个空 Bearer 出去、收到含糊的 missing_credentials
+      if api_key.blank?
+        return { code: 401, body: {}, raw: 'POSTFORME_API_KEY 未配置（请在 .env 中设置，值来自 postforme 官网的 API key）' }
+      end
+
       req['Authorization'] = "Bearer #{api_key}"
       req['Accept'] = 'application/json'
 
