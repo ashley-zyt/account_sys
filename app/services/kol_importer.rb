@@ -88,8 +88,11 @@ class KolImporter
       # 预加载已存在的联系方式（按 url / 非空 nickname 匹配），避免每行一次 SQL 查重（N+1）
       existing_url_map, existing_nickname_map = load_existing_contact_maps(rows)
 
+      # 变量列只查一次（validate_row 内部会用到，避免每行一次 MessageVariable 查询）
+      var_cols = variable_columns
+
       rows.each do |r|
-        res = validate_row(r[:raw])
+        res = validate_row(r[:raw], var_cols)
         unless res[:ok]
           invalid << { row_no: r[:row_no], error: res[:error] }
           next
@@ -103,7 +106,7 @@ class KolImporter
 
         existing = existing_url_map[d[:url]] || existing_nickname_map[d[:nickname].to_s.strip]
         if existing
-          invalid << { row_no: r[:row_no], error: "主页链接/昵称已存在于 KOL「#{existing.kol&.name}」" }
+          invalid << { row_no: r[:row_no], error: "主页链接/昵称已存在于 KOL「#{existing.kol_name}」" }
           next
         end
 
@@ -153,6 +156,7 @@ class KolImporter
     # 预加载当前库里已存在的联系方式，构建 url → 记录、nickname → 记录 两个映射，
     # 供 validate_all 逐行内存查重使用（一次性查询，替代原来的逐行 SQL 查询）。
     # 只收集本次上传涉及的 url / 非空 nickname，缩小查询范围。
+    # 返回两个 map，值统一为 { id:, kol_name: }（kol 名通过 joins 取，避免命中重复时再查 KOL）。
     def load_existing_contact_maps(rows)
       urls = rows.map { |r| (r[:raw][8] || "").to_s.strip }.reject(&:blank?).uniq
       nicks = rows.map { |r| (r[:raw][7] || "").to_s.strip }.reject(&:blank?).uniq
@@ -160,21 +164,25 @@ class KolImporter
       return [{}, {}] if urls.empty? && nicks.empty?
 
       contacts = KolContact.where.not(kol_id: nil)
+                           .joins(:kol)
                            .where("url IN (:urls) OR (nickname <> '' AND nickname IN (:nicks))",
                                   urls: urls, nicks: nicks)
+                           .select("kol_contacts.id", "kol_contacts.url", "kol_contacts.nickname", "kols.name AS kol_name")
                            .to_a
 
       url_map = {}
       nick_map = {}
       contacts.each do |c|
-        url_map[c.url.to_s.strip] ||= c if c.url.present?
-        nick_map[c.nickname.to_s.strip] ||= c if c.nickname.present?
+        entry = { id: c.id, kol_name: c.kol_name }
+        url_map[c.url.to_s.strip] ||= entry if c.url.present?
+        nick_map[c.nickname.to_s.strip] ||= entry if c.nickname.present?
       end
       [url_map, nick_map]
     end
 
     # 校验一行，返回 { ok: true, data: {...} } 或 { ok: false, error: "..." }
-    def validate_row(cells)
+    # @param variable_cols [Array<Hash>] 变量列（由调用方传入，避免每行重复查询 MessageVariable）
+    def validate_row(cells, variable_cols)
       name     = cell(cells, 0)
       domain   = cell(cells, 1)
       owner    = cell(cells, 2)
@@ -204,7 +212,7 @@ class KolImporter
 
       # 变量列（BASE_COLUMNS.size 之后），只收集非空的
       variables = {}
-      variable_columns.each_with_index do |vc, i|
+      variable_cols.each_with_index do |vc, i|
         val = cell(cells, BASE_COLUMNS.size + i)
         variables[vc[:identifier]] = val if val.present?
       end

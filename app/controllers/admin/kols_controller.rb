@@ -45,19 +45,24 @@ class Admin::KolsController < Admin::BaseController
     File.binwrite(tmp_path, file.read)
 
     begin
+      t0 = Time.current
       rows = KolImporter.parse(tmp_path)
+      t1 = Time.current
       if rows.empty?
         File.delete(tmp_path) rescue nil
         redirect_to import_admin_kols_path, alert: "文件中没有可解析的数据行（请使用模板填写）"
         return
       end
       result = KolImporter.validate_all(rows)
+      t2 = Time.current
+      Rails.logger.info "[KolImport] 解析 #{rows.size} 行耗时 #{(t1 - t0).round(2)}s，校验耗时 #{(t2 - t1).round(2)}s（valid=#{result[:valid].size}, invalid=#{result[:invalid].size}）"
       session[:kol_import_file] = tmp_path
       @valid = result[:valid]
       @invalid = result[:invalid]
       render :import
     rescue => e
       File.delete(tmp_path) rescue nil
+      Rails.logger.error "[KolImport] 文件解析失败: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
       redirect_to import_admin_kols_path, alert: "文件解析失败: #{e.message}"
     end
   end
