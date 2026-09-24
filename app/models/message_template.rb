@@ -57,7 +57,8 @@ class MessageTemplate < ApplicationRecord
     instagram: 5,
     email: 6,
     telegram: 7,
-    whatsapp: 8
+    whatsapp: 8,
+    linkedin: 9
   }
 
   validates :name, presence: true

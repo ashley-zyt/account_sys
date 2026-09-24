@@ -61,7 +61,8 @@ class KolMessage < ApplicationRecord
     instagram: 5,
     email: 6,
     telegram: 7,
-    whatsapp: 8
+    whatsapp: 8,
+    linkedin: 9
   }
 
   # 第二层：会话执行状态

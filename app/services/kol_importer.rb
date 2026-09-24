@@ -22,7 +22,8 @@ class KolImporter
     "instagram" => "instagram", "ins" => "instagram", "ig" => "instagram",
     "email"    => "email",    "邮箱" => "email",
     "telegram" => "telegram", "tg"  => "telegram",
-    "whatsapp" => "whatsapp", "wa"  => "whatsapp"
+    "whatsapp" => "whatsapp", "wa"  => "whatsapp",
+    "linkedin" => "linkedin", "领英" => "linkedin", "li" => "linkedin"
   }.freeze
 
   TRUE_VALUES = %w[是 1 true yes y t 对 有效].freeze

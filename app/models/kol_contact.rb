@@ -40,7 +40,8 @@ class KolContact < ApplicationRecord
     instagram: 5,
     email: 6,
     telegram: 7,
-    whatsapp: 8
+    whatsapp: 8,
+    linkedin: 9
   }
 
   enum status: {
@@ -105,7 +106,7 @@ class KolContact < ApplicationRecord
       "email" => "📧",
       "telegram" => "✈️",
       "whatsapp" => "💬",
-      "LinkedIn" => "LinkedIn"
+      "linkedin" => "💼"
     }[platform.to_s] || "🔗"
   end
 
