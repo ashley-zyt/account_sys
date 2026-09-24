@@ -399,6 +399,11 @@ class Admin::KolsController < Admin::BaseController
   def finalize_kol(kol, variables_hash)
     kol.sync_variables!(variables_hash)
 
+    # name 变量留空时自动取 KOL 名称，与批量导入 KolImporter.write_variables 的兜底逻辑一致。
+    # 否则手动录入时「称呼(name)」留空会被 sync_variables! 判空删除，
+    # 导致 missing_entry_variables 判定 name 缺失 → 显示「变量缺失」并回落到未开始。
+    kol.set_variable!("name", kol.name) if kol.variable_value("name").blank?
+
     incomplete = kol.missing_entry_variables.any?
     has_contacts = kol.has_outreachable_contacts?
 
