@@ -16,7 +16,7 @@
 #   - task_log 历史日志保留（它是日志，不是视频资源）
 #   - 关键词可调：改下面 FAILURE_KEYWORDS 常量即可
 
-FAILURE_KEYWORDS = ['404', 'media failed', '视频不存在', '视频失效'].freeze
+FAILURE_KEYWORDS = ['media failed'].freeze
 
 confirm = (ARGV[0].to_s == 'confirm')
 
