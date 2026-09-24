@@ -85,6 +85,9 @@ class KolImporter
       invalid = []
       seen_urls = {}
 
+      # 预加载已存在的联系方式（按 url / 非空 nickname 匹配），避免每行一次 SQL 查重（N+1）
+      existing_url_map, existing_nickname_map = load_existing_contact_maps(rows)
+
       rows.each do |r|
         res = validate_row(r[:raw])
         unless res[:ok]
@@ -98,9 +101,7 @@ class KolImporter
           next
         end
 
-        existing = KolContact.where.not(kol_id: nil)
-                             .where("url = ? OR (nickname <> '' AND nickname = ?)", d[:url], d[:nickname])
-                             .first
+        existing = existing_url_map[d[:url]] || existing_nickname_map[d[:nickname].to_s.strip]
         if existing
           invalid << { row_no: r[:row_no], error: "主页链接/昵称已存在于 KOL「#{existing.kol&.name}」" }
           next
@@ -148,6 +149,29 @@ class KolImporter
     end
 
     private
+
+    # 预加载当前库里已存在的联系方式，构建 url → 记录、nickname → 记录 两个映射，
+    # 供 validate_all 逐行内存查重使用（一次性查询，替代原来的逐行 SQL 查询）。
+    # 只收集本次上传涉及的 url / 非空 nickname，缩小查询范围。
+    def load_existing_contact_maps(rows)
+      urls = rows.map { |r| (r[:raw][8] || "").to_s.strip }.reject(&:blank?).uniq
+      nicks = rows.map { |r| (r[:raw][7] || "").to_s.strip }.reject(&:blank?).uniq
+
+      return [{}, {}] if urls.empty? && nicks.empty?
+
+      contacts = KolContact.where.not(kol_id: nil)
+                           .where("url IN (:urls) OR (nickname <> '' AND nickname IN (:nicks))",
+                                  urls: urls, nicks: nicks)
+                           .to_a
+
+      url_map = {}
+      nick_map = {}
+      contacts.each do |c|
+        url_map[c.url.to_s.strip] ||= c if c.url.present?
+        nick_map[c.nickname.to_s.strip] ||= c if c.nickname.present?
+      end
+      [url_map, nick_map]
+    end
 
     # 校验一行，返回 { ok: true, data: {...} } 或 { ok: false, error: "..." }
     def validate_row(cells)
