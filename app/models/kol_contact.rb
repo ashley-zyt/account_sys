@@ -104,7 +104,8 @@ class KolContact < ApplicationRecord
       "instagram" => "📷",
       "email" => "📧",
       "telegram" => "✈️",
-      "whatsapp" => "💬"
+      "whatsapp" => "💬",
+      "LinkedIn" => "LinkedIn"
     }[platform.to_s] || "🔗"
   end
 
