@@ -46,7 +46,7 @@ module PostformeAuthService
     resp = PostformeApi.social_accounts(external_id: account.id.to_s)
     return nil unless PostformeApi.success?(resp)
 
-    connected = Array(resp[:body]).find { |a| a['status'] == 'connected' && a['id'].present? }
+    connected = PostformeApi.items(resp).find { |a| a['status'] == 'connected' && a['id'].present? }
     return nil unless connected
 
     pa.update!(auth_status: :authorized, social_account_id: connected['id'], authorized_at: Time.current)

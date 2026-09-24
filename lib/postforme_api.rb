@@ -80,6 +80,12 @@ module PostformeApi
       resp[:code].to_i.between?(200, 299)
     end
 
+    # 从分页响应里取 data 数组（postforme 列表接口统一返回 {data: [...], meta: {...}}）
+    def items(resp)
+      body = resp[:body]
+      body.is_a?(Hash) ? Array(body['data']) : Array(body)
+    end
+
     private
 
     # 平台名映射（twitter → x），未知平台原样返回

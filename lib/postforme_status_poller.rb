@@ -36,7 +36,7 @@ module PostformeStatusPoller
       resp = PostformeApi.post_result(post_id: pp.post_id)
       next unless PostformeApi.success?(resp)
 
-      results = Array(resp[:body])
+      results = PostformeApi.items(resp)
       result = results.find { |r| r['post_id'] == pp.post_id } || results.first
       next unless result
 
