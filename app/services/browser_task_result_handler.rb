@@ -18,11 +18,12 @@ class BrowserTaskResultHandler
     id = id.to_i
 
     case model_name
-    when 'WarmupTask'   then handle_warmup(id, status, message)
-    when 'Account'      then handle_fetch(ref, status, message)
-    when 'kol_message'  then handle_kol_send(id, status, message)
-    when 'kol_contact'  then handle_kol_reply(id, status, message, result)
-    else                     handle_publish(model_name, id, status, message)
+    when 'WarmupTask'      then handle_warmup(id, status, message)
+    when 'Account'         then handle_fetch(ref, status, message)
+    when 'kol_message'     then handle_kol_send(id, status, message)
+    when 'kol_contact'     then handle_kol_reply(id, status, message, result)
+    when 'PostformeAuth'   then handle_postforme_auth(id, status)
+    else                        handle_publish(model_name, id, status, message)
     end
   end
 
@@ -107,6 +108,24 @@ class BrowserTaskResultHandler
     replies = result.is_a?(Hash) ? (result['replies'] || result[:replies]) : nil
     KolOutreachApi.apply_reply_result(contact, replies)
     { type: 'success', message: '已更新回复状态' }
+  end
+
+  # postforme 授权回调：机器端打开授权页后用户完成 OAuth，status=success 表示「已点击授权、页面已跳转」。
+  # 立即查 postforme 反查 social_account_id 加速确认；若 postforme 数据尚未就绪（confirm 返回 nil），
+  # 交给 PostformeStatusPoller 的 1 分钟轮询兜底，不报错。
+  def self.handle_postforme_auth(id, status)
+    return { type: 'success', message: '授权任务未成功，忽略' } unless status == 'success'
+
+    account = Account.find_by(id: id)
+    return { type: 'success', message: '账号不存在，忽略' } unless account
+
+    result = PostformeAuthService.confirm_authorization(account)
+    if result
+      Rails.logger.info "[BrowserTaskResult] postforme 授权确认成功 account=#{id} social_account_id=#{result[:social_account_id]}"
+    else
+      Rails.logger.info "[BrowserTaskResult] postforme 授权回调已收到，但 postforme 数据未就绪，等待轮询器兜底 account=#{id}"
+    end
+    { type: 'success', message: '已处理授权回调' }
   end
 
   # 从养号返回信息里提取总时长（秒）→ 分钟，如 "总时长 720 秒, ..."
