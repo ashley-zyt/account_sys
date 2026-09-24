@@ -10,6 +10,7 @@ class Admin::JianyingTasksController < Admin::BaseController
 	def index
 		@q = JianyingTask.ransack(params[:q])
 		@jianying_tasks = @q.result(distinct: true)
+		                   .includes(:account, :browser)
 		                   .order(created_at: :desc)
 		                   .page(params[:page])
 		                   .per(20)
