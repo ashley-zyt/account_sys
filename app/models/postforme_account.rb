@@ -1,3 +1,20 @@
+# == Schema Information
+#
+# Table name: postforme_accounts
+#
+#  id                                                    :bigint           not null, primary key
+#  auth_status(授权状态 0未授权 1授权中 2已授权 3失败)   :integer          default("pending"), not null
+#  authorized_at(授权完成时间)                           :datetime
+#  created_at                                            :datetime         not null
+#  updated_at                                            :datetime         not null
+#  account_id(本系统账号 ID（一对一）)                   :bigint           not null
+#  social_account_id(postforme 侧社交账号 ID（spc_xxx）) :string(255)
+#
+# Indexes
+#
+#  index_postforme_accounts_on_account_id         (account_id) UNIQUE
+#  index_postforme_accounts_on_social_account_id  (social_account_id)
+#
 # postforme 账号授权关联表模型。
 #
 # 记录本系统账号在 postforme 平台的授权状态与社交账号 ID。

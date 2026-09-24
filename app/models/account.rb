@@ -10,6 +10,7 @@
 #  last_used_at(最后一次使用时间)                                 :datetime
 #  operator                                                       :string(255)
 #  platform(平台：facebook/twitter/tiktok/youtube/instagram)      :integer          default("facebook")
+#  publish_channel(发布渠道 0=ag_center 1=postforme)              :integer          default("ag_center"), not null
 #  remark(备注信息)                                               :string(255)
 #  source_url(账号主页链接)                                       :string(255)
 #  status(账号状态)                                               :integer          default("正常")
@@ -28,6 +29,7 @@
 #  index_accounts_on_last_fetch_attempted_at  (last_fetch_attempted_at)
 #  index_accounts_on_last_used_at             (last_used_at)
 #  index_accounts_on_platform                 (platform)
+#  index_accounts_on_publish_channel          (publish_channel)
 #  index_accounts_on_source_url               (source_url)
 #
 class Account < ApplicationRecord
