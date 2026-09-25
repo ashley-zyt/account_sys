@@ -18,14 +18,15 @@ module OssLinkChecker
   #   url_field 存签名 URL 的字段（续期时写回这个字段）
   #   key_field 存纯 object key 的字段（可选，url 为空时用它补 key）
   #   bucket    为 nil 表示从 URL host 解析，否则用该常量
+  #   scope     只检查「未发布」记录的过滤方式（见 build_scope）
   TARGETS = [
-    { model: 'MoveTask',       url_field: 'oss_url',     key_field: nil,            bucket: nil },
-    { model: 'HunjianTask',    url_field: 'oss_url',     key_field: 'full_oss_url', bucket: nil },
-    { model: 'JianyingTask',   url_field: 'oss_url',     key_field: 'full_oss_url', bucket: 'jianying-rd' },
-    { model: 'HuashengTask',   url_field: 'oss_url',     key_field: 'full_oss_url', bucket: 'huasheng-ld' },
-    { model: 'NotebooklmTask', url_field: 'oss_url',     key_field: 'full_oss_url', bucket: 'notebooklm-ld' },
-    { model: 'OperationTask',  url_field: 'oss_url',     key_field: nil,            bucket: 'operation-viodes' },
-    { model: 'MoveVideo',      url_field: 'raw_oss_url', key_field: nil,            bucket: nil }
+    { model: 'MoveTask',       url_field: 'oss_url',     key_field: nil,            bucket: nil,              scope: :unpublished },
+    { model: 'HunjianTask',    url_field: 'oss_url',     key_field: 'full_oss_url', bucket: nil,              scope: :unpublished },
+    { model: 'JianyingTask',   url_field: 'oss_url',     key_field: 'full_oss_url', bucket: 'jianying-rd',    scope: :unpublished },
+    { model: 'HuashengTask',   url_field: 'oss_url',     key_field: 'full_oss_url', bucket: 'huasheng-ld',    scope: :unpublished },
+    { model: 'NotebooklmTask', url_field: 'oss_url',     key_field: 'full_oss_url', bucket: 'notebooklm-ld',  scope: :unpublished },
+    { model: 'OperationTask',  url_field: 'oss_url',     key_field: nil,            bucket: 'operation-viodes', scope: :unpublished },
+    { model: 'MoveVideo',      url_field: 'raw_oss_url', key_field: nil,            bucket: nil,              scope: :move_video_unfinished }
   ].freeze
 
   class << self
@@ -56,7 +57,7 @@ module OssLinkChecker
       model = target[:model].safe_constantize
       return unless model
 
-      model.find_each do |record|
+      build_scope(model, target[:scope]).find_each do |record|
         bucket, key = resolve_bucket_key(record, target)
 
         if bucket.blank? || key.blank?
@@ -78,6 +79,20 @@ module OssLinkChecker
 
     def entry(target, record, bucket, key)
       { model: target[:model], url_field: target[:url_field], id: record.id, bucket: bucket, key: key }
+    end
+
+    # 只检查「未发布」的记录：已发布（success）的链接失效也无所谓，跳过不验证。
+    # MoveVideo 无发布概念，以「剪映/混剪两条流程至少一条未完成」作为「源视频仍需保留」的判据。
+    def build_scope(model, scope_name)
+      case scope_name
+      when :unpublished
+        model.where.not(status: :success)
+      when :move_video_unfinished
+        model.where.not(jianying_status: :completed)
+             .or(model.where.not(hunjian_status: :completed))
+      else
+        model.all
+      end
     end
 
     # 解析 bucket + key：

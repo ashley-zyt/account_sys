@@ -258,7 +258,8 @@ module Api
 			end
 
 			# 事务提交后删除源视频 raw OSS 文件（失败不影响主流程）
-			videos.each { |v| delete_raw_oss_file(v) }
+			# 已注释：源视频 raw OSS 后续还可能用于剪映流程（生成 move_task），混剪完成不能删。
+			# videos.each { |v| delete_raw_oss_file(v) }
 
 			render_success(message: '混剪完成已记录，已创建发布任务')
 		end
@@ -325,10 +326,11 @@ module Api
 				end
 			end
 
-			if status == 'processed'
-				# 事务提交后删除 raw OSS 文件（失败不影响主流程）
-				delete_raw_oss_file(move_video)
-			end
+			# 事务提交后删除 raw OSS 文件（失败不影响主流程）
+			# 已注释：源视频 raw OSS 后续还可能用于混剪流程（生成 hunjian_task），剪映完成不能删。
+			# if status == 'processed'
+			# 	delete_raw_oss_file(move_video)
+			# end
 
 			{ id: move_video.id, success: true, jianying_status: move_video.jianying_status }
 		rescue => e
