@@ -55,7 +55,7 @@ class DomesticLoginStatusChecker
         sleep(INTERVAL) unless platform_name == PLATFORMS.keys.last
       end
 
-      notify_if_logged_out(results)
+      # notify_if_logged_out(results)
 
       Rails.logger.info "[DomesticLoginStatusChecker] ===== done ====="
     end
