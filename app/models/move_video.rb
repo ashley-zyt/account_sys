@@ -35,6 +35,13 @@ class MoveVideo < ApplicationRecord
 
   DEFAULT_PLATFORMS = %w[youtube facebook instagram twitter tiktok].freeze
 
+  # 下载主题白名单：下载软件只在以下主题之间「平均轮询」下载，其余主题（如武颜集萃/舞男/御马飞驰/中国美食制作）不参与下载。
+  # 主题名与 config/theme_config.yml 的 key（即 move_video.theme 实际存值）精确一致。
+  DOWNLOAD_THEMES = %w[
+    中国舞 中式养生 魔性音乐 魔性舞蹈 中国服饰变装 中国帅哥美女 治愈插花
+    动物萌宠 AI萌娃 日式萝莉 中国中式妆容 中国IP盲盒 中国机器人 汉服秀
+  ].freeze
+
   # 下载状态（status）：只跟踪「源视频是否已下载到 OSS」
   enum status: {
     pending_download: 0,  # 待下载（录入后初始）
@@ -214,7 +221,8 @@ class MoveVideo < ApplicationRecord
   # @return [MoveVideo, nil] 领取到的视频（已 reload 为 downloading），无则 nil
   def self.claim_for_download!
     theme = next_download_theme
-    candidates = theme ? pending_download.where(theme: theme) : pending_download
+    # 仅限白名单主题：next_download_theme 返回 nil（14 个主题均无待下载）时也不落回其它主题
+    candidates = theme ? pending_download.where(theme: theme) : pending_download.where(theme: DOWNLOAD_THEMES)
 
     candidates.order(created_at: :asc).limit(50).each do |record|
       return record if record.claim_download!
@@ -222,11 +230,11 @@ class MoveVideo < ApplicationRecord
     nil
   end
 
-  # 选下一个要领取的主题：在有待下载视频的主题中，选「最近领取时间最早」的
-  # 从未领取过的主题（download_started_at 为 NULL）优先，保证每个主题都能被轮到
-  # @return [String, nil] 主题名；无待下载视频时返回 nil
+  # 选下一个要领取的主题：只在下载白名单（DOWNLOAD_THEMES）中、有待下载视频的主题里，
+  # 选「最近领取时间最早」的（从未领取过 download_started_at 为 NULL 的优先），保证 14 个主题平均轮询。
+  # @return [String, nil] 主题名；白名单内无待下载视频时返回 nil
   def self.next_download_theme
-    themes = pending_download.where.not(theme: [nil, '']).distinct.pluck(:theme)
+    themes = pending_download.where(theme: DOWNLOAD_THEMES).distinct.pluck(:theme)
     return nil if themes.empty?
 
     last_claimed = where(theme: themes).group(:theme).maximum(:download_started_at)
