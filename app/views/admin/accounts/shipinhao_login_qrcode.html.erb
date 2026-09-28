@@ -19,6 +19,7 @@
       <select name="profile_name" id="profile-select" class="admin-input" style="width: auto;">
         <option value="domestic01" <%= "selected" if @profile_name == "domestic01" %>>domestic01</option>
         <option value="domestic02" <%= "selected" if @profile_name == "domestic02" %>>domestic02</option>
+        <option value="domestic03" <%= "selected" if @profile_name == "domestic03" %>>domestic03</option>
       </select>
       <button type="button" onclick="fetchQrcode()" class="admin-button-primary">
         获取二维码
