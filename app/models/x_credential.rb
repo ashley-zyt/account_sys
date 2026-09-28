@@ -30,6 +30,9 @@
 #   生成 PKCE → 构造授权 URL → 下发机器端打开 → 用户授权 → 机器端截 code 回调 →
 #   用 code + code_verifier 换 access/refresh token → 加密存凭证 → 清除 code_verifier。
 class XCredential < ApplicationRecord
+  # 显式指定表名，避免 Rails 按类名默认推导成 x_credentials（迁移实际建的是 x_account_credentials）
+  self.table_name = "x_account_credentials"
+
   belongs_to :account
 
   # 认证状态：pending=未认证 / authorizing=认证中 / authorized=已认证 / failed=失败
