@@ -45,6 +45,8 @@ class Account < ApplicationRecord
 	has_one :warmup_profile, dependent: :destroy
 	# postforme 授权关联（第三方发布平台，一对一）
 	has_one :postforme_account, dependent: :destroy
+	# X（Twitter）API 认证凭证（一对一，用于私信/评论等 X API 调用）
+	has_one :x_credential, dependent: :destroy
 	# 通过 task_logs.account_id 快照反查该账号的所有执行日志（兼容运营任务被释放资源的场景）
 	has_many :task_logs, foreign_key: :account_id, dependent: :nullify
 	# 账号可有多条发文数据记录

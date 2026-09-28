@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :destroy]
+	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_x_auth, :destroy]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -133,6 +133,16 @@ class Admin::AccountsController < Admin::BaseController
 	# 发起 postforme 授权：拿授权 URL → 记录「授权中」→ 下发机器端打开授权页
 	def start_postforme_auth
 		result = PostformeAuthService.start_authorization(@account)
+		if result[:success]
+			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
+		else
+			redirect_back fallback_location: admin_account_path(@account), alert: result[:message]
+		end
+	end
+
+	# 发起 X（Twitter）API 认证：生成 PKCE → 记录「认证中」→ 下发机器端打开授权页
+	def start_x_auth
+		result = XAuthService.start_authorization(@account)
 		if result[:success]
 			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
 		else

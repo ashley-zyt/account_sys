@@ -97,12 +97,12 @@ end
 
 # Facebook: 20:00 发布，19:50 分配资源
 set :output, "log/taskscheduler_assignresources_facebook.log"
-every :day, at: '19:50' do
+every :day, at: '19:40' do
   runner "TaskScheduler.assign_resources(platform: 'facebook')"
 end
 
 set :output, "log/publishscheduler_run_facebook.log"
-every :day, at: '20:00' do
+every :day, at: '19:45' do
   runner "PublishScheduler.run(platform: 'facebook')"
 end
 
@@ -202,12 +202,19 @@ end
 # 20:30 所有平台首轮均已结束、失败任务已回调回 pending，此时全平台再分配+发布一轮补发。
 # 闸门 has_posted_today（今天已成功发布的账号跳过）保证不会重复发布。
 set :output, "log/retry_assign_resources.log"
-every :day, at: '20:30' do
+every :day, at: '20:00' do
   runner "TaskScheduler.assign_resources"
 end
 
 set :output, "log/retry_publish.log"
-every :day, at: '20:35' do
+every :day, at: '20:05' do
   runner "PublishScheduler.run"
+end
+
+# ==================== X（Twitter）API token 刷新 ====================
+# access_token 约 2 小时过期，每 30 分钟刷新一次快过期的（refresh_token 失效则标记需重新认证）
+set :output, "log/x_token_refresh.log"
+every 30.minutes do
+  runner 'XAuthService.refresh_all'
 end
 

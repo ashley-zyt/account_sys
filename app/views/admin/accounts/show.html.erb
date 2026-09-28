@@ -216,6 +216,72 @@
     </div>
 
     <div class="admin-section-title" style="margin-top: 14px;">
+      X 平台认证
+    </div>
+    <div class="admin-section-subtitle">
+      Twitter 账号 X API 认证（私信 / 评论）
+    </div>
+
+    <% xc = @account.x_credential %>
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          认证状态
+        </div>
+        <div class="admin-field-value">
+          <% if xc&.authorized? %>
+            <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
+              <span class="admin-pill-status-dot"></span>
+              已认证
+            </span>
+          <% elsif xc&.authorizing? %>
+            <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+              <span class="admin-pill-status-dot"></span>
+              认证中
+            </span>
+          <% elsif xc&.failed? %>
+            <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+              <span class="admin-pill-status-dot"></span>
+              失败
+            </span>
+          <% else %>
+            <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af;">
+              <span class="admin-pill-status-dot"></span>
+              未认证
+            </span>
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          X user id
+        </div>
+        <div class="admin-field-value">
+          <%= xc&.x_user_id.presence || "—" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          token 过期
+        </div>
+        <div class="admin-field-value">
+          <%= xc&.token_expires_at&.strftime("%Y-%m-%d %H:%M") || "—" %>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <% if xc&.authorizing? %>
+        <span class="admin-label-muted" style="margin-right: 12px;">
+          认证中（上次可能未完成），可重新发起
+        </span>
+      <% end %>
+      <%= link_to (xc&.authorized? ? "重新认证" : "发起认证"), start_x_auth_admin_account_path(@account),
+          data: { turbo_method: :post, turbo_confirm: "将发起 X 平台认证，机器端会打开授权页，确定？" },
+          class: "admin-button-primary" %>
+    </div>
+
+    <div class="admin-section-title" style="margin-top: 14px;">
       养号配置
     </div>
     <div class="admin-section-subtitle">

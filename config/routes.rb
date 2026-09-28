@@ -13,6 +13,7 @@ Rails.application.routes.draw do
         post :toggle_warmup
         post :refresh_stats
         post :start_postforme_auth
+        post :start_x_auth
       end
       collection do
         get :shipinhao_login_qrcode
@@ -240,6 +241,8 @@ Rails.application.routes.draw do
       post "browser_tasks/machine_restarted", to: "browser_tasks#machine_restarted"
       # postforme 授权回调：机器端用户点击授权按钮后主动上报「该账号已点击完成授权」
       post "postforme/auth_callback", to: "postforme#auth_callback"
+      # X（Twitter）API 认证回调：机器端截到授权码 code 后主动上报
+      post "x_auth/auth_callback", to: "x_auth#auth_callback"
       # 搬运视频按ID范围查询
       get "move_video_queries", to: "move_video_queries#index"
     end
