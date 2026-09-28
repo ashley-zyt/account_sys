@@ -33,7 +33,7 @@ module XApi
     # @return [Array<String, String>] [code_verifier, code_challenge]
     def generate_pkce
       verifier = SecureRandom.urlsafe_base64(64).gsub(/=+\z/, '')
-      challenge = Base64.urlsafe_base64(Digest::SHA256.digest(verifier)).gsub(/=+\z/, '')
+      challenge = Base64.urlsafe_encode64(Digest::SHA256.digest(verifier), padding: false)
       [verifier, challenge]
     end
 
