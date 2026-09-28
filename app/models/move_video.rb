@@ -222,18 +222,48 @@ class MoveVideo < ApplicationRecord
     nil
   end
 
-  # 选下一个要领取的主题：在有待下载视频的主题中，选「最近领取时间最早」的
-  # 从未领取过的主题（download_started_at 为 NULL）优先，保证每个主题都能被轮到
+  # 选下一个要领取的主题：在有待下载视频的主题中，选「源视频可用天数最少」的。
+  # 可用天数 = 源视频储备数 / 正常账号数，缺得越多（天数越少）越优先下载，
+  # 替代原先的「公平轮询」。下载是每天零点批量启动，瓶颈在下载、剪映/混剪很快，
+  # 故用源视频储备（而非成片 pending）衡量缺数据严重程度。
   # @return [String, nil] 主题名；无待下载视频时返回 nil
   def self.next_download_theme
     themes = pending_download.where.not(theme: [nil, '']).distinct.pluck(:theme)
     return nil if themes.empty?
 
-    last_claimed = where(theme: themes).group(:theme).maximum(:download_started_at)
+    days = source_availability_days(themes)
+    # 可用天数升序（缺得最多优先）；天数相同按主题名稳定排序，避免结果抖动
+    themes.min_by { |t| [days[t].to_f, t] }
+  end
 
-    themes.min_by do |t|
-      claimed = last_claimed[t]
-      [claimed ? 1 : 0, claimed || Time.at(0), t]
+  # 计算各主题的「源视频可用天数」：源视频储备数 / 正常账号数。
+  # 储备口径：待下载 + 下载中 + 已下载但未双完成（剪映/混剪至少一条没走完）的源视频；
+  #           下载失败(failed)的不算储备（下不来，无法产出成片）。
+  # 账号口径：搬运剪映 + 搬运混剪两条线的正常账号，按 theme 聚合——下载单位是源视频，
+  #           一个源视频同时供给 platforms 里的所有平台，故不按 platform 拆。
+  # @param themes [Array<String>] 要计算的待下载主题列表
+  # @return [Hash{String => Float}] 主题 → 可用天数；无正常账号的主题记 0.0（视为最缺）
+  def self.source_availability_days(themes)
+    return {} if themes.blank?
+
+    stock = where(theme: themes)
+            .where(
+              "status IN (?) OR (status = ? AND NOT (jianying_status = ? AND hunjian_status = ?))",
+              [statuses[:pending_download], statuses[:downloading]],
+              statuses[:downloaded],
+              jianying_statuses[:completed],
+              hunjian_statuses[:completed]
+            )
+            .group(:theme).count
+
+    accounts = Account.active
+                     .where(work_type: %w[搬运剪映 搬运混剪], theme: themes)
+                     .group(:theme).count
+
+    themes.each_with_object({}) do |t, h|
+      s = stock[t].to_i
+      a = accounts[t].to_i
+      h[t] = a > 0 ? (s.to_f / a) : 0.0
     end
   end
 
