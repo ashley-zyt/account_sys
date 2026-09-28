@@ -102,7 +102,26 @@ module TaskReportHelper
     end
   end
 
+  # 资源失效关键词：命中则视为「媒体/URL 已失效」，任务直接置 failed 终态、不再回 pending。
+  # 例：postforme 返回 "All media failed to process, please check media URLS"
+  #     下载端返回 "download failed: HTTP 404"
+  RESOURCE_INVALID_KEYWORDS = [
+    'media failed',
+    'check media url',
+    'media url',
+    'HTTP 404',
+    'download failed'
+  ].freeze
+
+  # 判断错误信息是否属于「资源失效」（媒体/URL 失效，重新发布也注定失败）
+  def self.resource_invalid_error?(error_msg)
+    msg = error_msg.to_s.downcase
+    RESOURCE_INVALID_KEYWORDS.any? { |kw| msg.include?(kw) }
+  end
+
   def self.update_task_status(task, status, error_msg = nil)
+    error_msg = safe_utf8(error_msg)
+
     ActiveRecord::Base.transaction do
       if status == 'success'
         task.update!(
@@ -111,17 +130,33 @@ module TaskReportHelper
           error_msg: nil
         )
       else
-        # 所有资源队列任务失败时统一重置为 pending，清空账号/浏览器/开始时间，等待重新分配
         if WorkMode.for_model(task.class)
-          task.update!(
-            status: :pending,
-            account_id: nil,
-            browser_id: nil,
-            error_msg: error_msg,
-            start_at: nil
-          )
-          # 归属已随释放从任务上清空，标进 TaskAssignment 留档（归档日志时还要用）
-          TaskAssignment.release!(task.task_uuid, error_msg.presence || '任务失败，重置待重新分配')
+          if resource_invalid_error?(error_msg)
+            # 资源失效（媒体/URL 已失效，重新发布也注定失败）：直接置 failed 终态，
+            # 清空账号/浏览器/开始时间，不再回 pending。
+            # 用 update_columns 绕过 account_id presence 校验（这些模型有
+            # validates :account_id, presence: true, unless: :pending?，failed 状态要求账号非空）
+            task.update_columns(
+              status: task.class.statuses[:failed],
+              account_id: nil,
+              browser_id: nil,
+              error_msg: error_msg,
+              start_at: nil,
+              updated_at: Time.current
+            )
+            TaskAssignment.release!(task.task_uuid, error_msg.presence || '资源失效，任务终态失败')
+          else
+            # 其它失败：重置为 pending，清空账号/浏览器/开始时间，等待重新分配
+            task.update!(
+              status: :pending,
+              account_id: nil,
+              browser_id: nil,
+              error_msg: error_msg,
+              start_at: nil
+            )
+            # 归属已随释放从任务上清空，标进 TaskAssignment 留档（归档日志时还要用）
+            TaskAssignment.release!(task.task_uuid, error_msg.presence || '任务失败，重置待重新分配')
+          end
         else
           task.update!(
             status: :failed,
