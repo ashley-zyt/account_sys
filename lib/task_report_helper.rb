@@ -22,6 +22,15 @@ module TaskReportHelper
     [account_id, browser_id]
   end
 
+  # 清洗字符串里的非法 UTF-8 字节，避免写 MySQL 时报 Incorrect string value。
+  # 合法 UTF-8 原样返回；否则按 UTF-8 重打标签并 scrub 掉非法字节。
+  def self.safe_utf8(str)
+    return nil if str.nil?
+    s = str.to_s
+    return s if s.encoding == Encoding::UTF_8 && s.valid_encoding?
+    s.dup.force_encoding(Encoding::UTF_8).scrub('')
+  end
+
   def self.create_task_log(task, status, snapshot_account_id, snapshot_browser_id, error_msg = nil)
     task_status = status == 'success' ? "success" : "failed"
 
@@ -32,6 +41,10 @@ module TaskReportHelper
       snapshot_account_id ||= fallback_account_id
       snapshot_browser_id ||= fallback_browser_id
     end
+
+    # 清洗 error_msg 里的非法 UTF-8 字节：postforme 等第三方返回的错误信息可能带
+    # 非法字节，直接写 MySQL text 字段会被拒（Incorrect string value）导致 create! 抛异常。
+    error_msg = safe_utf8(error_msg)
 
     TaskLog.create!(
       task_uuid: task.task_uuid,

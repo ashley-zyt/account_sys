@@ -64,13 +64,35 @@ module PostformeStatusPoller
 
   # 发布失败：回写任务失败（资源队列任务会重置回 pending）+ 写日志
   def self.mark_failed(task, pp, result)
-    error_msg = result['error'].to_s.presence || 'postforme 发布失败'
+    error_msg = extract_error_message(result)
     snapshot_account_id = task.account_id
     snapshot_browser_id = task.browser_id
 
     pp.update!(status: :failed, error_msg: error_msg)
     TaskReportHelper.update_task_status(task, 'error', error_msg)
-    TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg)
+
+    # 写失败日志：之前 create_task_log 抛异常会被外层 poll_posts 的 rescue 吞掉，
+    # 导致「任务已重置 pending、但 task_log 缺失」。这里单独捕获并记录完整异常，
+    # 保证任务状态回写不受影响，异常也能拿到 backtrace 定位。
+    begin
+      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg)
+    rescue => e
+      Rails.logger.error "[PostformePoller] 写失败 task_log 异常 #{task.class.name}##{task.id}: #{e.class} #{e.message}\n#{e.backtrace.first(6).join("\n")}"
+    end
+
     Rails.logger.error "[PostformePoller] 任务 #{task.class.name}##{task.id} 发布失败（post_id=#{pp.post_id}）：#{error_msg}"
+  end
+
+  # 从 postforme 结果里提取友好错误信息。
+  # error 是 object 类型（Hash），直接 to_s 会得到 Ruby hash 字符串、且可能带非法 UTF-8 字节；
+  # 优先取 message / error / code 字段，拿不到再退回 to_s，最后 scrub 掉非法字节。
+  def self.extract_error_message(result)
+    err = result['error']
+    msg = if err.is_a?(Hash)
+            err['message'].presence || err['error'].presence || err['code'].presence || err.to_s
+          else
+            err.to_s
+          end
+    TaskReportHelper.safe_utf8(msg).presence || 'postforme 发布失败'
   end
 end
