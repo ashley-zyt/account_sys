@@ -47,6 +47,10 @@
         <label class="admin-filter-label">账号平台</label>
         <%= f.searchable_select :account_platform_eq, Account.platforms.keys.map { |k| [k.titleize, k] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">发布渠道</label>
+        <%= f.searchable_select :account_publish_channel_eq, Account.publish_channels.keys.map { |k| [k == 'postforme' ? 'postforme（第三方）' : 'ag_center（浏览器模拟）', k] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
+      </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
         <%= link_to "重置", admin_task_logs_path, class: "admin-button-secondary" %>

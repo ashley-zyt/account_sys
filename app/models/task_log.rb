@@ -119,6 +119,11 @@ class TaskLog < ApplicationRecord
 		Arel.sql("COALESCE(#{account_snapshot_fallback_sql('work_type')})")
 	end
 
+	# 发布渠道筛选：优先读取快照字段，回退到各资源队列任务再到 accounts 表
+	ransacker :account_publish_channel, formatter: proc { |v| Account.publish_channels[v] } do
+		Arel.sql("COALESCE(#{account_snapshot_fallback_sql('publish_channel')})")
+	end
+
 	def self.ransackable_associations(auth_object = nil)
 		WorkMode.resource_modes.map { |m| m.singular_association_name.to_s } + %w[log_account log_browser]
 	end
@@ -139,6 +144,7 @@ class TaskLog < ApplicationRecord
 			task_type
 			account_platform
 			account_work_type
+			account_publish_channel
 		]
 	end
 end
