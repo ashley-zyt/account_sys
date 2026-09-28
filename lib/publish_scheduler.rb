@@ -38,15 +38,10 @@ class PublishScheduler
     tasks = fetch_all_tasks(platform: platform)
     run_tasks_with_pool(tasks, machine_count: machine_ips.size)
 
-    # 首轮发布完成，重新分配资源并重试（保持原有逻辑：仅指定平台时重试）
-    if platform.present?
-      Rails.logger.info "[PublishScheduler] 平台 #{platform} 首轮发布完成，开始重试流程"
-      TaskScheduler.assign_resources(platform: platform)
-
-      retry_tasks = fetch_all_tasks(platform: platform)
-      run_tasks_with_pool(retry_tasks, machine_count: machine_ips.size)
-      Rails.logger.info "[PublishScheduler] 平台 #{platform} 重试流程完成"
-    end
+    # 说明：原先这里有「首轮发布完成后重新分配资源并重试」的逻辑，现已移除。
+    # 原因：发布已改为异步（下发即返回，结果等机器端异步回调），重试块在首轮后立即执行时
+    # 失败任务还没回调回 pending、仍在 executing，assign_resources 分配不到，属于空转失效。
+    # 失败任务回 pending 后，由第二天该平台发布窗口前的 assign_resources 定时任务重新分配。
 
     Rails.logger.info "[PublishScheduler] 所有机器发布任务执行完成"
   end

@@ -51,7 +51,8 @@ class TaskScheduler
 
 					# TikTok 限制：账号过去3天发文浏览量均为0时暂停分配，冷却3天后再恢复
 					# （滑动窗口：连续0浏览量的账号会被持续跳过，直到窗口滑出那些0浏览量的发文）
-					if platform == 'tiktok' && account.zero_views_in_past_3_days?
+					# 按账号自身平台判断（而非传入的 platform 参数），保证全平台补发轮也能正确冷却
+					if account.platform == 'tiktok' && account.zero_views_in_past_3_days?
 						Rails.logger.info "TikTok账号 #{account.account_name}[#{account.platform}-#{account.theme}] 过去3天发文浏览量均为0，暂停3天后再分配资源"
 						next
 					end

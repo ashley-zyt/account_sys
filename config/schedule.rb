@@ -139,7 +139,7 @@ end
 # - 每轮每台机器最多下发 5 个账号（MAX_ACCOUNTS_PER_MACHINE），按顺序轮转、每轮不重复
 # - 机器IP在浏览器页面动态管理，无需改代码
 set :output, "log/warmup_scheduler.log"
-every :day, at: ['20:00', '21:00', '22:00', '23:00', '00:00'] do
+every :day, at: ['21:00', '22:00', '23:00', '00:00'] do
   runner 'WarmupScheduler.run'
 end
 
@@ -194,5 +194,20 @@ end
 set :output, "log/postforme_status_poller.log"
 every 1.minute do
   runner 'PostformeStatusPoller.run'
+end
+
+# ==================== 每天补发一轮 ====================
+# 晚间把当天发布失败回 pending 的任务重新分配并补发一轮。
+# 背景：发布已异步化（下发即返回、结果等机器端回调），白天各平台发布窗口内的同步重试已移除；
+# 22:00 所有平台首轮均已结束、失败任务已回调回 pending，此时全平台再分配+发布一轮补发。
+# 闸门 has_posted_today（今天已成功发布的账号跳过）保证不会重复发布。
+set :output, "log/retry_assign_resources.log"
+every :day, at: '20:30' do
+  runner "TaskScheduler.assign_resources"
+end
+
+set :output, "log/retry_publish.log"
+every :day, at: '20:35' do
+  runner "PublishScheduler.run"
 end
 
