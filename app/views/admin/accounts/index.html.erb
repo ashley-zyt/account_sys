@@ -29,8 +29,16 @@
   <div class="admin-filter-form">
     <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">ID</label>
+        <%= f.search_field :id_eq, class: "admin-input admin-filter-input", placeholder: "精确匹配账号 ID..." %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">账号名</label>
         <%= f.search_field :account_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索账号名..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">主页链接</label>
+        <%= f.search_field :source_url_cont, class: "admin-input admin-filter-input", placeholder: "搜索账号主页链接..." %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">主题</label>

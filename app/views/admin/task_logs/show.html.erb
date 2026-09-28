@@ -5,6 +5,108 @@
   任务 <%= @task_log.task_uuid %> 的执行日志
 <% end %>
 
+<% task = @task_log.task %>
+<div class="admin-card" style="margin-bottom: 20px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">
+        关联任务
+      </div>
+      <div class="admin-card-subtitle">
+        该日志对应的资源队列任务详情
+      </div>
+    </div>
+  </div>
+
+  <% if task %>
+    <% mode = WorkMode.find_by_model(task.class) %>
+    <div class="admin-two-column">
+      <div>
+        <div class="admin-field-label">
+          任务类型
+        </div>
+        <div class="admin-field-value">
+          <%= @task_log.task_type %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          任务 ID
+        </div>
+        <div class="admin-field-value">
+          <% if mode %>
+            <%= link_to "##{task.id}", send("admin_#{mode.key}_task_path", task), class: "admin-link-quiet", style: "color: var(--accent);" %>
+          <% else %>
+            #<%= task.id %>
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          标题
+        </div>
+        <div class="admin-field-value">
+          <%= task.respond_to?(:title) ? truncate(task.title.to_s, length: 60) : "-" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          主题
+        </div>
+        <div class="admin-field-value">
+          <%= task.respond_to?(:theme) ? (task.theme.presence || "-") : "-" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          平台
+        </div>
+        <div class="admin-field-value">
+          <%= task.respond_to?(:platform) ? (task.platform.presence || "-") : "-" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          任务状态
+        </div>
+        <div class="admin-field-value">
+          <%= task.respond_to?(:status) ? task.status : "-" %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          账号
+        </div>
+        <div class="admin-field-value">
+          <% acc = @task_log.display_account %>
+          <% if acc %>
+            <%= link_to acc.account_name, admin_account_path(acc), class: "admin-link-quiet", style: "color: var(--accent);" %>
+          <% else %>
+            <span class="admin-label-muted">未分配</span>
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          浏览器
+        </div>
+        <div class="admin-field-value">
+          <% br = @task_log.display_browser %>
+          <% if br %>
+            <%= link_to br.profile_name, admin_browser_path(br), class: "admin-link-quiet", style: "color: var(--accent);" %>
+          <% else %>
+            <span class="admin-label-muted">未绑定</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      该日志未关联到任何任务（任务可能已被删除）。
+    </div>
+  <% end %>
+</div>
+
 <div class="admin-grid">
   <div class="admin-card">
     <div class="admin-card-header">

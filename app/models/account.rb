@@ -272,6 +272,7 @@ class Account < ApplicationRecord
 		%w[
 			id
 			account_name
+			source_url
 			browser_id
 			platform
 			status
