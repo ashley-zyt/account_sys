@@ -1,4 +1,4 @@
-<div class="admin-contact-row" style="display: grid; grid-template-columns: 140px 1fr 1.4fr 90px 120px 70px; gap: 10px; align-items: end; padding: 12px; border: 1px solid rgba(148,163,184,0.25); border-radius: 8px; margin-bottom: 10px; background: rgba(148,163,184,0.04);">
+<div class="admin-contact-row" style="display: grid; grid-template-columns: 140px 1fr 1.4fr 80px 120px 90px 60px; gap: 10px; align-items: end; padding: 12px; border: 1px solid rgba(148,163,184,0.25); border-radius: 8px; margin-bottom: 10px; background: rgba(148,163,184,0.04);">
   <div>
     <div class="admin-field-label">平台/渠道 <span style="color: #ef4444;">*</span></div>
     <%= render "admin/shared/searchable_select",
@@ -20,6 +20,12 @@
   <div>
     <div class="admin-field-label">优先级</div>
     <%= f.number_field :priority, class: "admin-input", min: 0 %>
+  </div>
+  <div>
+    <div class="admin-field-label">触达方式</div>
+    <%= f.select :outreach_channel,
+          [["X认证", "x_api"], ["指纹浏览器", "browser"]],
+          {}, class: "admin-input" %>
   </div>
   <div>
     <div class="admin-field-label">可发私信</div>

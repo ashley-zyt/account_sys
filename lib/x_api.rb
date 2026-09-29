@@ -24,6 +24,8 @@ module XApi
   # 授权端点 / token 端点
   AUTHORIZE_ENDPOINT = 'https://twitter.com/i/oauth2/authorize'
   TOKEN_ENDPOINT = 'https://api.twitter.com/2/oauth2/token'
+  # X API v2 通用 base（DM / users 等资源接口）
+  API_BASE = 'https://api.twitter.com'
 
   # 授权范围：私信 + 评论 + 读用户 + 离线访问（offline.access 才会返回 refresh_token）
   SCOPE = 'dm.read dm.write tweet.read tweet.write users.read offline.access'
@@ -80,6 +82,48 @@ module XApi
     # @return [Hash] { code:, body:, raw: }，body['data']['id'] 即 X 平台 user id
     def me(access_token:)
       uri = URI('https://api.twitter.com/2/users/me')
+      req = Net::HTTP::Get.new(uri)
+      req['Authorization'] = "Bearer #{access_token}"
+      req['Accept'] = 'application/json'
+      perform(uri, req)
+    end
+
+    # 按用户名查用户（GET /2/users/by/username/:username），拿 user_id。
+    # @return [Hash] { code:, body:, raw: }，body['data']['id'] 即对方 X user id
+    def user_by_username(access_token:, username:)
+      u = username.to_s.sub(/\A@/, '').strip
+      return { code: 0, body: {}, raw: 'username 为空' } if u.blank?
+
+      uri = URI("#{API_BASE}/2/users/by/username/#{URI.encode_www_form_component(u)}")
+      req = Net::HTTP::Get.new(uri)
+      req['Authorization'] = "Bearer #{access_token}"
+      req['Accept'] = 'application/json'
+      perform(uri, req)
+    end
+
+    # 发私信（POST /2/dm_conversations/with/:participant_id/messages），
+    # 自动创建/复用 1-1 会话。body 的 text 是对象 { text: "..." }。
+    # @return [Hash] { code:, body:, raw: }
+    def send_dm(access_token:, participant_id:, text:)
+      uri = URI("#{API_BASE}/2/dm_conversations/with/#{participant_id}/messages")
+      req = Net::HTTP::Post.new(uri)
+      req['Authorization'] = "Bearer #{access_token}"
+      req['Content-Type'] = 'application/json'
+      req['Accept'] = 'application/json'
+      req.body = { text: { text: text } }.to_json
+      perform(uri, req)
+    end
+
+    # 拉取 1-1 会话的 DM 事件（GET /2/dm_conversations/with/:participant_id/dm_events）。
+    # 需显式带 dm_event.fields 才有 sender_id / created_at（默认只返回 id/text/event_type）。
+    # @return [Hash] { code:, body:, raw: }，body['data'] 为事件数组，body.dig('meta','next_token') 分页游标
+    def dm_events(access_token:, participant_id:, max_results: 100, pagination_token: nil)
+      params = {
+        max_results: max_results,
+        'dm_event.fields' => 'id,text,event_type,dm_conversation_id,created_at,sender_id'
+      }
+      params[:pagination_token] = pagination_token if pagination_token.present?
+      uri = URI("#{API_BASE}/2/dm_conversations/with/#{participant_id}/dm_events?#{URI.encode_www_form(params)}")
       req = Net::HTTP::Get.new(uri)
       req['Authorization'] = "Bearer #{access_token}"
       req['Accept'] = 'application/json'

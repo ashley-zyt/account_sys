@@ -21,13 +21,17 @@ class KolAccountAllocator
     end
 
     # 分配一个可用账号；无可用账号或平台未接通时返回 nil
-    def allocate(platform, exclude_ids: [])
+    # @param channel [Symbol, String] 触达方式：:x_api（X 认证，默认）/ :browser（指纹浏览器）。
+    #   x_api 时只选「X 授权成功」的账号（有可用 access_token）。
+    def allocate(platform, exclude_ids: [], channel: :x_api)
       return nil unless supported_platform?(platform)
 
       ordered_candidates(platform).each do |account|
         next if exclude_ids.include?(account.id)
         next if account.kol_sleeping?
         next if today_contact_count(account) >= MAX_CONTACTS_PER_DAY
+        # X 认证方式：只选 X 授权成功的账号
+        next if channel.to_s == 'x_api' && !account.x_credential&.authorized?
         return account
       end
       nil
@@ -49,7 +53,7 @@ class KolAccountAllocator
       # 无发文数据的平台（如 facebook）跳过浏览量评分，直接返回全部正常账号，
       # 按「最久未使用」优先，兼顾账号轮询平衡
       if SKIP_POST_SCORING_PLATFORMS.include?(platform.to_s)
-        return Account.where(id: account_ids).order(:last_used_at, :id).to_a
+        return Account.where(id: account_ids).includes(:x_credential).order(:last_used_at, :id).to_a
       end
 
       # 按发文日期倒序拉取每个账号的浏览量，再逐个账号截取最近 7 条
@@ -73,7 +77,7 @@ class KolAccountAllocator
 
       scored.sort_by! { |_id, avg| -avg }
       ids = scored.map(&:first)
-      accounts_by_id = Account.where(id: ids).index_by(&:id)
+      accounts_by_id = Account.where(id: ids).includes(:x_credential).index_by(&:id)
       ids.map { |id| accounts_by_id[id] }.compact
     end
 

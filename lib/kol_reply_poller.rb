@@ -25,8 +25,12 @@ class KolReplyPoller
       account = contact.last_outgoing_account
       return if account.nil?
 
-      result = KolOutreachApi.check_reply(platform: contact.platform, account: account, contact: contact)
-      # 异步受理：机器端后台执行，等 /api/v1/browser_tasks/result 回调后由 apply_reply_result 处理
+      result = if contact.outreach_channel == 'x_api'
+        KolXOutreach.fetch_replies(account: account, contact: contact)
+      else
+        KolOutreachApi.check_reply(platform: contact.platform, account: account, contact: contact)
+      end
+      # 异步受理（仅机器端通道）：等 /api/v1/browser_tasks/result 回调后由 apply_reply_result 处理
       return if result[:async]
       return unless result[:has_reply]
 

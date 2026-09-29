@@ -52,6 +52,12 @@ class KolContact < ApplicationRecord
     unresponsive: 4  # 未回复（30 天窗口到期仍无回复）
   }
 
+  # 触达方式：指纹浏览器（机器端模拟）或 X 认证（X API 私信）
+  enum outreach_channel: {
+    browser: 0,  # 指纹浏览器（默认，兼容现有机器端链路）
+    x_api: 1     # X 认证（X API 发私信/拉消息）
+  }
+
   # 联系方式状态中文标签（展示用）
   STATUS_LABELS = {
     "active"       => "未联系",
@@ -113,7 +119,7 @@ class KolContact < ApplicationRecord
   def self.ransackable_attributes(auth_object = nil)
     %w[
       id kol_id platform nickname url priority messaging_enabled
-      status last_used_at created_at updated_at
+      status outreach_channel x_user_id last_used_at created_at updated_at
     ]
   end
 
