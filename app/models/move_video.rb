@@ -39,7 +39,7 @@ class MoveVideo < ApplicationRecord
   # 主题名与 config/theme_config.yml 的 key（即 move_video.theme 实际存值）精确一致。
   DOWNLOAD_THEMES = %w[
     中国舞 中式养生 魔性音乐 魔性舞蹈 中国服饰变装 中国帅哥美女 治愈插花
-    动物萌宠 AI萌娃 日式萝莉 中国中式妆容 中国IP盲盒 中国机器人 汉服秀
+    动物萌宠 AI萌娃 日式萝莉 中国中式妆容 中国IP盲盒 中国机器人
   ].freeze
 
   # 下载状态（status）：只跟踪「源视频是否已下载到 OSS」
