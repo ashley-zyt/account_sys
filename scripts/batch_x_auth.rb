@@ -79,6 +79,7 @@ end
 if confirm
   interval = opts[:interval] && opts[:interval] > 0 ? opts[:interval] : 30
   ok = 0
+  skipped = 0
   fail_list = []
   accounts.each_with_index do |a, idx|
     begin
@@ -86,6 +87,9 @@ if confirm
       if r[:success]
         ok += 1
         puts "  OK #%d %s：%s" % [a.id, a.account_name, r[:message]]
+      elsif r[:message].to_s.include?('进行中的认证')
+        skipped += 1
+        puts "  SKIP #%d %s：%s" % [a.id, a.account_name, r[:message]]
       else
         fail_list << [a.id, a.account_name, r[:message]]
         puts "  NG #%d %s：%s" % [a.id, a.account_name, r[:message]]
@@ -100,7 +104,7 @@ if confirm
   end
 
   puts
-  puts "成功发起 #{ok} 个，失败 #{fail_list.size} 个"
+  puts "成功发起 #{ok} 个，跳过 #{skipped} 个，失败 #{fail_list.size} 个"
   if fail_list.any?
     puts '失败明细：'
     fail_list.each { |id, name, msg| puts "  - #%d %s：%s" % [id, name, msg] }

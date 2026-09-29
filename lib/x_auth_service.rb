@@ -8,17 +8,26 @@
 #   5. 用 code + code_verifier 换 access/refresh token，加密存凭证，清除 code_verifier
 module XAuthService
   # 发起认证：生成 PKCE → 记录「认证中」→ 下发机器端打开授权页。
+  # @param force [Boolean] 强制重新发起（覆盖进行中的认证）。默认 false，防重复触发。
   # @return [Hash] { success:, message:, auth_url: }
-  def self.start_authorization(account)
+  def self.start_authorization(account, force: false)
     return { success: false, message: '账号未绑定指纹浏览器，无法认证' } if account.browser.blank?
     return { success: false, message: 'X API 未配置（请在 .env 设置 X_CLIENT_ID / X_CLIENT_SECRET）' } unless XApi.configured?
+
+    # 防重复：已有「认证中」且未完成时，不覆盖 code_verifier/state。
+    # 否则重复触发会覆盖掉旧授权页对应的 state/verifier，机器端旧授权页回调时
+    # 会报「state 不匹配 / code_verifier 不匹配」导致换 token 失败。
+    xc = account.x_credential
+    if !force && xc&.authorizing? && xc.code_verifier.present?
+      return { success: false, message: '该账号已有进行中的认证，请勿重复发起' }
+    end
 
     verifier, challenge = XApi.generate_pkce
     state = SecureRandom.urlsafe_base64(16)
 
     url = XApi.authorization_url(state: state, code_challenge: challenge)
 
-    xc = account.x_credential || account.create_x_credential
+    xc ||= account.create_x_credential
     xc.update!(auth_status: :authorizing, code_verifier: verifier, state: state, authorized_at: nil)
 
     # 下发机器端：指纹浏览器打开授权页（复用 open_auth_url，机器端需扩展「检测跳转截 code」）
