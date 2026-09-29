@@ -15,6 +15,7 @@
     { label: "洽谈中", value: (@status_counts["negotiating"] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: "negotiating" }), active: active_status == "negotiating" },
     { label: "已合作", value: (@status_counts["cooperating"] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: "cooperating" }), active: active_status == "cooperating" },
     { label: "未回复", value: (@status_counts["unresponsive"] || 0), color: "#64748b", url: admin_kols_path(q: { status_eq: "unresponsive" }), active: active_status == "unresponsive" },
+    { label: "无法联系", value: (@status_counts["unreachable"] || 0), color: "#78716c", url: admin_kols_path(q: { status_eq: "unreachable" }), active: active_status == "unreachable" },
     { label: "待补全变量", value: @variables_incomplete_count, color: "#fb923c", url: admin_kols_path(q: { variables_incomplete_eq: "true" }), active: active_incomplete }
   ]
 %>

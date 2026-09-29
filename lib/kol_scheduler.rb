@@ -80,7 +80,11 @@ class KolScheduler
         .to_a
         .select { |c| KolAccountAllocator.supported_platform?(c.platform) }
 
-      return false if contacts.empty?
+      if contacts.empty?
+        # 没有任何可私信的联系方式（平台不支持 / messaging 关闭 / 已停用）：判定无法联系，终止不再重试
+        kol.update!(status: :unreachable, next_action_at: nil)
+        return false
+      end
 
       contacts.each do |contact|
         outcome = send_on_contact(kol, contact, scenario: scenario)
@@ -102,12 +106,11 @@ class KolScheduler
 
     # 2 个工作日无回复后切换：尝试下一个「未联系」渠道；当前渠道保持 monitoring，交给 30 天过期处理
     def advance(kol)
-      has_active = kol.kol_contacts.where(status: KolContact.statuses[:active]).exists?
-      if has_active
+      if kol.has_outreachable_contacts?
         run_outreach(kol, scenario: :follow_up)
       else
-        # 没有未联系渠道了，停止 advance；等待 30 天过期处理判定「无回应」
-        kol.update!(next_action_at: nil)
+        # 没有任何可私信的联系方式：判定无法联系，终止不再重试
+        kol.update!(status: :unreachable, next_action_at: nil)
       end
     end
 
@@ -135,8 +138,14 @@ class KolScheduler
       elsif kol.kol_contacts.where(status: KolContact.statuses[:contacting]).exists?
         kol.update!(status: :contacting)
       elsif kol.kol_contacts.where(status: KolContact.statuses[:active]).exists?
-        kol.update!(status: :pending, next_action_at: nil)
+        # 有 active 联系方式：可私信 → 重新待联系；都不可私信 → 无法联系
+        if kol.has_outreachable_contacts?
+          kol.update!(status: :pending, next_action_at: nil)
+        else
+          kol.update!(status: :unreachable, next_action_at: nil)
+        end
       else
+        # 没有 active/contacting/replied（都监测到期未回复）→ 未回复
         kol.update!(status: :unresponsive, next_action_at: nil)
       end
     end

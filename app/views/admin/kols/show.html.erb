@@ -258,7 +258,7 @@
   </div>
 
   <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px;">
-    <% if @kol.reserved? %>
+    <% if @kol.reserved? || @kol.unreachable? %>
       <%= link_to "转为待联系", activate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-primary" %>
     <% elsif @kol.pending? %>
       <%= link_to "转为未开始", deactivate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-secondary" %>

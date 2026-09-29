@@ -55,7 +55,8 @@ class Kol < ApplicationRecord
     negotiating: 4,           # 洽谈中
     cooperating: 5,           # 已合作
     failed: 6,                # 已拒绝
-    unresponsive: 7           # 未回复
+    unresponsive: 7,          # 未回复
+    unreachable: 8            # 无法联系（无可私信的联系方式）
   }
 
   # KOL 业务状态中文标签（表单下拉与展示共用）
@@ -67,11 +68,12 @@ class Kol < ApplicationRecord
     "negotiating"         => "人工洽谈中",
     "cooperating"         => "已合作",
     "failed"              => "已拒绝",
-    "unresponsive"        => "未回复"
+    "unresponsive"        => "未回复",
+    "unreachable"         => "无法联系"
   }.freeze
 
   # 允许运营在快捷区直接切换的状态（其余为系统自动流转，人工改容易混乱）
-  MANUAL_STATUS_KEYS = %w[reserved negotiating cooperating failed unresponsive].freeze
+  MANUAL_STATUS_KEYS = %w[reserved negotiating cooperating failed unresponsive unreachable].freeze
 
   def status_label
     STATUS_LABELS[status] || status.to_s
