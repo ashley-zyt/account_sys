@@ -226,6 +226,7 @@ class KolScheduler
         case result
         when :success, :async_accepted then return :success
         when :missing_variables then return :suspended
+        when :target_invalid then return :exhausted  # 对方 user_id 无效，换账号无意义，停止该联系方式
         else
           # account_risk / other：换下一个账号；同平台换满 max_accounts_per_platform 个仍失败则换平台
           return :exhausted if attempted.size >= max_accounts_per_platform
@@ -286,6 +287,9 @@ class KolScheduler
       elsif result[:reason] == "account_risk"
         KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "account_risk")
         :account_risk
+      elsif result[:reason] == "target_invalid"
+        KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "network")
+        :target_invalid
       else
         KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "network")
         :other

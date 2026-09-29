@@ -5,6 +5,7 @@ class Admin::ThemesController < Admin::BaseController
     @q = Theme.ransack(params[:q])
     @themes = @q.result(distinct: true).order(created_at: :desc).page(params[:page]).per(10)
     @theme = Theme.new
+    @domains = Domain.order(:name)
   end
 
   def edit

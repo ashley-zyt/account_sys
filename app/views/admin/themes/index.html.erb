@@ -29,6 +29,13 @@
         <label class="admin-filter-label">主题名称</label>
         <%= f.search_field :name_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题名称..." %>
       </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">领域</label>
+        <%= f.select :domain_id_eq,
+              options_from_collection_for_select(@domains, :id, :name, params.dig(:q, :domain_id_eq)),
+              { include_blank: "全部领域" },
+              class: "admin-input admin-filter-input" %>
+      </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>
         <%= link_to "重置", admin_themes_path, class: "admin-button-secondary" %>
@@ -42,7 +49,7 @@
         <thead>
           <tr>
             <th>主题名称</th>
-            
+            <th>领域</th>
             <th>待选标题数量</th>
             <th>待选Prompts数量</th>
             <th>OSS目录名</th>
@@ -55,7 +62,7 @@
           <% @themes.each do |theme| %>
             <tr>
               <td><%= theme.name %></td>
-              
+              <td><span class="admin-label-muted"><%= theme.domain&.name.presence || '—' %></span></td>
               <td><span class="admin-label-muted"><%= theme.titles_array.size %></span></td>
               <td><span class="admin-label-muted"><%= theme.prompts_array.size %></span></td>
               <td><span class="admin-label-muted"><%= theme.oss_directory.presence || '未设置' %></span></td>
