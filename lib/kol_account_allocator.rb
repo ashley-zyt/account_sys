@@ -23,10 +23,19 @@ class KolAccountAllocator
     # 分配一个可用账号；无可用账号或平台未接通时返回 nil
     # @param channel [Symbol, String] 触达方式：:x_api（X 认证，默认）/ :browser（指纹浏览器）。
     #   x_api 时只选「X 授权成功」的账号（有可用 access_token）。
-    def allocate(platform, exclude_ids: [], channel: :x_api)
+    # @param domain_id [Integer, nil] 目标领域 ID。传入时**只选领域相同的账号**（不同领域的直接跳过）。
+    def allocate(platform, exclude_ids: [], channel: :x_api, domain_id: nil)
       return nil unless supported_platform?(platform)
 
-      ordered_candidates(platform).each do |account|
+      candidates = ordered_candidates(platform)
+
+      # 只匹配领域相同的账号：账号 theme 所属领域 == 目标领域才保留，不同则跳过
+      if domain_id.present?
+        theme_domains = Theme.where(name: candidates.map(&:theme).compact.uniq).pluck(:name, :domain_id).to_h
+        candidates = candidates.select { |a| theme_domains[a.theme] == domain_id }
+      end
+
+      candidates.each do |account|
         next if exclude_ids.include?(account.id)
         next if account.kol_sleeping?
         next if today_contact_count(account) >= MAX_CONTACTS_PER_DAY
