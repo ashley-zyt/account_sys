@@ -8,7 +8,6 @@
 #   5. 风控/发送失败的账号休眠一段时间，期间不参与分配
 class KolAccountAllocator
   MAX_CONTACTS_PER_DAY = 5
-  MIN_AVG_VIEWS = 10
   SLEEP_HOURS = 24
   # 当前已接通 twitter / tiktok / instagram / facebook
   SUPPORTED_PLATFORMS = %w[twitter tiktok instagram facebook].freeze
@@ -98,11 +97,10 @@ class KolAccountAllocator
       scored = []
       by_account.each do |account_id, views|
         next if views.empty?          # 一条发文都没有：略过
-        avg = views.sum.to_f / views.size
-        next if avg <= MIN_AVG_VIEWS  # 平均浏览量不达标：略过
-        scored << [account_id, avg]
+        scored << [account_id, views.sum.to_f / views.size]
       end
 
+      # 只按平均浏览量降序排序（作为优先级），不再以浏览量作为分配门槛
       scored.sort_by! { |_id, avg| -avg }
       ids = scored.map(&:first)
       accounts_by_id = Account.where(id: ids).includes(:x_credential).index_by(&:id)
