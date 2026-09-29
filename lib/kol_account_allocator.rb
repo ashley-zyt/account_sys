@@ -52,6 +52,24 @@ class KolAccountAllocator
       account.update!(kol_sleep_until: hours.hours.from_now)
     end
 
+    # 判断是否「今日配额已耗尽」：所有支持平台的正常账号，今日发送成功数都达到上限（或平台无账号）。
+    # 配额耗尽时应等第二天自然日重置，而不是短时间重试空转。
+    def self.quota_exhausted?
+      SUPPORTED_PLATFORMS.all? do |platform|
+        account_ids = Account.active.where(platform: platform).pluck(:id)
+        next true if account_ids.empty?
+
+        sent = KolMessage.where(
+          account_id: account_ids,
+          direction: KolMessage.directions[:outgoing],
+          status: KolMessage.statuses[:sent_success],
+          created_at: Time.current.beginning_of_day..Time.current.end_of_day
+        ).group(:account_id).count
+
+        account_ids.all? { |id| sent[id].to_i >= MAX_CONTACTS_PER_DAY }
+      end
+    end
+
     private
 
     # 正常 + 同平台，按「近七条发文」的平均浏览量降序；

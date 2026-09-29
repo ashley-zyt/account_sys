@@ -89,8 +89,14 @@ class KolScheduler
         # :exhausted → 换下一个平台的联系方式继续
       end
 
-      # 所有平台都未发送成功：延迟后重试，避免每轮都空跑
-      kol.update!(next_action_at: retry_hours.hours.from_now)
+      # 所有平台都未发送成功
+      if KolAccountAllocator.quota_exhausted?
+        # 账号今日配额已用完：直接停下，等第二天自然日配额重置再继续
+        kol.update!(next_action_at: Time.current.tomorrow.beginning_of_day)
+      else
+        # 发送失败（账号异常/网络等）：短时间后重试
+        kol.update!(next_action_at: retry_hours.hours.from_now)
+      end
       false
     end
 
