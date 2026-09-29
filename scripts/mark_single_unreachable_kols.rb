@@ -1,7 +1,7 @@
 # 批量把「只有一个联系方式 且 不能私信」的 KOL 标记为「无法联系(unreachable)」
 #
 # 「不能私信」判定（唯一联系方式）：
-#   - 未联系(active) 但私信开关关(messaging_enabled=false)
+#   - 未联系(active) 但对方未开私信(messaging_enabled=false)
 #   - 未联系(active) 但平台不支持私信（linkedin/youtube/email 等）
 #   - 已停用(disabled)
 # 排除：已联系过(contacting/replied/unresponsive)——那些属于「等回复/已回复/未回复」，不算「不能私信」。

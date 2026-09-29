@@ -81,7 +81,7 @@ class KolScheduler
         .select { |c| KolAccountAllocator.supported_platform?(c.platform) }
 
       if contacts.empty?
-        # 没有任何可私信的联系方式（平台不支持 / messaging 关闭 / 已停用）：判定无法联系，终止不再重试
+        # 没有任何可私信的联系方式（对方关 DM / 平台未开发私信 / 已停用）：判定无法联系，终止不再重试
         kol.update!(status: :unreachable, next_action_at: nil)
         return false
       end

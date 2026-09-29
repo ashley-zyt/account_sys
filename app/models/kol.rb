@@ -174,7 +174,7 @@ class Kol < ApplicationRecord
     end
   end
 
-  # 是否具备进入自动化触达队列的条件
+  # 是否具备进入自动化触达队列的条件（有可私信联系方式 + 变量完整）
   def ready_for_outreach?
     variables_complete? && has_outreachable_contacts?
   end

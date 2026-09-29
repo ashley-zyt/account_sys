@@ -392,7 +392,8 @@ class Admin::KolsController < Admin::BaseController
   end
 
   # 同步 KOL 变量值，并据实重算「待补全变量」标记。状态自动调整：
-  #   - 待联系但不具备触达条件（无渠道 / 缺变量）→ 回落到「未开始」
+  #   - 待联系但缺变量 → 回落到「未开始」
+  #   - 待联系但无可私信联系方式（对方关 DM / 平台未开发 / 私信关）→ 标记「无法联系」
   #   - 无法联系但已补可私信联系方式且变量完整 → 自动重新转「待联系」
   # 返回状态调整的提示语（未调整时返回 nil）。
   def finalize_kol(kol, variables_hash)
@@ -405,13 +406,17 @@ class Admin::KolsController < Admin::BaseController
 
     incomplete = kol.missing_entry_variables.any?
     has_contacts = kol.has_outreachable_contacts?
-    ready = has_contacts && !incomplete
 
     notice = nil
-    if kol.status.to_s == "pending" && !ready
-      kol.update!(status: :reserved)
-      notice = "因缺少可触达联系方式或必要变量，已自动转为「未开始」"
-    elsif kol.status.to_s == "unreachable" && ready
+    if kol.status.to_s == "pending"
+      if incomplete
+        kol.update!(status: :reserved)
+        notice = "因缺少必要变量，已自动转为「未开始」"
+      elsif !has_contacts
+        kol.update!(status: :unreachable, next_action_at: nil)
+        notice = "没有可私信的联系方式，已标记「无法联系」"
+      end
+    elsif kol.status.to_s == "unreachable" && has_contacts && !incomplete
       kol.update!(status: :pending, next_action_at: nil)
       notice = "已补充可私信联系方式，自动重新转为「待联系」"
     end
