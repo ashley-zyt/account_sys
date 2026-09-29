@@ -10,6 +10,7 @@ class KolXOutreach
     # 发私信（同步）
     # @return [Hash] { success:, reason:, error: }
     #   reason 取值：account_risk（token 失效/未认证，需重新授权，会休眠账号）
+    #               dm_refused（对方拒绝/不接受私信，应停用该联系方式）
     #               target_invalid（对方 @username 无效/用户不存在）
     #               x_api_error（其它 X 侧错误）
     def send_message(account:, contact:, content:, message_id: nil)
@@ -23,8 +24,7 @@ class KolXOutreach
       if XApi.success?(resp)
         { success: true }
       else
-        reason = token_error?(resp) ? 'account_risk' : 'x_api_error'
-        { success: false, reason: reason, error: extract_error(resp) }
+        { success: false, reason: classify_failure(resp), error: extract_error(resp) }
       end
     end
 
@@ -77,9 +77,12 @@ class KolXOutreach
       nil
     end
 
-    # token 失效类错误（401/403）→ 应休眠账号、重新授权
-    def token_error?(resp)
-      [401, 403].include?(resp[:code].to_i)
+    # 失败分类：401=token 失效（休眠账号重新授权）；403=对方拒绝/不接受私信（停用联系方式）
+    def classify_failure(resp)
+      code = resp[:code].to_i
+      return 'account_risk' if code == 401
+      return 'dm_refused' if code == 403
+      'x_api_error'
     end
 
     # 提取 X API 错误信息（body['errors'] 数组 / title / detail 兜底）

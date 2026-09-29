@@ -287,6 +287,11 @@ class KolScheduler
       elsif result[:reason] == "account_risk"
         KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "account_risk")
         :account_risk
+      elsif result[:reason] == "dm_refused"
+        # 对方拒绝/不接受私信：消息体现错误 + 停用该联系方式（换账号也无用）
+        KolOutreachApi.apply_send_result(message, success: false, error: "对方拒绝私信：#{result[:error]}", reason: "network")
+        contact.update!(status: :disabled)
+        :target_invalid
       elsif result[:reason] == "target_invalid"
         KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "network")
         :target_invalid

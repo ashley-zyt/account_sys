@@ -29,10 +29,11 @@ class KolAccountAllocator
 
       candidates = ordered_candidates(platform)
 
-      # 只匹配领域相同的账号：账号 theme 所属领域 == 目标领域才保留，不同则跳过
+      # 领域对应：账号 theme 所属领域（Theme.domain_id）== 目标领域才保留
+      # 采用「同领域优先 + 其它领域兜底」——同领域排前，匹配不到时落到其它领域，避免账号不够导致 KOL 挂起
       if domain_id.present?
         theme_domains = Theme.where(name: candidates.map(&:theme).compact.uniq).pluck(:name, :domain_id).to_h
-        candidates = candidates.select { |a| theme_domains[a.theme] == domain_id }
+        candidates = candidates.sort_by { |a| theme_domains[a.theme] == domain_id ? 0 : 1 }
       end
 
       candidates.each do |account|
