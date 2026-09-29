@@ -2,7 +2,7 @@
 #
 # 分配策略：
 #   1. 账号状态=正常 且 平台一致
-#   2. 「近七条发文」的平均浏览量 > 10（一条发文都没有则略过）
+#   2. 必须有发文记录（一条发文都没有则略过），平均浏览量只作优先级排序、不再作为门槛
 #   3. 按平均浏览量从高到低选择
 #   4. 单个账号每日最多联系 5 个 KOL
 #   5. 风控/发送失败的账号休眠一段时间，期间不参与分配
@@ -28,11 +28,10 @@ class KolAccountAllocator
 
       candidates = ordered_candidates(platform)
 
-      # 领域对应：账号 theme 所属领域（Theme.domain_id）== 目标领域才保留
-      # 采用「同领域优先 + 其它领域兜底」——同领域排前，匹配不到时落到其它领域，避免账号不够导致 KOL 挂起
+      # 领域硬过滤：账号 theme 所属领域（Theme.domain_id）必须 == 目标领域，不同领域的账号直接排除
       if domain_id.present?
         theme_domains = Theme.where(name: candidates.map(&:theme).compact.uniq).pluck(:name, :domain_id).to_h
-        candidates = candidates.sort_by { |a| theme_domains[a.theme] == domain_id ? 0 : 1 }
+        candidates = candidates.select { |a| theme_domains[a.theme] == domain_id }
       end
 
       candidates.each do |account|

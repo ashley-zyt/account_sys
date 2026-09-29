@@ -16,12 +16,18 @@ class KolReplyPoller
     end
 
     def poll(kol)
-      kol.kol_contacts.where(status: KolContact.statuses[:contacting]).find_each do |contact|
+      now = Time.current
+      kol.kol_contacts.where(status: KolContact.statuses[:contacting])
+         .where("next_poll_at IS NULL OR next_poll_at <= ?", now)
+         .find_each do |contact|
         safely(kol) { poll_contact(kol, contact) }
       end
     end
 
     def poll_contact(kol, contact)
+      # 监测窗口已结束的不再轮询（交由 process_contact_expiry 标 unresponsive）
+      return unless contact.monitoring?
+
       account = contact.last_outgoing_account
       return if account.nil?
 
@@ -32,12 +38,41 @@ class KolReplyPoller
       end
       # 异步受理（仅机器端通道）：等 /api/v1/browser_tasks/result 回调后由 apply_reply_result 处理
       return if result[:async]
-      return unless result[:has_reply]
 
-      KolOutreachApi.apply_reply_result(contact, result[:replies])
+      if result[:has_reply]
+        KolOutreachApi.apply_reply_result(contact, result[:replies])
+      else
+        # 无回复：按衰减频率推进下一次轮询时间
+        contact.update!(next_poll_at: next_poll_time(contact))
+      end
     end
 
     private
+
+    # 距「最后发送成功」的整小时数（向下取整，避免 23.6h 被算成第二天）
+    def elapsed_since_sent(contact)
+      sent_at = contact.last_sent_at ||
+                (contact.monitor_until && contact.monitor_until - KolScheduler.reply_monitor_days.days)
+      return 0 if sent_at.nil?
+      ((Time.current - sent_at) / 3600.0).to_i
+    end
+
+    # 根据距发送成功的小时数，返回下一次轮询应间隔的小时数：
+    #   第一天（<24h）12h 一次；第 2~4 天（24~96h）每天一次；第 4 天之后（>=96h）每 3 天一次
+    def poll_interval_hours(elapsed_hours)
+      if elapsed_hours < 24
+        12
+      elsif elapsed_hours < 96
+        24
+      else
+        72
+      end
+    end
+
+    # 下一次轮询时间 = 现在 + 按当前 elapsed 算出的间隔
+    def next_poll_time(contact)
+      Time.current + poll_interval_hours(elapsed_since_sent(contact)).hours
+    end
 
     def safely(kol)
       yield

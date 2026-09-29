@@ -108,11 +108,17 @@ class KolOutreachApi
         deadline = next_wait_time
         message.update!(status: :sent_success, wait_until: deadline, occurred_at: Time.current)
 
-        # 联系方式状态流转：未回复的 → 监测中（30 天窗口）；已回复的保持 replied
+        # 联系方式状态流转：未回复的 → 监测中（reply_monitor_days 天窗口）；已回复的保持 replied
         if contact&.replied?
           contact.update!(last_used_at: Time.current)
         elsif contact
-          contact.update!(status: :contacting, monitor_until: KolScheduler.reply_monitor_days.days.from_now, last_used_at: Time.current)
+          contact.update!(
+            status: :contacting,
+            monitor_until: KolScheduler.reply_monitor_days.days.from_now,
+            last_used_at: Time.current,
+            last_sent_at: Time.current,
+            next_poll_at: 12.hours.from_now
+          )
         end
 
         unless message.manual?

@@ -122,7 +122,7 @@ class KolContact < ApplicationRecord
   def self.ransackable_attributes(auth_object = nil)
     %w[
       id kol_id platform nickname url priority messaging_enabled
-      status outreach_channel x_user_id last_used_at created_at updated_at
+      status outreach_channel x_user_id last_used_at last_sent_at next_poll_at created_at updated_at
     ]
   end
 

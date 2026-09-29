@@ -4,7 +4,7 @@
 reply_wait_days: 2
 
 # 单个联系方式回复监测总时长（自然日，从最后一次发送成功起算）
-reply_monitor_days: 30
+reply_monitor_days: 14
 
 # 所有平台都发送失败后的重试间隔（小时）
 retry_hours: 1
