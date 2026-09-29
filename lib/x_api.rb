@@ -102,7 +102,7 @@ module XApi
     end
 
     # 发私信（POST /2/dm_conversations/with/:participant_id/messages），
-    # 自动创建/复用 1-1 会话。body 的 text 是对象 { text: "..." }。
+    # 自动创建/复用 1-1 会话。body 的 text 是字符串（如 { "text": "..." }）。
     # @return [Hash] { code:, body:, raw: }
     def send_dm(access_token:, participant_id:, text:)
       uri = URI("#{API_BASE}/2/dm_conversations/with/#{participant_id}/messages")
@@ -110,7 +110,7 @@ module XApi
       req['Authorization'] = "Bearer #{access_token}"
       req['Content-Type'] = 'application/json'
       req['Accept'] = 'application/json'
-      req.body = { text: { text: text } }.to_json
+      req.body = { text: text }.to_json
       perform(uri, req)
     end
 
