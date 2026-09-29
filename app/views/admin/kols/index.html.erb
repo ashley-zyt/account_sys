@@ -6,16 +6,17 @@
 <% end %>
 
 <%
-  active_status = params.dig(:q, :status_eq)
+  raw_status = params.dig(:q, :status_eq)
+  active_status = raw_status.present? ? raw_status.to_i : nil
   active_incomplete = (params.dig(:q, :variables_incomplete_eq).to_s == "true")
   kol_summary = [
-    { label: "全部 KOL", value: @status_counts.values.sum, color: "#94a3b8", url: admin_kols_path, active: active_status.blank? && !active_incomplete },
-    { label: "待回复", value: (@status_counts["replied_unprocessed"] || 0), color: "#f87171", url: admin_kols_path(q: { status_eq: "replied_unprocessed" }), active: active_status == "replied_unprocessed" },
-    { label: "联系中", value: (@status_counts["contacting"] || 0), color: "#fbbf24", url: admin_kols_path(q: { status_eq: "contacting" }), active: active_status == "contacting" },
-    { label: "洽谈中", value: (@status_counts["negotiating"] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: "negotiating" }), active: active_status == "negotiating" },
-    { label: "已合作", value: (@status_counts["cooperating"] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: "cooperating" }), active: active_status == "cooperating" },
-    { label: "未回复", value: (@status_counts["unresponsive"] || 0), color: "#64748b", url: admin_kols_path(q: { status_eq: "unresponsive" }), active: active_status == "unresponsive" },
-    { label: "无法联系", value: (@status_counts["unreachable"] || 0), color: "#78716c", url: admin_kols_path(q: { status_eq: "unreachable" }), active: active_status == "unreachable" },
+    { label: "全部 KOL", value: @status_counts.values.sum, color: "#94a3b8", url: admin_kols_path, active: active_status.nil? && !active_incomplete },
+    { label: "待回复", value: (@status_counts["replied_unprocessed"] || 0), color: "#f87171", url: admin_kols_path(q: { status_eq: Kol.statuses[:replied_unprocessed] }), active: active_status == Kol.statuses[:replied_unprocessed] },
+    { label: "联系中", value: (@status_counts["contacting"] || 0), color: "#fbbf24", url: admin_kols_path(q: { status_eq: Kol.statuses[:contacting] }), active: active_status == Kol.statuses[:contacting] },
+    { label: "洽谈中", value: (@status_counts["negotiating"] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: Kol.statuses[:negotiating] }), active: active_status == Kol.statuses[:negotiating] },
+    { label: "已合作", value: (@status_counts["cooperating"] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: Kol.statuses[:cooperating] }), active: active_status == Kol.statuses[:cooperating] },
+    { label: "未回复", value: (@status_counts["unresponsive"] || 0), color: "#64748b", url: admin_kols_path(q: { status_eq: Kol.statuses[:unresponsive] }), active: active_status == Kol.statuses[:unresponsive] },
+    { label: "无法联系", value: (@status_counts["unreachable"] || 0), color: "#78716c", url: admin_kols_path(q: { status_eq: Kol.statuses[:unreachable] }), active: active_status == Kol.statuses[:unreachable] },
     { label: "待补全变量", value: @variables_incomplete_count, color: "#fb923c", url: admin_kols_path(q: { variables_incomplete_eq: "true" }), active: active_incomplete }
   ]
 %>
@@ -74,9 +75,9 @@
         <label class="admin-filter-label">状态</label>
         <%= render "admin/shared/searchable_select",
               name: "q[status_eq]",
-              options: Kol::STATUS_LABELS.map { |k, v| [v, k] },
+              options: Kol.statuses.map { |k, v| [Kol::STATUS_LABELS[k.to_s], v] },
               selected: params.dig(:q, :status_eq),
-              selected_label: Kol::STATUS_LABELS[params.dig(:q, :status_eq)],
+              selected_label: params.dig(:q, :status_eq).present? ? Kol::STATUS_LABELS[Kol.statuses.key(params.dig(:q, :status_eq).to_i)] : nil,
               placeholder: "所有状态",
               include_blank: "所有状态" %>
       </div>
