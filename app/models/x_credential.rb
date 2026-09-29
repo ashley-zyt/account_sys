@@ -2,33 +2,26 @@
 #
 # Table name: x_account_credentials
 #
-#  id                     :bigint           not null, primary key
-#  account_id             :bigint           not null
-#  x_user_id              :string(255)
-#  access_token_encrypted :text(65535)
-#  refresh_token_encrypted: text(65535)
-#  token_expires_at       :datetime
-#  scope                  :string(255)
-#  auth_status            :integer          default("pending"), not null
-#  code_verifier          :string(255)
-#  state                  :string(255)
-#  authorized_at          :datetime
-#  last_refreshed_at      :datetime
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
+#  id                                                                   :bigint           not null, primary key
+#  access_token_encrypted(加密后的 access_token)                        :text(65535)
+#  auth_status(认证状态 0未认证 1认证中 2已认证 3失败)                  :integer          default("pending"), not null
+#  authorized_at(认证完成时间)                                          :datetime
+#  code_verifier(PKCE code_verifier（授权流程临时值，换完 token 清除）) :string(255)
+#  last_refreshed_at(最近刷新 token 时间)                               :datetime
+#  refresh_token_encrypted(加密后的 refresh_token)                      :text(65535)
+#  scope(授权范围（逗号分隔）)                                          :string(255)
+#  state(防 CSRF 随机串（临时）)                                        :string(255)
+#  token_expires_at(access_token 过期时间)                              :datetime
+#  created_at                                                           :datetime         not null
+#  updated_at                                                           :datetime         not null
+#  account_id(本系统账号 ID（一对一）)                                  :bigint           not null
+#  x_user_id(X 平台 user id)                                            :string(255)
 #
 # Indexes
 #
-#  index_x_account_credentials_on_account_id (account_id) UNIQUE
-#  index_x_account_credentials_on_x_user_id  (x_user_id)
+#  index_x_account_credentials_on_account_id  (account_id) UNIQUE
+#  index_x_account_credentials_on_x_user_id   (x_user_id)
 #
-# X（Twitter）API 认证凭证模型。
-#
-# 记录本系统 twitter 账号在 X 平台 OAuth 2.0（Authorization Code + PKCE）授权后的凭证。
-# access_token / refresh_token 是账号级敏感凭证，用 MessageEncryptor 加密存储（不落明文）。
-# 授权流程（与 postforme 同构）：
-#   生成 PKCE → 构造授权 URL → 下发机器端打开 → 用户授权 → 机器端截 code 回调 →
-#   用 code + code_verifier 换 access/refresh token → 加密存凭证 → 清除 code_verifier。
 class XCredential < ApplicationRecord
   # 显式指定表名，避免 Rails 按类名默认推导成 x_credentials（迁移实际建的是 x_account_credentials）
   self.table_name = "x_account_credentials"

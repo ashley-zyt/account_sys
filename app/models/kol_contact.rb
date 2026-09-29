@@ -7,6 +7,7 @@
 #  messaging_enabled(是否可作为发信渠道)                                     :boolean          default(FALSE), not null
 #  monitor_until(回复监测截止时间（该联系方式最后一次发送成功时间 + 30 天）) :datetime
 #  nickname(平台昵称/账号)                                                   :string(255)
+#  outreach_channel(触达方式 0=指纹浏览器 1=X认证（默认 X认证）)             :integer          default("x_api"), not null
 #  platform(平台或通讯渠道)                                                  :integer          not null
 #  priority(触达优先级（越小越优先）)                                        :integer          default(0), not null
 #  status(联系方式状态：active/invalid)                                      :integer          default("active"), not null
@@ -14,6 +15,7 @@
 #  created_at                                                                :datetime         not null
 #  updated_at                                                                :datetime         not null
 #  kol_id                                                                    :bigint           not null
+#  x_user_id(X平台 user id 缓存（@username 解析后缓存）)                     :string(255)
 #
 # Indexes
 #
@@ -22,6 +24,7 @@
 #  index_kol_contacts_on_platform       (platform)
 #  index_kol_contacts_on_priority       (priority)
 #  index_kol_contacts_on_status         (status)
+#  index_kol_contacts_on_x_user_id      (x_user_id)
 #
 # Foreign Keys
 #
