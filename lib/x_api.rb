@@ -107,6 +107,9 @@ module XApi
     end
 
     def redirect_uri
+      # 必须用机器端对外 HTTPS 域名（X 拒绝 localhost/127.0.0.1 这类 loopback 回调，
+      # 且 Web App / Automated App 类型要求 https）。机器端会自动从授权 URL 的
+      # redirect_uri 参数解析检测前缀，无需机器端改代码。
       ENV['X_REDIRECT_URI'].presence || 'http://127.0.0.1:9000/callback'
     end
 
