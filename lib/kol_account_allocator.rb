@@ -71,7 +71,7 @@ class KolAccountAllocator
       account.update!(kol_sleep_until: hours.hours.from_now)
     end
 
-    # 判断是否「今日配额已耗尽」：所有支持平台的正常账号，今日尝试次数（成功+失败）都达到上限（或平台无账号）。
+    # 判断是否「今日配额已耗尽」：所有支持平台的正常账号，今日尝试次数（排队中+成功+失败）都达到上限（或平台无账号）。
     # 配额耗尽时应等第二天自然日重置，而不是短时间重试空转。
     def quota_exhausted?
       SUPPORTED_PLATFORMS.all? do |platform|
@@ -81,7 +81,11 @@ class KolAccountAllocator
         sent = KolMessage.where(
           account_id: account_ids,
           direction: KolMessage.directions[:outgoing],
-          status: [KolMessage.statuses[:sent_success], KolMessage.statuses[:sent_failed]],
+          status: [
+            KolMessage.statuses[:queued],
+            KolMessage.statuses[:sent_success],
+            KolMessage.statuses[:sent_failed]
+          ],
           created_at: Time.current.beginning_of_day..Time.current.end_of_day
         ).group(:account_id).count
 
@@ -127,13 +131,18 @@ class KolAccountAllocator
       ids.map { |id| accounts_by_id[id] }.compact
     end
 
-    # 单个账号今日「尝试发私信」的次数：成功 + 失败都算一次。
-    # 失败同样占配额，避免失败账号（对方拒绝/权限问题）被反复分配无限重试。
+    # 单个账号今日「尝试发私信」的次数：排队中 + 成功 + 失败都算一次。
+    # queued（已下发异步、等机器端回调）也必须算，否则 async 通道回调前配额失效，
+    # 高浏览量账号会被连续选中无限下发（曾出现连续 9 条同一账号）。
     def today_contact_count(account)
       KolMessage.where(
         account_id: account.id,
         direction: KolMessage.directions[:outgoing],
-        status: [KolMessage.statuses[:sent_success], KolMessage.statuses[:sent_failed]]
+        status: [
+          KolMessage.statuses[:queued],
+          KolMessage.statuses[:sent_success],
+          KolMessage.statuses[:sent_failed]
+        ]
       ).where(created_at: Time.current.beginning_of_day..Time.current.end_of_day).count
     end
   end
