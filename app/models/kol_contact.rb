@@ -64,6 +64,28 @@ class KolContact < ApplicationRecord
     x_api: 1     # X 认证（X API 发私信/拉消息）
   }
 
+  # 对方不可私信原因（人工在 X 页面验证后标记，用于后台区分「无法联系」的具体原因）
+  enum dm_blocked_reason: {
+    followers_only: 0,         # 仅关注者可私信
+    requires_verification: 1,  # 需要验证账号
+    dm_disabled: 2,            # 关闭私信
+    account_suspended: 3,      # 账号被暂停
+    username_not_found: 4      # @username 失效
+  }
+
+  # 对方不可私信原因中文标签
+  DM_BLOCKED_REASON_LABELS = {
+    "followers_only"         => "仅关注者可私信",
+    "requires_verification"  => "需要验证账号",
+    "dm_disabled"            => "关闭私信",
+    "account_suspended"      => "账号被暂停",
+    "username_not_found"     => "@username 失效"
+  }.freeze
+
+  def dm_blocked_reason_label
+    DM_BLOCKED_REASON_LABELS[dm_blocked_reason] || nil
+  end
+
   # 联系方式状态中文标签（展示用）
   STATUS_LABELS = {
     "active"       => "未联系",
@@ -125,7 +147,8 @@ class KolContact < ApplicationRecord
   def self.ransackable_attributes(auth_object = nil)
     %w[
       id kol_id platform nickname url priority messaging_enabled
-      status outreach_channel x_user_id last_used_at last_sent_at next_poll_at created_at updated_at
+      status outreach_channel x_user_id last_used_at last_sent_at next_poll_at
+      dm_blocked_reason created_at updated_at
     ]
   end
 

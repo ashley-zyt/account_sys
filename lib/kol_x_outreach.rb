@@ -20,8 +20,13 @@ class KolXOutreach
         return { success: false, reason: 'account_risk', error: '账号未完成 X 认证或无有效 token' }
       end
 
-      participant_id = resolve_participant_id(account, contact)
+      participant_id, resolve_error = resolve_participant_id(account, contact)
       if participant_id.blank?
+        if %i[token_missing token_invalid].include?(resolve_error)
+          # 账号 token 失效（不是 @username 无效）→ 休眠账号，别停用对方联系方式
+          log_send(contact, account, :failed, '账号 token 失效，无法解析对方 user_id')
+          return { success: false, reason: 'account_risk', error: '账号 token 失效，无法解析对方 user_id' }
+        end
         log_send(contact, account, :failed, '无法解析对方 X user_id（@username 无效或用户不存在）')
         return { success: false, reason: 'target_invalid', error: '无法解析对方 X user_id（@username 无效或用户不存在）' }
       end
@@ -33,8 +38,9 @@ class KolXOutreach
       else
         reason = classify_failure(resp)
         error = full_error(resp)
+        blocked_reason = blocked_reason_for(resp)
         log_send(contact, account, :failed, error)
-        { success: false, reason: reason, error: error }
+        { success: false, reason: reason, error: error, blocked_reason: blocked_reason }
       end
     end
 
@@ -44,7 +50,7 @@ class KolXOutreach
       token = XAuthService.access_token_for(account)
       return { has_reply: false, replies: [] } if token.blank?
 
-      participant_id = resolve_participant_id(account, contact)
+      participant_id, = resolve_participant_id(account, contact)
       return { has_reply: false, replies: [] } if participant_id.blank?
 
       resp = XApi.dm_events(access_token: token, participant_id: participant_id, max_results: 100)
@@ -79,44 +85,71 @@ class KolXOutreach
     end
 
     # 解析对方 X user_id：优先用缓存 contact.x_user_id，否则按 @username 查并回写缓存。
+    # @return [Array] [user_id, error]：成功时 user_id 非空、error 为 nil；
+    #   失败时 user_id 为 nil、error 为 :token_missing / :token_invalid（账号问题，应休眠账号）
+    #   或 :user_not_found / :username_blank（@username 无效，应停用联系方式）
     def resolve_participant_id(account, contact)
-      return contact.x_user_id if contact.x_user_id.present?
+      return [contact.x_user_id, nil] if contact.x_user_id.present?
 
       username = contact.url.to_s.strip.sub(/\A@/, '')
-      return nil if username.blank?
+      return [nil, :username_blank] if username.blank?
 
       token = XAuthService.access_token_for(account)
-      return nil if token.blank?
+      return [nil, :token_missing] if token.blank?
 
       resp = XApi.user_by_username(access_token: token, username: username)
-      return nil unless XApi.success?(resp)
+      unless XApi.success?(resp)
+        return [nil, resp[:code].to_i == 401 ? :token_invalid : :user_not_found]
+      end
 
       uid = resp.dig(:body, 'data', 'id').to_s
-      return nil if uid.blank?
+      return [nil, :user_not_found] if uid.blank?
 
       contact.update_column(:x_user_id, uid)
-      uid
+      [uid, nil]
     rescue => e
       Rails.logger.error "[KolXOutreach] 解析 X user_id 失败: #{e.message}"
-      nil
+      [nil, :error]
     end
 
     # 失败分类：
     #   401 = token 失效 → account_risk（休眠账号重新授权）
-    #   403 需看 detail 区分：
-    #     含「direct message / this user」→ 对方拒绝/不接受私信 → dm_refused（停用联系方式）
-    #     其它（如 "This operation is not permitted."，发送账号权限不足）→ account_risk（休眠账号）
+    #   403 优先看 X 错误码 code（比 detail 字符串可靠）：
+    #     对方问题：63=目标被暂停、150=仅关注者可私信 → dm_refused（停用联系方式）
+    #     发送账号问题：326=账号被锁、261=App无写权限、220=凭证无权限、87=client不允许 → account_risk（休眠账号）
+    #     无 code 时靠 detail 关键词兜底
     def classify_failure(resp)
       code = resp[:code].to_i
       return 'account_risk' if code == 401
 
       if code == 403
+        xcode = extract_error_code(resp).to_i
+        return 'dm_refused' if [63, 150].include?(xcode)
+        return 'account_risk' if [326, 261, 220, 87].include?(xcode)
+
         detail = extract_error(resp).to_s.downcase
-        return 'dm_refused' if detail.include?('direct message') || detail.include?('this user')
+        return 'dm_refused' if detail.include?('direct message') || detail.include?('this user') || detail.include?('not following')
         return 'account_risk'
       end
 
       'x_api_error'
+    end
+
+    # 提取 X 错误码 code（body['errors'][0]['code'] 或 body['code']），用于精确分类失败原因
+    def extract_error_code(resp)
+      body = resp[:body]
+      return nil unless body.is_a?(Hash)
+      err = body['errors'].to_a.first
+      return err['code'] if err.is_a?(Hash) && err['code'].present?
+      body['code']
+    end
+
+    # 把 X 错误码映射为「对方不可私信原因」（仅对方问题类 code 才有值）
+    def blocked_reason_for(resp)
+      case extract_error_code(resp).to_i
+      when 63 then 'account_suspended'
+      when 150 then 'followers_only'
+      end
     end
 
     # 提取 X API 错误信息：优先取 detail（具体原因），其次 message/title，最后 raw 兜底
@@ -130,13 +163,17 @@ class KolXOutreach
       body['detail'].presence || body['title'].presence || resp[:raw].to_s
     end
 
-    # 完整错误信息：extract_error 的 detail（易读）+ X 返回的原始 JSON（raw，含 status/title/type），
+    # 完整错误信息：X 错误码 + detail（易读）+ X 返回的原始 JSON（raw，含 status/title/type），
     # 便于后续统一判断「发送账号问题」vs「对方拒收私信」。
     def full_error(resp)
+      xcode = extract_error_code(resp)
       detail = extract_error(resp)
       raw = resp[:raw].to_s.strip
-      return detail if raw.blank?
-      detail.blank? ? raw : "#{detail} || #{raw}"
+      parts = []
+      parts << "code=#{xcode}" if xcode.present?
+      parts << detail if detail.present?
+      parts << raw if raw.present?
+      parts.uniq.join(" || ")
     end
   end
 end

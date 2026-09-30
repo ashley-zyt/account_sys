@@ -381,7 +381,7 @@ class Admin::KolsController < Admin::BaseController
     params.require(:kol).permit(
       :name, :country, :owner, :notes, :status,
       kol_contacts_attributes: [
-        :id, :platform, :nickname, :url, :priority, :messaging_enabled, :outreach_channel, :_destroy
+        :id, :platform, :nickname, :url, :priority, :messaging_enabled, :outreach_channel, :dm_blocked_reason, :_destroy
       ]
     )
   end

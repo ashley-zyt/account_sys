@@ -324,9 +324,11 @@ class KolScheduler
         KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "account_risk")
         :account_risk
       elsif result[:reason] == "dm_refused"
-        # 对方拒绝/不接受私信：消息体现错误 + 停用该联系方式（换账号也无用）
+        # 对方拒绝/不接受私信：消息体现错误 + 停用该联系方式（换账号也无用）+ 按 X 错误码自动标记不可私信原因
         KolOutreachApi.apply_send_result(message, success: false, error: "对方拒绝私信：#{result[:error]}", reason: "network")
-        contact.update!(status: :disabled)
+        updates = { status: :disabled }
+        updates[:dm_blocked_reason] = result[:blocked_reason] if result[:blocked_reason].present?
+        contact.update!(updates)
         :target_invalid
       elsif result[:reason] == "target_invalid"
         # 对方 @username 无效/用户不存在：停用该联系方式，后续不再尝试

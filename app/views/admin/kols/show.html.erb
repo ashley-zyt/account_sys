@@ -159,6 +159,7 @@
             <th>链接/联系方式</th>
             <th>可发私信</th>
             <th>状态</th>
+            <th>不可私信原因</th>
           </tr>
         </thead>
         <tbody>
@@ -187,6 +188,13 @@
                   <span class="admin-pill-status" style="background: rgba(239,68,68,0.1); color: #ef4444;">失效</span>
                 <% else %>
                   <span class="admin-pill-status" style="background: rgba(34,197,94,0.1); color: #22c55e;">有效</span>
+                <% end %>
+              </td>
+              <td>
+                <% if c.dm_blocked_reason_label %>
+                  <span class="admin-pill-status" style="background: rgba(251,146,60,0.1); color: #fb923c;"><%= c.dm_blocked_reason_label %></span>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
                 <% end %>
               </td>
             </tr>
