@@ -15,16 +15,26 @@ class KolXOutreach
     #               x_api_error（其它 X 侧错误）
     def send_message(account:, contact:, content:, message_id: nil)
       token = XAuthService.access_token_for(account)
-      return { success: false, reason: 'account_risk', error: '账号未完成 X 认证或无有效 token' } if token.blank?
+      if token.blank?
+        log_send(contact, account, :failed, '账号未完成 X 认证或无有效 token')
+        return { success: false, reason: 'account_risk', error: '账号未完成 X 认证或无有效 token' }
+      end
 
       participant_id = resolve_participant_id(account, contact)
-      return { success: false, reason: 'target_invalid', error: '无法解析对方 X user_id（@username 无效或用户不存在）' } if participant_id.blank?
+      if participant_id.blank?
+        log_send(contact, account, :failed, '无法解析对方 X user_id（@username 无效或用户不存在）')
+        return { success: false, reason: 'target_invalid', error: '无法解析对方 X user_id（@username 无效或用户不存在）' }
+      end
 
       resp = XApi.send_dm(access_token: token, participant_id: participant_id, text: content)
       if XApi.success?(resp)
+        log_send(contact, account, :success, '发送成功')
         { success: true }
       else
-        { success: false, reason: classify_failure(resp), error: extract_error(resp) }
+        reason = classify_failure(resp)
+        error = extract_error(resp)
+        log_send(contact, account, :failed, error)
+        { success: false, reason: reason, error: error }
       end
     end
 
@@ -53,6 +63,20 @@ class KolXOutreach
     end
 
     private
+
+    # 记录发私信日志（X API 同步通道：直接记最终状态，不经过 pending → 回调）
+    def log_send(contact, account, status, message)
+      KolActionLog.create!(
+        action_type: KolActionLog::ACTION_SEND,
+        kol_id: contact&.kol_id,
+        kol_contact_id: contact&.id,
+        account_id: account&.id,
+        status: status == :success ? KolActionLog::STATUS_SUCCESS : KolActionLog::STATUS_FAILED,
+        message: message
+      )
+    rescue => e
+      Rails.logger.error "[KolXOutreach] 记录发私信日志失败: #{e.message}"
+    end
 
     # 解析对方 X user_id：优先用缓存 contact.x_user_id，否则按 @username 查并回写缓存。
     def resolve_participant_id(account, contact)
