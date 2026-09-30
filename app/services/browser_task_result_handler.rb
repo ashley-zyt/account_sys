@@ -114,7 +114,11 @@ class BrowserTaskResultHandler
   # @return [Symbol] :account_risk（账号问题 → 休眠账号）/ :target_invalid（对方问题 → 停用联系方式）
   def self.classify_browser_send_failure(message)
     msg = message.to_s
-    if msg =~ /IG_MSG2|未登录|not_logged_in|登录失效|账号未登录/
+    # 仅「未登录/登录失效」判账号问题（休眠账号）。
+    # 注意不能靠 IG_MSG2 前缀：IG_MSG2 有两种——
+    #   「账号未登录」是账号问题；「打开发送入口失败·页面不可用·链接失效/页面已删除」是对方问题，
+    # 所以必须按具体措辞区分，而非错误码前缀。
+    if msg =~ /未登录|not_logged_in|登录失效/
       :account_risk
     else
       :target_invalid
