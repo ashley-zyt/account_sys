@@ -36,7 +36,7 @@ class KolXOutreach
         log_send(contact, account, :success, '发送成功')
         { success: true }
       else
-        reason = classify_failure(resp)
+        reason = classify_failure(resp, account: account)
         error = full_error(resp)
         blocked_reason = blocked_reason_for(resp)
         log_send(contact, account, :failed, error)
@@ -114,11 +114,11 @@ class KolXOutreach
 
     # 失败分类：
     #   401 = token 失效 → account_risk（休眠账号重新授权）
-    #   403 优先看 X 错误码 code（比 detail 字符串可靠）：
-    #     对方问题：63=目标被暂停、150=仅关注者可私信 → dm_refused（停用联系方式）
-    #     发送账号问题：326=账号被锁、261=App无写权限、220=凭证无权限、87=client不允许 → account_risk（休眠账号）
-    #     无 code 时靠 detail 关键词兜底
-    def classify_failure(resp)
+    #   403 靠 detail 措辞（实测 v2 DM 返回 RFC 7807 无 code）：
+    #     「do not have permission to DM / not allowed to send / this user」→ 对方拒绝 → dm_refused（停用联系方式）
+    #     「This operation is not permitted.」→ 歧义（账号被限流 或 对方关闭私信），结合账号近期成功率判断
+    #     其它 → account_risk
+    def classify_failure(resp, account: nil)
       code = resp[:code].to_i
       return 'account_risk' if code == 401
 
@@ -128,11 +128,35 @@ class KolXOutreach
         return 'account_risk' if [326, 261, 220, 87].include?(xcode)
 
         detail = extract_error(resp).to_s.downcase
-        return 'dm_refused' if detail.include?('direct message') || detail.include?('this user') || detail.include?('not following')
+        # 明确「对方拒绝」的 detail
+        return 'dm_refused' if detail.include?('do not have permission to dm') ||
+                               detail.include?('not allowed to send') ||
+                               detail.include?('direct message') ||
+                               detail.include?('this user') ||
+                               detail.include?('not following')
+        # "This operation is not permitted." 歧义：结合账号近期成功率判断
+        if detail.include?('not permitted')
+          return 'dm_refused' if account && account_likely_healthy?(account)
+          return 'account_risk'
+        end
         return 'account_risk'
       end
 
       'x_api_error'
+    end
+
+    # 判断账号近期是否健康（成功率 >= 50% 且样本量足够）。
+    # 用于区分「not permitted」是「账号被限流」还是「对方关闭私信」：
+    #   健康账号的 not permitted = 对方关私信；失败率高的账号 = 账号被限流。
+    def account_likely_healthy?(account)
+      return true if account.nil?
+      done = KolMessage.where(account_id: account.id, direction: :outgoing,
+                              status: [:sent_success, :sent_failed])
+                       .where(created_at: 3.days.ago..Time.current)
+      total = done.count
+      return true if total < 5  # 样本太少，默认健康（避免误判新账号）
+      success = done.where(status: :sent_success).count
+      success.to_f / total >= 0.5
     end
 
     # 提取 X 错误码 code（body['errors'][0]['code'] 或 body['code']），用于精确分类失败原因
