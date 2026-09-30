@@ -18,5 +18,5 @@ robots:
     keyword: 发布结果
   publish_status:      # 发布状况（杜维、刘宝珍）
     name: 发布状况
-    webhook_url: "https://oapi.dingtalk.com/robot/send?access_token=a2691cfdd555bc750a98b43677321fb5e98ddb6ad8fd0091827e2758273a5838"
+    webhook_url: "https://oapi.dingtalk.com/robot/send?access_token=a5dc4466d1a4e858a6fb5cadcd9843c667266a992f13a1ee0b83a7fc5d02e254"
     keyword: 发布状况
