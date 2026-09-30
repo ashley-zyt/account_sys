@@ -59,6 +59,8 @@ class KolAccountAllocator
         next if today_contact_count(account) >= max_contacts_per_day
         # X 认证方式：只选 X 授权成功的账号
         next if channel.to_s == 'x_api' && !account.x_credential&.authorized?
+        # 指纹浏览器方式：只选绑定了浏览器（有 machine_ip）的账号
+        next if channel.to_s != 'x_api' && account.browser&.machine_ip.blank?
         return account
       end
       nil
@@ -98,7 +100,7 @@ class KolAccountAllocator
       # 无发文数据的平台（如 facebook）跳过浏览量评分，直接返回全部正常账号，
       # 按「最久未使用」优先，兼顾账号轮询平衡
       if SKIP_POST_SCORING_PLATFORMS.include?(platform.to_s)
-        return Account.where(id: account_ids).includes(:x_credential).order(:last_used_at, :id).to_a
+        return Account.where(id: account_ids).includes(:x_credential, :browser).order(:last_used_at, :id).to_a
       end
 
       # 按发文日期倒序拉取每个账号的浏览量，再逐个账号截取最近 7 条
@@ -121,7 +123,7 @@ class KolAccountAllocator
       # 只按平均浏览量降序排序（作为优先级），不再以浏览量作为分配门槛
       scored.sort_by! { |_id, avg| -avg }
       ids = scored.map(&:first)
-      accounts_by_id = Account.where(id: ids).includes(:x_credential).index_by(&:id)
+      accounts_by_id = Account.where(id: ids).includes(:x_credential, :browser).index_by(&:id)
       ids.map { |id| accounts_by_id[id] }.compact
     end
 

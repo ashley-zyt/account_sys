@@ -170,7 +170,7 @@ class KolScheduler
       contact ||= kol.active_contacts.first
       return { ok: false, error: "该 KOL 没有可用联系渠道" } if contact.nil?
 
-      account ||= KolAccountAllocator.allocate(contact.platform, channel: contact.outreach_channel, domain_id: contact.kol&.domain_id)
+      account ||= KolAccountAllocator.allocate(contact.platform, channel: contact.x_api_channel? ? :x_api : :browser, domain_id: contact.kol&.domain_id)
       return { ok: false, error: "该平台暂无可用的内部账号（可能已达每日上限或处于风控休眠）" } if account.nil?
 
       # 未提供自定义内容时，走模板 + 变量校验
@@ -207,7 +207,7 @@ class KolScheduler
       contact ||= kol.current_contact || kol.active_contacts.first
       return { ok: false, error: "缺少联系渠道" } if contact.nil?
 
-      account ||= kol.current_account || KolAccountAllocator.allocate(contact.platform, channel: contact.outreach_channel, domain_id: contact.kol&.domain_id)
+      account ||= kol.current_account || KolAccountAllocator.allocate(contact.platform, channel: contact.x_api_channel? ? :x_api : :browser, domain_id: contact.kol&.domain_id)
       return { ok: false, error: "缺少内部账号（可能已达上限或处于风控休眠）" } if account.nil?
 
       result = deliver_message(kol, contact, account, content: content, source: :manual, scenario: nil)
@@ -253,7 +253,7 @@ class KolScheduler
     def send_on_contact(kol, contact, scenario:)
       attempted = []
       loop do
-        account = KolAccountAllocator.allocate(contact.platform, exclude_ids: attempted, channel: contact.outreach_channel, domain_id: contact.kol&.domain_id)
+        account = KolAccountAllocator.allocate(contact.platform, exclude_ids: attempted, channel: contact.x_api_channel? ? :x_api : :browser, domain_id: contact.kol&.domain_id)
         return :exhausted if account.nil?  # 该平台无更多可用账号（都已尝试/达上限/休眠）
         attempted << account.id
 
@@ -302,7 +302,7 @@ class KolScheduler
         occurred_at: Time.current
       )
 
-      result = if contact.outreach_channel == 'x_api'
+      result = if contact.x_api_channel?
         KolXOutreach.send_message(account: account, contact: contact, content: content, message_id: message.id)
       else
         KolOutreachApi.send_single_message(

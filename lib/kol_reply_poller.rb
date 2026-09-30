@@ -50,7 +50,7 @@ class KolReplyPoller
       @stats[:due] += 1
       Rails.logger.info "[KolReplyPoller]   contact##{contact.id}(#{contact.platform}) 用账号##{account.id} 拉回复"
 
-      result = if contact.outreach_channel == 'x_api'
+      result = if contact.x_api_channel?
         KolXOutreach.fetch_replies(account: account, contact: contact)
       else
         KolOutreachApi.check_reply(platform: contact.platform, account: account, contact: contact)
