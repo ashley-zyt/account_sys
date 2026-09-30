@@ -94,8 +94,31 @@ class BrowserTaskResultHandler
     kol_message = KolMessage.find_by(id: id)
     return { type: 'success', message: '私信记录不存在，忽略' } unless kol_message
 
-    KolOutreachApi.apply_send_result(kol_message, success: (status == 'success'), error: message.presence)
+    if status == 'success'
+      KolOutreachApi.apply_send_result(kol_message, success: true)
+    else
+      reason = classify_browser_send_failure(message)
+      if reason == :account_risk
+        # 账号未登录/状态异常：休眠账号（永久）
+        KolOutreachApi.apply_send_result(kol_message, success: false, error: message.presence, reason: 'account_risk')
+      else
+        # 对方关闭私信/主页链接有误/没找到私信功能：停用联系方式，不休眠账号
+        KolOutreachApi.apply_send_result(kol_message, success: false, error: "对方无法私信：#{message.presence}", reason: 'network')
+        kol_message.kol_contact&.update!(status: :disabled)
+      end
+    end
     { type: 'success', message: '已更新私信发送状态' }
+  end
+
+  # 浏览器通道发私信失败分类（机器端回传 message 无结构化错误码，靠关键词判断）
+  # @return [Symbol] :account_risk（账号问题 → 休眠账号）/ :target_invalid（对方问题 → 停用联系方式）
+  def self.classify_browser_send_failure(message)
+    msg = message.to_s
+    if msg =~ /IG_MSG2|未登录|not_logged_in|登录失效|账号未登录/
+      :account_risk
+    else
+      :target_invalid
+    end
   end
 
   # 查回复回调：按 KolContact id 定位，从 result 提取 replies

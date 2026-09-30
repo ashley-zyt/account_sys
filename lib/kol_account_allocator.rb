@@ -8,7 +8,6 @@
 #   5. 风控/发送失败的账号休眠一段时间，期间不参与分配
 class KolAccountAllocator
   MAX_CONTACTS_PER_DAY = 5  # 默认值，可被 config/kol_scheduler.yml 的 max_contacts_per_day 覆盖
-  SLEEP_HOURS = 24
   CONFIG_PATH = Rails.root.join('config/kol_scheduler.yml')
   # 当前已接通 twitter / tiktok / instagram / facebook
   SUPPORTED_PLATFORMS = %w[twitter tiktok instagram facebook].freeze
@@ -66,9 +65,9 @@ class KolAccountAllocator
       nil
     end
 
-    # 发送失败/风控后休眠内部账号
-    def sleep_account(account, hours: SLEEP_HOURS)
-      account.update!(kol_sleep_until: hours.hours.from_now)
+    # 发送失败/风控后永久休眠内部账号（不再自动恢复，需人工在「限制管理」页解除休眠）
+    def sleep_account(account)
+      account.update!(kol_sleep_until: 100.years.from_now)
     end
 
     # 判断是否「今日配额已耗尽」：所有支持平台的正常账号，今日尝试次数（排队中+成功+失败）都达到上限（或平台无账号）。
