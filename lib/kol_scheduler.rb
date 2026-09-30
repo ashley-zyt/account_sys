@@ -308,7 +308,9 @@ class KolScheduler
         contact.update!(status: :disabled)
         :target_invalid
       elsif result[:reason] == "target_invalid"
+        # 对方 @username 无效/用户不存在：停用该联系方式，后续不再尝试
         KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "network")
+        contact.update!(status: :disabled)
         :target_invalid
       else
         KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "network")

@@ -1,0 +1,131 @@
+<% content_for :page_title do %>
+  KOL 限制管理
+<% end %>
+<% content_for :page_subtitle do %>
+  统一管理账号休眠、联系方式停用与每日触达上限
+<% end %>
+
+<div class="admin-card" style="margin-bottom: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">每日尝试上限</div>
+      <div class="admin-card-subtitle">单账号每日最多尝试发私信次数（成功 + 失败都算一次）</div>
+    </div>
+  </div>
+  <div style="padding: 16px;">
+    <%= form_with url: update_settings_admin_restrictions_path, method: :post, class: "admin-form" do %>
+      <div style="display: flex; gap: 10px; align-items: end;">
+        <div>
+          <div class="admin-field-label">上限次数</div>
+          <input type="number" name="max_contacts_per_day" value="<%= @max_contacts_per_day %>" min="1" class="admin-input" style="width: 120px;">
+        </div>
+        <button type="submit" class="admin-button-primary">保存</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="admin-card" style="margin-bottom: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">账号休眠管理</div>
+      <div class="admin-card-subtitle">休眠中的账号不参与 KOL 触达分配</div>
+    </div>
+  </div>
+
+  <div style="padding: 16px 16px 0;">
+    <%= form_with url: sleep_account_admin_restrictions_path, method: :post, class: "admin-form" do %>
+      <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+        <div style="min-width: 260px; flex: 1;">
+          <div class="admin-field-label">选择账号</div>
+          <%= render "admin/shared/searchable_select",
+                name: "account_id",
+                options: @available_accounts.map { |a| ["##{a.id} #{a.account_name} (#{a.platform})", a.id] },
+                placeholder: "选择账号",
+                include_blank: "选择账号" %>
+        </div>
+        <div>
+          <div class="admin-field-label">休眠时长</div>
+          <select name="hours" class="admin-input">
+            <option value="1">1 小时</option>
+            <option value="6">6 小时</option>
+            <option value="24" selected>24 小时</option>
+            <option value="72">3 天</option>
+          </select>
+        </div>
+        <button type="submit" class="admin-button-secondary">休眠账号</button>
+      </div>
+    <% end %>
+  </div>
+
+  <div style="padding: 16px;">
+    <% if @sleeping_accounts.any? %>
+      <table class="admin-table">
+        <thead>
+          <tr><th>账号</th><th>平台</th><th>休眠至</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          <% @sleeping_accounts.each do |a| %>
+            <tr>
+              <td><%= a.account_name %></td>
+              <td><%= a.platform %></td>
+              <td><%= a.kol_sleep_until.strftime('%m-%d %H:%M') %></td>
+              <td><%= link_to "解除休眠", unsleep_account_admin_restrictions_path(account_id: a.id), data: { turbo_method: :post, turbo_confirm: "解除该账号的休眠？" }, class: "admin-link-quiet", style: "color: var(--success);" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="admin-empty-state">当前没有休眠中的账号</div>
+    <% end %>
+  </div>
+</div>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">联系方式停用管理</div>
+      <div class="admin-card-subtitle">被停用的联系方式不会再被尝试触达</div>
+    </div>
+  </div>
+
+  <div style="padding: 16px 16px 0;">
+    <%= form_with url: disable_contact_admin_restrictions_path, method: :post, class: "admin-form" do %>
+      <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+        <div style="min-width: 340px; flex: 1;">
+          <div class="admin-field-label">选择联系方式</div>
+          <%= render "admin/shared/searchable_select",
+                name: "contact_id",
+                options: @active_contacts.map { |c| ["##{c.id} #{c.kol&.name} - #{c.platform}（#{c.url}）", c.id] },
+                placeholder: "选择联系方式",
+                include_blank: "选择联系方式" %>
+        </div>
+        <button type="submit" class="admin-button-secondary">停用</button>
+      </div>
+    <% end %>
+  </div>
+
+  <div style="padding: 16px;">
+    <% if @disabled_contacts.any? %>
+      <table class="admin-table">
+        <thead>
+          <tr><th>ID</th><th>KOL</th><th>平台</th><th>主页/账号</th><th>停用时间</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          <% @disabled_contacts.each do |c| %>
+            <tr>
+              <td>#<%= c.id %></td>
+              <td><%= c.kol ? link_to(c.kol.name, admin_kol_path(c.kol), class: "admin-link-quiet") : "-" %></td>
+              <td><%= c.platform %></td>
+              <td><%= c.url %></td>
+              <td><%= c.updated_at.strftime('%m-%d %H:%M') %></td>
+              <td><%= link_to "恢复", restore_contact_admin_restrictions_path(contact_id: c.id), data: { turbo_method: :post, turbo_confirm: "恢复该联系方式？" }, class: "admin-link-quiet", style: "color: var(--success);" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="admin-empty-state">当前没有被停用的联系方式</div>
+    <% end %>
+  </div>
+</div>

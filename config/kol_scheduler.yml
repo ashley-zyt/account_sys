@@ -11,3 +11,6 @@ retry_hours: 1
 
 # 同一平台（联系方式）最多尝试的账号数；达到后仍未成功则换下一个平台
 max_accounts_per_platform: 2
+
+# 单账号每日尝试发私信的上限（成功+失败都算一次，发满当天不再分配、次日继续）
+max_contacts_per_day: 5

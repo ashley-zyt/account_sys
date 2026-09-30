@@ -77,11 +77,21 @@ class KolXOutreach
       nil
     end
 
-    # 失败分类：401=token 失效（休眠账号重新授权）；403=对方拒绝/不接受私信（停用联系方式）
+    # 失败分类：
+    #   401 = token 失效 → account_risk（休眠账号重新授权）
+    #   403 需看 detail 区分：
+    #     含「direct message / this user」→ 对方拒绝/不接受私信 → dm_refused（停用联系方式）
+    #     其它（如 "This operation is not permitted."，发送账号权限不足）→ account_risk（休眠账号）
     def classify_failure(resp)
       code = resp[:code].to_i
       return 'account_risk' if code == 401
-      return 'dm_refused' if code == 403
+
+      if code == 403
+        detail = extract_error(resp).to_s.downcase
+        return 'dm_refused' if detail.include?('direct message') || detail.include?('this user')
+        return 'account_risk'
+      end
+
       'x_api_error'
     end
 

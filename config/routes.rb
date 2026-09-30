@@ -176,6 +176,16 @@ Rails.application.routes.draw do
       end
     end
     resources :kol_action_logs, only: [:index]
+    # KOL 限制统一管理：账号休眠、联系方式停用、每日尝试上限
+    resources :restrictions, only: [:index] do
+      collection do
+        post :unsleep_account
+        post :sleep_account
+        post :restore_contact
+        post :disable_contact
+        post :update_settings
+      end
+    end
   end
 
   namespace :api do

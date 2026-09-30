@@ -4,17 +4,36 @@
 #   1. 账号状态=正常 且 平台一致
 #   2. 必须有发文记录（一条发文都没有则略过），平均浏览量只作优先级排序、不再作为门槛
 #   3. 按平均浏览量从高到低选择
-#   4. 单个账号每日最多联系 5 个 KOL
+#   4. 单个账号每日最多尝试发私信 5 次（成功+失败都算），发满当天不再分配、次日继续
 #   5. 风控/发送失败的账号休眠一段时间，期间不参与分配
 class KolAccountAllocator
-  MAX_CONTACTS_PER_DAY = 5
+  MAX_CONTACTS_PER_DAY = 5  # 默认值，可被 config/kol_scheduler.yml 的 max_contacts_per_day 覆盖
   SLEEP_HOURS = 24
+  CONFIG_PATH = Rails.root.join('config/kol_scheduler.yml')
   # 当前已接通 twitter / tiktok / instagram / facebook
   SUPPORTED_PLATFORMS = %w[twitter tiktok instagram facebook].freeze
   # 无发文数据、无需按浏览量评分的平台（直接返回全部正常账号）
   SKIP_POST_SCORING_PLATFORMS = %w[facebook].freeze
 
   class << self
+    # 读取调度配置（config/kol_scheduler.yml），文件不存在或字段缺失回退默认值
+    def settings
+      @settings ||= begin
+        require 'yaml'
+        File.exist?(CONFIG_PATH) ? (YAML.load_file(CONFIG_PATH) || {}) : {}
+      end
+    end
+
+    # 单账号每日尝试发私信的上限（可后台配置，成功+失败都算）
+    def max_contacts_per_day
+      (settings['max_contacts_per_day'].presence || MAX_CONTACTS_PER_DAY).to_i
+    end
+
+    # 清除配置缓存（后台修改 yml 后调用，使新值立即生效）
+    def reload_settings!
+      @settings = nil
+    end
+
     def supported_platform?(platform)
       SUPPORTED_PLATFORMS.include?(platform.to_s)
     end
@@ -37,7 +56,7 @@ class KolAccountAllocator
       candidates.each do |account|
         next if exclude_ids.include?(account.id)
         next if account.kol_sleeping?
-        next if today_contact_count(account) >= MAX_CONTACTS_PER_DAY
+        next if today_contact_count(account) >= max_contacts_per_day
         # X 认证方式：只选 X 授权成功的账号
         next if channel.to_s == 'x_api' && !account.x_credential&.authorized?
         return account
@@ -50,7 +69,7 @@ class KolAccountAllocator
       account.update!(kol_sleep_until: hours.hours.from_now)
     end
 
-    # 判断是否「今日配额已耗尽」：所有支持平台的正常账号，今日发送成功数都达到上限（或平台无账号）。
+    # 判断是否「今日配额已耗尽」：所有支持平台的正常账号，今日尝试次数（成功+失败）都达到上限（或平台无账号）。
     # 配额耗尽时应等第二天自然日重置，而不是短时间重试空转。
     def self.quota_exhausted?
       SUPPORTED_PLATFORMS.all? do |platform|
@@ -60,11 +79,11 @@ class KolAccountAllocator
         sent = KolMessage.where(
           account_id: account_ids,
           direction: KolMessage.directions[:outgoing],
-          status: KolMessage.statuses[:sent_success],
+          status: [KolMessage.statuses[:sent_success], KolMessage.statuses[:sent_failed]],
           created_at: Time.current.beginning_of_day..Time.current.end_of_day
         ).group(:account_id).count
 
-        account_ids.all? { |id| sent[id].to_i >= MAX_CONTACTS_PER_DAY }
+        account_ids.all? { |id| sent[id].to_i >= max_contacts_per_day }
       end
     end
 
@@ -106,12 +125,13 @@ class KolAccountAllocator
       ids.map { |id| accounts_by_id[id] }.compact
     end
 
-    # 单个账号今日已触达的 KOL 数量（仅按当日「发送成功」的消息计数，失败尝试不占配额）
+    # 单个账号今日「尝试发私信」的次数：成功 + 失败都算一次。
+    # 失败同样占配额，避免失败账号（对方拒绝/权限问题）被反复分配无限重试。
     def today_contact_count(account)
       KolMessage.where(
         account_id: account.id,
         direction: KolMessage.directions[:outgoing],
-        status: KolMessage.statuses[:sent_success]
+        status: [KolMessage.statuses[:sent_success], KolMessage.statuses[:sent_failed]]
       ).where(created_at: Time.current.beginning_of_day..Time.current.end_of_day).count
     end
   end
