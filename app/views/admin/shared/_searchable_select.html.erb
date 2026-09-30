@@ -3,7 +3,7 @@
 <div class="custom-select-container">
   <div class="custom-select" data-placeholder="<%= placeholder %>">
     <div class="custom-select-trigger" onclick="toggleCustomSelect(this)">
-      <span class="custom-select-value"><%= (selected_label.presence || placeholder) %></span>
+      <span class="custom-select-value"><%= (local_assigns[:selected_label].presence || placeholder) %></span>
       <span class="custom-select-arrow">▼</span>
     </div>
     <div class="custom-select-options" style="display: none;">
@@ -17,6 +17,6 @@
         <% end %>
       </div>
     </div>
-    <input type="hidden" name="<%= name %>" value="<%= selected %>" class="custom-select-hidden-input" <%= 'required' if local_assigns[:required] %>>
+    <input type="hidden" name="<%= name %>" value="<%= local_assigns[:selected] %>" class="custom-select-hidden-input" <%= 'required' if local_assigns[:required] %>>
   </div>
 </div>
