@@ -85,13 +85,15 @@ class KolXOutreach
       'x_api_error'
     end
 
-    # 提取 X API 错误信息（body['errors'] 数组 / title / detail 兜底）
+    # 提取 X API 错误信息：优先取 detail（具体原因），其次 message/title，最后 raw 兜底
     def extract_error(resp)
       body = resp[:body]
       return resp[:raw].to_s if body.blank?
       err = body['errors'].to_a.first
-      return err['detail'] || err['title'] || err['message'] if err.is_a?(Hash)
-      body['title'] || body['detail'] || resp[:raw].to_s
+      if err.is_a?(Hash)
+        return err['detail'].presence || err['message'].presence || err['title'].presence || resp[:raw].to_s
+      end
+      body['detail'].presence || body['title'].presence || resp[:raw].to_s
     end
   end
 end
