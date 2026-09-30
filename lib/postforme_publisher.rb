@@ -16,8 +16,12 @@ module PostformePublisher
     video_url = (mode && mode.video_field.present?) ? task.public_send(mode.video_field) : nil
     media_urls = video_url.present? ? [video_url.to_s] : []
 
+    caption = task.title.to_s
+    # 数字货币主题：postforme 用 caption（=title，无 description），统一追加免责声明
+    caption = FinancialDisclaimer.append(caption) if FinancialDisclaimer.applies_to?(task.theme)
+
     resp = PostformeApi.create_post(
-      caption: task.title.to_s,
+      caption: caption,
       social_account_ids: [pa.social_account_id],
       media_urls: media_urls,
       external_id: "#{task.class.name}:#{task.id}"

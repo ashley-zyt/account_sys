@@ -167,6 +167,10 @@ class HuashengTask < ApplicationRecord
     theme    = huasheng_keyword.theme.to_s
     keyword  = huasheng_keyword.keyword.to_s
 
+    # 数字货币主题：正文文案（caption）在入库时一次性追加免责声明，
+    # 避免发布阶段再改（youtube 的 description、其余平台的 title 都源自 caption）。
+    caption = FinancialDisclaimer.append(caption) if FinancialDisclaimer.applies_to?(theme)
+
     signed_url = oss_v1_sign_url(object_key)
     group_id   = SecureRandom.uuid
 

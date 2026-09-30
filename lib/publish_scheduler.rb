@@ -392,9 +392,20 @@ class PublishScheduler
     video_url = (mode && mode.video_field.present?) ? task.public_send(mode.video_field) : nil
     # 部分任务（如 MoveTask）没有 description 字段，发布不需要描述
     description = task.respond_to?(:description) ? task.description.to_s : ""
+    title = task.title.to_s
+
+    # 数字货币主题：追加金融免责声明（youtube 改 description，其它平台改 title）
+    if FinancialDisclaimer.applies_to?(task.theme)
+      if task.platform.to_s == 'youtube'
+        description = FinancialDisclaimer.append(description)
+      else
+        title = FinancialDisclaimer.append(title)
+      end
+    end
+
     {
       profile_name: ensure_utf8(task.browser.profile_name),
-      title: ensure_utf8(task.title),
+      title: ensure_utf8(title),
       video_oss_url: ensure_utf8(video_url),
       description: ensure_utf8(description),
       # 异步模式：机器端立即返回 accepted+task_id，后台执行，完成后回调 /api/v1/browser_tasks/result
