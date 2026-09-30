@@ -32,7 +32,7 @@ class KolXOutreach
         { success: true }
       else
         reason = classify_failure(resp)
-        error = extract_error(resp)
+        error = full_error(resp)
         log_send(contact, account, :failed, error)
         { success: false, reason: reason, error: error }
       end
@@ -128,6 +128,15 @@ class KolXOutreach
         return err['detail'].presence || err['message'].presence || err['title'].presence || resp[:raw].to_s
       end
       body['detail'].presence || body['title'].presence || resp[:raw].to_s
+    end
+
+    # 完整错误信息：extract_error 的 detail（易读）+ X 返回的原始 JSON（raw，含 status/title/type），
+    # 便于后续统一判断「发送账号问题」vs「对方拒收私信」。
+    def full_error(resp)
+      detail = extract_error(resp)
+      raw = resp[:raw].to_s.strip
+      return detail if raw.blank?
+      detail.blank? ? raw : "#{detail} || #{raw}"
     end
   end
 end
