@@ -14,6 +14,8 @@ class KolScheduler
   RETRY_HOURS = 1
   # 同一平台（联系方式）最多尝试的账号数（默认值，可被 config/kol_scheduler.yml 覆盖）
   MAX_ACCOUNTS_PER_PLATFORM = 2
+  # 每轮 run 最多下发到机器端（浏览器通道）的私信条数，避免机器端异步任务堆积
+  MAX_BROWSER_DISPATCH_PER_RUN = 20
 
   CONFIG_PATH = Rails.root.join('config/kol_scheduler.yml')
 
@@ -51,14 +53,16 @@ class KolScheduler
     def run
       setup_logger("kol_scheduler.log")
       Rails.logger.info "[KolScheduler] 开始自动化触达扫描"
+      @browser_dispatch_count = 0  # 重置本轮浏览器通道下发计数
       process_pending
       process_due_contacting
       process_contact_expiry
-      Rails.logger.info "[KolScheduler] 自动化触达扫描完成"
+      Rails.logger.info "[KolScheduler] 自动化触达扫描完成（本轮浏览器通道下发 #{@browser_dispatch_count.to_i} 条）"
     end
 
     def process_pending
       Kol.pending_queue.find_each do |kol|
+        break if browser_dispatch_limit_reached?
         safely(kol) { run_outreach(kol, scenario: :first_contact) }
       end
     end
@@ -67,8 +71,14 @@ class KolScheduler
       Kol.where(status: :contacting)
          .where("next_action_at IS NULL OR next_action_at <= ?", Time.current)
          .find_each do |kol|
+        break if browser_dispatch_limit_reached?
         safely(kol) { advance(kol) }
       end
+    end
+
+    # 本轮浏览器通道（机器端异步）下发是否已达上限
+    def browser_dispatch_limit_reached?
+      @browser_dispatch_count.to_i >= MAX_BROWSER_DISPATCH_PER_RUN
     end
 
     # 向「尚未联系」的有效渠道发送（按优先级），返回是否有发送成功
@@ -315,7 +325,10 @@ class KolScheduler
       end
 
       # 异步受理（仅机器端通道）：等 /api/v1/browser_tasks/result 回调后由 apply_send_result 更新状态
-      return :async_accepted if result[:async]
+      if result[:async]
+        @browser_dispatch_count = @browser_dispatch_count.to_i + 1
+        return :async_accepted
+      end
 
       if result[:success]
         KolOutreachApi.apply_send_result(message, success: true)
