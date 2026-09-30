@@ -121,7 +121,11 @@ class KolOutreachApi
           )
         end
 
-        unless message.manual?
+        if message.manual? && (kol&.replied_unprocessed? || kol&.in_conversation?)
+          # 人工回复跟进：保持「跟进中」，继续监测当前渠道、不切换其他联系方式
+          kol.update!(status: :in_conversation, next_action_at: nil)
+        else
+          # 自动触达 / 人工首次联系：转「联系中」
           kol.update!(
             status: :contacting,
             current_contact_id: contact&.id,
