@@ -40,6 +40,7 @@
     </div>
     <div class="admin-card-header-right">
       <span class="admin-tag">共 <%= @kols.total_count %> 条</span>
+      <button type="button" class="admin-button-secondary" onclick="openKolStatusGuide()">状态说明</button>
       <%= link_to "批量导入", import_admin_kols_path, class: "admin-button-secondary" %>
       <%= link_to "录入 KOL", new_admin_kol_path, class: "admin-button-primary" %>
       <%= link_to "消息模板", admin_message_templates_path, class: "admin-button-secondary" %>
@@ -173,6 +174,18 @@
   </div>
   <div class="drawer-body" data-drawer-role="content">
     <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 12px;">点击列表中的「会话」查看对话</div>
+  </div>
+</div>
+
+<div id="kol-status-guide-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1200; justify-content: center; align-items: center; padding: 20px;">
+  <div style="background: #1e293b; border-radius: 12px; width: 800px; max-width: 100%; max-height: 88%; display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid rgba(148,163,184,0.2);">
+      <div style="font-size: 15px; font-weight: 600; color: #e2e8f0;">KOL 状态说明</div>
+      <button type="button" onclick="closeKolStatusGuide()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer;">✕</button>
+    </div>
+    <div style="padding: 16px 18px; overflow-y: auto;">
+      <%= render "status_guide" %>
+    </div>
   </div>
 </div>
 
@@ -346,4 +359,18 @@
       if (data.success) { window.kolListDirty = true; kolRefresh(kolId); } else { alert(data.message || '操作失败'); }
     });
   }
+
+  function openKolStatusGuide() {
+    var modal = document.getElementById('kol-status-guide-modal');
+    if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+  }
+
+  function closeKolStatusGuide() {
+    var modal = document.getElementById('kol-status-guide-modal');
+    if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+  }
+
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'kol-status-guide-modal') { closeKolStatusGuide(); }
+  });
 </script>

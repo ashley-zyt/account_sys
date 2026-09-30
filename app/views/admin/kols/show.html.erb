@@ -41,6 +41,7 @@
     </div>
     <div class="admin-card-header-right">
       <%= render "status_badge", status: @kol.status %>
+      <button type="button" class="admin-button-secondary" onclick="openKolStatusGuide()">状态说明</button>
       <%= link_to "编辑", edit_admin_kol_path(@kol), class: "admin-button-secondary" %>
       <%= link_to "删除", admin_kol_path(@kol), data: { turbo_method: :delete, turbo_confirm: "确定要删除该 KOL 吗？" }, class: "admin-button-secondary" %>
     </div>
@@ -296,4 +297,30 @@ function kolApplyManualTemplate() {
     }
   }
 }
+
+function openKolStatusGuide() {
+  var modal = document.getElementById('kol-status-guide-modal');
+  if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+}
+
+function closeKolStatusGuide() {
+  var modal = document.getElementById('kol-status-guide-modal');
+  if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+}
+
+document.addEventListener('click', function(e) {
+  if (e.target && e.target.id === 'kol-status-guide-modal') { closeKolStatusGuide(); }
+});
 </script>
+
+<div id="kol-status-guide-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1200; justify-content: center; align-items: center; padding: 20px;">
+  <div style="background: #1e293b; border-radius: 12px; width: 800px; max-width: 100%; max-height: 88%; display: flex; flex-direction: column; overflow: hidden;">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid rgba(148,163,184,0.2);">
+      <div style="font-size: 15px; font-weight: 600; color: #e2e8f0;">KOL 状态说明</div>
+      <button type="button" onclick="closeKolStatusGuide()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer;">✕</button>
+    </div>
+    <div style="padding: 16px 18px; overflow-y: auto;">
+      <%= render "status_guide" %>
+    </div>
+  </div>
+</div>

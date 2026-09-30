@@ -1,0 +1,113 @@
+<%
+  # KOL 状态语义说明（与 app/models/kol.rb 的 enum + STATUS_LABELS 保持一致）
+  colors = {
+    "reserved"            => "148,163,184",
+    "pending"             => "59,130,246",
+    "contacting"          => "245,158,11",
+    "replied_unprocessed" => "239,68,68",
+    "negotiating"         => "14,165,233",
+    "cooperating"         => "34,197,94",
+    "failed"              => "239,68,68",
+    "unresponsive"        => "100,116,139",
+    "unreachable"         => "120,113,108",
+    "in_conversation"     => "167,139,250"
+  }
+
+  # 每个状态的：语义 / 场景（进入条件）/ 下一步（谁驱动、做什么）
+  guide = [
+    {
+      key: "reserved",
+      meaning: "KOL 已录入，但尚未进入自动化触达队列。",
+      scene: "新建 KOL 默认状态；或从「待联系」手动退回。",
+      next: "人工点「转为待联系」进入队列（需有可私信联系方式 + 变量完整）。"
+    },
+    {
+      key: "pending",
+      meaning: "排队等待自动化首次触达。",
+      scene: "具备可私信的联系方式且变量完整，已入队。",
+      next: "调度器每小时扫描，自动发送首次私信 → 转「联系中」。"
+    },
+    {
+      key: "contacting",
+      meaning: "已发出私信，等待对方回复。",
+      scene: "首次触达成功。",
+      next: "轮询器按衰减频率拉回复；2 个工作日无回复自动切换下一联系方式；14 天无回复转「未回复」。"
+    },
+    {
+      key: "replied_unprocessed",
+      meaning: "对方已回复，等待人工判断回复内容。",
+      scene: "对方回了消息（可能给联系方式 / 问问题 / 机器人自动回复）。",
+      next: "人工三选一：①「达成」→ 人工洽谈中；②「回复并继续跟进」→ 跟进中；③「标记为自动回复」→ 联系中。"
+    },
+    {
+      key: "negotiating",
+      meaning: "对方给了联系方式，转线下人工洽谈。",
+      scene: "点「达成（已获联系方式）」。",
+      next: "停止自动化监测、不再尝试其他联系方式；线下跟进，最终「已合作」或「已拒绝」。"
+    },
+    {
+      key: "in_conversation",
+      meaning: "已建立实质对话，人工已回复，继续监测当前渠道。",
+      scene: "对方问问题，人工回复后。",
+      next: "继续监测当前渠道（不切换）；对方再回复 →「待回复」；14 天无回复 →「未回复」。"
+    },
+    {
+      key: "cooperating",
+      meaning: "合作达成。",
+      scene: "人工标记「已合作」。",
+      next: "终态（可人工改为其它状态）。"
+    },
+    {
+      key: "failed",
+      meaning: "对方拒绝，或我方放弃。",
+      scene: "人工标记「已拒绝」。",
+      next: "终态（可人工改为其它状态）。"
+    },
+    {
+      key: "unresponsive",
+      meaning: "联系过，但监测窗口到期仍未回复。",
+      scene: "所有渠道都尝试过、14 天无回复；或「跟进中」14 天无回复。",
+      next: "终态（可人工重新「转为待联系」）。"
+    },
+    {
+      key: "unreachable",
+      meaning: "没有任何可私信的联系方式。",
+      scene: "对方关 DM / 平台未开发私信 / 联系方式全部停用。",
+      next: "人工补可私信联系方式后，编辑保存会自动恢复「待联系」。"
+    }
+  ]
+%>
+
+<div style="color: #e2e8f0; font-size: 13px; line-height: 1.6;">
+  <div style="margin-bottom: 16px; padding: 12px 14px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.25); border-radius: 8px;">
+    <div style="font-weight: 600; color: #60a5fa; margin-bottom: 6px;">流转总览</div>
+    <div style="color: #cbd5e1;">
+      未开始 → 待联系 → 联系中 → 待回复 →
+      <span style="color: #67e8f9;">人工洽谈中</span>（达成）
+      ／ <span style="color: #c4b5fd;">跟进中</span>（回复后继续）
+      ／ <span style="color: #fbbf24;">联系中</span>（自动回复，回退）<br>
+      终态：已合作 ／ 已拒绝 ／ 未回复 ／ 无法联系
+    </div>
+  </div>
+
+  <% guide.each do |g| %>
+    <%
+      key = g[:key]
+      label = Kol::STATUS_LABELS[key] || key
+      rgb = colors[key] || "148,163,184"
+    %>
+    <div style="display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(148,163,184,0.12);">
+      <div style="flex: 0 0 130px; padding-top: 1px;">
+        <span class="admin-pill-status" style="background: rgba(<%= rgb %>, 0.14); color: rgb(<%= rgb %>);">
+          <span class="admin-pill-status-dot"></span>
+          <%= label %>
+        </span>
+      </div>
+      <div style="flex: 1;">
+        <div style="margin-bottom: 4px;"><span style="color: #94a3b8;">语义：</span><%= g[:meaning] %></div>
+        <div style="margin-bottom: 4px;"><span style="color: #94a3b8;">场景：</span><%= g[:scene] %></div>
+        <div><span style="color: #94a3b8;">下一步：</span><%= g[:next] %></div>
+      </div>
+    </div>
+  <% end %>
+</div>
