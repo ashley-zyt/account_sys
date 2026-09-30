@@ -47,6 +47,7 @@
             <option value="6">6 小时</option>
             <option value="24" selected>24 小时</option>
             <option value="72">3 天</option>
+            <option value="permanent">永久</option>
           </select>
         </div>
         <button type="submit" class="admin-button-secondary">休眠账号</button>
@@ -65,7 +66,7 @@
             <tr>
               <td><%= a.account_name %></td>
               <td><%= a.platform %></td>
-              <td><%= a.kol_sleep_until.strftime('%m-%d %H:%M') %></td>
+              <td><%= a.kol_sleep_until.present? && a.kol_sleep_until > 1.year.from_now ? "永久" : a.kol_sleep_until.strftime('%m-%d %H:%M') %></td>
               <td><%= link_to "解除休眠", unsleep_account_admin_restrictions_path(account_id: a.id), data: { turbo_method: :post, turbo_confirm: "解除该账号的休眠？" }, class: "admin-link-quiet", style: "color: var(--success);" %></td>
             </tr>
           <% end %>

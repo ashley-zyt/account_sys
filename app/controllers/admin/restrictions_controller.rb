@@ -13,7 +13,7 @@ class Admin::RestrictionsController < Admin::BaseController
     redirect_to admin_restrictions_path, notice: "已解除账号 #{account.account_name} 的休眠"
   end
 
-  # 手动休眠账号（按 ID 或名称查找，指定时长）
+  # 手动休眠账号（按 ID 或名称查找，指定时长或永久）
   def sleep_account
     key = params[:account_key].to_s.strip
     account = if key.match?(/\A\d+\z/)
@@ -26,10 +26,15 @@ class Admin::RestrictionsController < Admin::BaseController
       return
     end
 
-    hours = params[:hours].to_i
-    hours = 24 if hours <= 0
-    account.update!(kol_sleep_until: hours.hours.from_now)
-    redirect_to admin_restrictions_path, notice: "已休眠账号 #{account.account_name} #{hours} 小时"
+    if params[:hours] == 'permanent'
+      account.update!(kol_sleep_until: 100.years.from_now)
+      redirect_to admin_restrictions_path, notice: "已永久休眠账号 #{account.account_name}"
+    else
+      hours = params[:hours].to_i
+      hours = 24 if hours <= 0
+      account.update!(kol_sleep_until: hours.hours.from_now)
+      redirect_to admin_restrictions_path, notice: "已休眠账号 #{account.account_name} #{hours} 小时"
+    end
   end
 
   # 恢复被停用的联系方式
