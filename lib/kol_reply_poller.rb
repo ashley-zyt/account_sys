@@ -6,44 +6,72 @@ class KolReplyPoller
   class << self
     def run
       setup_logger("kol_reply_poller.log")
-      Rails.logger.info "[KolReplyPoller] 开始回复轮询"
-      # 轮询所有「监测中」联系方式所属的 KOL（多会话持续监测，而非只看当前联系方式）
+      @stats = { kols: 0, due: 0, skipped: 0, replied: 0, advanced: 0, async: 0 }
+
+      Rails.logger.info "[KolReplyPoller] ========== 开始回复轮询 =========="
       kol_ids = KolContact.where(status: KolContact.statuses[:contacting]).distinct.pluck(:kol_id)
+      Rails.logger.info "[KolReplyPoller] 待检查 KOL 数：#{kol_ids.size}"
+
       Kol.where(id: kol_ids).find_each do |kol|
+        @stats[:kols] += 1
         safely(kol) { poll(kol) }
       end
-      Rails.logger.info "[KolReplyPoller] 回复轮询完成"
+
+      Rails.logger.info "[KolReplyPoller] 轮询完成：检查 KOL #{@stats[:kols]} 个 | 到期联系方式 #{@stats[:due]} | 跳过 #{@stats[:skipped]} | 异步受理 #{@stats[:async]} | 发现回复 #{@stats[:replied]} 条 | 推进轮询 #{@stats[:advanced]}"
+      Rails.logger.info "[KolReplyPoller] ========== 结束 =========="
     end
 
     def poll(kol)
       now = Time.current
-      kol.kol_contacts.where(status: KolContact.statuses[:contacting])
-         .where("next_poll_at IS NULL OR next_poll_at <= ?", now)
-         .find_each do |contact|
+      contacts = kol.kol_contacts.where(status: KolContact.statuses[:contacting]).to_a
+      due = contacts.select { |c| c.next_poll_at.nil? || c.next_poll_at <= now }
+
+      Rails.logger.info "[KolReplyPoller] KOL##{kol.id} #{kol.name}：联系中 #{contacts.size} 个，本次到期 #{due.size} 个"
+
+      due.each do |contact|
         safely(kol) { poll_contact(kol, contact) }
       end
     end
 
     def poll_contact(kol, contact)
-      # 监测窗口已结束的不再轮询（交由 process_contact_expiry 标 unresponsive）
-      return unless contact.monitoring?
+      unless contact.monitoring?
+        @stats[:skipped] += 1
+        Rails.logger.info "[KolReplyPoller]   contact##{contact.id}(#{contact.platform}) 监测已结束，跳过"
+        return
+      end
 
       account = contact.last_outgoing_account
-      return if account.nil?
+      if account.nil?
+        @stats[:skipped] += 1
+        Rails.logger.info "[KolReplyPoller]   contact##{contact.id}(#{contact.platform}) 无成功发送记录，跳过"
+        return
+      end
+
+      @stats[:due] += 1
+      Rails.logger.info "[KolReplyPoller]   contact##{contact.id}(#{contact.platform}) 用账号##{account.id} 拉回复"
 
       result = if contact.outreach_channel == 'x_api'
         KolXOutreach.fetch_replies(account: account, contact: contact)
       else
         KolOutreachApi.check_reply(platform: contact.platform, account: account, contact: contact)
       end
-      # 异步受理（仅机器端通道）：等 /api/v1/browser_tasks/result 回调后由 apply_reply_result 处理
-      return if result[:async]
+
+      if result[:async]
+        @stats[:async] += 1
+        Rails.logger.info "[KolReplyPoller]     异步受理，等机器端回调"
+        return
+      end
 
       if result[:has_reply]
+        count = Array(result[:replies]).size
+        @stats[:replied] += count
         KolOutreachApi.apply_reply_result(contact, result[:replies])
+        Rails.logger.info "[KolReplyPoller]     发现 #{count} 条回复，已入库并转 replied"
       else
-        # 无回复：按衰减频率推进下一次轮询时间
-        contact.update!(next_poll_at: next_poll_time(contact))
+        nxt = next_poll_time(contact)
+        contact.update!(next_poll_at: nxt)
+        @stats[:advanced] += 1
+        Rails.logger.info "[KolReplyPoller]     无回复，下次轮询推迟到 #{nxt.strftime('%Y-%m-%d %H:%M')}"
       end
     end
 
@@ -82,7 +110,9 @@ class KolReplyPoller
 
     def setup_logger(file)
       logger = ActiveSupport::Logger.new(File.join(Rails.root, "log", file))
-      logger.formatter = Rails.logger.formatter
+      logger.formatter = proc do |severity, time, _progname, msg|
+        "#{time.strftime('%Y-%m-%d %H:%M:%S')} #{severity} -- #{msg}\n"
+      end
       Rails.logger = logger
     end
   end
