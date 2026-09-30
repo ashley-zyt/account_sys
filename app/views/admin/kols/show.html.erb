@@ -264,7 +264,7 @@
       <%= link_to "转为未开始", deactivate_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-secondary" %>
     <% end %>
     <% if @kol.replied_unprocessed? %>
-      <%= link_to "人工接管", take_over_admin_kol_path(@kol), data: { turbo_method: :post }, class: "admin-button-primary" %>
+      <%= link_to "达成（已获联系方式）", mark_contact_obtained_admin_kol_path(@kol), data: { turbo_method: :post, turbo_confirm: "确认对方已提供联系方式？标记后转入人工洽谈，系统将停止监测且不再尝试其他联系方式。" }, class: "admin-button-primary" %>
     <% end %>
     <%= link_to "标记已合作", mark_outcome_admin_kol_path(@kol, outcome: "cooperating"), data: { turbo_method: :post }, class: "admin-button-secondary" %>
     <%= link_to "标记已拒绝", mark_outcome_admin_kol_path(@kol, outcome: "failed"), data: { turbo_method: :post }, class: "admin-button-secondary" %>

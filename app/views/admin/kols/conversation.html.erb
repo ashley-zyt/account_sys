@@ -72,7 +72,7 @@
 <% end %>
 
 <div class="kol-actions" data-kol-id="<%= @kol.id %>">
-  <% if @kol.replied_unprocessed? || @kol.negotiating? %>
+  <% if @kol.replied_unprocessed? || @kol.in_conversation? %>
     <div class="kol-reply-box">
       <div class="kol-actions-title">快捷回复</div>
       <div style="font-size: 12px; color: #94a3b8;">回复账号：<% if @reply_account %><%= link_to @reply_account.account_name, admin_account_path(@reply_account), class: "kol-reply-account", style: "color: #60a5fa; font-weight: 600;" %><% else %><span class="kol-reply-account">未分配</span><% end %></div>
@@ -91,8 +91,9 @@
       <textarea id="kol-reply-content" class="admin-input" rows="3" placeholder="输入回复内容"></textarea>
       <div id="kol-reply-var-hint" style="display: none; font-size: 12px; color: #f59e0b;"></div>
       <div style="display: flex; gap: 8px;">
-        <button type="button" class="admin-button-primary" onclick="kolReply(<%= @kol.id %>)">发送回复</button>
+        <button type="button" class="admin-button-primary" onclick="kolReply(<%= @kol.id %>)">发送回复并继续跟进</button>
         <% if @kol.replied_unprocessed? %>
+          <button type="button" class="admin-button-secondary" onclick="kolMarkContactObtained(<%= @kol.id %>)">达成（已获联系方式）</button>
           <button type="button" class="admin-button-secondary" onclick="kolMarkAutoReply(<%= @kol.id %>)">标记为自动回复</button>
         <% end %>
       </div>

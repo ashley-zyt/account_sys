@@ -52,11 +52,12 @@ class Kol < ApplicationRecord
     pending: 1,               # 待联系
     contacting: 2,            # 联系中
     replied_unprocessed: 3,   # 待回复
-    negotiating: 4,           # 洽谈中
+    negotiating: 4,           # 人工洽谈中（对方给了联系方式，转线下人工跟进，停止自动化）
     cooperating: 5,           # 已合作
     failed: 6,                # 已拒绝
     unresponsive: 7,          # 未回复
-    unreachable: 8            # 无法联系（无可私信的联系方式）
+    unreachable: 8,           # 无法联系（无可私信的联系方式）
+    in_conversation: 9        # 跟进中（对方有真人回复、人工已回复，继续监测当前渠道，不切换其他联系方式）
   }
 
   # KOL 业务状态中文标签（表单下拉与展示共用）
@@ -69,7 +70,8 @@ class Kol < ApplicationRecord
     "cooperating"         => "已合作",
     "failed"              => "已拒绝",
     "unresponsive"        => "未回复",
-    "unreachable"         => "无法联系"
+    "unreachable"         => "无法联系",
+    "in_conversation"     => "跟进中"
   }.freeze
 
   # 允许运营在快捷区直接切换的状态（其余为系统自动流转，人工改容易混乱）

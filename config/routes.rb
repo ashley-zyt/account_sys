@@ -160,7 +160,7 @@ Rails.application.routes.draw do
         post :activate
         post :deactivate
         post :contact_now
-        post :take_over
+        post :mark_contact_obtained
         post :mark_outcome
         post :mark_auto_reply
         post :add_message

@@ -14,6 +14,7 @@
     { label: "待回复", value: (@status_counts["replied_unprocessed"] || 0), color: "#f87171", url: admin_kols_path(q: { status_eq: Kol.statuses[:replied_unprocessed] }), active: active_status == Kol.statuses[:replied_unprocessed] },
     { label: "联系中", value: (@status_counts["contacting"] || 0), color: "#fbbf24", url: admin_kols_path(q: { status_eq: Kol.statuses[:contacting] }), active: active_status == Kol.statuses[:contacting] },
     { label: "洽谈中", value: (@status_counts["negotiating"] || 0), color: "#22d3ee", url: admin_kols_path(q: { status_eq: Kol.statuses[:negotiating] }), active: active_status == Kol.statuses[:negotiating] },
+    { label: "跟进中", value: (@status_counts["in_conversation"] || 0), color: "#a78bfa", url: admin_kols_path(q: { status_eq: Kol.statuses[:in_conversation] }), active: active_status == Kol.statuses[:in_conversation] },
     { label: "已合作", value: (@status_counts["cooperating"] || 0), color: "#34d399", url: admin_kols_path(q: { status_eq: Kol.statuses[:cooperating] }), active: active_status == Kol.statuses[:cooperating] },
     { label: "未回复", value: (@status_counts["unresponsive"] || 0), color: "#64748b", url: admin_kols_path(q: { status_eq: Kol.statuses[:unresponsive] }), active: active_status == Kol.statuses[:unresponsive] },
     { label: "无法联系", value: (@status_counts["unreachable"] || 0), color: "#78716c", url: admin_kols_path(q: { status_eq: Kol.statuses[:unreachable] }), active: active_status == Kol.statuses[:unreachable] },
@@ -335,6 +336,13 @@
 
   function kolMarkAutoReply(kolId) {
     kolPost('/admin/kols/' + kolId + '/mark_auto_reply', {}, function(data) {
+      if (data.success) { window.kolListDirty = true; kolRefresh(kolId); } else { alert(data.message || '操作失败'); }
+    });
+  }
+
+  function kolMarkContactObtained(kolId) {
+    if (!confirm('确认对方已提供联系方式？标记后转入人工洽谈，系统将停止监测且不再尝试其他联系方式。')) return;
+    kolPost('/admin/kols/' + kolId + '/mark_contact_obtained', {}, function(data) {
       if (data.success) { window.kolListDirty = true; kolRefresh(kolId); } else { alert(data.message || '操作失败'); }
     });
   }

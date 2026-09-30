@@ -129,9 +129,22 @@ class KolScheduler
       end
     end
 
-    # 依据联系方式的独立状态，重算 KOL 的自动化状态（仅针对 pending / contacting）
+    # 依据联系方式的独立状态，重算 KOL 的自动化状态（仅针对 pending / contacting / in_conversation）
     def reevaluate_kol_status(kol)
-      return unless %w[pending contacting].include?(kol.status.to_s)
+      return unless %w[pending contacting in_conversation].include?(kol.status.to_s)
+
+      # 跟进中：只盯当前渠道，不切换其他联系方式
+      if kol.in_conversation?
+        if kol.kol_contacts.where(status: KolContact.statuses[:replied]).exists?
+          kol.update!(status: :replied_unprocessed, next_action_at: nil)
+        elsif kol.kol_contacts.where(status: KolContact.statuses[:contacting]).exists?
+          # 仍监测中，保持跟进中
+        else
+          # 监测到期且无新回复 → 未回复
+          kol.update!(status: :unresponsive, next_action_at: nil)
+        end
+        return
+      end
 
       if kol.kol_contacts.where(status: KolContact.statuses[:replied]).exists?
         kol.update!(status: :replied_unprocessed, next_action_at: nil)
@@ -201,8 +214,16 @@ class KolScheduler
 
       case result
       when :success
-        if kol.replied_unprocessed?
-          kol.update!(status: :negotiating)
+        if kol.replied_unprocessed? || kol.in_conversation?
+          # 对方问问题/持续对话：人工回复后继续监测当前渠道（不切换其他联系方式）
+          contact.update!(
+            status: :contacting,
+            monitor_until: reply_monitor_days.days.from_now,
+            last_sent_at: Time.current,
+            next_poll_at: 12.hours.from_now,
+            last_used_at: Time.current
+          )
+          kol.update!(status: :in_conversation, next_action_at: nil)
         elsif %w[pending reserved].include?(kol.status.to_s)
           # 人工已成功发消息：从「待联系/未开始」转为「联系中」，避免自动化再次触达
           deadline = kol.latest_outgoing_message&.wait_until || next_wait_time

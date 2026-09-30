@@ -1,7 +1,7 @@
 class Admin::KolsController < Admin::BaseController
   before_action :set_kol, only: [
     :show, :edit, :update, :destroy,
-    :activate, :deactivate, :contact_now, :take_over,
+    :activate, :deactivate, :contact_now, :mark_contact_obtained,
     :mark_outcome, :mark_auto_reply, :add_message, :conversation,
     :reply_message, :quick_status
   ]
@@ -307,9 +307,16 @@ class Admin::KolsController < Admin::BaseController
     render json: { success: true, message: "已更新" }
   end
 
-  def take_over
+  # 达成：对方直接提供了联系方式 → 转入人工线下洽谈，停止自动化监测、不再尝试其他联系方式
+  def mark_contact_obtained
     @kol.update!(status: :negotiating, next_action_at: nil)
-    redirect_to admin_kol_path(@kol), notice: "已转入人工跟进"
+    # 清理监测字段（replied 状态的联系方式本就不被轮询，这里清干净便于展示）
+    @kol.kol_contacts.where(status: KolContact.statuses[:replied])
+        .update_all(monitor_until: nil, next_poll_at: nil)
+    respond_to do |format|
+      format.html { redirect_to admin_kol_path(@kol), notice: "已标记达成（获得联系方式），转入人工洽谈" }
+      format.json { render json: { success: true, message: "已标记达成，转入人工洽谈" } }
+    end
   end
 
   def mark_outcome
@@ -324,9 +331,19 @@ class Admin::KolsController < Admin::BaseController
     ok = false
     if incoming
       incoming.update!(is_auto_reply: true)
-      # 该回复是机器人自动回复：联系方式恢复监测，KOL 恢复等待
-      incoming.kol_contact&.update!(status: :contacting, monitor_until: 30.days.from_now)
-      @kol.update!(status: :contacting, next_action_at: nil)
+      # 该回复是机器人自动回复：联系方式恢复「联系中」，继续监测当前渠道，
+      # 2 个工作日后仍无真人回复则切换其他联系方式（与首次触达成功一致）
+      contact = incoming.kol_contact
+      if contact
+        contact.update!(
+          status: :contacting,
+          monitor_until: KolScheduler.reply_monitor_days.days.from_now,
+          last_sent_at: Time.current,
+          next_poll_at: 12.hours.from_now,
+          last_used_at: Time.current
+        )
+      end
+      @kol.update!(status: :contacting, next_action_at: KolOutreachApi.next_wait_time)
       ok = true
     end
 
