@@ -4,8 +4,6 @@ class Admin::RestrictionsController < Admin::BaseController
     @max_contacts_per_day = KolAccountAllocator.max_contacts_per_day
     @sleeping_accounts = Account.active.where("kol_sleep_until > ?", Time.current).includes(:browser).order(:kol_sleep_until)
     @disabled_contacts = KolContact.where(status: :disabled).includes(:kol).order(updated_at: :desc)
-    @available_accounts = Account.active.order(:id)
-    @active_contacts = KolContact.where(status: :active).includes(:kol).order(:id)
   end
 
   # 解除账号休眠
@@ -15,9 +13,19 @@ class Admin::RestrictionsController < Admin::BaseController
     redirect_to admin_restrictions_path, notice: "已解除账号 #{account.account_name} 的休眠"
   end
 
-  # 手动休眠账号（指定时长）
+  # 手动休眠账号（按 ID 或名称查找，指定时长）
   def sleep_account
-    account = Account.find(params[:account_id])
+    key = params[:account_key].to_s.strip
+    account = if key.match?(/\A\d+\z/)
+      Account.find_by(id: key.to_i)
+    else
+      Account.find_by(account_name: key)
+    end
+    if account.nil?
+      redirect_to admin_restrictions_path, alert: "找不到账号：#{key}"
+      return
+    end
+
     hours = params[:hours].to_i
     hours = 24 if hours <= 0
     account.update!(kol_sleep_until: hours.hours.from_now)
@@ -31,9 +39,19 @@ class Admin::RestrictionsController < Admin::BaseController
     redirect_to admin_restrictions_path, notice: "已恢复联系方式 ##{contact.id}（#{contact.platform}）"
   end
 
-  # 手动停用联系方式
+  # 手动停用联系方式（按 ID 或主页/昵称模糊查找）
   def disable_contact
-    contact = KolContact.find(params[:contact_id])
+    key = params[:contact_key].to_s.strip
+    contact = if key.match?(/\A\d+\z/)
+      KolContact.find_by(id: key.to_i)
+    else
+      KolContact.where("url LIKE :k OR nickname LIKE :k", k: "%#{key}%").order(:id).first
+    end
+    if contact.nil?
+      redirect_to admin_restrictions_path, alert: "找不到联系方式：#{key}"
+      return
+    end
+
     contact.update!(status: :disabled)
     redirect_to admin_restrictions_path, notice: "已停用联系方式 ##{contact.id}（#{contact.platform}）"
   end

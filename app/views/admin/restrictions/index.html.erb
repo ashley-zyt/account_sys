@@ -36,13 +36,9 @@
   <div style="padding: 16px 16px 0;">
     <%= form_with url: sleep_account_admin_restrictions_path, method: :post, class: "admin-form" do %>
       <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
-        <div style="min-width: 260px; flex: 1;">
-          <div class="admin-field-label">选择账号</div>
-          <%= render "admin/shared/searchable_select",
-                name: "account_id",
-                options: @available_accounts.map { |a| ["##{a.id} #{a.account_name} (#{a.platform})", a.id] },
-                placeholder: "选择账号",
-                include_blank: "选择账号" %>
+        <div>
+          <div class="admin-field-label">账号 ID 或名称</div>
+          <input type="text" name="account_key" class="admin-input" placeholder="如 541 或账号名" style="width: 240px;">
         </div>
         <div>
           <div class="admin-field-label">休眠时长</div>
@@ -92,13 +88,9 @@
   <div style="padding: 16px 16px 0;">
     <%= form_with url: disable_contact_admin_restrictions_path, method: :post, class: "admin-form" do %>
       <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
-        <div style="min-width: 340px; flex: 1;">
-          <div class="admin-field-label">选择联系方式</div>
-          <%= render "admin/shared/searchable_select",
-                name: "contact_id",
-                options: @active_contacts.map { |c| ["##{c.id} #{c.kol&.name} - #{c.platform}（#{c.url}）", c.id] },
-                placeholder: "选择联系方式",
-                include_blank: "选择联系方式" %>
+        <div>
+          <div class="admin-field-label">联系方式 ID 或主页/昵称</div>
+          <input type="text" name="contact_key" class="admin-input" placeholder="如 1369 或 @username" style="width: 260px;">
         </div>
         <button type="submit" class="admin-button-secondary">停用</button>
       </div>
