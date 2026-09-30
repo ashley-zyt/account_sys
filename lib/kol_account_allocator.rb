@@ -73,7 +73,7 @@ class KolAccountAllocator
 
     # 判断是否「今日配额已耗尽」：所有支持平台的正常账号，今日尝试次数（成功+失败）都达到上限（或平台无账号）。
     # 配额耗尽时应等第二天自然日重置，而不是短时间重试空转。
-    def self.quota_exhausted?
+    def quota_exhausted?
       SUPPORTED_PLATFORMS.all? do |platform|
         account_ids = Account.active.where(platform: platform).pluck(:id)
         next true if account_ids.empty?
