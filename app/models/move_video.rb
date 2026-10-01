@@ -37,9 +37,12 @@ class MoveVideo < ApplicationRecord
 
   # 下载主题白名单：下载软件只在以下主题之间「平均轮询」下载，其余主题（如武颜集萃/舞男/御马飞驰/中国美食制作）不参与下载。
   # 主题名与 config/theme_config.yml 的 key（即 move_video.theme 实际存值）精确一致。
+  # DOWNLOAD_THEMES = %w[
+  #   中国舞 中式养生 魔性音乐 魔性舞蹈 中国服饰变装 中国帅哥美女 治愈插花
+  #   动物萌宠 AI萌娃 日式萝莉 中国中式妆容 中国IP盲盒 中国机器人
+  # ].freeze
   DOWNLOAD_THEMES = %w[
-    中国舞 中式养生 魔性音乐 魔性舞蹈 中国服饰变装 中国帅哥美女 治愈插花
-    动物萌宠 AI萌娃 日式萝莉 中国中式妆容 中国IP盲盒 中国机器人
+    AI萌娃
   ].freeze
 
   # 下载状态（status）：只跟踪「源视频是否已下载到 OSS」

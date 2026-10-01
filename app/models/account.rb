@@ -202,6 +202,11 @@ class Account < ApplicationRecord
 		kol_sleep_until.present? && kol_sleep_until > Time.current
 	end
 
+	# KOL 触达：最后一条失败消息的原因（用于限制管理页展示「为什么休眠」）
+	def last_kol_fail_reason
+		kol_messages.where(direction: :outgoing, status: :sent_failed).order(id: :desc).first&.error_msg
+	end
+
 	# ===== 账号总量快照便捷方法（account_stats） =====
 
 	# 最新一条日快照（用于详情页展示"当前累计"）

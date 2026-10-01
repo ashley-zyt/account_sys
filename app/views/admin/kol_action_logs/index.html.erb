@@ -85,12 +85,21 @@
               </td>
               <td>
                 <span class="admin-label-muted" title="<%= log.kol_contact&.url %>">
-                  <%= log.kol_contact&.nickname.presence || log.kol_contact&.url.presence || "-" %>
+                  <% if log.kol_contact %>
+                    <span style="color: #94a3b8;"><%= log.kol_contact.platform %></span>
+                    <%= log.kol_contact.nickname.presence || log.kol_contact.url.presence || "-" %>
+                  <% else %>
+                    -
+                  <% end %>
                 </span>
               </td>
               <td>
                 <span class="admin-label-muted">
-                  <%= log.account&.account_name || "-" %>
+                  <% if log.account %>
+                    #<%= log.account.id %> <%= log.account.account_name %>
+                  <% else %>
+                    -
+                  <% end %>
                 </span>
               </td>
               <td>
