@@ -2,23 +2,24 @@
 #
 # Table name: grok_tasks
 #
-#  id                  :bigint           not null, primary key
-#  actual_publish_time :datetime
-#  description         :text(65535)
-#  error_msg           :text(65535)
-#  platform            :integer
-#  prompt              :text(65535)
-#  start_at            :datetime
-#  status              :integer          default("pending")
-#  task_uuid           :string(255)
-#  theme               :string(255)
-#  title               :text(65535)
-#  video_url           :string(255)
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
-#  account_id          :bigint
-#  browser_id          :bigint
-#  grok_image_id       :bigint
+#  id                                                              :bigint           not null, primary key
+#  actual_publish_time                                             :datetime
+#  description                                                     :text(65535)
+#  error_msg                                                       :text(65535)
+#  failure_count(发布失败次数，累计达到上限即判定资源不可用并删除) :integer          default(0), not null
+#  platform                                                        :integer
+#  prompt                                                          :text(65535)
+#  start_at                                                        :datetime
+#  status                                                          :integer          default("pending")
+#  task_uuid                                                       :string(255)
+#  theme                                                           :string(255)
+#  title                                                           :text(65535)
+#  video_url                                                       :string(255)
+#  created_at                                                      :datetime         not null
+#  updated_at                                                      :datetime         not null
+#  account_id                                                      :bigint
+#  browser_id                                                      :bigint
+#  grok_image_id                                                   :bigint
 #
 # Indexes
 #
