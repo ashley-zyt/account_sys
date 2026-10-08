@@ -31,6 +31,14 @@ class StorageCleaner
 
   OSS_ENDPOINT = 'https://oss-cn-hangzhou.aliyuncs.com'.freeze
 
+  # 两组 OSS 凭证对应的 bucket：
+  #   - ALIYUN_ACCESS_KEY_ID / ALIYUN_ACCESS_KEY_SECRET（主账号）
+  #     → grok-images、grok-videos、jianying-videos、operation-viodes
+  #   - ALIYUN_ACCESS_TWO_KEY_ID / ALIYUN_ACCESS_TWO_KEY_SECRET（TWO 账号）
+  #     → jianying-rd、huasheng-ld、notebooklm-ld
+  # 未列入 TWO_KEY_BUCKETS 的 bucket 一律走主账号凭证。
+  TWO_KEY_BUCKETS = %w[jianying-rd huasheng-ld notebooklm-ld].freeze
+
   # ---------- 链路一：成品资源队列清理 ----------
   def self.clean_published_queues(dry_run: true)
     summary = { records_deleted: 0, files_deleted: 0, files_failed: 0, kept: 0 }
@@ -142,9 +150,11 @@ class StorageCleaner
   # 用法： bundle exec rails runner "p StorageCleaner.count_bucket_objects('jianying-videos')"
   def self.count_bucket_objects(bucket_name, prefix: nil)
     return 0 if bucket_name.blank?
-    return 0 unless oss_credentials_configured?
 
-    bucket = oss_client.get_bucket(bucket_name)
+    access_key_id, access_key_secret = oss_credentials_for(bucket_name)
+    return 0 if access_key_id.blank? || access_key_secret.blank?
+
+    bucket = oss_client(access_key_id, access_key_secret).get_bucket(bucket_name)
     count  = 0
     marker = nil
     loop do
@@ -189,12 +199,14 @@ class StorageCleaner
 
   def self.delete_one_oss(url)
     return [:skip, 'URL 为空'] if url.blank?
-    return [:skip, 'OSS 凭证未配置'] unless oss_credentials_configured?
 
     bucket, key = parse_oss_url(url)
     return [:fail, "无法解析 bucket/key: #{url[0, 80]}"] if bucket.blank? || key.blank?
 
-    oss_client.get_bucket(bucket).delete_object(key)
+    access_key_id, access_key_secret = oss_credentials_for(bucket)
+    return [:skip, "OSS 凭证未配置（bucket=#{bucket}）"] if access_key_id.blank? || access_key_secret.blank?
+
+    oss_client(access_key_id, access_key_secret).get_bucket(bucket).delete_object(key)
     [:ok, nil]
   rescue => e
     msg = e.message.to_s
@@ -205,17 +217,24 @@ class StorageCleaner
     end
   end
 
-  def self.oss_credentials_configured?
-    ENV['ALIYUN_ACCESS_KEY_ID'].present? && ENV['ALIYUN_ACCESS_KEY_SECRET'].present?
+  # 根据 bucket 名取对应的 OSS 凭证（TWO_KEY_BUCKETS → TWO 账号，其余 → 主账号）
+  def self.oss_credentials_for(bucket)
+    if TWO_KEY_BUCKETS.include?(bucket)
+      [ENV['ALIYUN_ACCESS_TWO_KEY_ID'], ENV['ALIYUN_ACCESS_TWO_KEY_SECRET']]
+    else
+      [ENV['ALIYUN_ACCESS_KEY_ID'], ENV['ALIYUN_ACCESS_KEY_SECRET']]
+    end
   end
 
-  def self.oss_client
-    @oss_client ||= begin
+  # 按凭证组懒加载 OSS client（两组凭证各缓存一个实例）
+  def self.oss_client(access_key_id, access_key_secret)
+    @oss_clients ||= {}
+    @oss_clients[[access_key_id, access_key_secret]] ||= begin
       require 'aliyun/oss'
       Aliyun::OSS::Client.new(
         endpoint: OSS_ENDPOINT,
-        access_key_id: ENV['ALIYUN_ACCESS_KEY_ID'],
-        access_key_secret: ENV['ALIYUN_ACCESS_KEY_SECRET']
+        access_key_id: access_key_id,
+        access_key_secret: access_key_secret
       )
     end
   end
