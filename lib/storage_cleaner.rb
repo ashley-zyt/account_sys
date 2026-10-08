@@ -12,8 +12,9 @@
 #   特殊：HuashengTask「抖音-视频号」只保留 pending，success/failed 一并删记录 + 删文件。
 #
 # 链路二 clean_source_videos —— 源视频 raw OSS 清理：
-#   MoveVideo.raw_oss_url 是剪映 + 混剪两条线的共同输入，仅当两线都 completed 才删
-#   （failed_as_done: true 可把 failed 也当终态）。
+#   MoveVideo.raw_oss_url 是剪映 + 混剪两条线的共同输入。某条线「不再需要源视频」当且仅当：
+#   该线状态已 completed（failed_as_done: true 时也含 failed），或该主题在该线的工作模式下
+#   已无正常账号（该线不会再消费这条源视频）。两条线都不再需要时才删 raw 文件并置空字段。
 #
 # 用法（rails runner）：
 #   预览： bundle exec rails runner 'StorageCleaner.clean_published_queues'
@@ -101,13 +102,26 @@ class StorageCleaner
   end
 
   # ---------- 链路二：源视频 raw OSS 清理 ----------
+  # 某条线「不再需要源视频」当且仅当：该线状态已完成（failed_as_done 时也含 failed），
+  # 或该主题在该线对应的工作模式下已无正常账号（该线不会再消费这条源视频）。
+  # 两条线都不再需要时，才删 raw 文件并置空 raw_oss_url。
   def self.clean_source_videos(dry_run: true, failed_as_done: false)
-    done = failed_as_done ? [:completed, :failed] : [:completed]
+    done = failed_as_done ? ['completed', 'failed'] : ['completed']
     summary = { raw_cleared: 0, files_deleted: 0, files_failed: 0 }
 
-    MoveVideo.where(jianying_status: done, hunjian_status: done)
-             .where.not(raw_oss_url: [nil, ''])
-             .find_each do |v|
+    move_work_type    = WorkMode.for_model(MoveTask).name
+    hunjian_work_type = WorkMode.for_model(HunjianTask).name
+
+    # 预计算：有该工作模式「正常」账号的主题集合
+    move_themes    = Account.active.where(work_type: move_work_type).distinct.pluck(:theme)
+    hunjian_themes = Account.active.where(work_type: hunjian_work_type).distinct.pluck(:theme)
+
+    MoveVideo.where.not(raw_oss_url: [nil, '']).find_each do |v|
+      jianying_done = done.include?(v.jianying_status) || !move_themes.include?(v.theme)
+      hunjian_done  = done.include?(v.hunjian_status)  || !hunjian_themes.include?(v.theme)
+
+      next unless jianying_done && hunjian_done
+
       if dry_run
         summary[:raw_cleared] += 1
       else
