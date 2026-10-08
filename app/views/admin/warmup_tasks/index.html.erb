@@ -80,7 +80,7 @@
                 <%= link_to task.id, admin_warmup_task_path(task), class: "admin-link-quiet", title: task.task_uuid %>
               </td>
               <td>
-                <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet", style: "color: var(--accent);", title: account_tooltip_title(task.account) %>
               </td>
               <td>
                 <span class="admin-label-muted"><%= task.platform.to_s.titleize %></span>

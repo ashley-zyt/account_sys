@@ -127,7 +127,7 @@
                 <%= account.id %>
               </td>
               <td>
-                <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet" %>
+                <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", title: account_tooltip_title(account) %>
               </td>
               <td>
                 <span class="admin-label-muted">

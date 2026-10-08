@@ -331,7 +331,7 @@
                   </span>
                 </td>
                 <td>
-                  <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet", style: "color: var(--accent);", title: account_tooltip_title(item[:account]) %>
                 </td>
                 <td>
                   <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>

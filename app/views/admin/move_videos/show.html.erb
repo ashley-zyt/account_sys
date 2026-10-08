@@ -206,7 +206,7 @@
               </td>
               <td>
                 <% if task.account %>
-                  <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet" %>
+                  <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet", title: account_tooltip_title(task.account) %>
                 <% else %>
                   <span class="admin-label-muted">未分配</span>
                 <% end %>

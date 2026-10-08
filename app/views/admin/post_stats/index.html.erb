@@ -97,7 +97,7 @@
           <% @post_stats.each do |stat| %>
             <tr>
               <td>
-                <%= link_to stat.account&.account_name, admin_account_path(stat.account), class: "admin-link-quiet" %>
+                <%= link_to stat.account&.account_name, admin_account_path(stat.account), class: "admin-link-quiet", title: account_tooltip_title(stat.account) %>
               </td>
               <td>
                 <span class="admin-label-muted">

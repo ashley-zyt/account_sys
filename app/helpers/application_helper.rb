@@ -14,4 +14,14 @@ module ApplicationHelper
       (labels[status] || "未知")
     end
   end
+
+  # 账号名 hover 提示：显示运营机器（machine_ip）+ 浏览器名称（profile_name）
+  def account_tooltip_title(account)
+    browser = account&.browser
+    return nil if browser.nil?
+    parts = []
+    parts << "机器: #{browser.machine_ip}" if browser.machine_ip.present?
+    parts << "浏览器: #{browser.profile_name}" if browser.profile_name.present?
+    parts.any? ? parts.join(" · ") : nil
+  end
 end

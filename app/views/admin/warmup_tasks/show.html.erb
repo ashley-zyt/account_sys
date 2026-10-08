@@ -24,7 +24,7 @@
     <div class="admin-detail-item">
       <span class="admin-detail-label">账号</span>
       <span class="admin-detail-value">
-        <%= link_to @warmup_task.account&.account_name, admin_account_path(@warmup_task.account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+        <%= link_to @warmup_task.account&.account_name, admin_account_path(@warmup_task.account), class: "admin-link-quiet", style: "color: var(--accent);", title: account_tooltip_title(@warmup_task.account) %>
       </span>
     </div>
     <div class="admin-detail-item">

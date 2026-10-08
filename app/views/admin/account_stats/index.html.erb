@@ -282,7 +282,7 @@
             <% spark = @account_sparklines[a.id] || [] %>
             <tr>
               <td>
-                <%= link_to a.account_name, admin_account_path(a), class: "admin-link-quiet", style: "color: var(--accent); font-weight: 500;" %>
+                <%= link_to a.account_name, admin_account_path(a), class: "admin-link-quiet", style: "color: var(--accent); font-weight: 500;", title: account_tooltip_title(a) %>
               </td>
               <td><%= a.theme %></td>
               <td>

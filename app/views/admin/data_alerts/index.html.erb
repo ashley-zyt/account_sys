@@ -133,7 +133,7 @@
               <% @zero_views_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
+                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: account_tooltip_title(item[:account]) %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -231,7 +231,7 @@
               <% @recent_banned_accounts.each do |account| %>
                 <tr>
                   <td>
-                    <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: account.account_name %>
+                    <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: account_tooltip_title(account) %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= account.platform.to_s.titleize %></span>
@@ -327,7 +327,7 @@
               <% @views_drop_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
+                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: account_tooltip_title(item[:account]) %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>
@@ -428,7 +428,7 @@
               <% @fail_streak_accounts.each do |item| %>
                 <tr>
                   <td>
-                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: item[:account].account_name %>
+                    <%= link_to item[:account].account_name, admin_account_path(item[:account]), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: account_tooltip_title(item[:account]) %>
                   </td>
                   <td>
                     <span class="admin-label-muted"><%= item[:account].platform.to_s.titleize %></span>

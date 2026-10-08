@@ -145,7 +145,7 @@
               </td>
               <td>
                 <% if task.account %>
-                  <%= link_to truncate(task.account.account_name, length: 20), admin_account_path(task.account), class: "admin-link-quiet", title: task.account.account_name %>
+                  <%= link_to truncate(task.account.account_name, length: 20), admin_account_path(task.account), class: "admin-link-quiet", title: account_tooltip_title(task.account) %>
                 <% else %>
                   <span class="admin-label-muted">
                     未分配

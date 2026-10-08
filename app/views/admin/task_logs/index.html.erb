@@ -120,7 +120,7 @@
               <td>
                 <% acc = log.display_account %>
                 <% if acc %>
-                  <%= link_to acc.account_name, admin_account_path(acc), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to acc.account_name, admin_account_path(acc), class: "admin-link-quiet", style: "color: var(--accent);", title: account_tooltip_title(acc) %>
                 <% else %>
                   <span class="admin-label-muted">未分配</span>
                 <% end %>

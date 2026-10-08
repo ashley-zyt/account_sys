@@ -145,7 +145,7 @@
               <%# 账号名 %>
               <td>
                 <div style="display: flex; flex-direction: column; gap: 2px;">
-                  <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent); font-weight: 500;" %>
+                  <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent); font-weight: 500;", title: account_tooltip_title(account) %>
                   <% if account.theme.present? %>
                     <div style="font-size: 11px; color: var(--text-tertiary);"><%= account.theme %></div>
                   <% end %>

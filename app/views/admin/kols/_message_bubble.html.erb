@@ -4,7 +4,7 @@
       <span><%= m.kol_contact&.platform_icon %> <%= m.platform %></span>
       <% if m.outgoing? %>
         <% if m.account %>
-          <%= link_to m.account.account_name, admin_account_path(m.account), class: "admin-link-quiet", style: "color: #60a5fa;" %>
+          <%= link_to m.account.account_name, admin_account_path(m.account), class: "admin-link-quiet", style: "color: #60a5fa;", title: account_tooltip_title(m.account) %>
         <% else %>
           <span>我方</span>
         <% end %>

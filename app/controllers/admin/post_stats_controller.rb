@@ -6,7 +6,7 @@ class Admin::PostStatsController < Admin::BaseController
     sort_direction = params[:direction] || 'desc'
     
     @post_stats = @q.result(distinct: true)
-                   .includes(:account)
+                   .includes(account: :browser)
                    .order(sort_column => sort_direction)
                    .page(params[:page])
                    .per(15)

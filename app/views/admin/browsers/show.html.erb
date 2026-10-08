@@ -172,7 +172,7 @@
             <% @accounts.each do |account| %>
               <tr>
                 <td>
-                  <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet" %>
+                  <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", title: account_tooltip_title(account) %>
                 </td>
                 <td>
                   <span class="admin-label-muted">
@@ -259,7 +259,7 @@
               </td>
               <td>
                 <% if task.account %>
-                  <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet" %>
+                  <%= link_to task.account.account_name, admin_account_path(task.account), class: "admin-link-quiet", title: account_tooltip_title(task.account) %>
                 <% else %>
                   <span class="admin-label-muted">
                     未分配
