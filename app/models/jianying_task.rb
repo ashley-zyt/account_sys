@@ -130,7 +130,10 @@ class JianyingTask < ApplicationRecord
 		items.each do |item|
 			group_id = SecureRandom.uuid
 			full_url = oss_v1_sign_url(item[:oss_key])
+			# 只在该主题「剪映」模式下还有正常账号的平台建任务，无账号跳过
+			allowed = Account.active_platforms_for(theme: "剪映-#{item[:theme]}", work_type: WorkMode.for_model(JianyingTask).name)
 			ALL_PLATFORMS.each do |platform|
+				next unless allowed.include?(platform)
 				title0 = generate_title(item[:theme], item[:keyword])
 				description = ""
 				title = title0

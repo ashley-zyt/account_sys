@@ -298,8 +298,10 @@ module Api
 					# 从 themes 表按 theme 名称查找待选标题
 					theme_titles = Theme.find_by(name: move_video.theme)&.titles_array || []
 
-					# 为 5 个平台分别创建/更新 move_task
+					# 只在该主题「搬运剪映」模式下还有正常账号的平台建任务，无账号跳过
+					allowed = Account.active_platforms_for(theme: move_video.theme, work_type: WorkMode.for_model(MoveTask).name)
 					MoveTask.platforms.each_key do |platform_name|
+						next unless allowed.include?(platform_name)
 						move_task = MoveTask.find_or_initialize_by(move_video_id: move_video.id, platform: platform_name)
 						is_new = move_task.new_record?
 						

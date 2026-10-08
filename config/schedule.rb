@@ -218,3 +218,13 @@ every 30.minutes do
   runner 'XAuthService.refresh_all'
 end
 
+# ==================== 视频存储清理 ====================
+# 每周日下午 14:00（避开各平台发布窗口）：
+#   ① clean_published_queues：清成品资源队列中「无账号平台的孤儿记录」+「全终态成片的 OSS 文件」
+#   ② clean_source_videos：清「剪映+混剪双线都完成」的源视频 raw OSS 文件
+set :output, "log/storage_cleaner.log"
+every :sunday, at: '14:00' do
+  runner 'StorageCleaner.clean_published_queues(dry_run: false)'
+  runner 'StorageCleaner.clean_source_videos(dry_run: false)'
+end
+

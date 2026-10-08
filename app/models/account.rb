@@ -122,6 +122,12 @@ class Account < ApplicationRecord
 		active.where(theme: theme, platform: platform).order(last_used_at: :asc)
 	}
 
+	# 获取指定主题、指定工作模式下，仍「正常」账号覆盖的平台集合。
+	# 资源队列「建任务按平台过滤」与「存量清理孤儿任务」共用此判断口径（模式+主题+平台）。
+	def self.active_platforms_for(theme:, work_type:)
+		active.where(theme: theme, work_type: work_type).select(:platform).distinct.map(&:platform)
+	end
+
 	# 实例方法：标记账号已被使用，更新 last_used_at
 	# 每次分配任务后必须调用此方法，以保证公平轮询
 	def mark_as_assigned!

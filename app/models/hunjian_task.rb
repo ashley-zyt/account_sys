@@ -80,7 +80,11 @@ class HunjianTask < ApplicationRecord
     gid = group_id.presence || SecureRandom.uuid
     created = 0
 
+    # 只在该主题「搬运混剪」模式下还有正常账号的平台建任务，无账号平台跳过
+    allowed = Account.active_platforms_for(theme: theme, work_type: WorkMode.for_model(HunjianTask).name)
+
     platform_names.each do |platform_name|
+      next unless allowed.include?(platform_name)
       next unless HunjianTask.platforms.key?(platform_name.to_sym)
 
       # YouTube 标题限 100 字符、描述可更长；mashup 回传的 title（长、含话题）与

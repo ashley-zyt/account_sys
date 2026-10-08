@@ -175,11 +175,15 @@ class HuashengTask < ApplicationRecord
     group_id   = SecureRandom.uuid
 
     created = 0
-    platforms = if theme == DOUYIN_SHIPINHAO_THEME
-                  ["抖音-视频号"]
-                else
-                  OVERSEAS_PLATFORMS
-                end
+    if theme == DOUYIN_SHIPINHAO_THEME
+      # 国内「抖音-视频号」合并任务：由 DomesticHuashengPublishWorker 固定 profile 发布，
+      # 不走账号分配，因此不做「有账号才建」过滤，直接建一条。
+      platforms = ["抖音-视频号"]
+    else
+      # 海外 5 平台：只在该主题「花生」模式下还有正常账号的平台建任务，无账号跳过
+      allowed = Account.active_platforms_for(theme: theme, work_type: WorkMode.for_model(HuashengTask).name)
+      platforms = OVERSEAS_PLATFORMS.select { |p| allowed.include?(p) }
+    end
     platforms.each do |platform_name|
       if platform_name == "youtube"
         # youtube: title = Script.title（限 100），description = Script.caption（限 280）

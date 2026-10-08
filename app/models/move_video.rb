@@ -358,7 +358,11 @@ class MoveVideo < ApplicationRecord
   # (move_video_id, platform) 唯一索引兜底幂等
   # 成片 OSS URL 写入 move_task.oss_url，发布时直接读取
   def create_move_tasks!(processed_oss_url)
+    # 只在该主题「搬运剪映」模式下还有正常账号的平台建任务，无账号平台跳过
+    allowed = Account.active_platforms_for(theme: theme, work_type: WorkMode.for_model(MoveTask).name)
+
     platforms_list.each do |platform_name|
+      next unless allowed.include?(platform_name)
       platform_value = MoveTask.platforms[platform_name.strip.to_sym]
       next unless platform_value
 

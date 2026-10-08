@@ -157,7 +157,10 @@ class NotebooklmTask < ApplicationRecord
     group_id   = SecureRandom.uuid
 
     created = 0
+    # 只在该主题「Notebooklm」模式下还有正常账号的平台建任务，无账号跳过
+    allowed = Account.active_platforms_for(theme: theme, work_type: WorkMode.for_model(NotebooklmTask).name)
     ALL_PLATFORMS.each do |platform_name|
+      next unless allowed.include?(platform_name)
       if platform_name == "youtube"
         # youtube: title = Script.title（限 100），description = Script.caption（限 280）
         task_title = title_text[0...100]
