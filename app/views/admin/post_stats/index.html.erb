@@ -45,6 +45,10 @@
         <%= f.searchable_select :account_platform_eq, @platforms, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">发布渠道</label>
+        <%= f.searchable_select :account_publish_channel_eq, @publish_channels, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">指纹浏览器</label>
         <%= f.searchable_select :account_browser_id_eq, @browsers, { include_blank: "所有浏览器" }, class: "admin-input admin-filter-input" %>
       </div>
