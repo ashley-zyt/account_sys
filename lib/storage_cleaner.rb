@@ -137,6 +137,40 @@ class StorageCleaner
     summary
   end
 
+  # ---------- OSS bucket 对象计数（清理前后对比用） ----------
+  # 统计某个 bucket 下的对象总数（分页遍历，不遗漏）。
+  # 用法： bundle exec rails runner "p StorageCleaner.count_bucket_objects('jianying-videos')"
+  def self.count_bucket_objects(bucket_name, prefix: nil)
+    return 0 if bucket_name.blank?
+    return 0 unless oss_credentials_configured?
+
+    bucket = oss_client.get_bucket(bucket_name)
+    count  = 0
+    marker = nil
+    loop do
+      opts = { max_keys: 1000 }
+      opts[:prefix] = prefix if prefix.present?
+      opts[:marker]  = marker if marker.present?
+
+      list = bucket.list_objects(opts)
+      page = list.respond_to?(:objects) ? list.objects : list.to_a
+      count += page.size
+
+      marker = list.respond_to?(:next_marker) ? list.next_marker : nil
+      break if marker.blank?
+    end
+    count
+  end
+
+  # 一键统计所有涉及清理的 bucket（清理前跑一次、清理后再跑一次做对比）
+  def self.count_all_buckets
+    buckets = %w[
+      jianying-videos jianying-rd huasheng-ld notebooklm-ld operation-viodes grok-videos
+    ]
+    buckets.each { |b| puts "#{b}: #{count_bucket_objects(b)}" }
+    nil
+  end
+
   # ---------- OSS 删除（尽力而为，404 视为已不存在） ----------
   def self.delete_oss_files(urls)
     return [0, 0] if urls.blank?
