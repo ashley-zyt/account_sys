@@ -120,6 +120,7 @@ module Api
 						error_msg: nil
 					)
 				else
+					return if TaskReportHelper.record_publish_failure!(task, params[:status_desp])
 					if task.is_a?(OperationTask) || task.is_a?(GrokTask)
 						task.update!(
 							status: :pending,

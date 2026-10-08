@@ -75,6 +75,9 @@
               状态
             </th>
             <th>
+              失败次数
+            </th>
+            <th>
               账号
             </th>
             <th>
@@ -142,6 +145,11 @@
                     失败
                   </span>
                 <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <%= task.failure_count.to_i %>
+                </span>
               </td>
               <td>
                 <% if task.account %>

@@ -119,6 +119,33 @@ module TaskReportHelper
     RESOURCE_INVALID_KEYWORDS.any? { |kw| msg.include?(kw) }
   end
 
+  # 发布失败上限：累计失败达到该次数即判定资源不可用、置为 failed 终态
+  PUBLISH_FAILURE_LIMIT = 4
+
+  # 记录一次发布失败：失败次数 +1；达到上限则置为 failed 终态（不再重新分配）并返回 true，
+  # 否则仅累加计数并返回 false。调用方在返回 true 时应终止后续的状态更新。
+  def self.record_publish_failure!(task, error_msg = nil)
+    count = task.failure_count.to_i + 1
+    if count >= PUBLISH_FAILURE_LIMIT
+      # 用 update_columns 绕过 account_id presence 校验（这些模型 failed 状态要求账号非空）
+      task.update_columns(
+        status: task.class.statuses[:failed],
+        failure_count: count,
+        account_id: nil,
+        browser_id: nil,
+        error_msg: error_msg.presence || "连续发布失败#{count}次，判定资源不可用",
+        start_at: nil,
+        updated_at: Time.current
+      )
+      TaskAssignment.release!(task.task_uuid, error_msg.presence || "连续发布失败#{count}次，判定资源不可用")
+      Rails.logger.warn "[TaskReportHelper] #{task.class}##{task.id} 连续发布失败#{count}次，置为 failed 终态"
+      true
+    else
+      task.update_column(:failure_count, count)
+      false
+    end
+  end
+
   def self.update_task_status(task, status, error_msg = nil)
     error_msg = safe_utf8(error_msg)
 
@@ -131,7 +158,9 @@ module TaskReportHelper
         )
       else
         if WorkMode.for_model(task.class)
-          if resource_invalid_error?(error_msg)
+          if record_publish_failure!(task, error_msg)
+            # 累计失败已达上限：资源已删除，无需再做状态更新
+          elsif resource_invalid_error?(error_msg)
             # 资源失效（媒体/URL 已失效，重新发布也注定失败）：直接置 failed 终态，
             # 清空账号/浏览器/开始时间，不再回 pending。
             # 用 update_columns 绕过 account_id presence 校验（这些模型有
