@@ -211,42 +211,42 @@ every :day, at: '20:05' do
   runner "PublishScheduler.run"
 end
 
-# ==================== 各平台发布窗口后多轮补发（账号每日必发成） ====================
-# 每平台发布窗口结束后触发一次「补发循环」：内部最多 3 轮，轮与轮之间等待上一轮
-# executing 任务收敛后再继续，避免「上一轮还没执行完、下一轮又开始」的时序重叠。
+# ==================== 各平台发布窗口后自动补发（账号每日必发成） ====================
+# 每平台发布窗口结束后 1 小时触发「补发循环」：retry_loop 内部先等首轮窗口的 executing
+# 任务执行结束（每 5 分钟查一次），再开始补发；首轮全部成功则直接结束、不补发。
 # 配合：
 #   - has_posted_today / has_active_task 闸门（已发成/进行中则跳过，防重复）
 #   - 坏资源降优先级（failure_count 排序，失败过的排后不挡好资源）
 #   - 资源有问题累计 3 次 → failed（坏资源当天出池）
 set :output, "log/retry_loop.log"
 
-# Instagram：窗口 10:30 → 11:00 起补发循环
-every :day, at: '10:30' do
+# Instagram：窗口 9:00 → 10:00 起
+every :day, at: '10:00' do
   runner "TaskScheduler.retry_loop(platform: 'instagram')"
 end
 
-# Twitter：窗口 13:00 → 14:30 起补发循环
-every :day, at: '13:30' do
+# Twitter：窗口 12:00 → 13:00 起
+every :day, at: '13:00' do
   runner "TaskScheduler.retry_loop(platform: 'twitter')"
 end
 
-# YouTube（工作日）：窗口 15:00 → 16:30 起补发循环
-every :weekday, at: '15:30' do
+# YouTube（工作日）：窗口 14:00 → 15:00 起
+every :weekday, at: '15:00' do
   runner "TaskScheduler.retry_loop(platform: 'youtube')"
 end
 
-# YouTube（周末）：窗口 11:00 → 12:30 起补发循环
-every [:saturday, :sunday], at: '11:30' do
+# YouTube（周末）：窗口 9:00 → 10:00 起
+every [:saturday, :sunday], at: '10:00' do
   runner "TaskScheduler.retry_loop(platform: 'youtube')"
 end
 
-# TikTok：窗口 19:55 → 20:30 起补发循环
-every :day, at: '19:30' do
+# TikTok：窗口 17:55 → 18:55 起
+every :day, at: '18:55' do
   runner "TaskScheduler.retry_loop(platform: 'tiktok')"
 end
 
-# Facebook：窗口 19:45 → 20:15 起补发循环
-every :day, at: '20:15' do
+# Facebook：窗口 19:45 → 20:45 起
+every :day, at: '20:45' do
   runner "TaskScheduler.retry_loop(platform: 'facebook')"
 end
 
