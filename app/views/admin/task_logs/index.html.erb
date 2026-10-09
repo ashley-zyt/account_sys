@@ -49,7 +49,11 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">发布渠道</label>
-        <%= f.searchable_select :account_publish_channel_eq, Account.publish_channels.keys.map { |k| [k == 'postforme' ? 'postforme（第三方）' : 'ag_center（浏览器模拟）', k] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :account_publish_channel_eq, {
+          'ag_center' => 'ag_center（浏览器模拟）',
+          'postforme' => 'postforme（第三方）',
+          'x_api' => 'x_api（X API）'
+        }.map { |k, v| [v, k] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
         <%= f.submit "筛选", class: "admin-button-primary" %>

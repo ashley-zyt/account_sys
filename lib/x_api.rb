@@ -130,6 +130,61 @@ module XApi
       perform(uri, req)
     end
 
+    # ===== 媒体上传（分块：INIT → APPEND → FINALIZE → STATUS）+ 发推 =====
+
+    # 初始化媒体上传（视频分块上传第一步）：声明大小/类型，返回 media_id。
+    # @return [Hash] { code:, body:, raw: }，body['id'] 即 media_id
+    def media_upload_initialize(access_token:, total_bytes:, media_type: 'video/mp4', media_category: 'tweet_video')
+      uri = URI("#{API_BASE}/2/media/upload/initialize")
+      req = Net::HTTP::Post.new(uri)
+      req['Authorization'] = "Bearer #{access_token}"
+      req['Content-Type'] = 'application/json'
+      req.body = { media_type: media_type, total_bytes: total_bytes, media_category: media_category }.to_json
+      perform(uri, req)
+    end
+
+    # 追加一个分块（multipart：segment_index + media 二进制）。
+    # @param data [String] 二进制分块内容（BINARY 编码）
+    def media_upload_append(access_token:, media_id:, segment_index:, data:)
+      uri = URI("#{API_BASE}/2/media/upload/#{media_id}/append")
+      req = Net::HTTP::Post.new(uri)
+      req['Authorization'] = "Bearer #{access_token}"
+      boundary = "----XUpload#{SecureRandom.hex(8)}"
+      req['Content-Type'] = "multipart/form-data; boundary=#{boundary}"
+      req.body = multipart_body(boundary, { 'segment_index' => segment_index.to_s }, { 'media' => data })
+      perform(uri, req)
+    end
+
+    # 结束媒体上传（分块上传最后一步）。
+    def media_upload_finalize(access_token:, media_id:)
+      uri = URI("#{API_BASE}/2/media/upload/#{media_id}/finalize")
+      req = Net::HTTP::Post.new(uri)
+      req['Authorization'] = "Bearer #{access_token}"
+      perform(uri, req)
+    end
+
+    # 查询媒体处理状态（视频上传后需轮询到 state=succeeded 才能发推）。
+    # @return [Hash] body['processing_info']['state'] ∈ pending/in_progress/succeeded/failed
+    def media_upload_status(access_token:, media_id:)
+      uri = URI("#{API_BASE}/2/media/upload?media_id=#{media_id}")
+      req = Net::HTTP::Get.new(uri)
+      req['Authorization'] = "Bearer #{access_token}"
+      perform(uri, req)
+    end
+
+    # 发推（POST /2/tweets，支持 media_ids）。
+    # @return [Hash] body['data']['id'] 即 tweet id
+    def create_tweet(access_token:, text:, media_ids: [])
+      uri = URI("#{API_BASE}/2/tweets")
+      req = Net::HTTP::Post.new(uri)
+      req['Authorization'] = "Bearer #{access_token}"
+      req['Content-Type'] = 'application/json'
+      body = { text: text }
+      body[:media] = { media_ids: media_ids } if media_ids.present?
+      req.body = body.to_json
+      perform(uri, req)
+    end
+
     # 判断响应是否成功：2xx 都算成功
     def success?(resp)
       resp[:code].to_i.between?(200, 299)
@@ -141,6 +196,25 @@ module XApi
     end
 
     private
+
+    # 构造 multipart/form-data 请求体（仅用于媒体分块上传的 segment_index + media 两个字段）。
+    def multipart_body(boundary, fields, files)
+      b = String.new(encoding: Encoding::BINARY)
+      fields.each do |name, value|
+        b << "--#{boundary}\r\n"
+        b << "Content-Disposition: form-data; name=\"#{name}\"\r\n\r\n"
+        b << "#{value}\r\n"
+      end
+      files.each do |name, data|
+        b << "--#{boundary}\r\n"
+        b << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{name}\"\r\n"
+        b << "Content-Type: application/octet-stream\r\n\r\n"
+        b << data
+        b << "\r\n"
+      end
+      b << "--#{boundary}--\r\n"
+      b
+    end
 
     def client_id
       ENV['X_CLIENT_ID'].to_s

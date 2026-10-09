@@ -67,7 +67,11 @@
       <div class="admin-field-label">
         发布渠道
       </div>
-      <%= f.searchable_select :publish_channel, Account.publish_channels.keys.map { |k| [k == 'ag_center' ? 'ag_center（浏览器模拟）' : 'postforme（第三方平台）', k] }, {}, class: "admin-input" %>
+      <%= f.searchable_select :publish_channel, {
+        'ag_center' => 'ag_center（浏览器模拟）',
+        'postforme' => 'postforme（第三方平台）',
+        'x_api' => 'x_api（X API）'
+      }.map { |k, v| [v, k] }, {}, class: "admin-input" %>
     </div>
     <div>
       <div class="admin-field-label">

@@ -196,6 +196,13 @@ every 1.minute do
   runner 'PostformeStatusPoller.run'
 end
 
+# ==================== X（Twitter）API 发布轮询 ====================
+# 每 1 分钟轮询「处理中」的 X 发布：查媒体处理状态 → 完成则发推回写终态
+set :output, "log/x_post_poller.log"
+every 1.minute do
+  runner 'XPostPoller.run'
+end
+
 # ==================== 各平台发布窗口后自动补发（账号每日必发成） ====================
 # 每平台发布窗口结束后 1 小时触发「补发循环」：retry_loop 内部先等首轮窗口的 executing
 # 任务执行结束（每 5 分钟查一次），再开始补发；首轮全部成功则直接结束、不补发。

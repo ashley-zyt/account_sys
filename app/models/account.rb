@@ -65,6 +65,8 @@ class Account < ApplicationRecord
 	validates :account_name, presence: true
 	# 主题校验
 	validates :theme, presence: true   # 账号必须归属某个主题
+	# x_api 发布渠道仅限 Twitter 账号（X API 只能发 Twitter）
+	validate :x_api_requires_twitter
 	# 平台类型
 	enum platform: {
 		facebook: 1,
@@ -92,9 +94,11 @@ class Account < ApplicationRecord
 	# 发布渠道枚举：决定发布执行走哪条链路
 	# - ag_center : 原有指纹浏览器模拟发布（默认）
 	# - postforme : 第三方平台 API 发布
+	# - x_api     : X（Twitter）官方 API 发布
 	enum publish_channel: {
 		ag_center: 0,
-		postforme: 1
+		postforme: 1,
+		x_api: 2
 	}
 
 	# 运营人员枚举
@@ -240,6 +244,12 @@ class Account < ApplicationRecord
 	end
 
 	private
+
+	# 校验：x_api 发布渠道仅限 Twitter 账号
+	def x_api_requires_twitter
+		return unless publish_channel == 'x_api'
+		errors.add(:publish_channel, '仅 Twitter 账号可使用 x_api（X API）发布渠道') unless platform == 'twitter'
+	end
 
 	# 同步更新浏览器的状态
 	def sync_browser_status
