@@ -196,21 +196,6 @@ every 1.minute do
   runner 'PostformeStatusPoller.run'
 end
 
-# ==================== 每天补发一轮 ====================
-# 晚间把当天发布失败回 pending 的任务重新分配并补发一轮。
-# 背景：发布已异步化（下发即返回、结果等机器端回调），白天各平台发布窗口内的同步重试已移除；
-# 20:00 所有平台首轮均已结束、失败任务已回调回 pending，此时全平台再分配+发布一轮补发。
-# 闸门 has_posted_today（今天已成功发布的账号跳过）保证不会重复发布。
-set :output, "log/retry_assign_resources.log"
-every :day, at: '20:00' do
-  runner "TaskScheduler.assign_resources"
-end
-
-set :output, "log/retry_publish.log"
-every :day, at: '20:05' do
-  runner "PublishScheduler.run"
-end
-
 # ==================== 各平台发布窗口后自动补发（账号每日必发成） ====================
 # 每平台发布窗口结束后 1 小时触发「补发循环」：retry_loop 内部先等首轮窗口的 executing
 # 任务执行结束（每 5 分钟查一次），再开始补发；首轮全部成功则直接结束、不补发。
