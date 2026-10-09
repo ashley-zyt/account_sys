@@ -150,18 +150,26 @@ class TaskScheduler
 	end
 
 	# 等待某平台所有 executing 任务收敛（本轮发布结果都已回调回来）。
-	# 超时仍未收敛说明有任务丢失回调，交给每 10 分钟的 check_timeout_tasks 兜底回收。
+	# 若连续一轮计数不再下降，说明剩余的是卡死任务（丢失回调），不再死等、交给 check_timeout_tasks 兜底回收。
 	def self.wait_until_settled(platform, timeout, poll)
 		deadline = Time.current + timeout
+		prev = nil
 		loop do
 			executing = WorkMode.scheduler_assign_modes.sum do |mode|
 				mode.task_model_class.where(status: :executing, platform: platform).count
 			end
 			return if executing.zero?
+
+			# 计数不再下降 → 剩余任务是卡死的，别再空等
+			if prev && executing >= prev
+				Rails.logger.warn "[TaskScheduler] 平台 #{platform} 仍有 #{executing} 个 executing 任务且无进展（疑似卡死），停止等待、交给超时兜底"
+				break
+			end
+
 			break if Time.current >= deadline
+			prev = executing
 			sleep(poll)
 		end
-		Rails.logger.warn "[TaskScheduler] 平台 #{platform} 等待收敛超时，仍有 executing 任务（交给超时兜底回收）"
 	end
 
 	# 任务被兜底重置时写入 error_msg 的关键词 —— 用于识别「被中断」的任务。
