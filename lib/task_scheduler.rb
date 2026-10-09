@@ -58,10 +58,13 @@ class TaskScheduler
 					end
 
 					# 分配 [platform, theme] 匹配的 pending 任务，不限制创建时间：
-					# 历史遗留的 pending 也参与分配（按创建时间最旧优先 FIFO）。
+					# 历史遗留的 pending 也参与分配。
+					# 排序：failure_count 升序（0=全新未失败优先），再按创建时间最旧优先（FIFO）。
+					# 这样「资源有问题」失败过的坏资源（failure_count>0）排到队尾、不挡好资源，
+					# 账号在后续补发轮能直接拿到全新资源发成，坏资源最终被 3 次失败规则淘汰。
 					pending_task = task_model
 						.where(status: :pending, platform: account.platform, theme: account.theme)
-						.order(created_at: :asc).first
+						.order(:failure_count, created_at: :asc).first
 
 					if pending_task
 						ActiveRecord::Base.transaction do
@@ -85,6 +88,71 @@ class TaskScheduler
 		end
 
 		TaskScheduler.find_locked_browsers_in_pending_tasks
+	end
+
+	# 补发循环：平台发布窗口后触发一次，持续补发直到「资源耗尽 / 账号全部发成」。
+	# 每轮 = 分配资源 + 发布 + 等待上一轮 executing 任务收敛，避免时序重叠。
+	# 终止条件：该平台已无「今天未发成且还有可用 pending 资源」的账号（资源耗尽或全部发成）。
+	# max_rounds 是纯安全上限（防止异常分类导致死循环），正常会在资源耗尽前自然结束。
+	# 配合 has_posted_today / has_active_task 闸门 + 坏资源降优先级（failure_count 排序）
+	# + 资源有问题累计 3 次 → failed，实现「账号当天持续换资源直到发成或资源耗尽」。
+	def self.retry_loop(platform:, max_rounds: 6, settle_timeout: 30.minutes, settle_poll: 30.seconds)
+		rounds = 0
+		loop do
+			rounds += 1
+			Rails.logger.info "[TaskScheduler] 平台 #{platform} 补发第 #{rounds} 轮开始"
+			assign_resources(platform: platform)
+			PublishScheduler.run(platform: platform)
+
+			wait_until_settled(platform, settle_timeout, settle_poll)
+
+			unless unposted_accounts_with_pending?(platform)
+				Rails.logger.info "[TaskScheduler] 平台 #{platform} 已无「未发成且有可用资源」的账号，补发结束（共 #{rounds} 轮）"
+				break
+			end
+
+			if rounds >= max_rounds
+				Rails.logger.warn "[TaskScheduler] 平台 #{platform} 补发达到安全上限 #{max_rounds} 轮，强制结束"
+				break
+			end
+		end
+	end
+
+	# 平台下是否还有「今天未发成 + 存在可分配 pending 资源」的账号（决定补发循环是否继续）。
+	def self.unposted_accounts_with_pending?(platform)
+		today = Date.today.all_day
+
+		WorkMode.scheduler_assign_modes.any? do |mode|
+			task_model = mode.task_model_class
+
+			# 该工作模式下、该平台内还有 pending 资源的主题集合
+			pending_themes = task_model.where(status: :pending, platform: platform).distinct.pluck(:theme)
+			next false if pending_themes.empty?
+
+			# 这些主题里，今天已经发成功的账号（这些账号无需再补发）
+			posted_ids = task_model.where(status: :success, actual_publish_time: today, platform: platform)
+			                       .distinct.pluck(:account_id).compact
+
+			# 还有「正常、今天没发成」的账号 → 仍有补发空间
+			accounts = Account.active.where(work_type: mode.name, platform: platform, theme: pending_themes)
+			accounts = accounts.where.not(id: posted_ids) if posted_ids.any?
+			accounts.exists?
+		end
+	end
+
+	# 等待某平台所有 executing 任务收敛（本轮发布结果都已回调回来）。
+	# 超时仍未收敛说明有任务丢失回调，交给每 10 分钟的 check_timeout_tasks 兜底回收。
+	def self.wait_until_settled(platform, timeout, poll)
+		deadline = Time.current + timeout
+		loop do
+			executing = WorkMode.scheduler_assign_modes.sum do |mode|
+				mode.task_model_class.where(status: :executing, platform: platform).count
+			end
+			return if executing.zero?
+			break if Time.current >= deadline
+			sleep(poll)
+		end
+		Rails.logger.warn "[TaskScheduler] 平台 #{platform} 等待收敛超时，仍有 executing 任务（交给超时兜底回收）"
 	end
 
 	# 任务被兜底重置时写入 error_msg 的关键词 —— 用于识别「被中断」的任务。
