@@ -96,7 +96,7 @@ class TaskScheduler
 	# max_rounds 是纯安全上限（防止异常分类导致死循环），正常会在资源耗尽前自然结束。
 	# 配合 has_posted_today / has_active_task 闸门 + 坏资源降优先级（failure_count 排序）
 	# + 资源有问题累计 3 次 → failed，实现「账号当天持续换资源直到发成或资源耗尽」。
-	def self.retry_loop(platform:, max_rounds: 6, settle_timeout: 60.minutes, settle_poll: 5.minutes)
+	def self.retry_loop(platform:, max_rounds: 6, settle_timeout: 30.minutes, settle_poll: 1.minute)
 		# 先等首轮（平台发布窗口）任务执行结束，再开始补发——「查询执行结束，结束直接开始」
 		wait_until_settled(platform, settle_timeout, settle_poll)
 
@@ -151,8 +151,9 @@ class TaskScheduler
 
 	# 等待某平台所有 executing 任务收敛（本轮发布结果都已回调回来）。
 	# 若连续一轮计数不再下降，说明剩余的是卡死任务（丢失回调），不再死等、交给 check_timeout_tasks 兜底回收。
-	def self.wait_until_settled(platform, timeout, poll)
+	def self.wait_until_settled(platform, timeout, poll, stuck_after: 5.minutes)
 		deadline = Time.current + timeout
+		last_decrease = Time.current
 		prev = nil
 		loop do
 			executing = WorkMode.scheduler_assign_modes.sum do |mode|
@@ -160,9 +161,12 @@ class TaskScheduler
 			end
 			return if executing.zero?
 
-			# 计数不再下降 → 剩余任务是卡死的，别再空等
-			if prev && executing >= prev
-				Rails.logger.warn "[TaskScheduler] 平台 #{platform} 仍有 #{executing} 个 executing 任务且无进展（疑似卡死），停止等待、交给超时兜底"
+			# 计数下降则刷新「最后进展时间」
+			last_decrease = Time.current if prev && executing < prev
+
+			# 连续 stuck_after（默认 5 分钟）无进展 → 剩余是卡死任务，停止等待、交给超时兜底
+			if Time.current - last_decrease >= stuck_after
+				Rails.logger.warn "[TaskScheduler] 平台 #{platform} 仍有 #{executing} 个 executing 任务且 #{stuck_after.inspect} 无进展（疑似卡死），停止等待、交给超时兜底"
 				break
 			end
 
@@ -520,6 +524,9 @@ class TaskScheduler
 				)
 			end
 		end
+
+		# 3. 硬上限：executing 超过 3 小时强制释放（机器端一直 running 卡死的情况）
+		force_release_stuck_tasks
 	end
 
 	# 查机器端单个任务真实状态
@@ -553,5 +560,36 @@ class TaskScheduler
 			scope.update_all(status: :pending, account_id: nil, browser_id: nil, start_at: nil,
 			                 error_msg: '机器端任务丢失（超时未回调且查询不到）')
 		end
+	end
+
+	# 硬上限：任务卡在 executing 超过 hard_limit（默认 3 小时）的，无论机器端状态如何，强制释放回 pending。
+	# 用于兜底「机器端一直返回 running/queued、状态卡死不动」的情况。
+	def self.force_release_stuck_tasks(hard_limit: 3.hours)
+		cutoff = Time.current - hard_limit
+		total = 0
+
+		WorkMode.resource_modes.each do |mode|
+			mode.task_model_class.where(status: :executing)
+			                     .where("start_at IS NOT NULL AND start_at <= ?", cutoff)
+			                     .find_each do |task|
+				# 关联的登记记录一并标「已丢失」，避免后续 check_timeout_tasks 再查机器端
+				BrowserTaskRecord.where(ref: "#{task.class.name}:#{task.id}", status: BrowserTaskRecord::STATUS_PENDING)
+				                 .update_all(status: BrowserTaskRecord::STATUS_UNKNOWN, message: '执行超时超过3小时，强制释放')
+
+				TaskAssignment.release!(task.task_uuid, '执行超时超过3小时，强制释放')
+				task.update_columns(
+					status: task.class.statuses[:pending],
+					account_id: nil,
+					browser_id: nil,
+					start_at: nil,
+					error_msg: '执行超时超过3小时，强制释放待重新分配',
+					updated_at: Time.current
+				)
+				total += 1
+			end
+		end
+
+		Rails.logger.warn "[TaskScheduler] 硬上限强制释放 #{total} 条卡死任务" if total > 0
+		total
 	end
 end
