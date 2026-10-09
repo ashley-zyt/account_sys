@@ -188,6 +188,8 @@ class WarmupScheduler
         error_msg = response['info'] || '养号失败'
         Rails.logger.error "[WarmupScheduler] 养号失败: 机器 #{machine_ip} / 账号 #{account.account_name} / 原因: #{error_msg}"
         warmup_task.update!(status: :failed, error_msg: error_msg, executed_at: Time.current)
+        # 养号失败命中账号/网络异常 → 全局封禁（发布/采集/私信/养号统一口径）
+        TaskReportHelper.check_account_abnormal(account.id, error_msg)
         profile = account.warmup_profile || account.create_warmup_profile
         # 即使失败也更新 last_warmup_at，避免无限重试
         profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
@@ -195,6 +197,7 @@ class WarmupScheduler
     rescue => e
       Rails.logger.error "[WarmupScheduler] 养号异常: 机器 #{machine_ip} / 账号 #{account.account_name} / 原因: #{e.message}"
       warmup_task.update!(status: :failed, error_msg: e.message, executed_at: Time.current)
+      TaskReportHelper.check_account_abnormal(account.id, e.message)
       profile = account.warmup_profile || account.create_warmup_profile
       profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
     end

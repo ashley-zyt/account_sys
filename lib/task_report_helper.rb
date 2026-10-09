@@ -62,25 +62,49 @@ module TaskReportHelper
     end
   end
 
+  # 账号/浏览器网络问题关键词（账号封禁、未登录、代理失效、人机验证等）。
+  # 命中即判「账号有问题」→ 全局封禁（status=2），而非资源问题，也不累计资源失败次数。
+  # 供发布 / 采集 / 私信 / 养号 四处共用的统一判定口径。
+  ACCOUNT_ABNORMAL_KEYWORDS = [
+    "not logged in",
+    "account verification",
+    "some of your media failed to upload",
+    "account banned or human verification required",
+    "account verification required after upload",
+    "Confirm you're human",
+    "账号未登录",
+    "账号验证",
+    "账号封禁",
+    "触发安全风控",
+    "ERR_PROXY_CONNECTION_FAILED"
+  ].freeze
+
+  # 判断错误信息是否属于「账号/浏览器网络问题」（账号被封、未登录、代理失效等）
+  def self.account_abnormal_error?(error_msg)
+    msg = error_msg.to_s
+    ACCOUNT_ABNORMAL_KEYWORDS.any? { |kw| msg.include?(kw) }
+  end
+
   def self.check_account_abnormal(account_id, error_msg)
     return unless account_id.present?
+    return unless account_abnormal_error?(error_msg)
 
-    abnormal_keywords = [
-      "not logged in",
-      "account verification",
-      "some of your media failed to upload",
-      "account banned or human verification required",
-      "account verification required after upload",
-      "Confirm you're human",
-      "账号未登录",
-      "账号验证",
-      "账号封禁"
-    ]
+    mark_account_banned!(account_id)
+  end
 
-    if abnormal_keywords.any? { |keyword| error_msg.include?(keyword) }
-      Account.where(id: account_id).update_all(status: 2)
-      Rails.logger.warn "[TaskReportHelper] 账号 #{account_id} 检测到异常，已标记为异常状态"
-    end
+  # 封禁账号并全局同步：用 update! 触发 after_save 回调，
+  # 同步浏览器「无效」状态 + 关闭该账号养号（warmup_enabled=false）。
+  # 发布/采集/私信/养号四处共用的统一封禁入口。
+  def self.mark_account_banned!(account_id)
+    return false if account_id.blank?
+
+    account = Account.find_by(id: account_id)
+    return false unless account
+    return false if account.status == "封禁/停用"
+
+    account.update!(status: "封禁/停用")
+    Rails.logger.warn "[TaskReportHelper] 账号 #{account_id} 检测到异常，已全局封禁（status=封禁/停用）"
+    true
   end
 
   def self.check_hhcat_login_failure
@@ -119,26 +143,40 @@ module TaskReportHelper
     RESOURCE_INVALID_KEYWORDS.any? { |kw| msg.include?(kw) }
   end
 
-  # 发布失败上限：累计失败达到该次数即判定资源不可用、置为 failed 终态
-  PUBLISH_FAILURE_LIMIT = 4
+  # 资源有问题关键词：命中视为「视频/资源本身有问题」（取景框、发布按钮、文案输入框找不到），
+  # 重发大概率仍失败。这类失败累计 RESOURCE_PROBLEM_LIMIT 次后判定资源不可用。
+  RESOURCE_PROBLEM_KEYWORDS = [
+    '未找到视频框左下角的放大按钮',
+    'cannot find publish button on twitter page',
+    'cannot find tiktok caption input'
+  ].freeze
 
-  # 记录一次发布失败：失败次数 +1；达到上限则置为 failed 终态（不再重新分配）并返回 true，
-  # 否则仅累加计数并返回 false。调用方在返回 true 时应终止后续的状态更新。
-  def self.record_publish_failure!(task, error_msg = nil)
+  # 资源有问题失败上限：累计达到该次数即判定资源不可用、置为 failed 终态
+  RESOURCE_PROBLEM_LIMIT = 3
+
+  # 判断错误信息是否属于「资源有问题」（视频/资源本身有问题）
+  def self.resource_problem_error?(error_msg)
+    msg = error_msg.to_s
+    RESOURCE_PROBLEM_KEYWORDS.any? { |kw| msg.include?(kw) }
+  end
+
+  # 记录一次「资源有问题」失败：失败次数 +1；达到上限则置为 failed 终态（不再重新分配）
+  # 并返回 true，否则仅累加计数并返回 false。调用方在返回 true 时应终止后续的状态更新。
+  def self.record_resource_problem_failure!(task, error_msg = nil)
     count = task.failure_count.to_i + 1
-    if count >= PUBLISH_FAILURE_LIMIT
+    if count >= RESOURCE_PROBLEM_LIMIT
       # 用 update_columns 绕过 account_id presence 校验（这些模型 failed 状态要求账号非空）
       task.update_columns(
         status: task.class.statuses[:failed],
         failure_count: count,
         account_id: nil,
         browser_id: nil,
-        error_msg: error_msg.presence || "连续发布失败#{count}次，判定资源不可用",
+        error_msg: error_msg.presence || "资源连续失败#{count}次，判定资源不可用",
         start_at: nil,
         updated_at: Time.current
       )
-      TaskAssignment.release!(task.task_uuid, error_msg.presence || "连续发布失败#{count}次，判定资源不可用")
-      Rails.logger.warn "[TaskReportHelper] #{task.class}##{task.id} 连续发布失败#{count}次，置为 failed 终态"
+      TaskAssignment.release!(task.task_uuid, error_msg.presence || "资源连续失败#{count}次，判定资源不可用")
+      Rails.logger.warn "[TaskReportHelper] #{task.class}##{task.id} 资源连续失败#{count}次，置为 failed 终态"
       true
     else
       task.update_column(:failure_count, count)
@@ -158,33 +196,18 @@ module TaskReportHelper
         )
       else
         if WorkMode.for_model(task.class)
-          if record_publish_failure!(task, error_msg)
-            # 累计失败已达上限：资源已删除，无需再做状态更新
-          elsif resource_invalid_error?(error_msg)
+          if resource_invalid_error?(error_msg)
             # 资源失效（媒体/URL 已失效，重新发布也注定失败）：直接置 failed 终态，
-            # 清空账号/浏览器/开始时间，不再回 pending。
-            # 用 update_columns 绕过 account_id presence 校验（这些模型有
-            # validates :account_id, presence: true, unless: :pending?，failed 状态要求账号非空）
-            task.update_columns(
-              status: task.class.statuses[:failed],
-              account_id: nil,
-              browser_id: nil,
-              error_msg: error_msg,
-              start_at: nil,
-              updated_at: Time.current
-            )
-            TaskAssignment.release!(task.task_uuid, error_msg.presence || '资源失效，任务终态失败')
+            # 不累计失败次数，清空账号/浏览器/开始时间，不再回 pending。
+            fail_task_terminal(task, error_msg, '资源失效，任务终态失败')
+          elsif resource_problem_error?(error_msg)
+            # 资源有问题（视频/资源本身有问题）：累计失败次数，满 RESOURCE_PROBLEM_LIMIT 次
+            # 置 failed 终态；未满则回 pending 等待重新分配。
+            reset_task_to_pending(task, error_msg) unless record_resource_problem_failure!(task, error_msg)
           else
-            # 其它失败：重置为 pending，清空账号/浏览器/开始时间，等待重新分配
-            task.update!(
-              status: :pending,
-              account_id: nil,
-              browser_id: nil,
-              error_msg: error_msg,
-              start_at: nil
-            )
-            # 归属已随释放从任务上清空，标进 TaskAssignment 留档（归档日志时还要用）
-            TaskAssignment.release!(task.task_uuid, error_msg.presence || '任务失败，重置待重新分配')
+            # 其它失败（含账号/浏览器网络问题）：资源本身没问题，回 pending 换账号重试，
+            # 不累计失败次数。账号封禁由 create_task_log 里的 check_account_abnormal 统一处理。
+            reset_task_to_pending(task, error_msg)
           end
         else
           task.update!(
@@ -194,6 +217,33 @@ module TaskReportHelper
         end
       end
     end
+  end
+
+  # 任务置 failed 终态：用 update_columns 绕过 account_id presence 校验
+  # （这些模型有 validates :account_id, presence: true, unless: :pending?，failed 状态要求账号非空）
+  def self.fail_task_terminal(task, error_msg, release_reason)
+    task.update_columns(
+      status: task.class.statuses[:failed],
+      account_id: nil,
+      browser_id: nil,
+      error_msg: error_msg,
+      start_at: nil,
+      updated_at: Time.current
+    )
+    TaskAssignment.release!(task.task_uuid, error_msg.presence || release_reason)
+  end
+
+  # 任务回 pending：清空账号/浏览器/开始时间，等待重新分配（换账号重试）
+  def self.reset_task_to_pending(task, error_msg)
+    task.update!(
+      status: :pending,
+      account_id: nil,
+      browser_id: nil,
+      error_msg: error_msg,
+      start_at: nil
+    )
+    # 归属已随释放从任务上清空，标进 TaskAssignment 留档（归档日志时还要用）
+    TaskAssignment.release!(task.task_uuid, error_msg.presence || '任务失败，重置待重新分配')
   end
 
 end

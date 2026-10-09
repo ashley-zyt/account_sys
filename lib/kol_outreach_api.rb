@@ -137,8 +137,12 @@ class KolOutreachApi
         :success
       else
         message.update!(status: :sent_failed, error_msg: error.presence || "发送失败")
-        # 仅 account_risk 才休眠账号；network 失败不休眠。回调路径无法区分，按 account_risk 处理（KOL 失败以账号异常为主）
-        KolAccountAllocator.sleep_account(account) if account && reason != "network"
+        # 仅 account_risk 才休眠账号；network 失败不休眠。回调路径无法区分，按 account_risk 处理（KOL 失败以账号异常为主）。
+        # 账号问题还需全局封禁（status=2），让发布/采集/养号也一并停用该账号。
+        if account && reason != "network"
+          KolAccountAllocator.sleep_account(account)
+          TaskReportHelper.check_account_abnormal(account.id, error)
+        end
         :failed
       end
     end

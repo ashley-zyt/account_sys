@@ -74,6 +74,8 @@ class BrowserTaskResultHandler
     else
       warmup_task.update!(status: :failed, error_msg: message, executed_at: Time.current)
       if account
+        # 养号失败命中账号/网络异常 → 全局封禁（发布/采集/私信/养号统一口径）
+        TaskReportHelper.check_account_abnormal(account.id, message)
         profile = account.warmup_profile || account.create_warmup_profile
         profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
       end
@@ -83,8 +85,13 @@ class BrowserTaskResultHandler
     { type: 'success', message: '已更新养号任务状态' }
   end
 
-  # 采集回调：发文数据已由机器端通过 /api/v1/post_stats 回传落库，此处仅记录
+  # 采集回调：发文数据已由机器端通过 /api/v1/post_stats 回传落库，此处仅记录；
+  # 但采集失败若命中账号/网络异常（未登录、代理失效、人机验证等），需全局封禁账号。
   def self.handle_fetch(ref, status, message)
+    if status != 'success'
+      account_id = ref.to_s.split(':', 2).last.to_i
+      TaskReportHelper.check_account_abnormal(account_id, message) if account_id > 0
+    end
     Rails.logger.info "[BrowserTaskResult] 采集回调 ref=#{ref} status=#{status} message=#{message}"
     { type: 'success', message: '已记录采集完成' }
   end
@@ -111,18 +118,11 @@ class BrowserTaskResultHandler
   end
 
   # 浏览器通道发私信失败分类（机器端回传 message 无结构化错误码，靠关键词判断）
-  # @return [Symbol] :account_risk（账号问题 → 休眠账号）/ :target_invalid（对方问题 → 停用联系方式）
+  # @return [Symbol] :account_risk（账号问题 → 休眠 + 封禁账号）/ :target_invalid（对方问题 → 停用联系方式）
   def self.classify_browser_send_failure(message)
-    msg = message.to_s
-    # 仅「未登录/登录失效」判账号问题（休眠账号）。
-    # 注意不能靠 IG_MSG2 前缀：IG_MSG2 有两种——
-    #   「账号未登录」是账号问题；「打开发送入口失败·页面不可用·链接失效/页面已删除」是对方问题，
-    # 所以必须按具体措辞区分，而非错误码前缀。
-    if msg =~ /未登录|not_logged_in|登录失效/
-      :account_risk
-    else
-      :target_invalid
-    end
+    # 统一口径：命中账号/网络异常关键词（未登录、封禁、人机验证、代理失效等）判账号问题；
+    # 否则判「对方无法私信」（页面不可用/链接失效等），只停用联系方式、不封账号。
+    TaskReportHelper.account_abnormal_error?(message) ? :account_risk : :target_invalid
   end
 
   # 查回复回调：按 KolContact id 定位，从 result 提取 replies

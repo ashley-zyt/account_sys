@@ -113,30 +113,13 @@ module Api
 			end
 
 			def update_task_status!(task, status)
-				if status == 'success'
-					task.update!(
-						status: :success,
-						actual_publish_time: Time.current,
-						error_msg: nil
-					)
-				else
-					return if TaskReportHelper.record_publish_failure!(task, params[:status_desp])
-					if task.is_a?(OperationTask) || task.is_a?(GrokTask)
-						task.update!(
-							status: :pending,
-							account_id: nil,
-							error_msg: nil,
-							start_at: nil
-						)
-						# 归属已随释放从任务上清空，标进 TaskAssignment 留档（归档日志时还要用）
-						TaskAssignment.release!(task.task_uuid, '任务失败，重置待重新分配')
-					else
-						task.update!(
-							status: :failed,
-							error_msg: params[:status_desp]
-						)
-					end
-				end
+				# 复用统一分类逻辑（资源失效 → 直接失败；资源有问题 → 累计3次失败；
+				# 账号/网络等其它失败 → 回 pending 换账号重试）
+				TaskReportHelper.update_task_status(
+					task,
+					status == 'success' ? 'success' : 'error',
+					params[:status_desp]
+				)
 			end
 
 			def create_task_log!(task, status, snapshot_account_id = nil, snapshot_browser_id = nil)
@@ -152,16 +135,8 @@ module Api
 					run_at: Time.current
 				)
 
-				if params[:status_desp].present? && (
-					params[:status_desp].include?("not logged in") ||
-					params[:status_desp].include?("account verification") ||
-					params[:status_desp].include?("some of your media failed to upload") ||
-					params[:status_desp].include?("account banned or human verification required") ||
-					params[:status_desp].include?("account verification required after upload") ||
-					params[:status_desp].include?("Confirm you're human")
-				)
-					Account.where(id: snapshot_account_id).update_all(status: 2)
-				end
+				# 账号/浏览器网络问题 → 全局封禁（复用统一判定）
+				TaskReportHelper.check_account_abnormal(snapshot_account_id, params[:status_desp]) if params[:status_desp].present?
 
 				# 检查是否连续5次出现"哼哼猫未登陆成功"错误
 				check_hhcat_login_failure
