@@ -62,6 +62,14 @@
         <%= f.searchable_select :work_type_eq, Account.work_types.map { |k, v| [k, v] }, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">发布渠道</label>
+        <%= f.searchable_select :publish_channel_eq, {
+          'ag_center' => 'ag_center（浏览器模拟）',
+          'postforme' => 'postforme（第三方平台）',
+          'x_api' => 'x_api（X API）'
+        }.map { |k, v| [v, Account.publish_channels[k]] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">运营人员</label>
         <%= f.searchable_select :operator_eq, Account::OPERATORS.map { |o| [o, o] }, { include_blank: "所有人员" }, class: "admin-input admin-filter-input" %>
       </div>
