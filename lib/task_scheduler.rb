@@ -96,7 +96,9 @@ class TaskScheduler
 	# max_rounds 是纯安全上限（防止异常分类导致死循环），正常会在资源耗尽前自然结束。
 	# 配合 has_posted_today / has_active_task 闸门 + 坏资源降优先级（failure_count 排序）
 	# + 资源有问题累计 3 次 → failed，实现「账号当天持续换资源直到发成或资源耗尽」。
-	def self.retry_loop(platform:, max_rounds: 6, settle_timeout: 30.minutes, settle_poll: 1.minute)
+	def self.retry_loop(platform:, max_rounds: 6, settle_timeout: 30.minutes, settle_poll: 1.minute, total_timeout: 90.minutes)
+		started_at = Time.current
+
 		# 先等首轮（平台发布窗口）任务执行结束，再开始补发——「查询执行结束，结束直接开始」
 		wait_until_settled(platform, settle_timeout, settle_poll)
 
@@ -108,6 +110,12 @@ class TaskScheduler
 
 		rounds = 0
 		loop do
+			# 总超时保护：防止卡死/任务过多导致长时间占用、与其它平台补发堆积
+			if Time.current - started_at >= total_timeout
+				Rails.logger.warn "[TaskScheduler] 平台 #{platform} 补发超过总超时 #{total_timeout.inspect}，强制结束（已跑 #{rounds} 轮）"
+				break
+			end
+
 			rounds += 1
 			Rails.logger.info "[TaskScheduler] 平台 #{platform} 补发第 #{rounds} 轮开始"
 			assign_resources(platform: platform)
