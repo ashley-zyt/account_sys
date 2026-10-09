@@ -27,8 +27,8 @@ module XApi
   # X API v2 通用 base（DM / users 等资源接口）
   API_BASE = 'https://api.twitter.com'
 
-  # 授权范围：私信 + 评论 + 读用户 + 离线访问（offline.access 才会返回 refresh_token）
-  SCOPE = 'dm.read dm.write tweet.read tweet.write users.read offline.access'
+  # 授权范围：私信 + 评论 + 读用户 + 发推 + 媒体上传 + 离线访问（offline.access 才会返回 refresh_token）
+  SCOPE = 'dm.read dm.write tweet.read tweet.write users.read offline.access media.write'
 
   class << self
     # 生成 PKCE 的 code_verifier + code_challenge（S256）。
