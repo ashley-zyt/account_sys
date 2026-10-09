@@ -30,6 +30,9 @@ module XAuthService
     xc ||= account.create_x_credential
     xc.update!(auth_status: :authorizing, code_verifier: verifier, state: state, authorized_at: nil)
 
+    # 诊断：记录发起认证的时间/state/verifier 长度，便于与后续回调失败日志对应排查
+    Rails.logger.info "[XAuth] 账号 #{account.id} 发起认证: state=#{state} verifier_len=#{verifier.length} at=#{Time.current}"
+
     # 下发机器端：指纹浏览器打开授权页（复用 open_auth_url，机器端需扩展「检测跳转截 code」）
     machine_ip = account.browser.machine_ip
     if machine_ip.blank?
@@ -75,8 +78,9 @@ module XAuthService
 
     resp = XApi.exchange_code(code: code, code_verifier: verifier)
     unless XApi.success?(resp)
-      # 把 X 返回的原始错误完整打日志，便于定位是 invalid_grant / invalid_client / redirect_uri 不匹配等
-      Rails.logger.error "[XAuth] 账号 #{account.id} 换 token 失败: code=#{resp[:code]} body=#{resp[:raw].to_s.truncate(500)}"
+      # 把 X 返回的原始错误完整打日志，便于定位是 invalid_grant / invalid_client / redirect_uri 不匹配等。
+      # 附带 code 长度/verifier 长度/state 对照/凭证更新时间，便于判断「code 被机器端截断」还是「verifier 被覆盖」。
+      Rails.logger.error "[XAuth] 账号 #{account.id} 换 token 失败: code=#{resp[:code]} body=#{resp[:raw].to_s.truncate(500)} code_len=#{code.to_s.length} verifier_len=#{verifier.to_s.length} state_cb=#{state.inspect} state_db=#{xc.state.inspect} xc_updated_at=#{xc.updated_at}"
       xc.update!(auth_status: :failed)
       return { success: false, message: "换取 token 失败：#{resp[:raw].to_s.truncate(200)}" }
     end
