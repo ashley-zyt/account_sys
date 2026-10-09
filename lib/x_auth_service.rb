@@ -7,6 +7,10 @@
 #   4. 机器端检测跳转、从 URL 抠 code，主动 POST 回调 account_sys
 #   5. 用 code + code_verifier 换 access/refresh token，加密存凭证，清除 code_verifier
 module XAuthService
+  # 「认证中」超过此时长视为卡死，允许重新发起（覆盖旧 code_verifier/state）。
+  # 否则默认不覆盖，避免旧授权页的 code 撞上新 verifier/state 导致 state 不匹配 / code 无效。
+  STALE_AUTHORIZING_THRESHOLD = 30.minutes
+
   # 发起认证：生成 PKCE → 记录「认证中」→ 下发机器端打开授权页。
   # @param force [Boolean] 强制重新发起（覆盖进行中的认证）。默认 false，防重复触发。
   # @return [Hash] { success:, message:, auth_url: }
@@ -14,12 +18,15 @@ module XAuthService
     return { success: false, message: '账号未绑定指纹浏览器，无法认证' } if account.browser.blank?
     return { success: false, message: 'X API 未配置（请在 .env 设置 X_CLIENT_ID / X_CLIENT_SECRET）' } unless XApi.configured?
 
-    # 防重复：已有「认证中」且未完成时，不覆盖 code_verifier/state。
-    # 否则重复触发会覆盖掉旧授权页对应的 state/verifier，机器端旧授权页回调时
-    # 会报「state 不匹配 / code_verifier 不匹配」导致换 token 失败。
+    # 防重复：已有「认证中」且未完成时，默认不覆盖 code_verifier/state，
+    # 否则旧授权页的 code 会撞上新 verifier/state，导致 state 不匹配 / code 无效。
+    # 仅当「卡死」（authorizing 超过 STALE_AUTHORIZING_THRESHOLD）或显式 force 时才覆盖。
     xc = account.x_credential
-    if !force && xc&.authorizing? && xc.code_verifier.present?
-      return { success: false, message: '该账号已有进行中的认证，请勿重复发起' }
+    if xc&.authorizing? && xc.code_verifier.present?
+      stale = xc.updated_at.present? && xc.updated_at <= STALE_AUTHORIZING_THRESHOLD.ago
+      if !force && !stale
+        return { success: false, message: '该账号已有进行中的认证，请勿重复发起' }
+      end
     end
 
     verifier, challenge = XApi.generate_pkce

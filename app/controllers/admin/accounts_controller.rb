@@ -157,9 +157,9 @@ class Admin::AccountsController < Admin::BaseController
 
 	# 发起 X（Twitter）API 认证：生成 PKCE → 记录「认证中」→ 下发机器端打开授权页
 	def start_x_auth
-		# force: true —— 后台「发起认证/重新认证」是用户显式操作，应覆盖上次未完成/卡住的认证，
-		# 否则一旦某次认证未走完（auth_status 停在 authorizing），就会一直卡「已有进行中的认证」无法重发。
-		result = XAuthService.start_authorization(@account, force: true)
+		# 由 XAuthService 自动判断：正常「认证中」不覆盖（防止旧授权页 code 撞新 state），
+		# 卡死（超过阈值）才覆盖，兼顾「卡死能重发」与「不误覆盖进行中的认证」。
+		result = XAuthService.start_authorization(@account)
 		if result[:success]
 			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
 		else
