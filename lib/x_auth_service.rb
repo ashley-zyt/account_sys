@@ -14,7 +14,7 @@ module XAuthService
   # 发起认证：生成 PKCE → 记录「认证中」→ 下发机器端打开授权页。
   # @param force [Boolean] 强制重新发起（覆盖进行中的认证）。默认 false，防重复触发。
   # @return [Hash] { success:, message:, auth_url: }
-  def self.start_authorization(account, force: false)
+  def self.start_authorization(account, force: false, skip_machine: false)
     return { success: false, message: '账号未绑定指纹浏览器，无法认证' } if account.browser.blank?
     return { success: false, message: 'X API 未配置（请在 .env 设置 X_CLIENT_ID / X_CLIENT_SECRET）' } unless XApi.configured?
 
@@ -40,19 +40,22 @@ module XAuthService
     # 诊断：记录发起认证的时间/state/verifier 长度，便于与后续回调失败日志对应排查
     Rails.logger.info "[XAuth] 账号 #{account.id} 发起认证: state=#{state} verifier_len=#{verifier.length} at=#{Time.current}"
 
-    # 下发机器端：指纹浏览器打开授权页（复用 open_auth_url，机器端需扩展「检测跳转截 code」）
-    machine_ip = account.browser.machine_ip
-    if machine_ip.blank?
-      Rails.logger.warn "[XAuth] 账号 #{account.id} 浏览器未设 machine_ip，跳过下发打开授权页（授权 URL 需人工打开）"
-    else
-      payload = {
-        profile_name: account.browser.profile_name,
-        url: url,
-        wait_seconds: 600,
-        async: true,
-        ref: "XAuth:#{account.id}"
-      }
-      RemoteApiClient.post("https://#{machine_ip}/accounts/open_auth_url", payload, read_timeout: 30)
+    # 下发机器端：指纹浏览器打开授权页（复用 open_auth_url，机器端需扩展「检测跳转截 code」）。
+    # skip_machine: true 时跳过（全手动流程：仅生成授权链接，人工自己打开、自己提交 code）。
+    unless skip_machine
+      machine_ip = account.browser.machine_ip
+      if machine_ip.blank?
+        Rails.logger.warn "[XAuth] 账号 #{account.id} 浏览器未设 machine_ip，跳过下发打开授权页（授权 URL 需人工打开）"
+      else
+        payload = {
+          profile_name: account.browser.profile_name,
+          url: url,
+          wait_seconds: 600,
+          async: true,
+          ref: "XAuth:#{account.id}"
+        }
+        RemoteApiClient.post("https://#{machine_ip}/accounts/open_auth_url", payload, read_timeout: 30)
+      end
     end
 
     { success: true, message: '已发起认证，请在浏览器完成授权', auth_url: url }

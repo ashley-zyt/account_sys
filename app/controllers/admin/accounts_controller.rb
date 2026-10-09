@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_x_auth, :destroy]
+	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_x_auth, :start_manual_x_auth, :complete_manual_x_auth, :destroy]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -167,6 +167,37 @@ class Admin::AccountsController < Admin::BaseController
 		end
 	end
 
+	# 全手动发起 X 认证：只生成授权链接（不下发机器端），链接存 flash 展示给用户复制
+	def start_manual_x_auth
+		result = XAuthService.start_authorization(@account, skip_machine: true)
+		if result[:success]
+			flash[:manual_auth_url] = result[:auth_url]
+			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
+		else
+			redirect_back fallback_location: admin_account_path(@account), alert: result[:message]
+		end
+	end
+
+	# 全手动完成 X 认证：用户粘贴授权码（或整段回调 URL），解析后换 token
+	def complete_manual_x_auth
+		raw = params[:code].to_s.strip
+		if raw.blank?
+			return redirect_back fallback_location: admin_account_path(@account), alert: '请粘贴授权码或回调 URL'
+		end
+
+		code, state = parse_manual_auth_input(raw)
+		if code.blank?
+			return redirect_back fallback_location: admin_account_path(@account), alert: '无法从粘贴内容中解析出授权码'
+		end
+
+		result = XAuthService.complete_authorization(@account, code: code, state: state)
+		if result[:success]
+			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
+		else
+			redirect_back fallback_location: admin_account_path(@account), alert: result[:message]
+		end
+	end
+
 	# 软删除：写入 deleted_at 时间戳，不物理删除记录
 	def destroy
 		@account.soft_delete!
@@ -253,5 +284,23 @@ class Admin::AccountsController < Admin::BaseController
 			:operator,
 			:remark
 		)
+	end
+
+	# 解析用户粘贴的内容：支持「整段回调 URL（含 ?code=...&state=...）」或「纯 code」。
+	# @return [Array] [code, state]
+	def parse_manual_auth_input(raw)
+		return [nil, nil] if raw.blank?
+
+		# 整段 URL：解析 query 参数里的 code/state
+		if raw.include?('code=')
+			require 'uri'
+			uri = URI.parse(raw)
+			params = URI.decode_www_form(uri.query.to_s).to_h
+			return [params['code'].to_s.presence, params['state'].to_s.presence]
+		end
+
+		[raw, nil]
+	rescue
+		[raw, nil]
 	end
 end
