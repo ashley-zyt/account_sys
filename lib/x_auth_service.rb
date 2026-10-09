@@ -54,7 +54,13 @@ module XAuthService
   # @return [Hash] { success:, message:, x_user_id: }
   def self.complete_authorization(account, code:, state: nil)
     xc = account.x_credential
-    return { success: false, message: '该账号未发起认证，无法完成' } unless xc && xc.authorizing?
+    if xc.nil?
+      return { success: false, message: '该账号未发起认证，无法完成' }
+    end
+    if xc.failed?
+      return { success: false, message: '该账号上次认证失败（换取 token 未成功），请重新发起认证' }
+    end
+    return { success: false, message: '该账号未发起认证，无法完成' } unless xc.authorizing?
 
     # 防 CSRF：state 若带回就校验（机器端可能拿不到 state，此时放宽、仍继续）
     if state.present? && xc.state.present? && state != xc.state
@@ -69,6 +75,8 @@ module XAuthService
 
     resp = XApi.exchange_code(code: code, code_verifier: verifier)
     unless XApi.success?(resp)
+      # 把 X 返回的原始错误完整打日志，便于定位是 invalid_grant / invalid_client / redirect_uri 不匹配等
+      Rails.logger.error "[XAuth] 账号 #{account.id} 换 token 失败: code=#{resp[:code]} body=#{resp[:raw].to_s.truncate(500)}"
       xc.update!(auth_status: :failed)
       return { success: false, message: "换取 token 失败：#{resp[:raw].to_s.truncate(200)}" }
     end
