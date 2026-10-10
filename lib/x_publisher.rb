@@ -38,7 +38,7 @@ module XPublisher
       init = XApi.media_upload_initialize(access_token: token, total_bytes: total_bytes)
       media_id = init[:body].is_a?(Hash) ? init[:body].dig('data', 'id').to_s : ''
       unless XApi.success?(init) && media_id.present?
-        return { success: false, message: "X 初始化上传失败：#{init[:raw].to_s.truncate(200)}" }
+        return { success: false, message: "X 初始化上传失败：#{XApi.extract_error(init)}", raw: init[:raw].to_s }
       end
 
       # 分块 APPEND
@@ -47,7 +47,7 @@ module XPublisher
         while (chunk = f.read(CHUNK_SIZE))
           append = XApi.media_upload_append(access_token: token, media_id: media_id, segment_index: segment_index, data: chunk)
           unless XApi.success?(append)
-            return { success: false, message: "X 上传分块 #{segment_index} 失败：#{append[:raw].to_s.truncate(200)}" }
+            return { success: false, message: "X 上传分块 #{segment_index} 失败：#{XApi.extract_error(append)}", raw: append[:raw].to_s }
           end
           segment_index += 1
         end
@@ -55,7 +55,7 @@ module XPublisher
 
       fin = XApi.media_upload_finalize(access_token: token, media_id: media_id)
       unless XApi.success?(fin)
-        return { success: false, message: "X 结束上传失败：#{fin[:raw].to_s.truncate(200)}" }
+        return { success: false, message: "X 结束上传失败：#{XApi.extract_error(fin)}", raw: fin[:raw].to_s }
       end
 
       { success: true, media_id: media_id }

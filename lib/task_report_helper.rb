@@ -31,7 +31,7 @@ module TaskReportHelper
     s.dup.force_encoding(Encoding::UTF_8).scrub('')
   end
 
-  def self.create_task_log(task, status, snapshot_account_id, snapshot_browser_id, error_msg = nil)
+  def self.create_task_log(task, status, snapshot_account_id, snapshot_browser_id, error_msg = nil, raw_response = nil)
     task_status = status == 'success' ? "success" : "failed"
 
     # 兜底：调用方传进来的快照可能为空（任务在回调前已被释放）。
@@ -45,12 +45,13 @@ module TaskReportHelper
     # 清洗 error_msg 里的非法 UTF-8 字节：postforme 等第三方返回的错误信息可能带
     # 非法字节，直接写 MySQL text 字段会被拒（Incorrect string value）导致 create! 抛异常。
     error_msg = safe_utf8(error_msg)
+    raw_response = safe_utf8(raw_response)
 
     TaskLog.create!(
       task_uuid: task.task_uuid,
       account_id: snapshot_account_id,
       browser_id: snapshot_browser_id,
-      response_data: { status: status, error_msg: error_msg }.to_s,
+      response_data: raw_response.presence || { status: status, error_msg: error_msg }.to_s,
       status: task_status,
       error_msg: error_msg,
       run_at: Time.current
@@ -72,6 +73,8 @@ module TaskReportHelper
     "account banned or human verification required",
     "account verification required after upload",
     "Confirm you're human",
+    "suspended",
+    "could not authenticate you",
     "账号未登录",
     "账号验证",
     "账号封禁",

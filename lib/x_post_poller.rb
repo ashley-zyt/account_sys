@@ -42,14 +42,14 @@ module XPostPoller
       # 处理完成（或无 processing_info，视为已完成）→ 发推
       tweet_resp = XApi.create_tweet(access_token: token, text: tweet_text(task), media_ids: [xp.media_id])
       unless XApi.success?(tweet_resp)
-        mark_failed(xp, task, "X 发推失败：#{tweet_resp[:raw].to_s.truncate(300)}")
+        mark_failed(xp, task, "X 发推失败：#{XApi.extract_error(tweet_resp)}", tweet_resp[:raw].to_s)
         return
       end
       tweet_id = tweet_resp[:body].is_a?(Hash) ? tweet_resp[:body].dig('data', 'id').to_s : ''
       mark_success(xp, task, tweet_id)
     when 'failed'
       err = info.is_a?(Hash) ? info.dig('error', 'message').to_s : ''
-      mark_failed(xp, task, "X 视频处理失败：#{err.presence || 'unknown'}")
+      mark_failed(xp, task, "X 视频处理失败：#{err.presence || 'unknown'}", resp[:raw].to_s)
     else
       # pending / in_progress → 下轮再查
     end
@@ -67,7 +67,7 @@ module XPostPoller
   end
 
   # 发布失败：回写任务失败（资源队列任务会按失败分类处理）+ 写日志
-  def self.mark_failed(xp, task, error_msg)
+  def self.mark_failed(xp, task, error_msg, raw_response = nil)
     snapshot_account_id = task.account_id
     snapshot_browser_id = task.browser_id
 
@@ -75,7 +75,7 @@ module XPostPoller
     TaskReportHelper.update_task_status(task, 'error', error_msg)
 
     begin
-      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg)
+      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg, raw_response)
     rescue => e
       Rails.logger.error "[XPostPoller] 写失败 task_log 异常 #{task.class.name}##{task.id}: #{e.class} #{e.message}\n#{e.backtrace.first(6).join("\n")}"
     end

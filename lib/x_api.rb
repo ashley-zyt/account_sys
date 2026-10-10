@@ -190,6 +190,20 @@ module XApi
       resp[:code].to_i.between?(200, 299)
     end
 
+    # 从 X 错误响应里提取可读的错误描述。
+    # X 错误格式：problem+json（detail/title）或 errors 数组（errors[0].message）。
+    # @return [String] 具体的错误描述（提不到就退回原始响应体）
+    def extract_error(resp)
+      body = resp[:body].is_a?(Hash) ? resp[:body] : {}
+      errors = body['errors']
+      if errors.is_a?(Array) && errors.first.is_a?(Hash)
+        e = errors.first
+        msg = e['message'].to_s.presence || e['detail'].to_s.presence
+        return msg if msg.present?
+      end
+      body['detail'].to_s.presence || body['title'].to_s.presence || resp[:raw].to_s
+    end
+
     # 校验配置是否齐全
     def configured?
       client_id.present? && client_secret.present? && redirect_uri.present?

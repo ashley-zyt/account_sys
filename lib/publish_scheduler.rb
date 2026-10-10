@@ -205,7 +205,7 @@ class PublishScheduler
       Rails.logger.info "[PublishScheduler] X 任务 #{task.class.name}##{task.id} 已提交上传：#{result[:message]}"
     else
       Rails.logger.error "[PublishScheduler] X 任务 #{task.class.name}##{task.id} 提交失败：#{result[:message]}"
-      handle_error(task, result[:message])
+      handle_error(task, result[:message], result[:raw])
     end
     :done
   end
@@ -494,12 +494,12 @@ class PublishScheduler
     end
   end
 
-  def self.handle_error(task, error_msg)
+  def self.handle_error(task, error_msg, raw_response = nil)
     snapshot_account_id = task.account_id
     snapshot_browser_id = task.browser_id
 
     TaskReportHelper.update_task_status(task, 'error', error_msg)
-    TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg)
+    TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg, raw_response)
   end
 
   # 确保字符串是干净的 UTF-8：
