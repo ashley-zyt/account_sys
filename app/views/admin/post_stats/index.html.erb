@@ -112,10 +112,9 @@
               </td>
               <td>
                 <span class="admin-label-muted">
-                  <% case stat.publish_channel %>
-                  <% when 0 then %>浏览器
-                  <% when 1 then %>postforme
-                  <% when 2 then %>x_api
+                  <% if stat.publish_channel == 0 %>浏览器
+                  <% elsif stat.publish_channel == 1 %>postforme
+                  <% elsif stat.publish_channel == 2 %>x_api
                   <% else %>-
                   <% end %>
                 </span>
