@@ -10,21 +10,6 @@ class Admin::AccountsController < Admin::BaseController
 		             .order(created_at: :desc)
 		             .page(params[:page])
 		             .per(10)
-
-		# 预计算 KOL 触达近 3 天成功率：[成功数, 已完成发送数(成功+失败)]
-		@kol_outreach_stats = {}
-		ids = @accounts.map(&:id)
-		if ids.any?
-			counts = KolMessage.where(account_id: ids, direction: :outgoing,
-			                          status: [:sent_success, :sent_failed])
-			                   .where(created_at: 3.days.ago..Time.current)
-			                   .group(:account_id, :status).count
-			ids.each do |id|
-				success = counts[[id, KolMessage.statuses[:sent_success]]].to_i
-				failed  = counts[[id, KolMessage.statuses[:sent_failed]]].to_i
-				@kol_outreach_stats[id] = [success, success + failed]
-			end
-		end
 	end
 
 	# 一键导出：按当前搜索条件导出全部账号（所有字段 + 页面上的最后使用时间/最后运行错误）
