@@ -12,12 +12,18 @@ since = days.days.ago
 # 已完成 X 授权的账号 ID（这些不算「还没授权」）
 authorized_ids = XCredential.where(auth_status: XCredential.auth_statuses[:authorized]).pluck(:account_id)
 
+# 发文日志判定：task_uuid 属于任一资源队列任务即视为「发文」日志。
+# （旧日志没记录 publish_channel，也能靠 task_uuid 识别；养号/采集/私信/巡检的 task_uuid 不属于资源表，会被排除）
+resource_conditions = WorkMode.resource_modes.map { |m|
+  "EXISTS (SELECT 1 FROM #{m.association_name} _t WHERE _t.task_uuid = task_logs.task_uuid)"
+}
+publish_sql = "(#{resource_conditions.join(' OR ')})"
+
 results = []
 Account.where(platform: 'twitter').where.not(id: authorized_ids).find_each do |account|
-  # 发文错误 = 该账号最近的发布失败日志（publish_channel 非空 = 发布日志，区别于养号/采集/私信）
   count = TaskLog.where(account_id: account.id, status: 'failed')
-                 .where.not(publish_channel: nil)
                  .where('run_at >= ?', since)
+                 .where(publish_sql)
                  .count
   results << [account, count] if count > 0
 end
