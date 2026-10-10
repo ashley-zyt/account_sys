@@ -631,6 +631,10 @@ class PostDatas
         data_updated_at: Time.current
       }
 
+      # 精确反查实际发布渠道（postforme/x_api 按 url 匹配；匹配不到留空）
+      channel = PostStat.resolve_publish_channel(url)
+      attrs[:publish_channel] = channel if channel.present?
+
       existing = PostStat.find_by(url: url)
       if existing
         existing.update!(attrs)

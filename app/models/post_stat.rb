@@ -76,17 +76,23 @@ class PostStat < ApplicationRecord
     ]
   end
 
-  # 实际发布渠道：从该账号「发文当天」最近一次成功发布日志里取渠道（task_logs.publish_channel）。
-  # 用于 post_stats 按实际渠道筛选（PostStat 本身不存渠道，这里通过子查询关联 task_logs）。
-  ransacker :publish_channel, formatter: proc { |v| v.to_i } do
-    Arel.sql(
-      "(SELECT tl.publish_channel FROM task_logs tl " \
-      "WHERE tl.account_id = post_stats.account_id " \
-      "AND tl.status = 'success' " \
-      "AND tl.publish_channel IS NOT NULL " \
-      "AND DATE(tl.run_at) = post_stats.post_date " \
-      "ORDER BY tl.id DESC LIMIT 1)"
-    )
+  # 根据发文链接反查实际发布渠道（精确匹配）：
+  # - postforme：postforme_posts.platform_url 精确匹配
+  # - x_api：url 末尾 /status/<tweet_id> 匹配 x_posts.tweet_id
+  # - 浏览器渠道暂无法按 url 反查（发布成功后未落库 url），匹配不到留空
+  # @return [Integer, nil] 渠道值（1=postforme / 2=x_api），匹配不到返回 nil
+  def self.resolve_publish_channel(url)
+    clean = url.to_s.strip
+    return nil if clean.blank?
+
+    return Account.publish_channels['postforme'] if PostformePost.exists?(platform_url: clean)
+
+    if clean =~ %r{/status/(\d+)}
+      tweet_id = $1
+      return Account.publish_channels['x_api'] if XPost.exists?(tweet_id: tweet_id)
+    end
+
+    nil
   end
 
   def self.ransackable_associations(auth_object = nil)
