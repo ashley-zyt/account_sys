@@ -137,6 +137,16 @@ class Account < ApplicationRecord
 		items.join(' · ')
 	end
 
+	# 当前首选发布渠道的展示文本（空 = 默认）
+	def publish_channel_label
+		case publish_channel
+		when 'ag_center' then '浏览器模拟'
+		when 'postforme' then 'postforme'
+		when 'x_api' then 'x_api'
+		else '默认'
+		end
+	end
+
 	# 运营人员枚举
 	OPERATORS = ["张俊", "许淑雯", "石欢欢", "杜维"]
 
