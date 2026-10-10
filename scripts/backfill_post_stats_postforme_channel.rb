@@ -14,9 +14,11 @@
 START_DATE = Date.new(2025, 9, 24)
 
 # 找出已授权 postforme 的账号 id（排除 twitter，twitter 用 x_api）
-postforme_account_ids = Account.where.not(platform: 'twitter')
-  .select { |a| a.postforme_authorized? }
-  .map(&:id)
+# 通过 postforme_accounts 表 join 判断，避免逐条 Ruby 过滤的性能和兼容问题
+postforme_account_ids = Account.joins(:postforme_account)
+  .where.not(platform: 'twitter')
+  .where(postforme_accounts: { auth_status: PostformeAccount.auth_statuses[:authorized] })
+  .pluck(:id)
 
 puts "已授权 postforme 的账号数：#{postforme_account_ids.size}"
 
