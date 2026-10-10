@@ -13,6 +13,8 @@ Rails.application.routes.draw do
         post :toggle_warmup
         post :refresh_stats
         post :start_postforme_auth
+        post :start_manual_postforme_auth
+        post :confirm_postforme_auth
         post :start_x_auth
         post :start_manual_x_auth
         post :complete_manual_x_auth

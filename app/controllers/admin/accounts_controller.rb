@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_x_auth, :start_manual_x_auth, :complete_manual_x_auth, :destroy]
+	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_manual_postforme_auth, :confirm_postforme_auth, :start_x_auth, :start_manual_x_auth, :complete_manual_x_auth, :destroy]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -152,6 +152,27 @@ class Admin::AccountsController < Admin::BaseController
 			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
 		else
 			redirect_back fallback_location: admin_account_path(@account), alert: result[:message]
+		end
+	end
+
+	# 全手动发起 postforme 授权：只生成授权链接（不下发机器端），链接存 flash 展示给用户复制
+	def start_manual_postforme_auth
+		result = PostformeAuthService.start_authorization(@account, skip_machine: true)
+		if result[:success]
+			flash[:manual_postforme_auth_url] = result[:auth_url]
+			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
+		else
+			redirect_back fallback_location: admin_account_path(@account), alert: result[:message]
+		end
+	end
+
+	# 全手动确认 postforme 授权：轮询 postforme 反查 social_account_id，拿到则标记「已授权」
+	def confirm_postforme_auth
+		result = PostformeAuthService.confirm_authorization(@account)
+		if result
+			redirect_back fallback_location: admin_account_path(@account), notice: "postforme 授权成功（social_account_id=#{result[:social_account_id]}）"
+		else
+			redirect_back fallback_location: admin_account_path(@account), alert: 'postforme 授权未完成，请确认已在浏览器完成 OAuth 后再试'
 		end
 	end
 

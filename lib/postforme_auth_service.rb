@@ -7,8 +7,9 @@
 #   4. 轮询 postforme 按 external_id 反查，拿到 social_account_id 后标记「已授权」
 module PostformeAuthService
   # 发起授权：拿授权 URL → 记录「授权中」→ 下发机器端打开授权页。
+  # @param skip_machine [Boolean] true 时跳过机器端下发（全手动流程：仅生成授权链接）
   # @return [Hash] { success:, message:, auth_url: }
-  def self.start_authorization(account)
+  def self.start_authorization(account, skip_machine: false)
     return { success: false, message: '账号未绑定指纹浏览器，无法授权' } if account.browser.blank?
 
     resp = PostformeApi.auth_url(platform: account.platform, external_id: account.id.to_s)
@@ -19,19 +20,22 @@ module PostformeAuthService
     pa = account.postforme_account || account.create_postforme_account
     pa.update!(auth_status: :authorizing, social_account_id: nil, authorized_at: nil)
 
-    # 下发机器端：指纹浏览器打开授权页（机器端 open_auth_url 接口，需机器端先行支持）
-    machine_ip = account.browser.machine_ip
-    if machine_ip.blank?
-      Rails.logger.warn "[PostformeAuth] 账号 #{account.id} 浏览器未设 machine_ip，跳过下发打开授权页（授权 URL 需人工打开）"
-    else
-      payload = {
-        profile_name: account.browser.profile_name,
-        url: url,
-        wait_seconds: 600,
-        async: true,
-        ref: "PostformeAuth:#{account.id}"
-      }
-      RemoteApiClient.post("https://#{machine_ip}/accounts/open_auth_url", payload, read_timeout: 30)
+    # 下发机器端：指纹浏览器打开授权页（机器端 open_auth_url 接口，需机器端先行支持）。
+    # skip_machine: true 时跳过（全手动流程：人工自己打开、完成后手动确认授权）。
+    unless skip_machine
+      machine_ip = account.browser.machine_ip
+      if machine_ip.blank?
+        Rails.logger.warn "[PostformeAuth] 账号 #{account.id} 浏览器未设 machine_ip，跳过下发打开授权页（授权 URL 需人工打开）"
+      else
+        payload = {
+          profile_name: account.browser.profile_name,
+          url: url,
+          wait_seconds: 600,
+          async: true,
+          ref: "PostformeAuth:#{account.id}"
+        }
+        RemoteApiClient.post("https://#{machine_ip}/accounts/open_auth_url", payload, read_timeout: 30)
+      end
     end
 
     { success: true, message: '已发起授权，请在浏览器完成 OAuth', auth_url: url }

@@ -196,7 +196,23 @@
         <%= link_to (pf&.authorized? ? "重新授权" : "发起授权"), start_postforme_auth_admin_account_path(@account),
             data: { turbo_method: :post, turbo_confirm: "将发起 postforme 授权，机器端会打开授权页，确定？" },
             class: "admin-button-primary" %>
+        <%= link_to "手动授权", start_manual_postforme_auth_admin_account_path(@account),
+            data: { turbo_method: :post, turbo_confirm: "将生成手动授权链接（不下发机器端），确定？" },
+            class: "admin-button-secondary" %>
+        <%= link_to "确认授权", confirm_postforme_auth_admin_account_path(@account),
+            data: { turbo_method: :post, turbo_confirm: "将轮询 postforme 确认授权结果，确定？" },
+            class: "admin-button-secondary" %>
       </div>
+
+      <% if flash[:manual_postforme_auth_url].present? %>
+        <div style="margin-top: 12px;">
+          <div class="admin-field-label">授权链接（复制到浏览器打开，完成后点「确认授权」）</div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="manual-postforme-auth-url" value="<%= flash[:manual_postforme_auth_url] %>" readonly class="admin-input" style="flex: 1;">
+            <button type="button" class="admin-button-secondary" onclick="navigator.clipboard.writeText(document.getElementById('manual-postforme-auth-url').value)">复制</button>
+          </div>
+        </div>
+      <% end %>
     </div>
 
     <%# ---- X 平台卡片（仅 Twitter 账号显示） ---- %>
