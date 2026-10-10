@@ -43,11 +43,15 @@ class PublishDailySummary
       end
     end
 
-    # 3. 账号 id → 平台名称（pluck 返回 enum 名称，直接用）
+    # 3. 账号 id → 平台名称 + 当前状态（pluck 返回 enum 名称，直接用）
+    #    同时取 status，用于排除今日被封禁的账号（封禁=2）——它们失败是账号问题导致，
+    #    已退出轮转，不应再算作「最终发布失败」。
     account_ids = last_by_account.keys
     platform_by_account = {}
-    Account.unscoped.where(id: account_ids).pluck(:id, :platform).each do |id, p|
+    status_by_account = {}
+    Account.unscoped.where(id: account_ids).pluck(:id, :platform, :status).each do |id, p, s|
       platform_by_account[id] = p
+      status_by_account[id] = s
     end
 
     # 4. 回退：账号已物理删除的，用 task_uuid 关联任务表拿 platform
@@ -68,6 +72,7 @@ class PublishDailySummary
     end
 
     # 5. 按平台统计成功/失败，并记录最终失败的账号
+    #    被封禁（status=2）的账号不计入最终失败——失败原因是账号异常，已退出轮转。
     success_counts = Hash.new(0)
     failed_counts = Hash.new(0)
     failed_account_ids = {}
@@ -75,6 +80,9 @@ class PublishDailySummary
       platform = platform_by_account[account_id]
       if e[:status].to_s == "success"
         success_counts[platform] += 1
+      elsif status_by_account[account_id] == 2
+        # 今日被封禁的账号，跳过不计入失败
+        next
       else
         failed_counts[platform] += 1
         failed_account_ids[account_id] = platform
