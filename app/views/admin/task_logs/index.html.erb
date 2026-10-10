@@ -165,9 +165,9 @@
                   <%= log.run_at&.strftime("%Y-%m-%d %H:%M") %>
                 </span>
               </td>
-              <td>
-                <span class="admin-label-muted">
-                  <%= truncate(log.error_msg.to_s, length: 40) %>
+              <td style="max-width: 200px;">
+                <span class="admin-label-muted" style="display: inline-block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;" title="<%= log.error_msg.to_s %>">
+                  <%= truncate(log.error_msg.to_s, length: 20) %>
                 </span>
               </td>
               <td>
