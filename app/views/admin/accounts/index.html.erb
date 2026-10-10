@@ -71,6 +71,18 @@
         }.map { |k, v| [v, k] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">浏览器绑定</label>
+        <%= f.searchable_select :browser_bound_eq, [['已绑定', 1], ['未绑定', 0]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">postforme授权</label>
+        <%= f.searchable_select :postforme_authorized_eq, [['已授权', 1], ['未授权', 0]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">x_api授权</label>
+        <%= f.searchable_select :x_api_authorized_eq, [['已授权', 1], ['未授权', 0]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">运营人员</label>
         <%= f.searchable_select :operator_eq, Account::OPERATORS.map { |o| [o, o] }, { include_blank: "所有人员" }, class: "admin-input admin-filter-input" %>
       </div>

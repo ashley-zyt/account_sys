@@ -331,6 +331,19 @@ class Account < ApplicationRecord
 		Arel.sql("COALESCE(accounts.publish_channel, -1)")
 	end
 
+	# 各渠道授权/绑定状态（用于列表筛选，1=已授权/已绑定，0=未授权/未绑定）
+	ransacker :browser_bound, formatter: proc { |v| v.to_i } do
+		Arel.sql("CASE WHEN accounts.browser_id IS NOT NULL THEN 1 ELSE 0 END")
+	end
+
+	ransacker :postforme_authorized, formatter: proc { |v| v.to_i } do
+		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM postforme_accounts pa WHERE pa.account_id = accounts.id AND pa.auth_status = #{PostformeAccount.auth_statuses[:authorized]}) THEN 1 ELSE 0 END")
+	end
+
+	ransacker :x_api_authorized, formatter: proc { |v| v.to_i } do
+		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM x_account_credentials xc WHERE xc.account_id = accounts.id AND xc.auth_status = #{XCredential.auth_statuses[:authorized]}) THEN 1 ELSE 0 END")
+	end
+
 	# --- Ransack 搜索白名单 ---
 	def self.ransackable_attributes(auth_object = nil)
 		%w[
@@ -344,6 +357,9 @@ class Account < ApplicationRecord
 			work_type
 			publish_channel
 			publish_channel_with_default
+			browser_bound
+			postforme_authorized
+			x_api_authorized
 			last_used_at
 			remark
 			operator
