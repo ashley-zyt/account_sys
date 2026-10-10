@@ -162,7 +162,8 @@
       </span>
     </div>
 
-    <%# ---- postforme 卡片 ---- %>
+    <%# ---- postforme 卡片（仅非 Twitter 账号显示） ---- %>
+    <% if @account.platform != 'twitter' %>
     <% pf = @account.postforme_account %>
     <div class="admin-card" style="margin-top: 12px; padding: 16px;">
       <div style="font-size: 15px; font-weight: 600; margin-bottom: 10px;">postforme</div>
@@ -220,6 +221,7 @@
         </div>
       <% end %>
     </div>
+    <% end %>
 
     <%# ---- X 平台卡片（仅 Twitter 账号显示） ---- %>
     <% if @account.platform == 'twitter' %>

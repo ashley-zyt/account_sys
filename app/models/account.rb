@@ -113,22 +113,28 @@ class Account < ApplicationRecord
 		PublishChannelChain.available_chain(self)
 	end
 
-	# 已授权的发布渠道列表（用于「授权状态」展示）
+	# 已授权的发布渠道列表（按平台区分，用于「授权状态」展示）：
+	# Twitter 显示 x_api，其它平台显示 postforme，避免展示不适用渠道造成误改。
 	def authorized_publish_channels
 		chs = []
 		chs << '浏览器' if browser.present?
-		chs << 'postforme' if postforme_account&.authorized?
-		chs << 'x_api' if x_credential&.authorized?
+		if platform == 'twitter'
+			chs << 'x_api' if x_credential&.authorized?
+		else
+			chs << 'postforme' if postforme_account&.authorized?
+		end
 		chs
 	end
 
-	# 授权状态 tooltip（哪个授权了、哪个没有）
+	# 授权状态 tooltip（按平台区分，哪个授权了、哪个没有）
 	def publish_channel_status_tooltip
-		[
-			browser.present? ? '浏览器 ✓' : '浏览器 ✗',
-			postforme_account&.authorized? ? 'postforme ✓' : 'postforme ✗',
-			x_credential&.authorized? ? 'x_api ✓' : 'x_api ✗'
-		].join(' · ')
+		items = [browser.present? ? '浏览器 ✓' : '浏览器 ✗']
+		if platform == 'twitter'
+			items << (x_credential&.authorized? ? 'x_api ✓' : 'x_api ✗')
+		else
+			items << (postforme_account&.authorized? ? 'postforme ✓' : 'postforme ✗')
+		end
+		items.join(' · ')
 	end
 
 	# 运营人员枚举
