@@ -343,6 +343,7 @@ class Account < ApplicationRecord
 			theme
 			work_type
 			publish_channel
+			publish_channel_with_default
 			last_used_at
 			remark
 			operator
