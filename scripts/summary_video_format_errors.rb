@@ -17,26 +17,7 @@
 
 # 视频格式不适配相关的错误关键词（中英文常见表述）
 FORMAT_KEYWORDS = [
-  '视频格式',
-  '格式不支持',
-  '格式不适配',
-  '格式不正确',
-  '格式错误',
-  '无法解析',
-  '解码失败',
-  '无法播放',
-  '无法处理视频',
-  'video format',
-  'format not supported',
-  'unsupported format',
-  'format unsupported',
-  'not a valid video',
-  'invalid video',
-  'video not supported',
-  'unsupported video',
-  'codec',
-  'invalid media type',
-  'media type not'
+  '未找到视频框左下角的放大按钮'
 ].freeze
 
 # 解析参数
