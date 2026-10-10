@@ -63,11 +63,11 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">首选渠道</label>
-        <%= f.searchable_select :publish_channel_eq, {
-          '' => '默认（浏览器→API）',
-          'ag_center' => '浏览器模拟',
-          'postforme' => 'postforme',
-          'x_api' => 'x_api（X API）'
+        <%= f.searchable_select :publish_channel_with_default_eq, {
+          -1 => '默认（未设置）',
+          0 => '浏览器模拟',
+          1 => 'postforme',
+          2 => 'x_api（X API）'
         }.map { |k, v| [v, k] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">

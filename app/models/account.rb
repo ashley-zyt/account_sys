@@ -326,6 +326,11 @@ class Account < ApplicationRecord
 		TaskLog.where(task_uuid: uuids).order(run_at: :desc).first
 	end
 
+	# 首选渠道筛选（含「默认/未设置」）：把 NULL 映射为 -1，便于下拉里把「默认」作为一个可选值
+	ransacker :publish_channel_with_default, formatter: proc { |v| v.to_i } do
+		Arel.sql("COALESCE(accounts.publish_channel, -1)")
+	end
+
 	# --- Ransack 搜索白名单 ---
 	def self.ransackable_attributes(auth_object = nil)
 		%w[
