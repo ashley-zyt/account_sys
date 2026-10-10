@@ -46,11 +46,11 @@ class BrowserTaskResultHandler
     if status == 'success'
       Rails.logger.info "[BrowserTaskResult] 任务 #{model_name}##{id} 成功"
       TaskReportHelper.update_task_status(task, 'success')
-      TaskReportHelper.create_task_log(task, 'success', snapshot_account_id, snapshot_browser_id)
+      TaskReportHelper.create_task_log(task, 'success', snapshot_account_id, snapshot_browser_id, nil, nil, 'ag_center')
     else
       Rails.logger.error "[BrowserTaskResult] 任务 #{model_name}##{id} 失败: #{message}"
       TaskReportHelper.update_task_status(task, 'error', message)
-      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, message)
+      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, message, nil, 'ag_center')
     end
 
     { type: 'success', message: '已更新任务状态' }

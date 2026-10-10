@@ -31,7 +31,7 @@ module TaskReportHelper
     s.dup.force_encoding(Encoding::UTF_8).scrub('')
   end
 
-  def self.create_task_log(task, status, snapshot_account_id, snapshot_browser_id, error_msg = nil, raw_response = nil)
+  def self.create_task_log(task, status, snapshot_account_id, snapshot_browser_id, error_msg = nil, raw_response = nil, publish_channel = nil)
     task_status = status == 'success' ? "success" : "failed"
 
     # 兜底：调用方传进来的快照可能为空（任务在回调前已被释放）。
@@ -54,6 +54,7 @@ module TaskReportHelper
       response_data: raw_response.presence || { status: status, error_msg: error_msg }.to_s,
       status: task_status,
       error_msg: error_msg,
+      publish_channel: publish_channel,
       run_at: Time.current
     )
 
@@ -146,45 +147,19 @@ module TaskReportHelper
     RESOURCE_INVALID_KEYWORDS.any? { |kw| msg.include?(kw) }
   end
 
-  # 资源有问题关键词：命中视为「视频/资源本身有问题」（取景框、发布按钮、文案输入框找不到），
-  # 重发大概率仍失败。这类失败累计 RESOURCE_PROBLEM_LIMIT 次后判定资源不可用。
-  RESOURCE_PROBLEM_KEYWORDS = [
-    '未找到视频框左下角的放大按钮',
-    'cannot find publish button on twitter page',
-    'cannot find tiktok caption input'
-  ].freeze
-
-  # 资源有问题失败上限：累计达到该次数即判定资源不可用、置为 failed 终态
-  RESOURCE_PROBLEM_LIMIT = 3
-
-  # 判断错误信息是否属于「资源有问题」（视频/资源本身有问题）
-  def self.resource_problem_error?(error_msg)
-    msg = error_msg.to_s
-    RESOURCE_PROBLEM_KEYWORDS.any? { |kw| msg.include?(kw) }
-  end
-
-  # 记录一次「资源有问题」失败：失败次数 +1；达到上限则置为 failed 终态（不再重新分配）
-  # 并返回 true，否则仅累加计数并返回 false。调用方在返回 true 时应终止后续的状态更新。
-  def self.record_resource_problem_failure!(task, error_msg = nil)
-    count = task.failure_count.to_i + 1
-    if count >= RESOURCE_PROBLEM_LIMIT
-      # 用 update_columns 绕过 account_id presence 校验（这些模型 failed 状态要求账号非空）
-      task.update_columns(
-        status: task.class.statuses[:failed],
-        failure_count: count,
-        account_id: nil,
-        browser_id: nil,
-        error_msg: error_msg.presence || "资源连续失败#{count}次，判定资源不可用",
-        start_at: nil,
-        updated_at: Time.current
-      )
-      TaskAssignment.release!(task.task_uuid, error_msg.presence || "资源连续失败#{count}次，判定资源不可用")
-      Rails.logger.warn "[TaskReportHelper] #{task.class}##{task.id} 资源连续失败#{count}次，置为 failed 终态"
-      true
-    else
-      task.update_column(:failure_count, count)
-      false
-    end
+  # 渠道降级：发布失败（资源有问题/渠道错误/超时）后 failure_count+1，回 pending，
+  # 下一次发布走下一层渠道。终态（所有可用渠道都试过）由 PublishScheduler.attempt_task
+  # 在路由时判定（channel 为 nil → failed），这里不做终态判断。
+  def self.downgrade_task(task, error_msg)
+    task.update!(
+      status: :pending,
+      account_id: nil,
+      browser_id: nil,
+      error_msg: error_msg,
+      failure_count: task.failure_count.to_i + 1,
+      start_at: nil
+    )
+    TaskAssignment.release!(task.task_uuid, error_msg.presence || '发布失败，降级到下一渠道')
   end
 
   def self.update_task_status(task, status, error_msg = nil)
@@ -203,14 +178,13 @@ module TaskReportHelper
             # 资源失效（媒体/URL 已失效，重新发布也注定失败）：直接置 failed 终态，
             # 不累计失败次数，清空账号/浏览器/开始时间，不再回 pending。
             fail_task_terminal(task, error_msg, '资源失效，任务终态失败')
-          elsif resource_problem_error?(error_msg)
-            # 资源有问题（视频/资源本身有问题）：累计失败次数，满 RESOURCE_PROBLEM_LIMIT 次
-            # 置 failed 终态；未满则回 pending 等待重新分配。
-            reset_task_to_pending(task, error_msg) unless record_resource_problem_failure!(task, error_msg)
-          else
-            # 其它失败（含账号/浏览器网络问题）：资源本身没问题，回 pending 换账号重试，
-            # 不累计失败次数。账号封禁由 create_task_log 里的 check_account_abnormal 统一处理。
+          elsif account_abnormal_error?(error_msg)
+            # 账号/浏览器网络问题：回 pending 换账号重试，不降级不累计失败次数。
+            # 账号封禁由 create_task_log 里的 check_account_abnormal 统一处理。
             reset_task_to_pending(task, error_msg)
+          else
+            # 渠道/资源失败（含资源有问题、超时、渠道错误）：降级到下一层渠道。
+            downgrade_task(task, error_msg)
           end
         else
           task.update!(

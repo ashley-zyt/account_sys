@@ -58,7 +58,7 @@ module PostformeStatusPoller
 
     pp.update!(status: :success, platform_url: platform_url)
     TaskReportHelper.update_task_status(task, 'success')
-    TaskReportHelper.create_task_log(task, 'success', snapshot_account_id, snapshot_browser_id)
+    TaskReportHelper.create_task_log(task, 'success', snapshot_account_id, snapshot_browser_id, nil, nil, 'postforme')
     Rails.logger.info "[PostformePoller] 任务 #{task.class.name}##{task.id} 发布成功（post_id=#{pp.post_id}）"
   end
 
@@ -75,7 +75,7 @@ module PostformeStatusPoller
     # 导致「任务已重置 pending、但 task_log 缺失」。这里单独捕获并记录完整异常，
     # 保证任务状态回写不受影响，异常也能拿到 backtrace 定位。
     begin
-      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg)
+      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg, nil, 'postforme')
     rescue => e
       Rails.logger.error "[PostformePoller] 写失败 task_log 异常 #{task.class.name}##{task.id}: #{e.class} #{e.message}\n#{e.backtrace.first(6).join("\n")}"
     end

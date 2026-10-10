@@ -155,6 +155,12 @@
     <div class="admin-section-subtitle">
       第三方发布平台 / X API 授权状态与操作
     </div>
+    <div style="margin-top: 10px;">
+      <span class="admin-label-muted">
+        可用渠道（<%= @account.authorized_publish_channels.size %> 个）：<%= @account.publish_channel_status_tooltip %>
+        　|　首选：<%= @account.publish_channel.presence || '默认（浏览器 → API）' %>
+      </span>
+    </div>
 
     <%# ---- postforme 卡片 ---- %>
     <% pf = @account.postforme_account %>

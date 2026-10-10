@@ -62,7 +62,7 @@ module XPostPoller
 
     xp.update!(status: :success, tweet_id: tweet_id)
     TaskReportHelper.update_task_status(task, 'success')
-    TaskReportHelper.create_task_log(task, 'success', snapshot_account_id, snapshot_browser_id)
+    TaskReportHelper.create_task_log(task, 'success', snapshot_account_id, snapshot_browser_id, nil, nil, 'x_api')
     Rails.logger.info "[XPostPoller] 任务 #{task.class.name}##{task.id} 发布成功（tweet_id=#{tweet_id}）"
   end
 
@@ -75,7 +75,7 @@ module XPostPoller
     TaskReportHelper.update_task_status(task, 'error', error_msg)
 
     begin
-      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg, raw_response)
+      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg, raw_response, 'x_api')
     rescue => e
       Rails.logger.error "[XPostPoller] 写失败 task_log 异常 #{task.class.name}##{task.id}: #{e.class} #{e.message}\n#{e.backtrace.first(6).join("\n")}"
     end

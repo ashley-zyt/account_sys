@@ -98,11 +98,29 @@ class PublishScheduler
   # 尝试执行单个待发布任务（非阻塞）。
   # @return [Symbol] :done 已执行/跳过（无需重试）；:busy 浏览器忙或机器满（需放回重试）
   def self.attempt_task(task)
-    # postforme 渠道：不依赖浏览器/机器端，走第三方 API 发布
-    return attempt_postforme_task(task) if task.account&.publish_channel == 'postforme'
-    # x_api 渠道：走 X（Twitter）官方 API 发布
-    return attempt_x_api_task(task) if task.account&.publish_channel == 'x_api'
+    account = task.account
+    channel = account ? PublishChannelChain.channel_at(account, task.failure_count.to_i) : 'ag_center'
 
+    # 所有可用渠道都已尝试过（failure_count 已超出可用链长度）→ 终态失败
+    if channel.nil?
+      Rails.logger.warn "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 所有可用发布渠道均已尝试失败，置为 failed"
+      task.update_columns(
+        status: task.class.statuses[:failed],
+        account_id: nil,
+        browser_id: nil,
+        error_msg: '所有可用发布渠道均已尝试失败',
+        start_at: nil,
+        updated_at: Time.current
+      )
+      TaskAssignment.release!(task.task_uuid, '所有可用发布渠道均已尝试失败')
+      return :done
+    end
+
+    # 按当前渠道路由
+    return attempt_x_api_task(task) if channel == 'x_api'
+    return attempt_postforme_task(task) if channel == 'postforme'
+
+    # 默认：浏览器渠道
     browser = task.browser
     return :done if browser.nil? || browser.machine_ip.blank?
 
@@ -169,7 +187,7 @@ class PublishScheduler
       Rails.logger.info "[PublishScheduler] postforme 任务 #{task.class.name}##{task.id} 已提交：#{result[:message]}"
     else
       Rails.logger.error "[PublishScheduler] postforme 任务 #{task.class.name}##{task.id} 提交失败：#{result[:message]}"
-      handle_error(task, result[:message])
+      handle_error(task, result[:message], nil, 'postforme')
     end
     :done
   end
@@ -205,7 +223,7 @@ class PublishScheduler
       Rails.logger.info "[PublishScheduler] X 任务 #{task.class.name}##{task.id} 已提交上传：#{result[:message]}"
     else
       Rails.logger.error "[PublishScheduler] X 任务 #{task.class.name}##{task.id} 提交失败：#{result[:message]}"
-      handle_error(task, result[:message], result[:raw])
+      handle_error(task, result[:message], result[:raw], 'x_api')
     end
     :done
   end
@@ -295,7 +313,7 @@ class PublishScheduler
     unless machine_ip.present?
       error_msg = "浏览器 #{task.browser.profile_name} 未设置运营机器 IP，无法发布"
       Rails.logger.error "[PublishScheduler] 任务 #{task_type}:#{task.id} #{error_msg}"
-      handle_error(task, error_msg)
+      handle_error(task, error_msg, nil, 'ag_center')
       return
     end
 
@@ -309,10 +327,10 @@ class PublishScheduler
       handle_response(task, response)
     rescue Net::ReadTimeout
       Rails.logger.error "[PublishScheduler] 任务 #{task_type}:#{task.id} 机器 #{machine_ip} 单任务超出十分钟异常结束"
-      handle_error(task, "单任务超出十分钟异常结束")
+      handle_error(task, "单任务超出十分钟异常结束", nil, 'ag_center')
     rescue => e
       Rails.logger.error "[PublishScheduler] 任务 #{task_type}:#{task.id} 机器 #{machine_ip} 执行异常: #{e.message}"
-      handle_error(task, "执行异常: #{e.message}")
+      handle_error(task, "执行异常: #{e.message}", nil, 'ag_center')
     end
   end
 
@@ -485,21 +503,21 @@ class PublishScheduler
     if response['type'] == 'success'
       Rails.logger.info "[PublishScheduler] 任务 #{task.id} 发布成功"
       TaskReportHelper.update_task_status(task, 'success')
-      TaskReportHelper.create_task_log(task, 'success', snapshot_account_id, snapshot_browser_id)
+      TaskReportHelper.create_task_log(task, 'success', snapshot_account_id, snapshot_browser_id, nil, nil, 'ag_center')
     else
       error_msg = response['error_info'] || '发布失败'
       Rails.logger.error "[PublishScheduler] 任务 #{task.id} 发布失败: #{error_msg}"
       TaskReportHelper.update_task_status(task, 'error', error_msg)
-      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg)
+      TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg, nil, 'ag_center')
     end
   end
 
-  def self.handle_error(task, error_msg, raw_response = nil)
+  def self.handle_error(task, error_msg, raw_response = nil, publish_channel = nil)
     snapshot_account_id = task.account_id
     snapshot_browser_id = task.browser_id
 
     TaskReportHelper.update_task_status(task, 'error', error_msg)
-    TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg, raw_response)
+    TaskReportHelper.create_task_log(task, 'error', snapshot_account_id, snapshot_browser_id, error_msg, raw_response, publish_channel)
   end
 
   # 确保字符串是干净的 UTF-8：

@@ -14,8 +14,12 @@ class Admin::PostStatsController < Admin::BaseController
     @work_types = Account.work_types.map { |k, v| [k, v] }
     # 平台选项：[[显示文本, 数字值], ...]
     @platforms = Account.platforms.map { |k, v| [k, v] }
-    # 发布渠道选项：[[显示文本, 数字值], ...]
-    @publish_channels = Account.publish_channels.map { |k, v| [k == 'postforme' ? 'postforme（第三方）' : 'ag_center（浏览器模拟）', v] }
+    # 发布渠道选项（实际发布渠道）：[[显示文本, 数字值], ...]
+    @publish_channels = [
+      ['浏览器模拟（ag_center）', 0],
+      ['postforme', 1],
+      ['x_api（X API）', 2]
+    ]
     # 主题选项：去重、排序后的账号主题列表
     @themes = Account.distinct.pluck(:theme).compact.reject(&:blank?).sort.map { |t| [t, t] }
     # 指纹浏览器选项：[[浏览器名称, id], ...]

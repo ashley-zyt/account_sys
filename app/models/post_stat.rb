@@ -72,7 +72,21 @@ class PostStat < ApplicationRecord
       data_updated_at
       created_at
       updated_at
+      publish_channel
     ]
+  end
+
+  # 实际发布渠道：从该账号「发文当天」最近一次成功发布日志里取渠道（task_logs.publish_channel）。
+  # 用于 post_stats 按实际渠道筛选（PostStat 本身不存渠道，这里通过子查询关联 task_logs）。
+  ransacker :publish_channel, formatter: proc { |v| v.to_i } do
+    Arel.sql(
+      "(SELECT tl.publish_channel FROM task_logs tl " \
+      "WHERE tl.account_id = post_stats.account_id " \
+      "AND tl.status = 'success' " \
+      "AND tl.publish_channel IS NOT NULL " \
+      "AND DATE(tl.run_at) = post_stats.post_date " \
+      "ORDER BY tl.id DESC LIMIT 1)"
+    )
   end
 
   def self.ransackable_associations(auth_object = nil)

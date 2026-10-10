@@ -91,15 +91,45 @@ class Account < ApplicationRecord
 	# 新增工作模式只需修改该配置文件，无需改动本模型。
 	enum work_type: WorkMode.enum_mapping
 
-	# 发布渠道枚举：决定发布执行走哪条链路
-	# - ag_center : 原有指纹浏览器模拟发布（默认）
-	# - postforme : 第三方平台 API 发布
-	# - x_api     : X（Twitter）官方 API 发布
+	# 发布渠道「首选渠道」枚举（可空）：
+	# - 空        : 走平台默认链（浏览器 → postforme/x_api）
+	# - ag_center : 首选浏览器模拟发布
+	# - postforme : 首选第三方平台 API 发布
+	# - x_api     : 首选 X（Twitter）官方 API 发布
+	# 首选渠道仅决定回退链的第一层，失败会按平台默认链继续回退。
 	enum publish_channel: {
 		ag_center: 0,
 		postforme: 1,
 		x_api: 2
 	}
+
+	# 账号的完整发布渠道链（首选渠道 + 平台默认链，见 PublishChannelChain）
+	def publish_chain
+		PublishChannelChain.for_account(self)
+	end
+
+	# 账号当前可用的渠道链（过滤掉未授权的渠道）
+	def available_publish_chain
+		PublishChannelChain.available_chain(self)
+	end
+
+	# 已授权的发布渠道列表（用于「授权状态」展示）
+	def authorized_publish_channels
+		chs = []
+		chs << '浏览器' if browser.present?
+		chs << 'postforme' if postforme_account&.authorized?
+		chs << 'x_api' if x_credential&.authorized?
+		chs
+	end
+
+	# 授权状态 tooltip（哪个授权了、哪个没有）
+	def publish_channel_status_tooltip
+		[
+			browser.present? ? '浏览器 ✓' : '浏览器 ✗',
+			postforme_account&.authorized? ? 'postforme ✓' : 'postforme ✗',
+			x_credential&.authorized? ? 'x_api ✓' : 'x_api ✗'
+		].join(' · ')
+	end
 
 	# 运营人员枚举
 	OPERATORS = ["张俊", "许淑雯", "石欢欢", "杜维"]

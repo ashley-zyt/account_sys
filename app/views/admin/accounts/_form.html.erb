@@ -65,11 +65,12 @@
     </div>
     <div>
       <div class="admin-field-label">
-        发布渠道
+        首选渠道
       </div>
       <%= f.searchable_select :publish_channel, {
-        'ag_center' => 'ag_center（浏览器模拟）',
-        'postforme' => 'postforme（第三方平台）',
+        '' => '默认（浏览器 → API）',
+        'ag_center' => '浏览器模拟',
+        'postforme' => 'postforme',
         'x_api' => 'x_api（X API）'
       }.map { |k, v| [v, k] }, {}, class: "admin-input" %>
     </div>

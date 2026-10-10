@@ -11,14 +11,13 @@ account =
     Account.find_by(id: account_id)
   else
     Account.joins(:x_credential)
-           .where(platform: :twitter, publish_channel: :x_api)
+           .where(platform: :twitter)
            .where(x_credentials: { auth_status: XCredential.auth_statuses[:authorized] })
            .order(:id).first
   end
 
 abort '找不到账号（请确认存在已认证的 X 账号，或传入正确的账号 ID）' if account.nil?
 abort "账号 ##{account.id} 不是 Twitter 平台" unless account.platform == 'twitter'
-abort "账号 ##{account.id} 发布渠道不是 x_api（当前 #{account.publish_channel}）" unless account.publish_channel == 'x_api'
 
 xc = account.x_credential
 abort "账号 ##{account.id} 未完成 X 认证" unless xc&.authorized?

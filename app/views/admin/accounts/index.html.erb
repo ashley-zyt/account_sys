@@ -62,12 +62,13 @@
         <%= f.searchable_select :work_type_eq, Account.work_types.map { |k, v| [k, v] }, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">发布渠道</label>
+        <label class="admin-filter-label">首选渠道</label>
         <%= f.searchable_select :publish_channel_eq, {
-          'ag_center' => 'ag_center（浏览器模拟）',
-          'postforme' => 'postforme（第三方平台）',
+          '' => '默认（浏览器→API）',
+          'ag_center' => '浏览器模拟',
+          'postforme' => 'postforme',
           'x_api' => 'x_api（X API）'
-        }.map { |k, v| [v, Account.publish_channels[k]] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
+        }.map { |k, v| [v, k] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">运营人员</label>
@@ -106,7 +107,7 @@
               工作模式
             </th>
             <th>
-              发布渠道
+              授权渠道
             </th>
             <th>
               运营人员
@@ -158,19 +159,9 @@
                 </span>
               </td>
               <td>
-                <% if account.publish_channel == "postforme" %>
-                  <span class="admin-pill-status" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">
-                    postforme
-                  </span>
-                <% elsif account.publish_channel == "x_api" %>
-                  <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                    x_api
-                  </span>
-                <% else %>
-                  <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af;">
-                    ag_center
-                  </span>
-                <% end %>
+                <span title="<%= account.publish_channel_status_tooltip %>" style="cursor: default;">
+                  <%= account.authorized_publish_channels.size %>
+                </span>
               </td>
               <td>
                 <span class="admin-label-muted">

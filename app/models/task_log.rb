@@ -145,6 +145,7 @@ class TaskLog < ApplicationRecord
 			account_platform
 			account_work_type
 			account_publish_channel
+			publish_channel
 		]
 	end
 end
