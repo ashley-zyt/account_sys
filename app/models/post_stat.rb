@@ -2,24 +2,26 @@
 #
 # Table name: post_stats
 #
-#  id                            :bigint           not null, primary key
-#  comments_count(评论数量)      :integer          default(0)
-#  data_updated_at(数据更新时间) :datetime
-#  likes_count(点赞数量)         :integer          default(0)
-#  post_date(发文日期)           :date             not null
-#  shares_count(转发数量)        :integer          default(0)
-#  title(发文标题)               :string(255)
-#  url(发文链接)                 :string(255)
-#  views_count(浏览数量)         :integer          default(0)
-#  created_at                    :datetime         not null
-#  updated_at                    :datetime         not null
-#  account_id(账号ID)            :bigint           not null
+#  id                                                      :bigint           not null, primary key
+#  comments_count(评论数量)                                :integer          default(0)
+#  data_updated_at(数据更新时间)                           :datetime
+#  likes_count(点赞数量)                                   :integer          default(0)
+#  post_date(发文日期)                                     :date             not null
+#  publish_channel(实际发布渠道 0浏览器 1postforme 2x_api) :integer
+#  shares_count(转发数量)                                  :integer          default(0)
+#  title(发文标题)                                         :text(65535)
+#  url(发文链接)                                           :text(65535)
+#  views_count(浏览数量)                                   :integer          default(0)
+#  created_at                                              :datetime         not null
+#  updated_at                                              :datetime         not null
+#  account_id(账号ID)                                      :bigint           not null
 #
 # Indexes
 #
-#  index_post_stats_on_account_id  (account_id)
-#  index_post_stats_on_post_date   (post_date)
-#  index_post_stats_on_url         (url) UNIQUE
+#  index_post_stats_on_account_id       (account_id)
+#  index_post_stats_on_post_date        (post_date)
+#  index_post_stats_on_publish_channel  (publish_channel)
+#  index_post_stats_on_url              (url) UNIQUE
 #
 
 class PostStat < ApplicationRecord
