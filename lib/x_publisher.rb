@@ -36,10 +36,10 @@ module XPublisher
       total_bytes = File.size(tmp.path)
 
       init = XApi.media_upload_initialize(access_token: token, total_bytes: total_bytes)
-      unless XApi.success?(init) && init[:body].is_a?(Hash) && init[:body]['id'].present?
+      media_id = init[:body].is_a?(Hash) ? init[:body].dig('data', 'id').to_s : ''
+      unless XApi.success?(init) && media_id.present?
         return { success: false, message: "X 初始化上传失败：#{init[:raw].to_s.truncate(200)}" }
       end
-      media_id = init[:body]['id'].to_s
 
       # 分块 APPEND
       segment_index = 0

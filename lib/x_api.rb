@@ -133,7 +133,7 @@ module XApi
     # ===== 媒体上传（分块：INIT → APPEND → FINALIZE → STATUS）+ 发推 =====
 
     # 初始化媒体上传（视频分块上传第一步）：声明大小/类型，返回 media_id。
-    # @return [Hash] { code:, body:, raw: }，body['id'] 即 media_id
+    # @return [Hash] { code:, body:, raw: }，body.dig('data','id') 即 media_id
     def media_upload_initialize(access_token:, total_bytes:, media_type: 'video/mp4', media_category: 'tweet_video')
       uri = URI("#{API_BASE}/2/media/upload/initialize")
       req = Net::HTTP::Post.new(uri)

@@ -33,7 +33,8 @@ module XPostPoller
     return unless XApi.success?(resp)  # 查询失败（网络抖动等）→ 下轮再试
 
     body = resp[:body].is_a?(Hash) ? resp[:body] : {}
-    info = body['processing_info']
+    data = body['data'].is_a?(Hash) ? body['data'] : {}
+    info = data['processing_info']
     state = info.is_a?(Hash) ? info['state'].to_s : ''
 
     case state
