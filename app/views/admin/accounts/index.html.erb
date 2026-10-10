@@ -134,9 +134,6 @@
               最后运行错误
             </th>
             <th>
-              KOL成功率
-            </th>
-            <th>
               操作
             </th>
           </tr>
@@ -208,17 +205,6 @@
                   <span class="admin-label-muted">
                     暂无运行日志
                   </span>
-                <% end %>
-              </td>
-              <td>
-                <% success, total = @kol_outreach_stats[account.id] || [0, 0] %>
-                <% if total >= 5 %>
-                  <% rate = success.to_f / total %>
-                  <span class="admin-label-muted" style="color: <%= rate >= 0.5 ? 'var(--success)' : 'var(--danger)' %>;">
-                    <%= (rate * 100).round %>% (<%= success %>/<%= total %>)
-                  </span>
-                <% else %>
-                  <span class="admin-label-muted">-</span>
                 <% end %>
               </td>
               <td>
