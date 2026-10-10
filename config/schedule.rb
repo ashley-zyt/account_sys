@@ -197,9 +197,9 @@ every 1.minute do
 end
 
 # ==================== X（Twitter）API 发布轮询 ====================
-# 每 1 分钟轮询「处理中」的 X 发布：查媒体处理状态 → 完成则发推回写终态
+# 每 5 分钟轮询「处理中」的 X 发布：查媒体处理状态 → 完成则发推回写终态
 set :output, "log/x_post_poller.log"
-every 1.minute do
+every 5.minute do
   runner 'XPostPoller.run'
 end
 
