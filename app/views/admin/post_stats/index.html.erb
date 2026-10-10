@@ -83,6 +83,7 @@
             <th>账号</th>
             <th>平台</th>
             <th>发文日期 <%= link_to '↑↓', request.params.merge(sort: 'post_date', direction: @current_sort == 'post_date' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
+            <th>发布渠道</th>
             <th>标题</th>
             <th>链接</th>
             <th>点赞数 <%= link_to '↑↓', request.params.merge(sort: 'likes_count', direction: @current_sort == 'likes_count' && @current_direction == 'desc' ? 'asc' : 'desc') %></th>
@@ -107,6 +108,16 @@
               <td>
                 <span class="admin-label-muted">
                   <%= stat.post_date.strftime("%Y-%m-%d") %>
+                </span>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <% case stat.publish_channel %>
+                  <% when 0 then %>浏览器
+                  <% when 1 then %>postforme
+                  <% when 2 then %>x_api
+                  <% else %>-
+                  <% end %>
                 </span>
               </td>
               <td>
