@@ -42,7 +42,7 @@ class MoveVideo < ApplicationRecord
   #   动物萌宠 AI萌娃 日式萝莉 中国中式妆容 中国IP盲盒 中国机器人
   # ].freeze
   DOWNLOAD_THEMES = %w[
-    动物萌宠
+    动物萌宠 中国IP盲盒 中国机器人 舞男 中式养生 中国帅哥美女 魔性舞蹈
   ].freeze
 
   # 下载状态（status）：只跟踪「源视频是否已下载到 OSS」
