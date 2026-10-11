@@ -14,7 +14,7 @@
 confirm = ARGV.include?('confirm')
 
 puts "===== 回填 task_logs.publish_channel（#{confirm ? '执行' : '预览'}）====="
-puts "当前分布：#{TaskLog.group(:publish_channel).count.sort.to_h.inspect}"
+puts "当前分布：#{TaskLog.group(:publish_channel).count.sort_by { |k, _| k.to_s }.to_h.inspect}"
 puts ""
 
 # 收集 postforme / x_api 各自关联的 task_uuid
@@ -41,7 +41,7 @@ if confirm
   n1 = postforme_targets.update_all(publish_channel: 1)
   n2 = x_targets.update_all(publish_channel: 2)
   puts "已回填：postforme=#{n1}，x_api=#{n2}"
-  puts "回填后分布：#{TaskLog.group(:publish_channel).count.sort.to_h.inspect}"
+  puts "回填后分布：#{TaskLog.group(:publish_channel).count.sort_by { |k, _| k.to_s }.to_h.inspect}"
 else
   puts "预览模式，未做任何改动。确认后执行："
   puts "  bundle exec rails runner scripts/backfill_task_log_publish_channel.rb confirm"
