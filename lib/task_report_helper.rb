@@ -147,23 +147,23 @@ module TaskReportHelper
     RESOURCE_INVALID_KEYWORDS.any? { |kw| msg.include?(kw) }
   end
 
-  # 渠道降级：发布失败（资源有问题/渠道错误/超时）后 failure_count+1，回 pending，
-  # 下一次发布走下一层渠道。终态（所有可用渠道都试过）由 PublishScheduler.attempt_task
-  # 在路由时判定（channel 为 nil → failed），这里不做终态判断。
+  # 渠道降级：发布失败（资源有问题/渠道错误/超时）后 failure_count+1，保留账号回 waiting_publish，
+  # 下一次发布走下一层渠道（同一个视频换渠道，账号不变）。
+  # 终态（所有可用渠道都试过）由 PublishScheduler.attempt_task 在路由时判定
+  # （channel 为 nil → failed），这里不做终态判断，只返回 true 表示「需要重新发布」。
   def self.downgrade_task(task, error_msg)
     task.update!(
-      status: :pending,
-      account_id: nil,
-      browser_id: nil,
+      status: :waiting_publish,
       error_msg: error_msg,
       failure_count: task.failure_count.to_i + 1,
       start_at: nil
     )
-    TaskAssignment.release!(task.task_uuid, error_msg.presence || '发布失败，降级到下一渠道')
+    true
   end
 
   def self.update_task_status(task, status, error_msg = nil)
     error_msg = safe_utf8(error_msg)
+    retry_after = false
 
     ActiveRecord::Base.transaction do
       if status == 'success'
@@ -183,8 +183,8 @@ module TaskReportHelper
             # 账号封禁由 create_task_log 里的 check_account_abnormal 统一处理。
             reset_task_to_pending(task, error_msg)
           else
-            # 渠道/资源失败（含资源有问题、超时、渠道错误）：降级到下一层渠道。
-            downgrade_task(task, error_msg)
+            # 渠道/资源失败（含资源有问题、超时、渠道错误）：降级到下一层渠道并触发重新发布。
+            retry_after = downgrade_task(task, error_msg)
           end
         else
           task.update!(
@@ -194,6 +194,10 @@ module TaskReportHelper
         end
       end
     end
+
+    # 事务提交后再触发重新发布：避免在事务内下发，且只对「降级」分支生效。
+    # attempt_task 内部会按 failure_count 取下一渠道；渠道耗尽则直接置 failed。
+    PublishScheduler.retry_task(task) if retry_after
   end
 
   # 任务置 failed 终态：用 update_columns 绕过 account_id presence 校验

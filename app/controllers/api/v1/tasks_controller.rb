@@ -81,15 +81,16 @@ module Api
 					return render json: {type: 'error', message: "状态必须为 success 或 error" }
 				end
 
-				ActiveRecord::Base.transaction do
-					# 先快照执行时的账号/浏览器，避免后续运营任务释放资源后丢失关联。
-					# 任务若已在回调前被中断释放（字段被清空），这里会回退到 TaskAssignment
-					# 里「发活那一刻」固化的归属 —— 否则 task_logs 会对应不上账号和浏览器。
-					snapshot_account_id, snapshot_browser_id = TaskReportHelper.resolve_snapshot(task)
+				# 先快照执行时的账号/浏览器，避免后续运营任务释放资源后丢失关联。
+				# 任务若已在回调前被中断释放（字段被清空），这里会回退到 TaskAssignment
+				# 里「发活那一刻」固化的归属 —— 否则 task_logs 会对应不上账号和浏览器。
+				snapshot_account_id, snapshot_browser_id = TaskReportHelper.resolve_snapshot(task)
 
-					update_task_status!(task, status)
-					create_task_log!(task, status, snapshot_account_id, snapshot_browser_id)
-				end
+				# 注意：不再包外层事务。update_task_status 内部已自带事务，并在降级时（事务提交后）
+				# 触发 PublishScheduler.retry_task 重新发布；若这里再包一层事务，retry_task 里的
+				# task.lock! 会因外层事务未提交持有行锁而死锁。
+				update_task_status!(task, status)
+				create_task_log!(task, status, snapshot_account_id, snapshot_browser_id)
 				return render json: {type: 'success', message: "更新成功" }
 			end
 

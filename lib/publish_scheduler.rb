@@ -156,6 +156,15 @@ class PublishScheduler
     :done
   end
 
+  # 失败降级后重新发布：直接复用 attempt_task 走渠道链路由。
+  # attempt_task 会按 task.failure_count 取下一渠道（channel_at），渠道耗尽返回 nil 时置 failed。
+  def self.retry_task(task)
+    attempt_task(task)
+  rescue => e
+    Rails.logger.error "[PublishScheduler] 重新发布任务 #{task.class.name}##{task.id} 异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+    :done
+  end
+
   # postforme 渠道任务执行：锁定任务 → 调 postforme 提交发布（异步，结果由轮询回写）。
   # 提交成功拿 post_id 后任务保持 executing，等 PostformeStatusPoller 轮询到终态回写；
   # 提交失败则走 handle_error 重置任务。
