@@ -55,6 +55,14 @@ class TaskLog < ApplicationRecord
 		failed: 1
 	}
 
+	# 实际发布渠道（0浏览器 1postforme 2x_api）
+	# 注意：必须有 enum 定义，否则写入字符串 'postforme'/'x_api' 会被转成 0，筛选不到。
+	enum publish_channel: {
+		ag_center: 0,
+		postforme: 1,
+		x_api: 2
+	}
+
 	# 作用域：获取今日产生的日志
 	scope :today, -> {
 		where("created_at >= ?", Time.zone.now.beginning_of_day)
