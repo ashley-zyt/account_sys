@@ -95,11 +95,13 @@ class PostDatas
       Rails.logger.info "[PostDatas] 退避 #{cooldown_hours} 小时，跳过最近尝试过采集的账号，剩余候选 #{accounts.size} 个"
     end
 
-    # 每台机器每轮限额：按 machine_ip 分组，每台机器按 id 升序取前 per_machine 个。
+    # 每台机器每轮限额：按 machine_ip 分组，每台机器按「最后采集尝试时间」升序取前 per_machine 个
+    # （最久没尝试采集的优先，从未尝试的排最前）。相比按 id 升序，能避免 id 靠后的账号
+    # 因每轮配额不够、前面的账号反复占位（出错/浏览器问题）而一直饿死。
     # 采完的账号下轮因数据回传变「已更新」被排除，自然轮转到下一批，无需额外游标。
     if per_machine && per_machine.to_i > 0
       accounts = accounts.group_by { |a| a.browser.machine_ip }
-                         .flat_map { |_ip, list| list.sort_by(&:id).first(per_machine.to_i) }
+                         .flat_map { |_ip, list| list.sort_by { |a| a.last_fetch_attempted_at || Time.at(0) }.first(per_machine.to_i) }
       Rails.logger.info "[PostDatas] 每台机器限额 #{per_machine.to_i} 个，本轮实际采集 #{accounts.size} 个账号"
     end
 
