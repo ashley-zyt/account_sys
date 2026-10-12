@@ -79,6 +79,14 @@
       </div>
       <div>
         <div class="admin-field-label">
+          发布渠道
+        </div>
+        <div class="admin-field-value">
+          <%= @account.publish_channel_label %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
           创建时间
         </div>
         <div class="admin-field-value">
@@ -150,16 +158,39 @@
     <% end %>
 
     <div class="admin-section-title" style="margin-top: 14px;">
-      发布渠道授权
+      发布渠道与授权
     </div>
     <div class="admin-section-subtitle">
-      第三方发布平台 / X API 授权状态与操作
+      当前发布方式、失败回退顺序，以及各渠道的授权状态
     </div>
-    <div style="margin-top: 10px;">
-      <span class="admin-label-muted">
-        可用渠道（<%= @account.authorized_publish_channels.size %> 个）：<%= @account.publish_channel_status_tooltip %>
-        　|　首选：<%= @account.publish_channel.presence || '默认（浏览器 → API）' %>
-      </span>
+
+    <div class="admin-two-column" style="margin-top: 12px;">
+      <div>
+        <div class="admin-field-label">
+          首选发布渠道
+        </div>
+        <div class="admin-field-value">
+          <% if @account.publish_channel.present? %>
+            <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+              <%= @account.publish_channel_label %>
+            </span>
+          <% else %>
+            <span class="admin-label-muted">默认（先浏览器，失败自动切外部渠道）</span>
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="admin-field-label">
+          失败回退顺序
+        </div>
+        <div class="admin-field-value">
+          <% chain = @account.available_publish_chain.uniq.map { |c| c == 'ag_center' ? '浏览器' : c } %>
+          <%= chain.present? ? chain.join(' → ') : '无可用渠道' %>
+        </div>
+      </div>
+    </div>
+    <div class="admin-label-muted" style="margin-top: 8px;">
+      浏览器模拟失败会自动切到外部渠道（postforme / x_api）兜底；想优先用外部渠道，请在「编辑账号」里改首选渠道。
     </div>
 
     <%# ---- postforme 卡片（仅非 Twitter 账号显示） ---- %>
