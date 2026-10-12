@@ -11,6 +11,11 @@ module Api
     #   2. 人工在浏览器完成 OAuth
     #   3. status / confirm 按 external_id 反查 social_account_id
     class PostformeAgentController < BaseController
+      include OssSignedUrl
+
+      # 本地视频上传到的 OSS bucket（与 oss/upload_signature 默认一致）
+      DEFAULT_BUCKET = 'operation-viodes'.freeze
+
       # POST /api/v1/postforme_agent/auth_url
       # body: { platform: "youtube", external_id: "张俊-youtube-美食号" }
       def auth_url
@@ -66,23 +71,32 @@ module Api
       end
 
       # POST /api/v1/postforme_agent/publish
-      # body: {
+      # 媒体支持两种来源，可混用：
+      #   media_urls  ：线上公开链接（JSON 数组，或逗号分隔字符串）
+      #   media_files ：本地文件（multipart 上传，服务端先传到 OSS 再拿链接）
+      # body（JSON 形式，仅用链接时）:
       #   social_account_id: "spc_xxx",            # 必填，授权拿到的 social_account_id
       #   caption: "标题/正文",                     # 必填
-      #   media_urls: ["https://.../x.mp4"],        # 可选，媒体公开 URL 数组（也支持逗号分隔字符串）
+      #   media_urls: ["https://.../x.mp4"],        # 可选，媒体公开 URL 数组
       #   external_id: "本系统任务标识",             # 可选，用于关联
       #   scheduled_at: "2026-01-01T12:00:00Z"      # 可选，定时发布（ISO8601 UTC）
-      # }
+      # multipart 形式（传本地文件时）: social_account_id / caption / media_files 等为表单字段
       def publish
         social_account_id = params[:social_account_id].to_s.strip
         caption = params[:caption].to_s
         return render_error(msg: "social_account_id 不能为空") if social_account_id.blank?
         return render_error(msg: "caption 不能为空") if caption.blank?
 
+        # 媒体：直接传的线上链接 + 本地文件上传后得到的 OSS 链接
+        media_urls = parse_media_urls(params[:media_urls])
+        uploaded = upload_media_files(params[:media_files])
+        return render_error(msg: "媒体文件上传失败，请稍后重试", code: 502, status: :bad_gateway) if uploaded == :failed
+        media_urls.concat(uploaded)
+
         resp = PostformeApi.create_post(
           caption: caption,
           social_account_ids: [social_account_id],
-          media_urls: parse_media_urls(params[:media_urls]),
+          media_urls: media_urls,
           external_id: params[:external_id].presence,
           scheduled_at: params[:scheduled_at].presence
         )
@@ -105,6 +119,36 @@ module Api
         when String then value.split(',').map(&:strip).reject(&:blank?)
         else []
         end
+      end
+
+      # 本地文件（multipart）逐个上传 OSS，返回签名 URL 数组；任一失败返回 :failed
+      def upload_media_files(files)
+        return [] if files.blank?
+        list = files.is_a?(Array) ? files : [files]
+        urls = list.map { |f| upload_one_file(f) }
+        return :failed if urls.any?(&:nil?)
+        urls
+      end
+
+      # 单个 UploadedFile 上传到 OSS，返回签名 URL（失败返回 nil）
+      def upload_one_file(file)
+        return nil unless file.respond_to?(:tempfile) && file.tempfile
+
+        require 'fileutils'
+        # 复制到带原始扩展名的临时文件（OSS key 用 UUID + 扩展名，避免丢扩展名导致 postforme 无法识别）
+        ext = File.extname(file.original_filename.to_s)
+        tmp_path = File.join(Dir.tmpdir, "postforme_media_#{SecureRandom.uuid}#{ext}")
+
+        begin
+          FileUtils.cp(file.tempfile.path, tmp_path)
+          result = upload_local_file_to_oss(tmp_path, DEFAULT_BUCKET)
+          result[:ok] ? result[:signed_url] : nil
+        ensure
+          File.delete(tmp_path) if File.exist?(tmp_path)
+        end
+      rescue => e
+        Rails.logger.error "[PostformeAgent] 上传媒体文件失败: #{e.class} #{e.message}"
+        nil
       end
     end
   end
