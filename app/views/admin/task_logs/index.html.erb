@@ -89,6 +89,9 @@
               状态
             </th>
             <th>
+              发布渠道
+            </th>
+            <th>
               执行时间
             </th>
             <th>
@@ -159,6 +162,15 @@
                     失败
                   </span>
                 <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted">
+                  <% if log.publish_channel == 'ag_center' %>浏览器
+                  <% elsif log.publish_channel == 'postforme' %>postforme
+                  <% elsif log.publish_channel == 'x_api' %>x_api
+                  <% else %>-
+                  <% end %>
+                </span>
               </td>
               <td>
                 <span class="admin-label-muted">
