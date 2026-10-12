@@ -247,7 +247,7 @@
           <div class="admin-field-label">授权链接（复制到浏览器打开，完成后点「确认授权」）</div>
           <div style="display: flex; gap: 8px; align-items: center;">
             <input type="text" id="manual-postforme-auth-url" value="<%= flash[:manual_postforme_auth_url] %>" readonly class="admin-input" style="flex: 1;">
-            <button type="button" class="admin-button-secondary" onclick="navigator.clipboard.writeText(document.getElementById('manual-postforme-auth-url').value)">复制</button>
+            <button type="button" class="admin-button-secondary" onclick="copyText(document.getElementById('manual-postforme-auth-url').value)">复制</button>
           </div>
         </div>
       <% end %>
@@ -309,7 +309,7 @@
           <div class="admin-field-label">授权链接（复制到浏览器打开，完成授权后回来提交授权码）</div>
           <div style="display: flex; gap: 8px; align-items: center;">
             <input type="text" id="manual-auth-url" value="<%= flash[:manual_auth_url] %>" readonly class="admin-input" style="flex: 1;">
-            <button type="button" class="admin-button-secondary" onclick="navigator.clipboard.writeText(document.getElementById('manual-auth-url').value)">复制</button>
+            <button type="button" class="admin-button-secondary" onclick="copyText(document.getElementById('manual-auth-url').value)">复制</button>
           </div>
         </div>
       <% end %>
@@ -831,4 +831,34 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <% end %>
+
+<script>
+// 复制到剪贴板：优先 Clipboard API（HTTPS/localhost），失败或不支持时回退 execCommand。
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      /* 成功，无需提示 */
+    }, function() {
+      fallbackCopy(text);
+    });
+    return;
+  }
+  fallbackCopy(text);
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.top = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  if (!ok) { alert('自动复制失败，请手动选中链接后复制'); }
+}
+</script>
 
