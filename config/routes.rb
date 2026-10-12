@@ -255,6 +255,10 @@ Rails.application.routes.draw do
       post "browser_tasks/machine_restarted", to: "browser_tasks#machine_restarted"
       # postforme 授权回调：机器端用户点击授权按钮后主动上报「该账号已点击完成授权」
       post "postforme/auth_callback", to: "postforme#auth_callback"
+      # postforme 授权接口（供本地 agent 调用，token 鉴权，不依赖 Account，用 external_id 标识账号）
+      post "postforme_agent/auth_url", to: "postforme_agent#auth_url"
+      get  "postforme_agent/status",   to: "postforme_agent#status"
+      post "postforme_agent/confirm",  to: "postforme_agent#confirm"
       # X（Twitter）API 认证回调：机器端截到授权码 code 后主动上报
       post "x_auth/auth_callback", to: "x_auth#auth_callback"
       # 搬运视频按ID范围查询
