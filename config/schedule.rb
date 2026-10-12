@@ -12,6 +12,15 @@ set :output, "log/postdatas_fetch.log"
 every :day, at: ['01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00'] do
   runner 'PostDatas.fetch_uncollected_by_machine'
 end
+
+# ==================== 空闲机器穿插采集 ====================
+# 每小时 10 分、40 分检查一次：机器端无发布/养号/私信等任务在排队/执行（空闲）时，
+# 对空闲机器补采「今日未更新」的账号（每台 6 个），把凌晨没采完的补齐。
+# 选 10 分/40 分避开整点任务下发，避免和发布/养号撞车。
+set :output, "log/postdatas_idle_fetch.log"
+every :hour, at: [10, 40] do
+  runner 'PostDatas.fetch_idle_machines'
+end
 # 做数字货币视频
 # set :output, "log/heygen_crypto_video_pipeline.log"
 # every :day, at: '07:10' do

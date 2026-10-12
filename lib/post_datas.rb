@@ -37,8 +37,8 @@ class PostDatas
   #         避免出错账号（浏览器打不开/页面打不开，数据不回传）每轮都被选中占满配额、饿死正常账号。
   #         传 nil 不退避。仅 when only_uncollected 时生效。
   # @param machine_ips [Array<String>, nil] 只采集指定机器（machine_ip）的账号；nil 采集全部机器。
-  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil, machine_ips: nil)
-    logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_fetch.log'))
+  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil, machine_ips: nil, log_file: 'postdatas_fetch.log')
+    logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', log_file))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
 
@@ -207,6 +207,47 @@ class PostDatas
   def self.fetch_uncollected_by_machine(per_machine: 42, clear_pending: true, cooldown_hours: 5)
     clear_pending_fetch_tasks if clear_pending
     fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours)
+  end
+
+  # 空闲机器穿插采集：只采集「机器端当前无非采集任务在排队/执行」的机器上的账号。
+  # 用于白天发布/养号等任务的空档，把凌晨没采完的账号补采完。
+  # 按机器粒度判断空闲：某台机器非采集任务（养号/发私信/查回复/发布）的 queued+running 全为 0
+  # 才视为空闲，只对空闲机器采集，避免和正在跑发布/养号的机器抢 profile。
+  # @param per_machine [Integer] 每台空闲机器每轮采集的账号数（默认 6，穿插轻量，避免影响后续整点任务）
+  # @param cooldown_hours [Integer] 退避窗口（小时），同 fetch
+  # @return [Hash] fetch 结果 + idle_ips（本轮判定为空闲的机器）
+  def self.fetch_idle_machines(per_machine: 6, cooldown_hours: 5)
+    # 独立日志归档到 postdatas_idle_fetch.log（与凌晨主采集 postdatas_fetch.log 分开）
+    idle_logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_idle_fetch.log'))
+    idle_logger.formatter = Rails.logger.formatter
+    Rails.logger = idle_logger
+
+    # 非采集任务类型（排除 fetch）：养号/发私信/查回复/各平台发布
+    non_fetch_types = MachineTaskMonitor::TRACKED_TYPES - ['fetch']
+
+    # 并行查每台机器的任务 summary，找出「空闲」机器
+    results = MachineTaskMonitor.fetch_all(types: non_fetch_types, own_only: true)
+    idle_ips = results.select do |r|
+      next false unless r.ok
+      busy = (r.data['type_status_counts'] || {}).values.sum { |c| c['queued'].to_i + c['running'].to_i }
+      busy.zero?
+    end.map(&:machine_ip)
+
+    if idle_ips.empty?
+      Rails.logger.info "[PostDatas] 无空闲机器，跳过穿插采集"
+      return { success_count: 0, fail_count: 0, total: 0, failed_items: [], idle_ips: [] }
+    end
+
+    Rails.logger.info "[PostDatas] 发现 #{idle_ips.size} 台空闲机器：#{idle_ips.join(', ')}，开始穿插采集（每台 #{per_machine} 个）"
+
+    # 清掉空闲机器上残留的采集队列（凌晨未跑完的 fetch），避免与本轮穿插重叠堆积
+    clear_pending_fetch_tasks(idle_ips)
+
+    result = fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours, machine_ips: idle_ips, log_file: 'postdatas_idle_fetch.log')
+    result.merge(idle_ips: idle_ips)
+  rescue => e
+    Rails.logger.error "[PostDatas] 穿插采集异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+    { success_count: 0, fail_count: 0, total: 0, failed_items: [], idle_ips: [], error: e.message }
   end
 
   # 清掉运营机器上「排队中(queued)/执行中(running)」的采集任务（type=fetch），
