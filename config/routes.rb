@@ -259,6 +259,7 @@ Rails.application.routes.draw do
       post "postforme_agent/auth_url", to: "postforme_agent#auth_url"
       get  "postforme_agent/status",   to: "postforme_agent#status"
       post "postforme_agent/confirm",  to: "postforme_agent#confirm"
+      post "postforme_agent/publish",  to: "postforme_agent#publish"
       # X（Twitter）API 认证回调：机器端截到授权码 code 后主动上报
       post "x_auth/auth_callback", to: "x_auth#auth_callback"
       # 搬运视频按ID范围查询
