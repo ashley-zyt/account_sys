@@ -37,7 +37,7 @@ class PostDatas
   #         避免出错账号（浏览器打不开/页面打不开，数据不回传）每轮都被选中占满配额、饿死正常账号。
   #         传 nil 不退避。仅 when only_uncollected 时生效。
   # @param machine_ips [Array<String>, nil] 只采集指定机器（machine_ip）的账号；nil 采集全部机器。
-  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil, machine_ips: nil, log_file: 'postdatas_fetch.log')
+  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil, machine_ips: nil, log_file: 'postdatas_fetch.log', prioritize_yesterday_published: false)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', log_file))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
@@ -95,13 +95,20 @@ class PostDatas
       Rails.logger.info "[PostDatas] 退避 #{cooldown_hours} 小时，跳过最近尝试过采集的账号，剩余候选 #{accounts.size} 个"
     end
 
-    # 每台机器每轮限额：按 machine_ip 分组，每台机器按「最后采集尝试时间」升序取前 per_machine 个
-    # （最久没尝试采集的优先，从未尝试的排最前）。相比按 id 升序，能避免 id 靠后的账号
-    # 因每轮配额不够、前面的账号反复占位（出错/浏览器问题）而一直饿死。
-    # 采完的账号下轮因数据回传变「已更新」被排除，自然轮转到下一批，无需额外游标。
+    # 每台机器每轮限额：按 machine_ip 分组，每台机器排序后取前 per_machine 个。
+    # 默认按「最后采集尝试时间」升序（最久没尝试采集的优先，从未尝试的排最前），
+    # 避免 id 靠后的账号因每轮配额不够、前面的账号反复占位而一直饿死。
+    # 凌晨主采集（prioritize_yesterday_published=true）额外把「昨天发布成功」的账号排最前，
+    # 保证早上推送前一日发布状况时，昨天有发文的活跃账号优先被采集齐全。
     if per_machine && per_machine.to_i > 0
+      published_ids = prioritize_yesterday_published ? task_log_published_yesterday_ids : []
       accounts = accounts.group_by { |a| a.browser.machine_ip }
-                         .flat_map { |_ip, list| list.sort_by { |a| a.last_fetch_attempted_at || Time.at(0) }.first(per_machine.to_i) }
+                         .flat_map do |_ip, list|
+        list.sort_by do |a|
+          pri = (prioritize_yesterday_published && published_ids.include?(a.id)) ? 0 : 1
+          [pri, a.last_fetch_attempted_at || Time.at(0)]
+        end.first(per_machine.to_i)
+      end
       Rails.logger.info "[PostDatas] 每台机器限额 #{per_machine.to_i} 个，本轮实际采集 #{accounts.size} 个账号"
     end
 
@@ -192,6 +199,17 @@ class PostDatas
 
   # 采集今日还没采集过数据的账号（只补采未更新的，跳过今天已经采过的）
   # 判定「今日已更新」：post_stats 今天有 data_updated_at，或 account_stat 有今日 stat_date。
+  # 昨天发布成功的账号 ID 集合（用于凌晨主采集优先采昨天发文的活跃账号）。
+  # 用 task_logs 判断（status=success + publish_channel 非空 + run_at 在昨天），覆盖所有渠道。
+  def self.task_log_published_yesterday_ids
+    yesterday_start = Date.yesterday.beginning_of_day
+    yesterday_end   = Date.yesterday.end_of_day
+    TaskLog.where(status: TaskLog.statuses[:success])
+           .where.not(publish_channel: nil)
+           .where(run_at: yesterday_start..yesterday_end)
+           .distinct.pluck(:account_id)
+  end
+
   # 复用 fetch 的完整流程（筛选 → 过滤已更新 → 按浏览器分组 → worker 池并行下发），
   # 只是把「全量排序」换成「只保留未更新」。
   def self.fetch_uncollected_today
@@ -206,7 +224,7 @@ class PostDatas
   #        避免出错账号（浏览器打不开等）每轮占满配额饿死正常账号。默认 3 小时。
   def self.fetch_uncollected_by_machine(per_machine: 42, clear_pending: true, cooldown_hours: 5)
     clear_pending_fetch_tasks if clear_pending
-    fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours)
+    fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours, prioritize_yesterday_published: true)
   end
 
   # 空闲机器穿插采集：只采集「机器端当前无非采集任务在排队/执行」的机器上的账号。
