@@ -109,12 +109,17 @@ class PostStat < ApplicationRecord
     day_start = post_date.beginning_of_day
     day_end   = post_date.end_of_day
 
-    TaskLog.where(account_id: account_id)
-           .where.not(publish_channel: nil)
-           .where(status: TaskLog.statuses[:success])
-           .where(run_at: day_start..day_end)
-           .order(run_at: :desc, id: :desc)
-           .pick(:publish_channel)
+    raw = TaskLog.where(account_id: account_id)
+                 .where.not(publish_channel: nil)
+                 .where(status: TaskLog.statuses[:success])
+                 .where(run_at: day_start..day_end)
+                 .order(run_at: :desc, id: :desc)
+                 .pick(:publish_channel)
+
+    # pick 对 enum 字段返回字符串 key（如 "x_api"），而 post_stats.publish_channel 是整数列，
+    # 这里转回整数值（0/1/2/3），避免把字符串写入整数列时被当成 0。
+    return nil if raw.blank?
+    TaskLog.publish_channels[raw] || raw
   end
 
   def self.ransackable_associations(auth_object = nil)
