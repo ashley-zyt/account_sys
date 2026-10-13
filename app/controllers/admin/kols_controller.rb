@@ -158,7 +158,6 @@ class Admin::KolsController < Admin::BaseController
 
   def create
     @kol = Kol.new(kol_params)
-    apply_follower_tier(@kol, params.dig(:kol, :follower_tier))
     apply_domain(@kol, params.dig(:kol))
     apply_language(@kol, params.dig(:kol))
 
@@ -179,7 +178,6 @@ class Admin::KolsController < Admin::BaseController
   end
 
   def update
-    apply_follower_tier(@kol, params.dig(:kol, :follower_tier))
     apply_domain(@kol, params.dig(:kol))
     apply_language(@kol, params.dig(:kol))
 
@@ -379,19 +377,11 @@ class Admin::KolsController < Admin::BaseController
 
   def kol_params
     params.require(:kol).permit(
-      :name, :country, :owner, :notes, :status,
+      :name, :country, :owner, :notes, :status, :follower_tier,
       kol_contacts_attributes: [
         :id, :platform, :nickname, :url, :priority, :messaging_enabled, :outreach_channel, :dm_blocked_reason, :_destroy
       ]
     )
-  end
-
-  # 粉丝量级：表单传 "min,max"（max 可为空），转为 follower_min / follower_max
-  def apply_follower_tier(kol, tier_str)
-    return if tier_str.blank?
-    min_s, max_s = tier_str.to_s.split(",", 2)
-    kol.follower_min = min_s.present? ? min_s.to_i : nil
-    kol.follower_max = max_s.present? ? max_s.to_i : nil
   end
 
   # 领域：combobox 提交名称，同名去重、不存在则创建

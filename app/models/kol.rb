@@ -4,8 +4,7 @@
 #
 #  id                                                       :bigint           not null, primary key
 #  country(所在国家/地区)                                   :string(255)
-#  follower_max(粉丝量级上限（不含，空为以上）)             :bigint
-#  follower_min(粉丝量级下限（含）)                         :bigint
+#  follower_tier(粉丝量级（自由文本）)                       :string
 #  last_contacted_at(最后一次触达时间)                      :datetime
 #  name(KOL名称/常用用户名)                                 :string(255)      not null
 #  next_action_at(下次可执行自动化动作的时间（等待期结束）) :datetime
@@ -81,15 +80,6 @@ class Kol < ApplicationRecord
     STATUS_LABELS[status] || status.to_s
   end
 
-  # 粉丝量级区间（左闭右开）
-  FOLLOWER_TIERS = [
-    { label: "0万-10万",     min: 0,           max: 100_000 },
-    { label: "10万-50万",    min: 100_000,     max: 500_000 },
-    { label: "50万-100万",   min: 500_000,     max: 1_000_000 },
-    { label: "100万-500万",  min: 1_000_000,   max: 5_000_000 },
-    { label: "500万以上",    min: 5_000_000,   max: nil }
-  ].freeze
-
   validates :name, presence: true
   validates :owner, presence: true
   validates :domain, presence: { message: "所属领域不能为空" }
@@ -119,13 +109,6 @@ class Kol < ApplicationRecord
 
   def latest_outgoing_message
     kol_messages.where(direction: :outgoing).order(id: :desc).first
-  end
-
-  # 粉丝量级中文标签
-  def follower_tier_label
-    return nil if follower_min.nil? && follower_max.nil?
-    tier = FOLLOWER_TIERS.find { |t| t[:min] == follower_min && t[:max] == follower_max }
-    tier ? tier[:label] : nil
   end
 
   # ===== 变量值（键值对） =====
@@ -214,7 +197,7 @@ class Kol < ApplicationRecord
   def self.ransackable_attributes(auth_object = nil)
     %w[
       id name domain_id language_id country owner
-      status follower_min follower_max variables_incomplete
+      status follower_tier variables_incomplete
       next_action_at last_contacted_at created_at updated_at
     ]
   end

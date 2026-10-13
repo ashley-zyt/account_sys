@@ -34,12 +34,7 @@
     </div>
     <div>
       <div class="admin-field-label">粉丝量级</div>
-      <% selected_tier = (kol.follower_min.present? || kol.follower_max.present?) ? "#{kol.follower_min},#{kol.follower_max}" : nil %>
-      <%= admin_searchable_select "kol[follower_tier]",
-            Kol::FOLLOWER_TIERS.map { |t| [t[:label], "#{t[:min]},#{t[:max]}"] },
-            selected: selected_tier,
-            placeholder: "未设置",
-            include_blank: "未设置" %>
+      <%= f.text_field :follower_tier, class: "admin-input", placeholder: "自由填写，如 10万-50万 / 100万以上" %>
     </div>
     <div>
       <div class="admin-field-label">所在国家/地区</div>

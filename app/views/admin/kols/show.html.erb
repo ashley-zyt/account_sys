@@ -58,7 +58,7 @@
     </div>
     <div>
       <div class="admin-field-label">粉丝量级</div>
-      <div class="admin-field-value"><%= @kol.follower_tier_label || "-" %></div>
+      <div class="admin-field-value"><%= @kol.follower_tier.presence || "-" %></div>
     </div>
     <div>
       <div class="admin-field-label">国家/地区</div>

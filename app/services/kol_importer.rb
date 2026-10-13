@@ -208,8 +208,8 @@ class KolImporter
       return fail_row("平台「#{platform}」不合法") if platform_key.nil?
       return fail_row("平台「#{platform}」未在系统平台枚举中") unless KolContact.platforms.key?(platform_key)
 
-      tier_min, tier_max = parse_tier(tier)
-      return fail_row("粉丝量级「#{tier}」不合法") if tier.present? && tier_min.nil? && tier_max.nil?
+      # 粉丝量级：自由文本，直接存，随便填各种格式，无需校验
+      follower_tier = tier.presence
 
       # 变量列（BASE_COLUMNS.size 之后），只收集非空的
       variables = {}
@@ -222,7 +222,7 @@ class KolImporter
         ok: true,
         data: {
           name: name, domain_name: domain, owner: owner, country: country.presence,
-          language_name: lang.presence, tier_min: tier_min, tier_max: tier_max,
+          language_name: lang.presence, follower_tier: follower_tier,
           platform: platform_key, nickname: nickname, url: url,
           messaging_enabled: parse_bool(dm),
           priority: priority.present? ? priority.to_i : 0,
@@ -244,19 +244,6 @@ class KolImporter
       TRUE_VALUES.include?(v.to_s.strip.downcase)
     end
 
-    # 粉丝量级：支持 "0万-10万" 标签，也支持 "0,100000" 区间格式
-    def parse_tier(str)
-      return [nil, nil] if str.blank?
-      s = str.to_s.strip
-      tier = Kol::FOLLOWER_TIERS.find { |t| t[:label] == s }
-      return [tier[:min], tier[:max]] if tier
-      if s.include?(",")
-        min_s, max_s = s.split(",", 2)
-        return [min_s.present? ? min_s.to_i : nil, max_s.present? ? max_s.to_i : nil]
-      end
-      [nil, nil]
-    end
-
     def build_kol(d)
       domain = Domain.find_or_create_by_name(d[:domain_name].strip)
       language = d[:language_name].present? ? Language.find_or_create_by_name(d[:language_name].strip) : nil
@@ -267,8 +254,7 @@ class KolImporter
         language: language,
         owner: d[:owner],
         country: d[:country],
-        follower_min: d[:tier_min],
-        follower_max: d[:tier_max],
+        follower_tier: d[:follower_tier],
         notes: d[:notes],
         status: :reserved # 导入默认「未开始」，不自动触达
       )
