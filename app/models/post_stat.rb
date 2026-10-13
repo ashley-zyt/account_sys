@@ -106,14 +106,17 @@ class PostStat < ApplicationRecord
   def self.resolve_publish_channel_by_account_date(account_id, post_date)
     return nil if account_id.blank? || post_date.blank?
 
-    day_start = post_date.beginning_of_day
-    day_end   = post_date.end_of_day
+    # 放宽到 post_date 前后各 1 天：浏览器发布是异步的，task_log.run_at 是回调时间，
+    # 与采集端读到的帖子 post_date 可能跨天错位（尤其凌晨/跨天发布、时区差异）。
+    day_start = (post_date - 1.day).beginning_of_day
+    day_end   = (post_date + 1.day).end_of_day
 
+    # 按 run_at 与 post_date 的日期差升序取最接近的一条，避免误取到相邻日的发布
     raw = TaskLog.where(account_id: account_id)
                  .where.not(publish_channel: nil)
                  .where(status: TaskLog.statuses[:success])
                  .where(run_at: day_start..day_end)
-                 .order(run_at: :desc, id: :desc)
+                 .order(Arel.sql("ABS(DATEDIFF(run_at, '#{post_date}')) ASC"), :id)
                  .pick(:publish_channel)
 
     # pick 对 enum 字段返回字符串 key（如 "x_api"），而 post_stats.publish_channel 是整数列，
