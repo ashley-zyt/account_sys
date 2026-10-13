@@ -52,7 +52,8 @@
         <%= f.searchable_select :publish_channel_eq, {
           0 => '浏览器模拟（ag_center）',
           1 => 'postforme',
-          2 => 'x_api'
+          2 => 'x_api',
+          3 => 'postpeer'
         }.map { |k, v| [v, k] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
       </div>
       <div style="margin-left: auto;">
@@ -168,6 +169,7 @@
                   <% if log.publish_channel == 'ag_center' %>浏览器
                   <% elsif log.publish_channel == 'postforme' %>postforme
                   <% elsif log.publish_channel == 'x_api' %>x_api
+                  <% elsif log.publish_channel == 'postpeer' %>postpeer
                   <% else %>-
                   <% end %>
                 </span>

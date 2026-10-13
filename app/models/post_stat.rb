@@ -7,7 +7,7 @@
 #  data_updated_at(数据更新时间)                           :datetime
 #  likes_count(点赞数量)                                   :integer          default(0)
 #  post_date(发文日期)                                     :date             not null
-#  publish_channel(实际发布渠道 0浏览器 1postforme 2x_api) :integer
+#  publish_channel(实际发布渠道 0浏览器 1postforme 2x_api 3postpeer) :integer
 #  shares_count(转发数量)                                  :integer          default(0)
 #  title(发文标题)                                         :text(65535)
 #  url(发文链接)                                           :text(65535)
@@ -88,6 +88,7 @@ class PostStat < ApplicationRecord
     return nil if clean.blank?
 
     return Account.publish_channels['postforme'] if PostformePost.exists?(platform_url: clean)
+    return Account.publish_channels['postpeer'] if PostpeerPost.exists?(platform_url: clean)
 
     if clean =~ %r{/status/(\d+)}
       tweet_id = $1

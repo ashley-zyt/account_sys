@@ -67,12 +67,19 @@
       <div class="admin-field-label">
         首选渠道
       </div>
-      <%= f.searchable_select :publish_channel, {
-        '' => '默认（浏览器 → API）',
-        'ag_center' => '浏览器模拟',
-        'postforme' => 'postforme',
-        'x_api' => 'x_api（X API）'
-      }.map { |k, v| [v, k] }, {}, class: "admin-input" %>
+      <%
+        publish_opts = {
+          '' => '默认（浏览器 → API）',
+          'ag_center' => '浏览器模拟'
+        }
+        if account.platform.to_s == 'twitter'
+          publish_opts['x_api'] = 'x_api（X API）'
+        else
+          publish_opts['postforme'] = 'postforme'
+          publish_opts['postpeer'] = 'postpeer'
+        end
+      %>
+      <%= f.searchable_select :publish_channel, publish_opts.map { |k, v| [v, k] }, {}, class: "admin-input" %>
     </div>
     <div>
       <div class="admin-field-label">

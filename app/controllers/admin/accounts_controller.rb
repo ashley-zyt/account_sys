@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_manual_postforme_auth, :confirm_postforme_auth, :start_x_auth, :start_manual_x_auth, :complete_manual_x_auth, :destroy]
+	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_manual_postforme_auth, :confirm_postforme_auth, :start_postpeer_auth, :start_manual_postpeer_auth, :confirm_postpeer_auth, :start_x_auth, :start_manual_x_auth, :complete_manual_x_auth, :destroy]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -158,6 +158,37 @@ class Admin::AccountsController < Admin::BaseController
 			redirect_back fallback_location: admin_account_path(@account), notice: "postforme 授权成功（social_account_id=#{result[:social_account_id]}）"
 		else
 			redirect_back fallback_location: admin_account_path(@account), alert: 'postforme 授权未完成，请确认已在浏览器完成 OAuth 后再试'
+		end
+	end
+
+	# 发起 postpeer 授权：建 profile → 拿授权 URL → 记录「授权中」→ 下发机器端打开授权页
+	def start_postpeer_auth
+		result = PostpeerAuthService.start_authorization(@account)
+		if result[:success]
+			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
+		else
+			redirect_back fallback_location: admin_account_path(@account), alert: result[:message]
+		end
+	end
+
+	# 全手动发起 postpeer 授权：只生成授权链接（不下发机器端），链接存 flash 展示给用户复制
+	def start_manual_postpeer_auth
+		result = PostpeerAuthService.start_authorization(@account, skip_machine: true)
+		if result[:success]
+			flash[:manual_postpeer_auth_url] = result[:auth_url]
+			redirect_back fallback_location: admin_account_path(@account), notice: result[:message]
+		else
+			redirect_back fallback_location: admin_account_path(@account), alert: result[:message]
+		end
+	end
+
+	# 全手动确认 postpeer 授权：轮询 postpeer 反查 accountId，拿到则标记「已授权」
+	def confirm_postpeer_auth
+		result = PostpeerAuthService.confirm_authorization(@account)
+		if result
+			redirect_back fallback_location: admin_account_path(@account), notice: "postpeer 授权成功（peer_account_id=#{result[:peer_account_id]}）"
+		else
+			redirect_back fallback_location: admin_account_path(@account), alert: 'postpeer 授权未完成，请确认已在浏览器完成 OAuth 后再试'
 		end
 	end
 

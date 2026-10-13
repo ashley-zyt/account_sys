@@ -71,7 +71,8 @@
           -1 => '默认（未设置）',
           0 => '浏览器模拟',
           1 => 'postforme',
-          2 => 'x_api（X API）'
+          2 => 'x_api（X API）',
+          3 => 'postpeer'
         }.map { |k, v| [v, k] }, { include_blank: "所有渠道" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
@@ -85,6 +86,10 @@
       <div class="admin-filter-group">
         <label class="admin-filter-label">x_api授权</label>
         <%= f.searchable_select :x_api_authorized_eq, [['已授权', 1], ['未授权', 0]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">postpeer授权</label>
+        <%= f.searchable_select :postpeer_authorized_eq, [['已授权', 1], ['未授权', 0]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">运营人员</label>

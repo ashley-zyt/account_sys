@@ -45,6 +45,8 @@ class Account < ApplicationRecord
 	has_one :warmup_profile, dependent: :destroy
 	# postforme 授权关联（第三方发布平台，一对一）
 	has_one :postforme_account, dependent: :destroy
+	# postpeer 授权关联（第三方发布平台，一对一）
+	has_one :postpeer_account, dependent: :destroy
 	# X（Twitter）API 认证凭证（一对一，用于私信/评论等 X API 调用）
 	has_one :x_credential, dependent: :destroy
 	# 通过 task_logs.account_id 快照反查该账号的所有执行日志（兼容运营任务被释放资源的场景）
@@ -100,7 +102,8 @@ class Account < ApplicationRecord
 	enum publish_channel: {
 		ag_center: 0,
 		postforme: 1,
-		x_api: 2
+		x_api: 2,
+		postpeer: 3
 	}
 
 	# 账号的完整发布渠道链（首选渠道 + 平台默认链，见 PublishChannelChain）
@@ -122,6 +125,7 @@ class Account < ApplicationRecord
 			chs << 'x_api' if x_credential&.authorized?
 		else
 			chs << 'postforme' if postforme_account&.authorized?
+			chs << 'postpeer' if postpeer_account&.authorized?
 		end
 		chs
 	end
@@ -133,6 +137,7 @@ class Account < ApplicationRecord
 			items << (x_credential&.authorized? ? 'x_api ✓' : 'x_api ✗')
 		else
 			items << (postforme_account&.authorized? ? 'postforme ✓' : 'postforme ✗')
+			items << (postpeer_account&.authorized? ? 'postpeer ✓' : 'postpeer ✗')
 		end
 		items.join(' · ')
 	end
@@ -143,6 +148,7 @@ class Account < ApplicationRecord
 		when 'ag_center' then '浏览器模拟'
 		when 'postforme' then 'postforme'
 		when 'x_api' then 'x_api'
+		when 'postpeer' then 'postpeer'
 		else '默认'
 		end
 	end
@@ -354,6 +360,10 @@ class Account < ApplicationRecord
     Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM x_account_credentials xc WHERE xc.account_id = accounts.id AND xc.auth_status = #{XCredential.auth_statuses[:authorized]}) THEN 1 ELSE 0 END")
   end
 
+  ransacker :postpeer_authorized, formatter: proc { |v| v.to_i } do
+    Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM postpeer_accounts ppa WHERE ppa.account_id = accounts.id AND ppa.auth_status = #{PostpeerAccount.auth_statuses[:authorized]}) THEN 1 ELSE 0 END")
+  end
+
   # 最后一次发布状态（0成功/1失败），用于账号列表按「最后一次发布成功/失败」筛选。
   # 发布日志用 publish_channel 非空识别（采集/养号等日志该字段为 NULL）。
   ransacker :last_publish_status, formatter: proc { |v| v.to_i } do
@@ -376,6 +386,7 @@ class Account < ApplicationRecord
 			browser_bound
 			postforme_authorized
 			x_api_authorized
+			postpeer_authorized
 			last_publish_status
 			last_used_at
 			remark

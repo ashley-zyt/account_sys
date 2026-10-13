@@ -205,6 +205,14 @@ every 1.minute do
   runner 'PostformeStatusPoller.run'
 end
 
+# ==================== postpeer 状态轮询 ====================
+# 每 1 分钟轮询：授权中的账号 + 处理中的发布任务，查 postpeer 回写终态
+# （有未确认记录才实际调 postpeer，否则空转）
+set :output, "log/postpeer_status_poller.log"
+every 1.minute do
+  runner 'PostpeerStatusPoller.run'
+end
+
 # ==================== X（Twitter）API 发布轮询 ====================
 # 每 5 分钟轮询「处理中」的 X 发布：查媒体处理状态 → 完成则发推回写终态
 set :output, "log/x_post_poller.log"

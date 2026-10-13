@@ -10,14 +10,15 @@
 # 回退游标用任务上的 failure_count：失败 +1，下一次用 available_chain[failure_count]，
 # 取到 nil 表示所有可用渠道都已尝试过，任务终态失败。
 module PublishChannelChain
-  # 各平台的 API 渠道：Twitter→x_api，其它→postforme
-  def self.api_channel(platform)
-    platform.to_s == 'twitter' ? 'x_api' : 'postforme'
-  end
-
-  # 平台默认链：浏览器 × 2 → API
+  # 平台默认链：
+  #   - twitter：浏览器 × 2 → x_api（postpeer 不发 X，不参与）
+  #   - 其它：浏览器 × 2 → postforme → postpeer（postpeer 作为第三层保底）
   def self.default_chain(platform)
-    ['ag_center', 'ag_center', api_channel(platform)]
+    if platform.to_s == 'twitter'
+      ['ag_center', 'ag_center', 'x_api']
+    else
+      ['ag_center', 'ag_center', 'postforme', 'postpeer']
+    end
   end
 
   # 从列表里移除「首个」等于 item 的元素（保留后续重复项）。
@@ -45,6 +46,8 @@ module PublishChannelChain
       account.x_credential&.authorized?
     when 'postforme'
       account.postforme_account&.authorized?
+    when 'postpeer'
+      account.platform.to_s != 'twitter' && account.postpeer_account&.authorized?
     else
       false
     end

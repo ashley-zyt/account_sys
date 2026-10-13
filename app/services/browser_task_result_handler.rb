@@ -23,6 +23,7 @@ class BrowserTaskResultHandler
     when 'kol_message'     then handle_kol_send(id, status, message)
     when 'kol_contact'     then handle_kol_reply(id, status, message, result)
     when 'PostformeAuth'   then handle_postforme_auth(id, status)
+    when 'PostpeerAuth'    then handle_postpeer_auth(id, status)
     else                        handle_publish(model_name, id, status, message)
     end
   end
@@ -151,6 +152,23 @@ class BrowserTaskResultHandler
       Rails.logger.info "[BrowserTaskResult] postforme 授权确认成功 account=#{id} social_account_id=#{result[:social_account_id]}"
     else
       Rails.logger.info "[BrowserTaskResult] postforme 授权回调已收到，但 postforme 数据未就绪，等待轮询器兜底 account=#{id}"
+    end
+    { type: 'success', message: '已处理授权回调' }
+  end
+
+  # postpeer 授权回调：机器端打开授权页后用户完成 OAuth，status=success 表示「已点击授权、页面已跳转」。
+  # 立即查 postpeer 反查 accountId 加速确认；若 postpeer 数据尚未就绪，交给 PostpeerStatusPoller 轮询兜底。
+  def self.handle_postpeer_auth(id, status)
+    return { type: 'success', message: '授权任务未成功，忽略' } unless status == 'success'
+
+    account = Account.find_by(id: id)
+    return { type: 'success', message: '账号不存在，忽略' } unless account
+
+    result = PostpeerAuthService.confirm_authorization(account)
+    if result
+      Rails.logger.info "[BrowserTaskResult] postpeer 授权确认成功 account=#{id} peer_account_id=#{result[:peer_account_id]}"
+    else
+      Rails.logger.info "[BrowserTaskResult] postpeer 授权回调已收到，但 postpeer 数据未就绪，等待轮询器兜底 account=#{id}"
     end
     { type: 'success', message: '已处理授权回调' }
   end

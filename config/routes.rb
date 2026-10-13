@@ -15,6 +15,9 @@ Rails.application.routes.draw do
         post :start_postforme_auth
         post :start_manual_postforme_auth
         post :confirm_postforme_auth
+        post :start_postpeer_auth
+        post :start_manual_postpeer_auth
+        post :confirm_postpeer_auth
         post :start_x_auth
         post :start_manual_x_auth
         post :complete_manual_x_auth
@@ -260,6 +263,13 @@ Rails.application.routes.draw do
       get  "postforme_agent/status",   to: "postforme_agent#status"
       post "postforme_agent/confirm",  to: "postforme_agent#confirm"
       post "postforme_agent/publish",  to: "postforme_agent#publish"
+      # postpeer 授权回调：机器端用户点击授权按钮后主动上报「该账号已点击完成授权」
+      post "postpeer/auth_callback", to: "postpeer#auth_callback"
+      # postpeer 授权接口（供本地 agent 调用，token 鉴权，不依赖 Account，用 profile_id 标识账号）
+      post "postpeer_agent/auth_url", to: "postpeer_agent#auth_url"
+      get  "postpeer_agent/status",   to: "postpeer_agent#status"
+      post "postpeer_agent/confirm",  to: "postpeer_agent#confirm"
+      post "postpeer_agent/publish",  to: "postpeer_agent#publish"
       # X（Twitter）API 认证回调：机器端截到授权码 code 后主动上报
       post "x_auth/auth_callback", to: "x_auth#auth_callback"
       # 搬运视频按ID范围查询

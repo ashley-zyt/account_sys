@@ -18,7 +18,8 @@ class Admin::PostStatsController < Admin::BaseController
     @publish_channels = [
       ['浏览器模拟（ag_center）', 0],
       ['postforme', 1],
-      ['x_api（X API）', 2]
+      ['x_api（X API）', 2],
+      ['postpeer', 3]
     ]
     # 主题选项：去重、排序后的账号主题列表
     @themes = Account.distinct.pluck(:theme).compact.reject(&:blank?).sort.map { |t| [t, t] }

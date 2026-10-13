@@ -190,7 +190,11 @@
       </div>
     </div>
     <div class="admin-label-muted" style="margin-top: 8px;">
-      浏览器模拟失败会自动切到外部渠道（postforme / x_api）兜底；想优先用外部渠道，请在「编辑账号」里改首选渠道。
+      <% if @account.platform == 'twitter' %>
+        浏览器模拟失败会自动切到 x_api（X API）兜底；想优先用 x_api，请在「编辑账号」里改首选渠道。
+      <% else %>
+        浏览器模拟失败会自动切到 postforme / postpeer 兜底；想优先用外部渠道，请在「编辑账号」里改首选渠道。
+      <% end %>
     </div>
 
     <%# ---- postforme 卡片（仅非 Twitter 账号显示） ---- %>
@@ -248,6 +252,67 @@
           <div style="display: flex; gap: 8px; align-items: center;">
             <input type="text" id="manual-postforme-auth-url" value="<%= flash[:manual_postforme_auth_url] %>" readonly class="admin-input" style="flex: 1;">
             <button type="button" class="admin-button-secondary" onclick="copyText(document.getElementById('manual-postforme-auth-url').value)">复制</button>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    <% end %>
+
+    <%# ---- postpeer 卡片（仅非 Twitter 账号显示） ---- %>
+    <% if @account.platform != 'twitter' %>
+    <% ppr = @account.postpeer_account %>
+    <div class="admin-card" style="margin-top: 12px; padding: 16px;">
+      <div style="font-size: 15px; font-weight: 600; margin-bottom: 10px;">postpeer</div>
+      <div class="admin-two-column">
+        <div>
+          <div class="admin-field-label">授权状态</div>
+          <div class="admin-field-value">
+            <% if ppr&.authorized? %>
+              <span class="admin-pill-status" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
+                <span class="admin-pill-status-dot"></span>已授权
+              </span>
+            <% elsif ppr&.authorizing? %>
+              <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                <span class="admin-pill-status-dot"></span>授权中
+              </span>
+            <% elsif ppr&.failed? %>
+              <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                <span class="admin-pill-status-dot"></span>失败
+              </span>
+            <% else %>
+              <span class="admin-pill-status" style="background: rgba(156, 163, 175, 0.1); color: #9ca3af;">
+                <span class="admin-pill-status-dot"></span>未授权
+              </span>
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <div class="admin-field-label">peer_account_id</div>
+          <div class="admin-field-value"><%= ppr&.peer_account_id.presence || "—" %></div>
+        </div>
+        <div>
+          <div class="admin-field-label">授权时间</div>
+          <div class="admin-field-value"><%= ppr&.authorized_at&.strftime("%Y-%m-%d %H:%M") || "—" %></div>
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <%= link_to (ppr&.authorized? ? "重新授权" : "发起授权"), start_postpeer_auth_admin_account_path(@account),
+            data: { turbo_method: :post, turbo_confirm: "将发起 postpeer 授权，机器端会打开授权页，确定？" },
+            class: "admin-button-primary" %>
+        <%= link_to "手动授权", start_manual_postpeer_auth_admin_account_path(@account),
+            data: { turbo_method: :post, turbo_confirm: "将生成手动授权链接（不下发机器端），确定？" },
+            class: "admin-button-secondary" %>
+        <%= link_to "确认授权", confirm_postpeer_auth_admin_account_path(@account),
+            data: { turbo_method: :post, turbo_confirm: "将轮询 postpeer 确认授权结果，确定？" },
+            class: "admin-button-secondary" %>
+      </div>
+
+      <% if flash[:manual_postpeer_auth_url].present? %>
+        <div style="margin-top: 12px;">
+          <div class="admin-field-label">授权链接（复制到浏览器打开，完成后点「确认授权」）</div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="manual-postpeer-auth-url" value="<%= flash[:manual_postpeer_auth_url] %>" readonly class="admin-input" style="flex: 1;">
+            <button type="button" class="admin-button-secondary" onclick="copyText(document.getElementById('manual-postpeer-auth-url').value)">复制</button>
           </div>
         </div>
       <% end %>
