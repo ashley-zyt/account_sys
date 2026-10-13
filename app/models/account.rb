@@ -351,10 +351,16 @@ class Account < ApplicationRecord
 	end
 
 	ransacker :x_api_authorized, formatter: proc { |v| v.to_i } do
-		Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM x_account_credentials xc WHERE xc.account_id = accounts.id AND xc.auth_status = #{XCredential.auth_statuses[:authorized]}) THEN 1 ELSE 0 END")
-	end
+    Arel.sql("CASE WHEN EXISTS (SELECT 1 FROM x_account_credentials xc WHERE xc.account_id = accounts.id AND xc.auth_status = #{XCredential.auth_statuses[:authorized]}) THEN 1 ELSE 0 END")
+  end
 
-	# --- Ransack 搜索白名单 ---
+  # 最后一次发布状态（0成功/1失败），用于账号列表按「最后一次发布成功/失败」筛选。
+  # 发布日志用 publish_channel 非空识别（采集/养号等日志该字段为 NULL）。
+  ransacker :last_publish_status, formatter: proc { |v| v.to_i } do
+    Arel.sql("(SELECT tl.status FROM task_logs tl WHERE tl.account_id = accounts.id AND tl.publish_channel IS NOT NULL ORDER BY tl.run_at DESC, tl.id DESC LIMIT 1)")
+  end
+
+  # --- Ransack 搜索白名单 ---
 	def self.ransackable_attributes(auth_object = nil)
 		%w[
 			id
@@ -370,6 +376,7 @@ class Account < ApplicationRecord
 			browser_bound
 			postforme_authorized
 			x_api_authorized
+			last_publish_status
 			last_used_at
 			remark
 			operator
