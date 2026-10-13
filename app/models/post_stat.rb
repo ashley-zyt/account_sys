@@ -98,6 +98,25 @@ class PostStat < ApplicationRecord
     nil
   end
 
+  # 按「账号 + 日期」反查发布渠道：查该账号当天最后一条成功发布的渠道。
+  # 说明：url 精确反查不可靠（postforme 返回的 platform_url 与采集端回传的真实帖子 url
+  # 格式不一致，如 tiktok 主页 vs 视频、instagram reel 无用户名、youtube watch vs shorts），
+  # 改用「账号 + 发布日期 → 当天最后一条成功发布日志的渠道」。
+  # @return [Integer, nil] 渠道值（0浏览器 1postforme 2x_api 3postpeer），查不到返回 nil
+  def self.resolve_publish_channel_by_account_date(account_id, post_date)
+    return nil if account_id.blank? || post_date.blank?
+
+    day_start = post_date.beginning_of_day
+    day_end   = post_date.end_of_day
+
+    TaskLog.where(account_id: account_id)
+           .where.not(publish_channel: nil)
+           .where(status: TaskLog.statuses[:success])
+           .where(run_at: day_start..day_end)
+           .order(run_at: :desc, id: :desc)
+           .pick(:publish_channel)
+  end
+
   def self.ransackable_associations(auth_object = nil)
     ["account"]
   end

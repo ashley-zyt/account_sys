@@ -674,8 +674,8 @@ class PostDatas
         data_updated_at: Time.current
       }
 
-      # 精确反查实际发布渠道（postforme/x_api 按 url 匹配；匹配不到留空）
-      channel = PostStat.resolve_publish_channel(url)
+      # 按「账号 + 日期」反查发布渠道（该账号当天最后一条成功发布的渠道）
+      channel = PostStat.resolve_publish_channel_by_account_date(account.id, post_date)
       attrs[:publish_channel] = channel if channel.present?
 
       existing = PostStat.find_by(url: url)
