@@ -126,13 +126,16 @@ class AccountStat < ApplicationRecord
     )
     posts_count, views_sum, likes_sum, comments_sum, shares_sum = aggregated
 
-    # 粉丝数：所有平台均使用采集端返回值，否则复用上次快照
-    # 使用 !nil? 判断（而非 present?），确保粉丝数为 0 时也能正确覆盖
+    # 粉丝数：采集端返回正数才采用；返回 0 或 nil 时复用最近一次非 0 的快照。
+    # （采集端「拿不到粉丝量」时回传 0，若直接覆盖会把前一日数据冲成 0，导致数据不准确）
     final_followers =
-      if !followers_count.nil?
+      if followers_count.present? && followers_count.to_i > 0
         followers_count.to_i
       else
-        prev = AccountStat.by_account(account_id).order_by_date.first
+        prev = AccountStat.by_account(account_id)
+                         .where('followers_count > 0')
+                         .order_by_date
+                         .first
         prev ? prev.followers_count.to_i : 0
       end
 
