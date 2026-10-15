@@ -38,6 +38,14 @@ module Api
           return render json: { code: 404, msg: "账号ID[#{params[:account_id]}]不存在" }, status: :not_found
         end
 
+        # 反查发布渠道（账号 + 发布日期 → 当天最后一条成功发布日志的渠道，查不到按账号首选渠道兜底）
+        post_date = begin
+                      Date.parse(params[:post_date].to_s)
+                    rescue
+                      Date.today
+                    end
+        channel = PostStat.resolve_publish_channel_by_account_date(account.id, post_date)
+
         # 检查 url 是否已存在（不可重复）
         existing = PostStat.find_by(url: params[:url])
         if existing
@@ -48,7 +56,8 @@ module Api
             shares_count: params[:shares_count] || 0,
             comments_count: params[:comments_count] || 0,
             views_count: params[:views_count] || 0,
-            data_updated_at: Time.current)
+            data_updated_at: Time.current,
+            publish_channel: channel)
           return render json: { code: 200, msg: "url 已存在，已更新数据", existing_id: existing.id }, status: :ok
         else
           # 创建发文数据
@@ -61,7 +70,8 @@ module Api
             shares_count: params[:shares_count] || 0,
             comments_count: params[:comments_count] || 0,
             views_count: params[:views_count] || 0,
-            data_updated_at: params[:data_updated_at].present? ? Time.parse(params[:data_updated_at]) : Time.current
+            data_updated_at: params[:data_updated_at].present? ? Time.parse(params[:data_updated_at]) : Time.current,
+            publish_channel: channel
           )
 
           if post_stat.save
@@ -127,6 +137,14 @@ module Api
             next
           end
 
+          # 反查发布渠道（账号 + 发布日期 → 当天最后一条成功发布日志的渠道，查不到按账号首选渠道兜底）
+          stat_post_date = begin
+                             Date.parse(stat_params[:post_date].to_s)
+                           rescue
+                             Date.today
+                           end
+          channel = PostStat.resolve_publish_channel_by_account_date(account.id, stat_post_date)
+
           post_stat = PostStat.new(
             account_id: account.id,
             post_date: stat_params[:post_date],
@@ -136,7 +154,8 @@ module Api
             shares_count: stat_params[:shares_count] || 0,
             comments_count: stat_params[:comments_count] || 0,
             views_count: stat_params[:views_count] || 0,
-            data_updated_at: stat_params[:data_updated_at].present? ? Time.parse(stat_params[:data_updated_at]) : Time.current
+            data_updated_at: stat_params[:data_updated_at].present? ? Time.parse(stat_params[:data_updated_at]) : Time.current,
+            publish_channel: channel
           )
 
           if post_stat.save
