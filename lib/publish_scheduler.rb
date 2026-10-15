@@ -170,6 +170,14 @@ class PublishScheduler
   # 提交成功拿 post_id 后任务保持 executing，等 PostformeStatusPoller 轮询到终态回写；
   # 提交失败则走 handle_error 重置任务。
   def self.attempt_postforme_task(task)
+    # postforme 的 YouTube 发文全账号共享配额，14:00 发布易触发「请求次数太多」限流。
+    # 16:00 前不发布：保持 waiting_publish 等 16:00 补发调度（见 config/schedule.rb），
+    # 不置 executing、不调 postforme、不累计 failure_count、不写失败日志。
+    if task.platform.to_s == 'youtube' && Time.current.hour < 16
+      Rails.logger.info "[PublishScheduler] postforme YouTube 任务 #{task.class.name}##{task.id} 延迟到 16:00 后发布，本轮跳过"
+      return :done
+    end
+
     today_range = Date.today.beginning_of_day..Date.today.end_of_day
 
     # 防同账号多次发布：该账号今天已有成功发布记录，释放这条多余的 waiting_publish 任务

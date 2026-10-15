@@ -93,6 +93,14 @@ every [:saturday, :sunday], at: '9:00' do
   runner "PublishScheduler.run(platform: 'youtube')"
 end
 
+# YouTube postforme 渠道补发：postforme 的 YouTube 发文全账号共享配额，
+# 14:00（工作日）/9:00（周末）发布窗口内 postforme 易触发「请求次数太多」限流，
+# 统一延迟到 16:00 后补发（attempt_postforme_task 在 16 点前会跳过 postforme 渠道任务）。
+set :output, "log/publishscheduler_run_youtube_postforme.log"
+every :day, at: '16:00' do
+  runner "PublishScheduler.run(platform: 'youtube')"
+end
+
 # TikTok: 17:55 发布，17:50 分配资源
 set :output, "log/taskscheduler_assignresources_tiktok.log"
 every :day, at: '17:50' do
