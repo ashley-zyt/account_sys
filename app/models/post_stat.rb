@@ -99,10 +99,11 @@ class PostStat < ApplicationRecord
   end
 
   # 按「账号 + 日期」反查发布渠道：查该账号当天最后一条成功发布的渠道。
-  # 说明：url 精确反查不可靠（postforme 返回的 platform_url 与采集端回传的真实帖子 url
-  # 格式不一致，如 tiktok 主页 vs 视频、instagram reel 无用户名、youtube watch vs shorts），
-  # 改用「账号 + 发布日期 → 当天最后一条成功发布日志的渠道」。
-  # @return [Integer, nil] 渠道值（0浏览器 1postforme 2x_api 3postpeer），查不到返回 nil
+  # 主逻辑：task_log 时间匹配（账号 + 发布日期 ±1 天窗口内，最近的成功发布日志渠道）。
+  # 兜底：task_log 匹配不到（功能上线前的旧帖，历史日志无渠道）时，按账号首选渠道推断——
+  #   - 首选渠道非浏览器（postforme/x_api/postpeer）→ 直接用首选渠道
+  #   - 首选为浏览器或未设置 → 默认浏览器（历史发布除首选 API 渠道外都走浏览器）
+  # @return [Integer, nil] 渠道值（0浏览器 1postforme 2x_api 3postpeer），账号无效时返回 nil
   def self.resolve_publish_channel_by_account_date(account_id, post_date)
     return nil if account_id.blank? || post_date.blank?
 
@@ -121,8 +122,15 @@ class PostStat < ApplicationRecord
 
     # pick 对 enum 字段返回字符串 key（如 "x_api"），而 post_stats.publish_channel 是整数列，
     # 这里转回整数值（0/1/2/3），避免把字符串写入整数列时被当成 0。
-    return nil if raw.blank?
-    TaskLog.publish_channels[raw] || raw
+    return TaskLog.publish_channels[raw] || raw if raw.present?
+
+    # 兜底：task_log 时间匹配不到，按账号首选渠道推断。
+    account = Account.find_by(id: account_id)
+    return nil unless account
+
+    preferred = account.publish_channel.to_s
+    ch = (preferred.present? && preferred != 'ag_center') ? preferred : 'ag_center'
+    Account.publish_channels[ch]
   end
 
   def self.ransackable_associations(auth_object = nil)
