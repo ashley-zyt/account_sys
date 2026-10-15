@@ -4,7 +4,8 @@
 #   - 平台默认链（未指定首选渠道时）：
 #     twitter → 浏览器 × 2 → x_api
 #     其它    → 浏览器 × 2 → postforme → postpeer
-#   - 账号「首选渠道」（accounts.publish_channel）非空时，只用该渠道，不回退
+#   - 账号「首选渠道」为 API 渠道（postforme/x_api/postpeer）时，只用该渠道，不回退；
+  #     ag_center（浏览器）或未指定时走平台默认链
 #   - 某渠道不可用（无浏览器机器 / 无对应授权）时自动跳过
 #
 # 回退游标用任务上的 failure_count：失败 +1，下一次用 available_chain[failure_count]，
@@ -21,10 +22,11 @@ module PublishChannelChain
     end
   end
 
-  # 账号完整链：指定了首选渠道就只用该渠道；否则走平台默认链。
+  # 账号完整链：显式指定 API 渠道（postforme/x_api/postpeer）才用唯一渠道，不回退；
+  # 指定 ag_center（浏览器）或未指定时，走平台默认链（浏览器 × 2 → API）。
   def self.for_account(account)
     preferred = account.publish_channel
-    return [preferred] if preferred.present?
+    return [preferred] if preferred.present? && preferred.to_s != 'ag_center'
     default_chain(account.platform)
   end
 
