@@ -33,7 +33,7 @@ module PostpeerStatusPoller
       task = pp.task
       next unless task
 
-      resp = PostpeerApi.post(post_id: pp.post_id)
+      resp = PostpeerApi.post_status(post_id: pp.post_id)
       next unless PostpeerApi.success?(resp)
 
       body = resp[:body]

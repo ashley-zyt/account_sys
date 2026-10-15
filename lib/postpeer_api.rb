@@ -59,7 +59,8 @@ module PostpeerApi
     end
 
     # 查询 post 状态（GET /v1/posts/{postId}）
-    def post(post_id:)
+    # 注意：方法名用 post_status 而非 post，避免与私有 HTTP POST 方法 post(path, body) 重名被覆盖
+    def post_status(post_id:)
       get("/v1/posts/#{post_id}")
     end
 
