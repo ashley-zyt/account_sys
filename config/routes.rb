@@ -236,6 +236,8 @@ Rails.application.routes.draw do
       post "grok/save_video", to: "grok#save_video"
       # 认证接口
       post "auth/login", to: "auth#login"
+      # X 账号 token 下发：外部机器定时获取最新 access_token（需先 auth/login 鉴权）
+      get "x_tokens/latest", to: "x_tokens#latest"
       # RedNote接口
       post "red_note/keywords", to: "red_note#keywords"
       post "red_note/batch_add_keywords", to: "red_note#batch_add_keywords"
