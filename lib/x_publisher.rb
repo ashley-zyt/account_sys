@@ -28,42 +28,64 @@ module XPublisher
     { success: true, message: "已提交 X 上传（media_id=#{result[:media_id]}）", media_id: result[:media_id] }
   end
 
-  # 下载视频到临时文件 + INIT/APPEND/FINALIZE，返回 { success:, media_id: } 或 { success: false, message: }
+  # 下载视频到临时文件 + INIT/APPEND/FINALIZE，返回 { success:, media_id: } 或 { success: false, message:, code: }。
+  # 遇到 X 服务端临时错误（Cloudflare 524 等 5xx/超时）时，等待 30 秒后重试一次；4xx 客户端错误不重试。
   def self.upload_video(token, video_url)
     tmp = Tempfile.new(['x_upload', '.mp4'])
     begin
       download(video_url, tmp.path)
       total_bytes = File.size(tmp.path)
 
-      init = XApi.media_upload_initialize(access_token: token, total_bytes: total_bytes)
-      media_id = init[:body].is_a?(Hash) ? init[:body].dig('data', 'id').to_s : ''
-      unless XApi.success?(init) && media_id.present?
-        return { success: false, message: "X 初始化上传失败：#{XApi.extract_error(init)}", raw: init[:raw].to_s }
+      result = upload_to_x(token, tmp.path, total_bytes)
+      return result if result[:success]
+
+      # 临时错误（X 源站超时 524 等）→ 等 30 秒重试一次（复用已下载文件，不重复下载）
+      if retryable_error?(result)
+        Rails.logger.warn "[XPublisher] X 上传遇到临时错误（code=#{result[:code]}），等待 30 秒后重试：#{result[:message]}"
+        sleep 30
+        result = upload_to_x(token, tmp.path, total_bytes)
       end
 
-      # 分块 APPEND
-      segment_index = 0
-      File.open(tmp.path, 'rb') do |f|
-        while (chunk = f.read(CHUNK_SIZE))
-          append = XApi.media_upload_append(access_token: token, media_id: media_id, segment_index: segment_index, data: chunk)
-          unless XApi.success?(append)
-            return { success: false, message: "X 上传分块 #{segment_index} 失败：#{XApi.extract_error(append)}", raw: append[:raw].to_s }
-          end
-          segment_index += 1
-        end
-      end
-
-      fin = XApi.media_upload_finalize(access_token: token, media_id: media_id)
-      unless XApi.success?(fin)
-        return { success: false, message: "X 结束上传失败：#{XApi.extract_error(fin)}", raw: fin[:raw].to_s }
-      end
-
-      { success: true, media_id: media_id }
-    rescue => e
-      { success: false, message: "X 上传异常：#{e.message}" }
+      result
     ensure
       tmp.close!
     end
+  end
+
+  # 单次上传流程（INIT → 分块 APPEND → FINALIZE），失败结果带 code 供判断是否可重试。
+  def self.upload_to_x(token, file_path, total_bytes)
+    init = XApi.media_upload_initialize(access_token: token, total_bytes: total_bytes)
+    media_id = init[:body].is_a?(Hash) ? init[:body].dig('data', 'id').to_s : ''
+    unless XApi.success?(init) && media_id.present?
+      return { success: false, code: init[:code].to_i, message: "X 初始化上传失败：#{XApi.extract_error(init)}", raw: init[:raw].to_s }
+    end
+
+    # 分块 APPEND
+    segment_index = 0
+    File.open(file_path, 'rb') do |f|
+      while (chunk = f.read(CHUNK_SIZE))
+        append = XApi.media_upload_append(access_token: token, media_id: media_id, segment_index: segment_index, data: chunk)
+        unless XApi.success?(append)
+          return { success: false, code: append[:code].to_i, message: "X 上传分块 #{segment_index} 失败：#{XApi.extract_error(append)}", raw: append[:raw].to_s }
+        end
+        segment_index += 1
+      end
+    end
+
+    fin = XApi.media_upload_finalize(access_token: token, media_id: media_id)
+    unless XApi.success?(fin)
+      return { success: false, code: fin[:code].to_i, message: "X 结束上传失败：#{XApi.extract_error(fin)}", raw: fin[:raw].to_s }
+    end
+
+    { success: true, media_id: media_id }
+  rescue => e
+    { success: false, code: 0, message: "X 上传异常：#{e.message}" }
+  end
+
+  # 是否可重试：超时/网络错误（code=0）或 5xx 服务端错误（含 Cloudflare 524）→ 可重试；4xx 客户端错误不重试。
+  def self.retryable_error?(result)
+    code = result[:code].to_i
+    code == 0 || code >= 500
   end
 
   # 下载视频到本地文件（流式，避免大文件占内存）
