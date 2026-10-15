@@ -39,13 +39,16 @@ module PostpeerStatusPoller
       body = resp[:body]
       next unless body.is_a?(Hash)
 
-      status    = body['status'].to_s
-      platforms = Array(body['platforms'])
+      # postpeer 查询结果：post 数据嵌套在 body['post'] 里（顶层是 success + post）
+      post_data = body['post'].is_a?(Hash) ? body['post'] : body
+
+      status    = post_data['status'].to_s
+      platforms = Array(post_data['platforms'])
       result    = platforms.first || {}
 
-      if status == 'published' || result['success'] == true
+      if status == 'published' || result['status'] == 'published' || result['success'] == true
         mark_success(task, pp, result)
-      elsif status == 'failed' || status == 'partial' || result['success'] == false
+      elsif status == 'failed' || status == 'partial' || result['status'] == 'failed' || result['success'] == false
         mark_failed(task, pp, result)
       end
       # publishing / pending / scheduled 继续等待下轮
@@ -58,7 +61,7 @@ module PostpeerStatusPoller
   def self.mark_success(task, pp, result)
     snapshot_account_id = task.account_id
     snapshot_browser_id = task.browser_id
-    platform_url = result['platformPostUrl'].to_s
+    platform_url = result['platformPostUrl'].to_s.gsub('`', '').strip
 
     pp.update!(status: :success, platform_url: platform_url)
     TaskReportHelper.update_task_status(task, 'success')
@@ -87,7 +90,7 @@ module PostpeerStatusPoller
   # 从 postpeer 结果里提取友好错误信息。
   # error 可能是 string 或 object（Hash），优先取 message 字段，最后 safe_utf8。
   def self.extract_error_message(result)
-    err = result['error']
+    err = result['errorMessage'].presence || result['error']
     msg = if err.is_a?(Hash)
             err['message'].presence || err['error'].presence || err['code'].presence || err.to_s
           else
