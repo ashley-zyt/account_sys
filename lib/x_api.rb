@@ -30,6 +30,9 @@ module XApi
   # 授权范围：私信 + 评论 + 读用户 + 发推 + 媒体上传 + 离线访问（offline.access 才会返回 refresh_token）
   SCOPE = 'dm.read dm.write tweet.read tweet.write users.read offline.access media.write'
 
+  # 最小请求间隔（秒）：X API 对请求频率有限制，两次请求间隔过短会报错
+  MIN_REQUEST_INTERVAL = 30
+
   class << self
     # 生成 PKCE 的 code_verifier + code_challenge（S256）。
     # @return [Array<String, String>] [code_verifier, code_challenge]
@@ -260,6 +263,10 @@ module XApi
     end
 
     def perform(uri, req)
+      # 请求节流：X API 限流，两次请求间隔 < 30 秒会报错。
+      # 多线程并发时在此串行化并强制间隔，避免触发限流。
+      throttle!
+
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = (uri.scheme == 'https')
       http.open_timeout = 30
@@ -271,6 +278,18 @@ module XApi
       { code: 0, body: {}, raw: "timeout: #{e.message}" }
     rescue => e
       { code: 0, body: {}, raw: e.message }
+    end
+
+    # 请求节流：保证两次 X API 请求之间至少间隔 MIN_REQUEST_INTERVAL 秒。
+    def throttle!
+      @throttle_mutex ||= Mutex.new
+      @throttle_mutex.synchronize do
+        if @last_request_at
+          elapsed = Time.current - @last_request_at
+          sleep(MIN_REQUEST_INTERVAL - elapsed) if elapsed < MIN_REQUEST_INTERVAL
+        end
+        @last_request_at = Time.current
+      end
     end
 
     def parse_response(resp)

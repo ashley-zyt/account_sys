@@ -17,6 +17,9 @@ module PostpeerApi
 
   BASE_URL = ENV['POSTPEER_BASE_URL'].presence || 'https://api.postpeer.dev'
 
+  # 最小请求间隔（秒）：postpeer 对请求频率有限制，两次请求间隔过短会报错
+  MIN_REQUEST_INTERVAL = 30
+
   class << self
     # 创建 profile（授权前建立，用于按 profileId 隔离账号，授权后反查 accountId）
     # POST /v1/profiles
@@ -97,6 +100,10 @@ module PostpeerApi
         return { code: 401, body: {}, raw: 'POSTPEER_KEY 未配置（请在 .env 中设置，值来自 postpeer 官网的 API key）' }
       end
 
+      # 请求节流：postpeer 限流，两次请求间隔 < 30 秒会报错。
+      # 发布 worker 池并发时，多线程在此串行化并强制间隔，避免触发限流。
+      throttle!
+
       req['x-access-key'] = api_key
       req['Accept'] = 'application/json'
 
@@ -111,6 +118,18 @@ module PostpeerApi
       { code: 0, body: {}, raw: "timeout: #{e.message}" }
     rescue => e
       { code: 0, body: {}, raw: e.message }
+    end
+
+    # 请求节流：保证两次 postpeer 请求之间至少间隔 MIN_REQUEST_INTERVAL 秒。
+    def throttle!
+      @throttle_mutex ||= Mutex.new
+      @throttle_mutex.synchronize do
+        if @last_request_at
+          elapsed = Time.current - @last_request_at
+          sleep(MIN_REQUEST_INTERVAL - elapsed) if elapsed < MIN_REQUEST_INTERVAL
+        end
+        @last_request_at = Time.current
+      end
     end
 
     def parse_response(resp)

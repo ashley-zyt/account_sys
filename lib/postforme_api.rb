@@ -17,6 +17,9 @@ module PostformeApi
 
   BASE_URL = ENV['POSTFORME_BASE_URL'].presence || 'https://api.postforme.dev'
 
+  # 最小请求间隔（秒）：postforme 对请求频率有限制，两次请求间隔过短会报「请求过于频繁」
+  MIN_REQUEST_INTERVAL = 30
+
   # 平台名映射：本系统 → postforme（twitter 在 postforme 叫 x）
   PLATFORM_MAP = {
     'facebook'  => 'facebook',
@@ -113,6 +116,10 @@ module PostformeApi
         return { code: 401, body: {}, raw: 'POSTFORME_API_KEY 未配置（请在 .env 中设置，值来自 postforme 官网的 API key）' }
       end
 
+      # 请求节流：postforme 限流，两次请求间隔 < 30 秒会报「请求过于频繁」。
+      # 发布 worker 池并发时，多线程在此串行化并强制间隔，避免触发限流。
+      throttle!
+
       req['Authorization'] = "Bearer #{api_key}"
       req['Accept'] = 'application/json'
 
@@ -127,6 +134,20 @@ module PostformeApi
       { code: 0, body: {}, raw: "timeout: #{e.message}" }
     rescue => e
       { code: 0, body: {}, raw: e.message }
+    end
+
+    # 请求节流：保证两次 postforme 请求之间至少间隔 MIN_REQUEST_INTERVAL 秒。
+    # 用类级 Mutex + 上次请求时间，多线程安全——发布 worker 池并发时，各线程的请求
+    # 会在此排队，依次间隔 30 秒发出去，避免「请求过于频繁」触发 postforme 限流。
+    def throttle!
+      @throttle_mutex ||= Mutex.new
+      @throttle_mutex.synchronize do
+        if @last_request_at
+          elapsed = Time.current - @last_request_at
+          sleep(MIN_REQUEST_INTERVAL - elapsed) if elapsed < MIN_REQUEST_INTERVAL
+        end
+        @last_request_at = Time.current
+      end
     end
 
     def parse_response(resp)
