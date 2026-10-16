@@ -80,6 +80,18 @@ module MachinePauseMonitor
 
     # 处理单台机器
     def process(machine_ip, paused)
+      # open_auth_url 是一次性「打开授权页」任务：paused 后无法重放也不需要重发
+      # （机器端 resume 只重放发布类，redispatch 只重发 fetch/nurture/send_message/check_reply，
+      #   授权页任务两头都不沾），会变成僵尸任务把 paused_since 拖到很早、污染告警。
+      # 这里直接清掉机器端记录，不再纳入暂停周期。
+      auth_tasks = paused.select { |t| t[:type].to_s == 'open_auth_url' }
+      unless auth_tasks.empty?
+        clear_machine_paused_records(machine_ip, ['open_auth_url'])
+        finish_local_records(auth_tasks, '授权页任务因 Undetectable 暂停，已清理（一次性任务不重放）')
+        Rails.logger.info "[MachinePauseMonitor] #{machine_ip} 清理 #{auth_tasks.size} 个 open_auth_url 僵尸暂停任务"
+      end
+      paused = paused.reject { |t| t[:type].to_s == 'open_auth_url' }
+
       state = MachinePauseState.find_or_initialize_by(machine_ip: machine_ip)
 
       # 已无暂停任务：结束本轮周期（保留 resumed_at 便于排查「上次什么时候自己好的」）
@@ -91,9 +103,11 @@ module MachinePauseMonitor
         return
       end
 
-      # 累计本轮暂停周期：起始时刻优先沿用已有值，其次取机器端最早进入 paused 的时间
-      # （机器端 finishTask 会把 updated_at 写成进入 paused 的时刻）
-      state.paused_since ||= earliest_paused_at(paused) || Time.current
+      # 累计本轮暂停周期：起始时刻取「剩余真实任务最早进入 paused 的时间」。
+      # 若已有 paused_since 早于该值（此前被已清理的僵尸任务拖早），则重置为真实最早，
+      # 避免僵尸任务让「已停止时长」虚高。
+      real_earliest = earliest_paused_at(paused) || Time.current
+      state.paused_since = real_earliest if state.paused_since.nil? || state.paused_since < real_earliest
       state.paused_count = paused.size
       state.save! if state.new_record? || state.changed?
 
