@@ -87,11 +87,19 @@ class BrowserTaskResultHandler
   end
 
   # 采集回调：发文数据已由机器端通过 /api/v1/post_stats 回传落库，此处仅记录；
-  # 但采集失败若命中账号/网络异常（未登录、代理失效、人机验证等），需全局封禁账号。
+  # 但采集失败若命中账号/网络异常（未登录、代理失效、人机验证等），需全局封禁账号；
+  # 非账号异常（机器卡/浏览器临时打不开/任务中断）则重置 last_fetch_attempted_at，
+  # 让下一轮采集不再被 cooldown 退避跳过，能尽快重采。
   def self.handle_fetch(ref, status, message)
     if status != 'success'
       account_id = ref.to_s.split(':', 2).last.to_i
-      TaskReportHelper.check_account_abnormal(account_id, message) if account_id > 0
+      if account_id > 0
+        if TaskReportHelper.account_abnormal_error?(message)
+          TaskReportHelper.check_account_abnormal(account_id, message)
+        else
+          Account.where(id: account_id).update_all(last_fetch_attempted_at: nil)
+        end
+      end
     end
     Rails.logger.info "[BrowserTaskResult] 采集回调 ref=#{ref} status=#{status} message=#{message}"
     { type: 'success', message: '已记录采集完成' }
