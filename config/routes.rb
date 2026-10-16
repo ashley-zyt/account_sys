@@ -110,6 +110,8 @@ Rails.application.routes.draw do
         get :export
       end
     end
+    # 发布对账（每日账号发布结果快照，暂不挂侧边栏菜单，直接访问 /admin/account_publish_dailies）
+    resources :account_publish_dailies, only: [:index]
     resources :grok_image_resources, only: [:index, :new, :create, :destroy] do
       collection do
         get :oss_signature

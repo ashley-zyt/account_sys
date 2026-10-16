@@ -197,6 +197,14 @@ every :day, at: '09:30' do
   runner 'PublishStatusReport.run'
 end
 
+# ==================== 每日发布对账快照 ====================
+# 每天 21:30 生成当天每个账号的「发布结果 + 未发布原因」快照，
+# 供「发布对账」页（/admin/account_publish_dailies）按日期回溯，排查某天发布数字对不上的原因。
+set :output, "log/account_publish_daily.log"
+every :day, at: '21:30' do
+  runner 'AccountPublishDaily.build_for(Date.today)'
+end
+
 
 # ==================== 抖音/视频号 账号登录状态检查 ====================
 # 每天凌晨 15:30 检查两个平台账号是否登录，未登录时通过钉钉提醒

@@ -1,0 +1,127 @@
+# == Schema Information
+#
+# Table name: account_publish_dailies
+#
+#  id          :bigint           not null, primary key
+#  error_msg   :text(65535)
+#  platform    :integer
+#  reason      :string(255)
+#  result      :integer          not null
+#  stat_date   :date             not null
+#  theme       :string(255)
+#  work_type   :string(255)
+#  account_id  :bigint           not null
+#  task_log_id :bigint
+#  created_at  :datetime         not null
+#  updated_at  :datetime         not null
+#
+# Indexes
+#
+#  index_account_publish_dailies_on_account_id            (account_id)
+#  index_account_publish_dailies_on_stat_date_and_account_id (stat_date,account_id) UNIQUE
+#  index_account_publish_dailies_on_stat_date_and_platform   (stat_date,platform)
+#  index_account_publish_dailies_on_stat_date_and_result     (stat_date,result)
+#
+class AccountPublishDaily < ApplicationRecord
+  belongs_to :account, optional: true
+
+  # 发布结果枚举
+  enum result: {
+    success: 0,            # 发布成功
+    failed: 1,             # 发布失败
+    agent: 2,              # agent 外部发布（系统不发布，正常）
+    banned: 3,             # 账号封禁/停用/未登录
+    tiktok_low_views: 4,   # TikTok 近3天0浏览量跳过
+    no_resource: 5,        # 资源不足（无 pending）
+    no_browser: 6,         # 未绑定浏览器/无 machine_ip
+    unpublished: 7         # 有资源未发布（含无资源队列模式，待核查）
+  }
+
+  def self.ransackable_attributes(auth_object = nil)
+    %w[id stat_date account_id platform theme work_type result reason error_msg created_at]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    %w[account]
+  end
+
+  # ---- 每日对账计算 ----
+
+  # 生成某天的对账快照（幂等：按 stat_date+account_id upsert，可重复跑）
+  # @param date [Date] 统计日期，默认今天
+  # @return [Integer] 落库的账号条数
+  def self.build_for(date = Date.today)
+    day_start = date.beginning_of_day
+    day_end   = date.end_of_day
+
+    # 一次性加载当天所有发布日志，按账号取最后一条（run_at 最大）
+    last_log_by_account = {}
+    TaskLog.where(run_at: day_start..day_end)
+           .where.not(account_id: nil)
+           .order(:run_at, :id)
+           .pluck(:account_id, :status, :error_msg, :id)
+           .each do |account_id, status, error_msg, id|
+             last_log_by_account[account_id] = { status: status, error_msg: error_msg, id: id }
+           end
+
+    count = 0
+    Account.unscoped.where(deleted_at: nil).find_each do |account|
+      result, reason, error_msg, task_log_id = classify(account, last_log_by_account[account.id])
+
+      record = find_or_initialize_by(stat_date: date, account_id: account.id)
+      record.update!(
+        platform:    Account.platforms[account.platform],
+        theme:       account.theme,
+        work_type:   account.work_type,
+        result:      result,
+        reason:      reason,
+        error_msg:   error_msg,
+        task_log_id: task_log_id
+      )
+      count += 1
+    end
+    count
+  end
+
+  # 判定单个账号当天的结果
+  # @return [Array] [result_key, reason, error_msg, task_log_id]
+  def self.classify(account, last_log)
+    # 账号状态异常（封禁/停用/未登录）：优先看当天是否有日志（可能发布失败后才封禁）
+    unless account.status == '正常'
+      if last_log
+        if last_log[:status] == 'success'
+          return ['success', "发布成功（后账号#{account.status}）", nil, last_log[:id]]
+        else
+          msg = last_log[:error_msg].presence || '发布失败'
+          return ['failed', "发布失败后#{account.status}：#{msg}", msg, last_log[:id]]
+        end
+      end
+      return ['banned', "账号#{account.status}", nil, nil]
+    end
+
+    # 正常账号：有日志看结果
+    if last_log
+      if last_log[:status] == 'success'
+        return ['success', '发布成功', nil, last_log[:id]]
+      else
+        msg = last_log[:error_msg].presence || '发布失败'
+        return ['failed', msg, msg, last_log[:id]]
+      end
+    end
+
+    # 无日志：逐项判断未发布原因
+    return ['agent', 'agent 外部发布（系统不发布）', nil, nil] if account.work_type.to_s == 'agent'
+
+    return ['tiktok_low_views', 'TikTok 近3天0浏览量，跳过分配', nil, nil] if account.platform.to_s == 'tiktok' && account.zero_views_in_past_3_days?
+
+    return ['no_browser', '未绑定浏览器或无 machine_ip', nil, nil] if account.browser.blank? || account.browser.machine_ip.blank?
+
+    model = account.task_model_for_work_type
+    return ['unpublished', '无资源队列模式', nil, nil] if model.nil?
+
+    pending = model.where(theme: account.theme, platform: account.platform, status: :pending).count
+    return ['no_resource', '资源不足（无 pending 资源）', nil, nil] if pending.zero?
+
+    ['unpublished', '有资源未发布（待核查）', nil, nil]
+  end
+end

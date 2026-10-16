@@ -1,0 +1,115 @@
+<% content_for :page_title do %>
+  发布对账
+<% end %>
+<% content_for :page_subtitle do %>
+  按日期查看每个账号的发布结果与未发布原因
+<% end %>
+
+<% result_labels = {
+  'success'          => ['发布成功', '#22c55e'],
+  'failed'           => ['发布失败', '#ef4444'],
+  'agent'            => ['agent外部', '#84cc16'],
+  'banned'           => ['账号封禁', '#64748b'],
+  'tiktok_low_views' => ['TikTok低浏览', '#ec4899'],
+  'no_resource'      => ['资源不足', '#f59e0b'],
+  'no_browser'       => ['无浏览器', '#06b6d4'],
+  'unpublished'      => ['未发布', '#94a3b8']
+} %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">发布对账</div>
+      <div class="admin-card-subtitle">统计日期 <%= @stat_date %>，共 <%= @total_count %> 个账号</div>
+    </div>
+  </div>
+
+  <!-- 汇总卡片 -->
+  <div style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 20px;">
+    <% result_labels.each do |key, (label, color)| %>
+      <% count = @summary[key.to_s] || 0 %>
+      <div class="admin-tag" style="background: <%= color %>; color: #fff; padding: 6px 12px; border-radius: 6px;">
+        <%= label %>: <%= count %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- 筛选 -->
+  <div class="admin-filter-form" style="padding: 0 20px 16px;">
+    <form method="get" action="<%= admin_account_publish_dailies_path %>" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">日期</label>
+        <select name="stat_date" class="admin-input admin-filter-input">
+          <% @available_dates.each do |d| %>
+            <option value="<%= d %>" <%= 'selected' if d == @stat_date %>><%= d %></option>
+          <% end %>
+        </select>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <select name="platform" class="admin-input admin-filter-input">
+          <option value="">全部平台</option>
+          <% @platform_options.each do |p| %>
+            <option value="<%= Account.platforms[p] %>" <%= 'selected' if @platform_filter == p.to_s %>><%= p %></option>
+          <% end %>
+        </select>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">结果</label>
+        <select name="result" class="admin-input admin-filter-input">
+          <option value="">全部结果</option>
+          <% result_labels.each do |key, (label, _color)| %>
+            <option value="<%= key %>" <%= 'selected' if @result_filter == key %>><%= label %></option>
+          <% end %>
+        </select>
+      </div>
+      <div>
+        <button type="submit" class="admin-button-primary">筛选</button>
+        <a href="<%= admin_account_publish_dailies_path %>" class="admin-button-secondary" style="margin-left: 8px;">重置</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- 明细表 -->
+  <div class="admin-table-wrapper admin-table-scroll">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>账号</th>
+          <th>平台</th>
+          <th>主题</th>
+          <th>工作模式</th>
+          <th>结果</th>
+          <th>原因</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @records.each do |r| %>
+          <tr>
+            <td>
+              <% if r.account %>
+                <%= link_to r.account.account_name, admin_account_path(r.account), target: "_blank" %>
+              <% else %>
+                #<%= r.account_id %>（已删除）
+              <% end %>
+            </td>
+            <td><%= r.account&.platform || Account.platforms.key(r.platform) %></td>
+            <td><%= r.theme %></td>
+            <td><%= r.work_type %></td>
+            <td>
+              <% label, color = result_labels[r.result] || [r.result, '#94a3b8'] %>
+              <span style="display: inline-block; background: <%= color %>; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px;"><%= label %></span>
+            </td>
+            <td style="max-width: 360px; word-break: break-all;"><%= r.reason %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @records.empty? %>
+    <div style="padding: 24px; text-align: center; color: #94a3b8;">
+      该日期暂无对账数据，请先运行：bundle exec rails runner 'AccountPublishDaily.build_for(Date.parse("YYYY-MM-DD"))'
+    </div>
+  <% end %>
+</div>
