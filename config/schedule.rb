@@ -72,29 +72,19 @@ every :day, at: '12:00' do
   runner "PublishScheduler.run(platform: 'twitter')"
 end
 
-# YouTube: 工作日14:00发布，周末9:00发布，发布前10分钟分配资源
+# YouTube: 每天14:00发布，13:50分配资源
 set :output, "log/taskscheduler_assignresources_youtube.log"
-every :weekday, at: '13:50' do
+every :day, at: '13:50' do
   runner "TaskScheduler.assign_resources(platform: 'youtube')"
 end
 
 set :output, "log/publishscheduler_run_youtube.log"
-every :weekday, at: '14:00' do
-  runner "PublishScheduler.run(platform: 'youtube')"
-end
-
-set :output, "log/taskscheduler_assignresources_youtube.log"
-every [:saturday, :sunday], at: '8:50' do
-  runner "TaskScheduler.assign_resources(platform: 'youtube')"
-end
-
-set :output, "log/publishscheduler_run_youtube.log"
-every [:saturday, :sunday], at: '9:00' do
+every :day, at: '14:00' do
   runner "PublishScheduler.run(platform: 'youtube')"
 end
 
 # YouTube postforme 渠道补发：postforme 的 YouTube 发文全账号共享配额，
-# 14:00（工作日）/9:00（周末）发布窗口内 postforme 易触发「请求次数太多」限流，
+# 14:00 发布窗口内 postforme 易触发「请求次数太多」限流，
 # 统一延迟到 16:00 后补发（attempt_postforme_task 在 16 点前会跳过 postforme 渠道任务）。
 set :output, "log/publishscheduler_run_youtube_postforme.log"
 every :day, at: '16:00' do
