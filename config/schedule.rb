@@ -5,17 +5,17 @@ set :environment, :development
 #   runner 'TaskScheduler.pending_task'
 # end
 
-# 每日凌晨 02:00 - 07:00 分批采集发文数据：每小时一轮，每台机器每轮取 30 个「今日未获取」的账号。
-# 幂等：今天已采到数据的账号（post_stats 有更新 / account_stat 有今日快照）自动跳过；
-# 每轮按 id 升序取前 30 个，采完变「已更新」下轮自然轮转到下一批，避免一次性堆积 + 中断自愈。
+# 每天 00:30 一次性下发所有「今日未采集」的账号到各机器（不限额、不退避），
+# 机器端任务队列排队、空闲时逐个消化直到全部采完；任务已落 SQLite 重启不丢，
+# 中断暂停由 MachinePauseMonitor resume 兜底。白天穿插采集（10/40 分）作兜底补采。
 set :output, "log/postdatas_fetch.log"
-every :day, at: ['01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00'] do
-  runner 'PostDatas.fetch_uncollected_by_machine'
+every :day, at: '00:30' do
+  runner 'PostDatas.fetch_all_uncollected'
 end
 
 # ==================== 空闲机器穿插采集 ====================
-# 每小时 10 分、40 分检查一次：机器端无发布/养号/私信等任务在排队/执行（空闲）时，
-# 对空闲机器补采「今日未更新」的账号（每台 6 个），把凌晨没采完的补齐。
+# 每小时 10 分、40 分检查一次：机器端所有任务（采集/养号/私信/发布）都空闲时，
+# 对空闲机器补采「今日未更新」的账号（每台 6 个），把 00:30 一次性下发后漏采/中断的补齐。
 # 选 10 分/40 分避开整点任务下发，避免和发布/养号撞车。
 set :output, "log/postdatas_idle_fetch.log"
 every :hour, at: [10, 40] do

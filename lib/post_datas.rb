@@ -227,6 +227,13 @@ class PostDatas
     fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours, prioritize_yesterday_published: true)
   end
 
+  # 一次性下发所有「今日未采集」的账号到各机器（不限额、不退避），
+  # 机器端任务队列排队、空闲时逐个消化，直到全部采完。
+  # 用于每天 00:30 一次性下发，替代凌晨分批采集；白天穿插采集仍作兜底补采。
+  def self.fetch_all_uncollected
+    fetch(only_uncollected: true, per_machine: nil, cooldown_hours: nil, prioritize_yesterday_published: true)
+  end
+
   # 空闲机器穿插采集：只采集「机器端当前无非采集任务在排队/执行」的机器上的账号。
   # 用于白天发布/养号等任务的空档，把凌晨没采完的账号补采完。
   # 按机器粒度判断空闲：某台机器非采集任务（养号/发私信/查回复/发布）的 queued+running 全为 0
@@ -240,11 +247,10 @@ class PostDatas
     idle_logger.formatter = Rails.logger.formatter
     Rails.logger = idle_logger
 
-    # 非采集任务类型（排除 fetch）：养号/发私信/查回复/各平台发布
-    non_fetch_types = MachineTaskMonitor::TRACKED_TYPES - ['fetch']
-
-    # 并行查每台机器的任务 summary，找出「空闲」机器
-    results = MachineTaskMonitor.fetch_all(types: non_fetch_types, own_only: true)
+    # 并行查每台机器的任务 summary（含 fetch），找出「完全空闲」的机器：
+    # 所有类型（采集/养号/私信/发布）的 queued+running 都为 0 才算空闲，
+    # 避免在主采集队列还在消化时穿插、把未执行的主采集任务清掉。
+    results = MachineTaskMonitor.fetch_all(types: MachineTaskMonitor::TRACKED_TYPES, own_only: true)
     idle_ips = results.select do |r|
       next false unless r.ok
       busy = (r.data['type_status_counts'] || {}).values.sum { |c| c['queued'].to_i + c['running'].to_i }
@@ -258,9 +264,7 @@ class PostDatas
 
     Rails.logger.info "[PostDatas] 发现 #{idle_ips.size} 台空闲机器：#{idle_ips.join(', ')}，开始穿插采集（每台 #{per_machine} 个）"
 
-    # 清掉空闲机器上残留的采集队列（凌晨未跑完的 fetch），避免与本轮穿插重叠堆积
-    clear_pending_fetch_tasks(idle_ips)
-
+    # 主采集队列已空（上面判定含 fetch 全空闲），无需再清队列，直接补采漏掉的账号
     result = fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours, machine_ips: idle_ips, log_file: 'postdatas_idle_fetch.log')
     result.merge(idle_ips: idle_ips)
   rescue => e
