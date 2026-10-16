@@ -19,7 +19,7 @@ end
 # 选 10 分/40 分避开整点任务下发，避免和发布/养号撞车。
 set :output, "log/postdatas_idle_fetch.log"
 every :hour, at: [10, 40] do
-  runner 'PostDatas.fetch_idle_machines'
+  runner 'PostDatas.fetch_uncollected_by_machine'
 end
 # 做数字货币视频
 # set :output, "log/heygen_crypto_video_pipeline.log"
