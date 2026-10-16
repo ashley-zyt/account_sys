@@ -2,25 +2,25 @@
 #
 # Table name: account_publish_dailies
 #
-#  id          :bigint           not null, primary key
-#  error_msg   :text(65535)
-#  platform    :integer
-#  reason      :string(255)
-#  result      :integer          not null
-#  stat_date   :date             not null
-#  theme       :string(255)
-#  work_type   :string(255)
-#  account_id  :bigint           not null
-#  task_log_id :bigint
-#  created_at  :datetime         not null
-#  updated_at  :datetime         not null
+#  id                                                                                        :bigint           not null, primary key
+#  error_msg(失败时的具体错误信息)                                                           :text(65535)
+#  platform(平台快照（accounts.platform 枚举值）)                                            :integer
+#  reason(未发布/失败原因文本)                                                               :string(255)
+#  result(发布结果 0成功 1失败 2agent 3封禁 4tiktok低浏览 5资源不足 6无浏览器 7有资源未发布) :integer          not null
+#  stat_date(统计日期)                                                                       :date             not null
+#  theme(主题快照)                                                                           :string(255)
+#  work_type(工作模式快照（中文名）)                                                         :string(255)
+#  created_at                                                                                :datetime         not null
+#  updated_at                                                                                :datetime         not null
+#  account_id(账号ID)                                                                        :bigint           not null
+#  task_log_id(关联当天该账号的 task_log（可空）)                                            :bigint
 #
 # Indexes
 #
-#  index_account_publish_dailies_on_account_id            (account_id)
-#  index_account_publish_dailies_on_stat_date_and_account_id (stat_date,account_id) UNIQUE
-#  index_account_publish_dailies_on_stat_date_and_platform   (stat_date,platform)
-#  index_account_publish_dailies_on_stat_date_and_result     (stat_date,result)
+#  index_account_publish_dailies_on_account_id                (account_id)
+#  index_account_publish_dailies_on_stat_date_and_account_id  (stat_date,account_id) UNIQUE
+#  index_account_publish_dailies_on_stat_date_and_platform    (stat_date,platform)
+#  index_account_publish_dailies_on_stat_date_and_result      (stat_date,result)
 #
 class AccountPublishDaily < ApplicationRecord
   belongs_to :account, optional: true
