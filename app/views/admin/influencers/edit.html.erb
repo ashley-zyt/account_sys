@@ -1,0 +1,15 @@
+<% content_for :page_title do %>
+  编辑大V
+<% end %>
+<% content_for :page_subtitle do %>
+  修改大V信息
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">编辑大V</div>
+    </div>
+  </div>
+  <%= render "form", influencer: @influencer %>
+</div>

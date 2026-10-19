@@ -1,0 +1,101 @@
+<% content_for :page_title do %>
+  评论任务
+<% end %>
+<% content_for :page_subtitle do %>
+  大V评论互动的评论任务与执行结果
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">评论任务列表</div>
+      <div class="admin-card-subtitle">查看每个账号对发文评论的执行结果</div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">共 <%= @comment_tasks.total_count %> 条</span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <% labels = { "pending" => "待评论", "queued" => "已下发", "running" => "执行中", "success" => "成功", "failed" => "失败" } %>
+        <%= f.searchable_select :status_eq, CommentTask.statuses.map { |k, v| [labels[k.to_s] || k.to_s, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_comment_tasks_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @comment_tasks.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>发文 ID</th>
+            <th>账号</th>
+            <th>评论内容</th>
+            <th>状态</th>
+            <th>失败原因</th>
+            <th>执行时间</th>
+            <th>创建时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @comment_tasks.each do |t| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted"><%= t.id %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted" title="<%= t.influencer_post&.title %>"><%= t.influencer_post&.post_id || '-' %></span>
+              </td>
+              <td>
+                <% if t.account %>
+                  <%= link_to truncate(t.account.account_name, length: 20), admin_account_path(t.account), class: "admin-link-quiet" %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= truncate(t.comment_content.to_s, length: 40) %></span>
+              </td>
+              <td>
+                <% case t.status %>
+                <% when "pending" %>
+                  <span class="admin-pill-status admin-pill-status-pending"><span class="admin-pill-status-dot"></span>待评论</span>
+                <% when "queued" %>
+                  <span class="admin-pill-status admin-pill-status-pending"><span class="admin-pill-status-dot"></span>已下发</span>
+                <% when "running" %>
+                  <span class="admin-pill-status admin-pill-status-pending"><span class="admin-pill-status-dot"></span>执行中</span>
+                <% when "success" %>
+                  <span class="admin-pill-status admin-pill-status-success"><span class="admin-pill-status-dot"></span>成功</span>
+                <% when "failed" %>
+                  <span class="admin-pill-status admin-pill-status-failed"><span class="admin-pill-status-dot"></span>失败</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= truncate(t.error_msg.to_s, length: 30) %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= t.executed_at&.strftime('%m-%d %H:%M') || '-' %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= t.created_at&.strftime('%m-%d %H:%M') %></span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @comment_tasks %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无评论任务数据。</div>
+  <% end %>
+</div>

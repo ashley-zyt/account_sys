@@ -22,6 +22,7 @@ class BrowserTaskResultHandler
     when 'Account'         then handle_fetch(ref, status, message)
     when 'kol_message'     then handle_kol_send(id, status, message)
     when 'kol_contact'     then handle_kol_reply(id, status, message, result)
+    when 'comment_task'    then handle_comment(id, status, message)
     when 'PostformeAuth'   then handle_postforme_auth(id, status)
     when 'PostpeerAuth'    then handle_postpeer_auth(id, status)
     else                        handle_publish(model_name, id, status, message)
@@ -124,6 +125,19 @@ class BrowserTaskResultHandler
       end
     end
     { type: 'success', message: '已更新私信发送状态' }
+  end
+
+  # 评论回调：按 CommentTask id 定位，更新评论执行结果（成功/失败 + 执行时间）
+  def self.handle_comment(id, status, message)
+    task = CommentTask.find_by(id: id)
+    return { type: 'success', message: '评论任务不存在，忽略' } unless task
+
+    if status == 'success'
+      task.update!(status: :success, executed_at: Time.current, error_msg: nil)
+    else
+      task.update!(status: :failed, executed_at: Time.current, error_msg: message.presence || '评论失败')
+    end
+    { type: 'success', message: '已更新评论执行状态' }
   end
 
   # 浏览器通道发私信失败分类（机器端回传 message 无结构化错误码，靠关键词判断）

@@ -185,6 +185,9 @@ Rails.application.routes.draw do
       end
     end
     resources :kol_action_logs, only: [:index]
+    # 大V评论互动模块
+    resources :influencers
+    resources :comment_tasks, only: [:index]
     # KOL 限制统一管理：账号休眠、联系方式停用、每日尝试上限
     resources :restrictions, only: [:index] do
       collection do

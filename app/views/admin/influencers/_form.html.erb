@@ -1,0 +1,46 @@
+<%= form_with model: [:admin, influencer], class: "admin-form" do |f| %>
+  <% if influencer.errors.any? %>
+    <div class="admin-empty-state" style="margin-bottom: 12px;">
+      <ul class="admin-list">
+        <% influencer.errors.full_messages.each do |msg| %>
+          <li class="admin-list-item">
+            <div class="admin-list-title"><%= msg %></div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">用户名（不带 @）<span style="color: #ef4444;">*</span></div>
+      <%= f.text_field :username, class: "admin-input", placeholder: "如 elonmusk", required: true %>
+    </div>
+    <div>
+      <div class="admin-field-label">用户 ID</div>
+      <%= f.text_field :user_id, class: "admin-input", placeholder: "平台的用户 ID（可选）" %>
+    </div>
+    <div>
+      <div class="admin-field-label">平台</div>
+      <%= f.text_field :platform, class: "admin-input", placeholder: "如 twitter / youtube / instagram" %>
+    </div>
+    <div>
+      <div class="admin-field-label">领域</div>
+      <%= f.collection_select :domain_id, @domains, :id, :name, { include_blank: "选择领域" }, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">启用</div>
+      <%= f.check_box :enabled %>
+      <span style="font-size: 12px; color: #94a3b8; margin-left: 6px;">勾选后参与评论互动</span>
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <div class="admin-field-label">备注</div>
+      <%= f.text_area :remark, class: "admin-input", rows: 3, placeholder: "备注（可选）" %>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <button type="submit" class="admin-button-primary">保存</button>
+    <%= link_to "取消", admin_influencers_path, class: "admin-button-secondary" %>
+  </div>
+<% end %>
