@@ -266,6 +266,16 @@
       .catch(function(e) { content.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: var(--danger); font-size: 13px;">刷新失败：' + e.message + '</div>'; });
   }
 
+  // 会话抽屉里切换「发送成功 / 发送失败」筛选（inline onclick 调用，需全局）
+  function kolFilterMessages(filter) {
+    document.querySelectorAll('.kol-filter-tab').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.filter === filter);
+    });
+    document.querySelectorAll('[data-filter-group]').forEach(function(g) {
+      g.style.display = (g.dataset.filterGroup === filter) ? '' : 'none';
+    });
+  }
+
   function kolPost(url, body, cb) {
     fetch(url, {
       method: 'POST',
