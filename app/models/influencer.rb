@@ -2,20 +2,24 @@
 #
 # Table name: influencers
 #
-#  id         :bigint           not null, primary key
-#  enabled    :boolean          default(TRUE), not null
-#  platform   :string(255)      default("twitter"), not null
-#  remark     :text(65535)
-#  user_id    :string(255)
-#  username   :string(255)      not null
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
-#  domain_id  :bigint
+#  id                                             :bigint           not null, primary key
+#  enabled(是否启用)                              :boolean          default(TRUE), not null
+#  platform(平台（twitter/youtube/instagram 等）) :string(255)      default("twitter"), not null
+#  remark(备注)                                   :text(65535)
+#  username(用户名)                               :string(255)      not null
+#  created_at                                     :datetime         not null
+#  updated_at                                     :datetime         not null
+#  domain_id(所属领域)                            :bigint
+#  user_id(平台用户 ID)                           :string(255)
 #
 # Indexes
 #
 #  index_influencers_on_domain_id  (domain_id)
 #  index_influencers_on_username   (username) UNIQUE
+#
+# Foreign Keys
+#
+#  fk_rails_...  (domain_id => domains.id)
 #
 class Influencer < ApplicationRecord
   belongs_to :domain, optional: true

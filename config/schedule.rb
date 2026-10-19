@@ -172,6 +172,14 @@ every 6.hours do
 end
 
 
+# ==================== 大V评论互动 ====================
+# 每半小时获取大V最新发文，为数字货币领域 X 账号生成定制评论并下发评论任务
+set :output, "log/comment_scheduler.log"
+every 30.minutes do
+  runner 'CommentScheduler.run'
+end
+
+
 # ==================== 花生视频 抖音/视频号 自动发布 ====================
 # 每天下午 16:00 获取一条「执行完成」的花生关键词，发布到抖音、视频号，结果钉钉通知
 set :output, "log/domestic_huasheng_publish_worker.log"
