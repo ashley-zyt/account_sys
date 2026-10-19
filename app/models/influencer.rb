@@ -11,6 +11,7 @@
 #  updated_at                                     :datetime         not null
 #  domain_id(所属领域)                            :bigint
 #  user_id(平台用户 ID)                           :string(255)
+#  account_url(账号链接)                          :string(255)
 #
 # Indexes
 #
@@ -30,7 +31,7 @@ class Influencer < ApplicationRecord
   scope :enabled, -> { where(enabled: true) }
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id username user_id platform domain_id enabled remark created_at updated_at]
+    %w[id username user_id platform account_url domain_id enabled remark created_at updated_at]
   end
 
   def self.ransackable_associations(auth_object = nil)

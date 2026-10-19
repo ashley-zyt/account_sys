@@ -48,6 +48,7 @@
             <th>ID</th>
             <th>用户名</th>
             <th>用户 ID</th>
+            <th>账号链接</th>
             <th>平台</th>
             <th>领域</th>
             <th>启用</th>
@@ -66,6 +67,13 @@
               <td><%= inf.username %></td>
               <td>
                 <span class="admin-label-muted"><%= inf.user_id.presence || '-' %></span>
+              </td>
+              <td>
+                <% if inf.account_url.present? %>
+                  <%= link_to truncate(inf.account_url, length: 28), inf.account_url, target: "_blank", class: "admin-link-quiet", title: inf.account_url %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
               </td>
               <td>
                 <span class="admin-label-muted"><%= inf.platform %></span>

@@ -47,6 +47,6 @@ class Admin::InfluencersController < Admin::BaseController
   end
 
   def influencer_params
-    params.require(:influencer).permit(:username, :user_id, :platform, :domain_id, :enabled, :remark)
+    params.require(:influencer).permit(:username, :user_id, :platform, :account_url, :domain_id, :enabled, :remark)
   end
 end
