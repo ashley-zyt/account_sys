@@ -24,7 +24,6 @@ class CreateInfluencerCommentModule < ActiveRecord::Migration[6.1]
       t.timestamps
     end
     add_index :influencer_posts, :post_id, unique: true
-    add_index :influencer_posts, :influencer_id
 
     create_table :comment_tasks do |t|
       t.references :influencer_post, null: false, foreign_key: true, comment: '大V发文'
