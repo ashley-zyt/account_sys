@@ -3,7 +3,7 @@ class Admin::InfluencersController < Admin::BaseController
 
   def index
     @q = Influencer.ransack(params[:q])
-    @influencers = @q.result.includes(:domain).order(created_at: :desc).page(params[:page])
+    @influencers = @q.result.includes(:domain).order(enabled: :desc, created_at: :desc).page(params[:page])
     @domains = Domain.order(:name)
   end
 
