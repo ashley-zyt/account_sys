@@ -2,22 +2,28 @@
 #
 # Table name: comment_tasks
 #
-#  id                 :bigint           not null, primary key
-#  comment_content    :text(65535)
-#  error_msg          :text(65535)
-#  executed_at        :datetime
-#  machine_task_id    :string(255)
-#  status             :integer          default(0), not null
-#  created_at         :datetime         not null
-#  updated_at         :datetime         not null
-#  account_id         :bigint            not null
-#  influencer_post_id :bigint            not null
+#  id                                               :bigint           not null, primary key
+#  comment_content(生成的评论内容)                  :text(65535)
+#  error_msg(失败原因)                              :text(65535)
+#  executed_at(执行时间)                            :datetime
+#  status(状态 0待评论 1已下发 2执行中 3成功 4失败) :integer          default("pending"), not null
+#  created_at                                       :datetime         not null
+#  updated_at                                       :datetime         not null
+#  account_id(评论账号)                             :bigint           not null
+#  influencer_post_id(大V发文)                      :bigint           not null
+#  machine_task_id(机器端任务 ID)                   :string(255)
 #
 # Indexes
 #
-#  index_comment_tasks_on_account_id                          (account_id)
-#  index_comment_tasks_on_influencer_post_id_and_account_id   (influencer_post_id,account_id) UNIQUE
-#  index_comment_tasks_on_status                              (status)
+#  index_comment_tasks_on_account_id                         (account_id)
+#  index_comment_tasks_on_influencer_post_id                 (influencer_post_id)
+#  index_comment_tasks_on_influencer_post_id_and_account_id  (influencer_post_id,account_id) UNIQUE
+#  index_comment_tasks_on_status                             (status)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#  fk_rails_...  (influencer_post_id => influencer_posts.id)
 #
 class CommentTask < ApplicationRecord
   belongs_to :influencer_post
