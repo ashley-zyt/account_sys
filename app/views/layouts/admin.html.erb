@@ -478,6 +478,22 @@
                 </div>
               <% end %>
             </li>
+            <% influencer_posts_active = controller_path == "admin/influencer_posts" %>
+            <li class="admin-nav-item <%= "active" if influencer_posts_active %>">
+              <%= link_to admin_influencer_posts_path, class: "admin-nav-link", data: { tooltip: "发文列表" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    📄
+                  </div>
+                  <div class="admin-nav-label">
+                    发文列表
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Posts
+                </div>
+              <% end %>
+            </li>
             <% comment_tasks_active = controller_path == "admin/comment_tasks" %>
             <li class="admin-nav-item <%= "active" if comment_tasks_active %>">
               <%= link_to admin_comment_tasks_path, class: "admin-nav-link", data: { tooltip: "评论任务" } do %>
