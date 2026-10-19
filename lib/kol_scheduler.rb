@@ -327,6 +327,8 @@ class KolScheduler
       # 异步受理（仅机器端通道）：等 /api/v1/browser_tasks/result 回调后由 apply_send_result 更新状态
       if result[:async]
         @browser_dispatch_count = @browser_dispatch_count.to_i + 1
+        # 受理成功即转「联系中」，避免回调到达前 KOL 仍 pending 被下一轮重复触达
+        mark_contacting_on_async(kol, contact, account)
         return :async_accepted
       end
 
@@ -352,6 +354,27 @@ class KolScheduler
         KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "network")
         :other
       end
+    end
+
+    # 异步受理成功即把 KOL/联系方式转「联系中」，避免机器端回调到达前 KOL 仍 pending
+    # 被下一轮 process_pending 重复触达（曾出现同一目标连续收到多个账号消息）。
+    # 仅更新状态、不标记消息成功；message 保持 queued，等回调由 apply_send_result 定最终结果。
+    def mark_contacting_on_async(kol, contact, account)
+      deadline = KolOutreachApi.next_wait_time
+      contact.update!(
+        status: :contacting,
+        monitor_until: KolScheduler.reply_monitor_days.days.from_now,
+        last_used_at: Time.current,
+        last_sent_at: Time.current,
+        next_poll_at: 12.hours.from_now
+      )
+      kol.update!(
+        status: :contacting,
+        current_contact_id: contact.id,
+        current_account_id: account.id,
+        last_contacted_at: Time.current,
+        next_action_at: deadline
+      )
     end
 
     def find_template(kol, contact, scenario)

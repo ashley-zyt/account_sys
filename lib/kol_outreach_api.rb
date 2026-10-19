@@ -143,8 +143,19 @@ class KolOutreachApi
           KolAccountAllocator.sleep_account(account)
           TaskReportHelper.check_account_abnormal(account.id, error)
         end
+        # 发送失败后回 pending：账号问题换账号、对方问题换联系方式，都由下一轮重新触达完成
+        return_to_pending_on_failure(kol, contact)
         :failed
       end
+    end
+
+    # 发送失败后，把 KOL 回 pending，让下一轮重新触达（账号问题换账号、对方问题换联系方式）。
+    # 仅当失败的联系方式就是当前渠道、且 KOL 仍处于 pending/contacting 时才回退，避免误伤多渠道 KOL。
+    def return_to_pending_on_failure(kol, contact)
+      return if kol.nil? || contact.nil?
+      return unless %w[pending contacting].include?(kol.status.to_s)
+      return unless kol.current_contact_id == contact.id
+      kol.update!(status: :pending, next_action_at: nil)
     end
 
     # 处理「查回复」最终结果：创建 incoming 消息 + 更新 contact/kol 状态。
