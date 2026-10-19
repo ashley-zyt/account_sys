@@ -455,6 +455,48 @@
 
         
 
+        <div class="admin-sidebar-section" data-section-name="comment" data-sidebar-target="section">
+          <div class="admin-sidebar-section-title"
+               data-action="click->sidebar#toggleSection">
+            <span>评论互动</span>
+            <span class="section-arrow">▾</span>
+          </div>
+          <ul class="admin-nav">
+            <% influencers_active = controller_path == "admin/influencers" %>
+            <li class="admin-nav-item <%= "active" if influencers_active %>">
+              <%= link_to admin_influencers_path, class: "admin-nav-link", data: { tooltip: "大V管理" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    👥
+                  </div>
+                  <div class="admin-nav-label">
+                    大V管理
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Influencers
+                </div>
+              <% end %>
+            </li>
+            <% comment_tasks_active = controller_path == "admin/comment_tasks" %>
+            <li class="admin-nav-item <%= "active" if comment_tasks_active %>">
+              <%= link_to admin_comment_tasks_path, class: "admin-nav-link", data: { tooltip: "评论任务" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    💭
+                  </div>
+                  <div class="admin-nav-label">
+                    评论任务
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Comments
+                </div>
+              <% end %>
+            </li>
+          </ul>
+        </div>
+
         <div class="admin-sidebar-section" data-section-name="config" data-sidebar-target="section">
           <div class="admin-sidebar-section-title"
                data-action="click->sidebar#toggleSection">
