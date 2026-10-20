@@ -4,6 +4,7 @@
 #
 #  id                  :bigint           not null, primary key
 #  posted_at(发文时间) :datetime
+#  source_url(发文链接) :string(255)
 #  title(标题/内容)    :text(65535)
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
@@ -31,7 +32,7 @@ class InfluencerPost < ApplicationRecord
   end
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id influencer_id post_id title posted_at created_at updated_at]
+    %w[id influencer_id post_id title source_url posted_at created_at updated_at]
   end
 
   def self.ransackable_associations(auth_object = nil)

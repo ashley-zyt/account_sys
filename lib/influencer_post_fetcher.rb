@@ -49,6 +49,7 @@ class InfluencerPostFetcher
         record.assign_attributes(
           influencer_id: influencer.id,
           title: p['title'].to_s,
+          source_url: p['source_url'].to_s,
           posted_at: parse_time(p['created_time'])
         )
         created += 1 if record.save

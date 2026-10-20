@@ -43,6 +43,7 @@
             <th>ID</th>
             <th>大V</th>
             <th>发文 ID</th>
+            <th>发文链接</th>
             <th>发文内容</th>
             <th>发文时间</th>
             <th>评论任务数</th>
@@ -58,6 +59,13 @@
               <td><%= post.influencer&.username || '-' %></td>
               <td>
                 <span class="admin-label-muted"><%= post.post_id %></span>
+              </td>
+              <td>
+                <% if post.source_url.present? %>
+                  <%= link_to "查看原文", post.source_url, target: "_blank", class: "admin-link-quiet", title: post.source_url %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
               </td>
               <td>
                 <span class="admin-label-muted" title="<%= post.title.to_s %>"><%= truncate(post.title.to_s, length: 50) %></span>
