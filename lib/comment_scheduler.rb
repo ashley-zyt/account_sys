@@ -2,10 +2,12 @@
 #
 # 流程（每半小时跑一次）：
 #   1. InfluencerPostFetcher 获取启用大V的最新发文并落库
-#   2. 对新发文（尚未生成评论任务的），为每个「数字货币领域 + X 平台 + 正常」账号生成定制评论
+#   2. 对新发文（尚未生成评论任务的），分配一个「当天未满上限」的同领域账号生成定制评论
 #   3. 下发 pending 评论任务到机器端浏览器
 class CommentScheduler
   DIGITAL_CURRENCY_DOMAIN = '数字货币'
+  # 单个账号每天最多评论互动的发文数
+  MAX_COMMENTS_PER_DAY = 2
 
   class << self
     def run
@@ -30,28 +32,39 @@ class CommentScheduler
       Rails.logger.info "[CommentScheduler] 评论互动扫描完成"
     end
 
-    # 为一条发文，给所有数字货币领域 X 账号生成评论任务（内容各自不同）
-    # @return [Integer] 新建任务数
+    # 为一条发文，分配「当天评论数未满上限」的同领域账号生成一条评论任务。
+    # 一条发文只用一个账号评论；每个账号每天最多评论 MAX_COMMENTS_PER_DAY 条发文。
+    # @return [Integer] 新建任务数（0 或 1）
     def generate_tasks_for(post)
-      accounts = digital_currency_accounts
-      return 0 if accounts.empty?
+      account = pick_available_account
+      return 0 if account.nil?
 
-      created = 0
-      accounts.find_each do |account|
-        content = CommentContentGenerator.generate(post, account)
-        next if content.blank?
+      content = CommentContentGenerator.generate(post, account)
+      return 0 if content.blank?
 
-        CommentTask.create!(
-          influencer_post: post,
-          account: account,
-          comment_content: content,
-          status: :pending
-        )
-        created += 1
-      rescue ActiveRecord::RecordNotUnique
-        # 该「发文 × 账号」已有任务，跳过
-      end
-      created
+      CommentTask.create!(
+        influencer_post: post,
+        account: account,
+        comment_content: content,
+        status: :pending
+      )
+      1
+    rescue ActiveRecord::RecordNotUnique
+      0
+    end
+
+    # 选一个「当天已生成评论任务数 < MAX_COMMENTS_PER_DAY」的同领域账号。
+    # 按当天任务数升序选择，实现账号间均衡分配。
+    def pick_available_account
+      accounts = digital_currency_accounts.to_a
+      return nil if accounts.empty?
+
+      counts = CommentTask.where(account_id: accounts.map(&:id))
+                          .where(created_at: Time.current.beginning_of_day..Time.current.end_of_day)
+                          .group(:account_id).count
+
+      accounts.sort_by { |a| counts[a.id].to_i }
+              .find { |a| counts[a.id].to_i < MAX_COMMENTS_PER_DAY }
     end
 
     # 下发所有 pending 评论任务到机器端
