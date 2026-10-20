@@ -60,7 +60,7 @@
                 <span class="admin-label-muted"><%= post.post_id %></span>
               </td>
               <td>
-                <span class="admin-label-muted" title="<%= post.title %>"><%= truncate(post.title.to_s, length: 50) %></span>
+                <span class="admin-label-muted" title="<%= post.title.to_s %>"><%= truncate(post.title.to_s, length: 50) %></span>
               </td>
               <td>
                 <span class="admin-label-muted"><%= post.posted_at&.strftime('%m-%d %H:%M') || '-' %></span>

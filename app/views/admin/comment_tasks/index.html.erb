@@ -54,7 +54,7 @@
                 <span class="admin-label-muted"><%= t.id %></span>
               </td>
               <td>
-                <span class="admin-label-muted" title="<%= t.influencer_post&.title %>"><%= t.influencer_post&.post_id || '-' %></span>
+                <span class="admin-label-muted" title="<%= t.influencer_post&.title.to_s %>"><%= t.influencer_post&.post_id || '-' %></span>
               </td>
               <td>
                 <% if t.account %>
@@ -64,7 +64,7 @@
                 <% end %>
               </td>
               <td>
-                <span class="admin-label-muted"><%= truncate(t.comment_content.to_s, length: 40) %></span>
+                <span class="admin-label-muted" title="<%= t.comment_content.to_s %>"><%= truncate(t.comment_content.to_s, length: 40) %></span>
               </td>
               <td>
                 <% case t.status %>
