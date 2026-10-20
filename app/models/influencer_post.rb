@@ -2,14 +2,14 @@
 #
 # Table name: influencer_posts
 #
-#  id                  :bigint           not null, primary key
-#  posted_at(发文时间) :datetime
+#  id                   :bigint           not null, primary key
+#  posted_at(发文时间)  :datetime
 #  source_url(发文链接) :string(255)
-#  title(标题/内容)    :text(65535)
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
-#  influencer_id(大V)  :bigint           not null
-#  post_id(发文 ID)    :string(255)      not null
+#  title(标题/内容)     :text(65535)
+#  created_at           :datetime         not null
+#  updated_at           :datetime         not null
+#  influencer_id(大V)   :bigint           not null
+#  post_id(发文 ID)     :string(255)      not null
 #
 # Indexes
 #
