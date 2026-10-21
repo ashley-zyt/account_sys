@@ -263,6 +263,8 @@ Rails.application.routes.draw do
       post "oss/upload_signature", to: "oss#upload_signature"
       # 机器端异步浏览器任务完成回调（养号/发文/采集）
       post "browser_tasks/result", to: "browser_tasks#result"
+      # 机器端评论任务状态回传
+      post "comment_tasks/result", to: "comment_tasks#result"
       # 机器端进程启动上报：立即触发一次「忽略时间窗口」的丢失任务兜底扫描
       post "browser_tasks/machine_restarted", to: "browser_tasks#machine_restarted"
       # postforme 授权回调：机器端用户点击授权按钮后主动上报「该账号已点击完成授权」

@@ -5,6 +5,7 @@
 class CommentContentGenerator
   DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions'
   MODEL = 'deepseek-chat'
+  MAX_COMMENT_CHARS = 250
 
   class << self
     # 为大V发文生成一条定制评论
@@ -31,6 +32,7 @@ class CommentContentGenerator
         #{theme_prompt}
         ---
         请用与推文相同的语言输出评论；若推文语言无法判断，默认使用英文，不要用中文。
+        评论不超过 #{MAX_COMMENT_CHARS} 个字符。
 
         只输出评论正文本身，不要任何解释、前缀、引号或 markdown。
       PROMPT
@@ -67,7 +69,8 @@ class CommentContentGenerator
 
     def parse_response(response)
       content = response&.dig('choices', 0, 'message', 'content')
-      content.to_s.strip.presence
+      text = content.to_s.strip.presence
+      text && text[0, MAX_COMMENT_CHARS]
     end
   end
 end
