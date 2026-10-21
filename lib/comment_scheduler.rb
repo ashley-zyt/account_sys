@@ -41,6 +41,12 @@ class CommentScheduler
       theme = post.influencer&.theme
       return 0 if theme.blank?
 
+      # 未配置该主题的评论 prompt 时，不生成评论任务，避免无针对性的兜底内容入库
+      unless CommentThemeConfig.find_by(theme: theme)&.prompt.present?
+        Rails.logger.info "[CommentScheduler] 跳过发文 #{post.id}：主题 #{theme} 未配置评论 prompt"
+        return 0
+      end
+
       account = pick_available_account(theme)
       return 0 if account.nil?
 
