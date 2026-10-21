@@ -216,11 +216,10 @@ class MoveVideo < ApplicationRecord
     }
   end
 
-  # ---------- 下载阶段领取（原子 + 主题轮询） ----------
+  # ---------- 下载阶段领取（原子 + 按消耗速度加权） ----------
   # 拉取一条 pending_download 并原子置为 downloading，并发安全
-  # 主题轮询：每次选取「最近一次领取时间最早」的主题（从未领取过的优先），
-  # 再从该主题取最早录入的一条。这样多次调用会按主题轮流获取（A→B→C→A…）。
-  # 无需额外存储游标，基于 download_started_at 历史，跨进程/跨重启均有效。
+  # 主题选择：按「消耗速度 / 储备量」加权（消耗快 + 储备少优先），
+  # 再从该主题取最早录入的一条。避免消耗快的主题先耗尽、慢的主题堆积。
   # @return [MoveVideo, nil] 领取到的视频（已 reload 为 downloading），无则 nil
   def self.claim_for_download!
     theme = next_download_theme
@@ -234,18 +233,32 @@ class MoveVideo < ApplicationRecord
   end
 
   # 选下一个要领取的主题：只在下载白名单（DOWNLOAD_THEMES）中、有待下载视频的主题里，
-  # 选「最近领取时间最早」的（从未领取过 download_started_at 为 NULL 的优先），保证 14 个主题平均轮询。
+  # 按「消耗速度 / 储备量」加权选主题（消耗快 + 储备少优先）。
+  #   - 消耗权重：该主题的活跃（正常）账号数，账号越多消耗越快
+  #   - 储备量：该主题待下载源视频数
+  # 所有主题都无活跃账号时，退回平均轮询（按最后领取时间）。
   # @return [String, nil] 主题名；白名单内无待下载视频时返回 nil
   def self.next_download_theme
     themes = pending_download.where(theme: DOWNLOAD_THEMES).distinct.pluck(:theme)
     return nil if themes.empty?
 
-    last_claimed = where(theme: themes).group(:theme).maximum(:download_started_at)
+    # 储备量：每个主题待下载数
+    stock = pending_download.where(theme: themes).group(:theme).count
 
-    themes.min_by do |t|
-      claimed = last_claimed[t]
-      [claimed ? 1 : 0, claimed || Time.at(0), t]
+    # 消耗权重：每个主题的活跃（正常）账号数
+    consumption = Account.active.where(theme: themes).group(:theme).count
+
+    # 无任何活跃账号时退回平均轮询（避免权重全 0 退化成固定选第一个）
+    if consumption.values.all?(&:zero?)
+      last_claimed = where(theme: themes).group(:theme).maximum(:download_started_at)
+      return themes.min_by do |t|
+        claimed = last_claimed[t]
+        [claimed ? 1 : 0, claimed || Time.at(0), t]
+      end
     end
+
+    # 按「消耗权重 / (储备量 + 1)」取最大：消耗快 + 储备少优先
+    themes.max_by { |t| consumption[t].to_f / (stock[t].to_i + 1) }
   end
 
   def claim_download!
