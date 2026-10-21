@@ -70,7 +70,7 @@
                 </button>
               </td>
               <td>
-                <span class="admin-label-muted" title="<%= t.influencer_post&.title.to_s %>"><%= truncate(t.influencer_post&.title.to_s, length: 40) %></span>
+                <span class="admin-label-muted" title="<%= t.influencer_post&.title.to_s %>"><%= truncate(t.influencer_post&.title.to_s, length: 20) %></span>
               </td>
               <td>
                 <% if t.account %>
@@ -80,7 +80,7 @@
                 <% end %>
               </td>
               <td>
-                <span class="admin-label-muted" title="<%= t.comment_content.to_s %>"><%= truncate(t.comment_content.to_s, length: 40) %></span>
+                <span class="admin-label-muted" title="<%= t.comment_content.to_s %>"><%= truncate(t.comment_content.to_s, length: 20) %></span>
               </td>
               <td>
                 <% case t.status %>
