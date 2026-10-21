@@ -1,3 +1,28 @@
+# == Schema Information
+#
+# Table name: hosting_accounts
+#
+#  id                                                          :bigint           not null, primary key
+#  platform(平台（twitter/youtube/tiktok/instagram/facebook）) :string(255)      not null
+#  publish_channel(发布渠道（postpeer/postforme/x）)           :string(255)
+#  remark(备注)                                                :text(65535)
+#  resource_queue(资源队列（WorkMode key，如 move/jianying）)  :string(255)
+#  status(状态 0托管中 1暂停 2终止)                            :integer          default("active"), not null
+#  theme(主题（用于资源分配匹配）)                             :string(255)
+#  created_at                                                  :datetime         not null
+#  updated_at                                                  :datetime         not null
+#  client_id(归属客户)                                         :bigint           not null
+#
+# Indexes
+#
+#  index_hosting_accounts_on_client_id  (client_id)
+#  index_hosting_accounts_on_platform   (platform)
+#  index_hosting_accounts_on_theme      (theme)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (client_id => clients.id)
+#
 class HostingAccount < ApplicationRecord
   belongs_to :client
   has_many :hosting_publish_tasks, dependent: :destroy

@@ -14,13 +14,19 @@
 #  token_expires_at(access_token 过期时间)                              :datetime
 #  created_at                                                           :datetime         not null
 #  updated_at                                                           :datetime         not null
-#  account_id(本系统账号 ID（一对一）)                                  :bigint           not null
+#  account_id(本系统账号 ID（一对一）)                                  :bigint
+#  hosting_account_id                                                   :bigint
 #  x_user_id(X 平台 user id)                                            :string(255)
 #
 # Indexes
 #
-#  index_x_account_credentials_on_account_id  (account_id) UNIQUE
-#  index_x_account_credentials_on_x_user_id   (x_user_id)
+#  index_x_account_credentials_on_account_id          (account_id) UNIQUE
+#  index_x_account_credentials_on_hosting_account_id  (hosting_account_id) UNIQUE
+#  index_x_account_credentials_on_x_user_id           (x_user_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (hosting_account_id => hosting_accounts.id)
 #
 class XCredential < ApplicationRecord
   # 显式指定表名，避免 Rails 按类名默认推导成 x_credentials（迁移实际建的是 x_account_credentials）

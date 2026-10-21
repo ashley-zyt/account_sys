@@ -7,18 +7,20 @@
 #  authorized_at(授权完成时间)                           :datetime
 #  created_at                                            :datetime         not null
 #  updated_at                                            :datetime         not null
-#  account_id(本系统账号 ID（一对一）)                   :bigint           not null
+#  account_id(本系统账号 ID（一对一）)                   :bigint
+#  hosting_account_id                                    :bigint
 #  social_account_id(postforme 侧社交账号 ID（spc_xxx）) :string(255)
 #
 # Indexes
 #
-#  index_postforme_accounts_on_account_id         (account_id) UNIQUE
-#  index_postforme_accounts_on_social_account_id  (social_account_id)
+#  index_postforme_accounts_on_account_id          (account_id) UNIQUE
+#  index_postforme_accounts_on_hosting_account_id  (hosting_account_id) UNIQUE
+#  index_postforme_accounts_on_social_account_id   (social_account_id)
 #
-# postforme 账号授权关联表模型。
+# Foreign Keys
 #
-# 记录本系统账号在 postforme 平台的授权状态与社交账号 ID。
-# 授权是一次性异步流程（拿授权 URL → 浏览器完成 OAuth → 轮询确认），本模型承载其状态机。
+#  fk_rails_...  (hosting_account_id => hosting_accounts.id)
+#
 class PostformeAccount < ApplicationRecord
   belongs_to :account, optional: true
   belongs_to :hosting_account, optional: true
