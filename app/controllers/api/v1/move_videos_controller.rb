@@ -29,8 +29,9 @@ module Api
 			# 入参：source_url(来源账号主页链接)、video_url(源视频链接)、platforms(可选，逗号分隔)
 			# 主题由 ThemeConfig 按 source_url 匹配；幂等：同一 video_url 重复录入返回已存在记录
 			def import
-				source_url = params[:source_url].to_s.strip
-				video_url  = params[:video_url].to_s.strip
+				# 调用方可能误带 Markdown 反引号包裹链接，去掉反引号避免主题匹配/去重失效
+				source_url = params[:source_url].to_s.delete('`').strip
+				video_url  = params[:video_url].to_s.delete('`').strip
 				platforms  = params[:platforms].to_s.strip
 				source_title = params[:source_title].to_s.strip
 
