@@ -17,8 +17,9 @@ class MachineTaskMonitor
   #   养号     lib/warmup_scheduler.rb / lib/execute_worker.rb → "WarmupTask:#{id}"
   #   发私信   → "kol_message:#{id}"
   #   查回复   → "kol_contact:#{id}"
+  #   评论     lib/comment_publisher.rb                        → "comment_task:#{id}"
   #   发布     → "<TaskModel>:<id>"（如 MoveTask:123 / OperationTask:123，模型名即前缀）
-  OWN_REF_PREFIXES = ['Account:', 'WarmupTask:', 'kol_message:', 'kol_contact:'].freeze
+  OWN_REF_PREFIXES = ['Account:', 'WarmupTask:', 'kol_message:', 'kol_contact:', 'comment_task:'].freeze
 
   # 发布类任务的 ref 前缀（模型名 + 冒号），由工作模式注册表动态生成，
   # 保证新增发布模型时自动纳入，不会被 ref_prefix 过滤误伤。
@@ -30,7 +31,7 @@ class MachineTaskMonitor
   end
 
   TRACKED_TYPES = %w[
-    fetch nurture send_message check_reply
+    fetch nurture send_message check_reply twitter_comment
     facebook_publish twitter_publish youtube_publish tiktok_publish instagram_publish
   ].freeze
 
@@ -42,6 +43,7 @@ class MachineTaskMonitor
     'nurture'           => '养号',
     'send_message'      => '发私信',
     'check_reply'       => '查回复',
+    'twitter_comment'   => '评论',
     'facebook_publish'  => 'Facebook发布',
     'twitter_publish'   => 'X发布',
     'youtube_publish'   => 'YouTube发布',
