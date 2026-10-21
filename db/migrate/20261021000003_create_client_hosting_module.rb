@@ -21,7 +21,6 @@ class CreateClientHostingModule < ActiveRecord::Migration[6.1]
       t.text :remark, comment: '备注'
       t.timestamps
     end
-    add_index :hosting_accounts, :client_id
     add_index :hosting_accounts, :platform
     add_index :hosting_accounts, :theme
 
@@ -39,8 +38,6 @@ class CreateClientHostingModule < ActiveRecord::Migration[6.1]
       t.timestamps
     end
     add_index :hosting_publish_tasks, [:resource_type, :resource_id]
-    add_index :hosting_publish_tasks, :hosting_account_id
-    add_index :hosting_publish_tasks, :client_id
     add_index :hosting_publish_tasks, :status
   end
 end
