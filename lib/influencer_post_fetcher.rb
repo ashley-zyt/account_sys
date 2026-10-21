@@ -43,8 +43,9 @@ class InfluencerPostFetcher
         influencer = influencer_by_user_id[p['user_id'].to_s]
         next if influencer.nil? # 发文不属于任何启用大V，跳过
 
+        # 按发文 ID 去重：已存在则跳过，避免重复入库
         record = InfluencerPost.find_or_initialize_by(post_id: post_id)
-        next if record.persisted? # 已存在，跳过（幂等）
+        next if record.persisted?
 
         record.assign_attributes(
           influencer_id: influencer.id,
@@ -52,7 +53,12 @@ class InfluencerPostFetcher
           source_url: p['source_url'].to_s,
           posted_at: parse_time(p['created_time'])
         )
-        created += 1 if record.save
+        begin
+          created += 1 if record.save
+        rescue ActiveRecord::RecordNotUnique
+          # 并发下该 post_id 已被其他进程写入，post_id 唯一索引兜底去重
+          Rails.logger.info "[InfluencerPostFetcher] 发文 #{post_id} 已存在，跳过重复入库"
+        end
       end
       created
     rescue => e
