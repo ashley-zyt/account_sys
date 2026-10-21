@@ -3,7 +3,7 @@
 # 流程（每半小时跑一次）：
 #   1. InfluencerPostFetcher 获取启用大V的最新发文并落库
 #   2. 对新发文（尚未生成评论任务的），分配一个「当天未满上限」的同主题账号生成定制评论
-#   3. 仅生成 pending 评论任务，不自动下发——由人工在后台检查后手动「执行」
+#   3. 下发 pending 评论任务到机器端浏览器执行
 #
 # 主题粒度：账号按发文大V的 theme（Account.theme）匹配，评论 prompt 用主题对应的 CommentThemeConfig。
 class CommentScheduler
@@ -27,7 +27,8 @@ class CommentScheduler
       end
       Rails.logger.info "[CommentScheduler] 为新发文生成评论任务 #{generated} 条"
 
-      # 3. 不自动下发：任务停留在 pending，由人工在后台检查后手动「执行」
+      # 3. 下发 pending 任务到机器端
+      dispatch_pending_tasks
 
       Rails.logger.info "[CommentScheduler] 评论互动扫描完成"
     end
@@ -79,6 +80,19 @@ class CommentScheduler
 
       accounts.sort_by { |a| counts[a.id].to_i }
               .find { |a| counts[a.id].to_i < MAX_COMMENTS_PER_DAY }
+    end
+
+    # 下发所有 pending 评论任务到机器端
+    def dispatch_pending_tasks
+      CommentTask.where(status: :pending).find_each do |task|
+        result = CommentPublisher.dispatch(task)
+        if result[:success]
+          task.update!(status: :queued, machine_task_id: result[:task_id])
+        else
+          # 下发失败：保持 pending，下一轮重试（机器端不可达/缺 profile 等）
+          Rails.logger.warn "[CommentScheduler] 评论任务 #{task.id} 下发失败：#{result[:error]}"
+        end
+      end
     end
 
     # 指定主题 + X 平台 + 正常状态的账号（Account.theme 直接匹配主题）
