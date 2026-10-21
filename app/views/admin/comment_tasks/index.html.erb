@@ -46,6 +46,7 @@
             <th>失败原因</th>
             <th>执行时间</th>
             <th>创建时间</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -92,6 +93,13 @@
               </td>
               <td>
                 <span class="admin-label-muted"><%= t.created_at&.strftime('%m-%d %H:%M') %></span>
+              </td>
+              <td>
+                <% if %w[pending failed].include?(t.status) %>
+                  <%= link_to "执行", execute_admin_comment_task_path(t), data: { turbo_method: :post, turbo_confirm: "确定手动执行该评论任务吗？" }, class: "admin-link-quiet", style: "color: var(--success);" %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
               </td>
             </tr>
           <% end %>
