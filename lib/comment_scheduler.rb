@@ -5,7 +5,7 @@
 #   2. 对新发文（尚未生成评论任务的），分配一个「当天未满上限」的同主题账号生成定制评论
 #   3. 下发 pending 评论任务到机器端浏览器
 #
-# 主题粒度：账号按发文大V的 theme（Account.theme）匹配，评论 prompt 用主题的 Theme.prompts。
+# 主题粒度：账号按发文大V的 theme（Account.theme）匹配，评论 prompt 用主题对应的 CommentThemeConfig。
 class CommentScheduler
   # 单个账号每天最多评论互动的发文数
   MAX_COMMENTS_PER_DAY = 2
@@ -34,7 +34,7 @@ class CommentScheduler
     end
 
     # 为一条发文，分配「当天评论数未满上限」的同主题账号生成一条评论任务。
-    # 主题取发文对应大V的 theme；账号 = Account.theme 匹配；prompt 用主题的 Theme.prompts。
+    # 主题取发文对应大V的 theme；账号 = Account.theme 匹配；prompt 用主题对应的 CommentThemeConfig。
     # 一条发文只用一个账号评论；每个账号每天最多评论 MAX_COMMENTS_PER_DAY 条发文。
     # @return [Integer] 新建任务数（0 或 1）
     def generate_tasks_for(post)

@@ -15,12 +15,6 @@
 class CommentThemeConfig < ApplicationRecord
   validates :theme, presence: true, uniqueness: true
 
-  # 每行一条 prompt（评论生成时逐条作为背景/要求注入）
-  def prompt_array
-    return [] unless prompt.present?
-    prompt.split("\n").map(&:strip).reject(&:empty?)
-  end
-
   def self.ransackable_attributes(auth_object = nil)
     %w[id theme prompt created_at updated_at]
   end
