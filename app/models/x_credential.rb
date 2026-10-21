@@ -26,7 +26,8 @@ class XCredential < ApplicationRecord
   # 显式指定表名，避免 Rails 按类名默认推导成 x_credentials（迁移实际建的是 x_account_credentials）
   self.table_name = "x_account_credentials"
 
-  belongs_to :account
+  belongs_to :account, optional: true
+  belongs_to :hosting_account, optional: true
 
   # 认证状态：pending=未认证 / authorizing=认证中 / authorized=已认证 / failed=失败
   enum auth_status: {
@@ -79,6 +80,6 @@ class XCredential < ApplicationRecord
   end
 
   def self.ransackable_associations(auth_object = nil)
-    %w[account]
+    %w[account hosting_account]
   end
 end

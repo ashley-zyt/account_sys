@@ -20,7 +20,8 @@
 # 记录本系统账号在 postforme 平台的授权状态与社交账号 ID。
 # 授权是一次性异步流程（拿授权 URL → 浏览器完成 OAuth → 轮询确认），本模型承载其状态机。
 class PostformeAccount < ApplicationRecord
-  belongs_to :account
+  belongs_to :account, optional: true
+  belongs_to :hosting_account, optional: true
 
   # 授权状态：pending=未授权 / authorizing=授权中 / authorized=已授权 / failed=失败
   enum auth_status: {
@@ -40,6 +41,6 @@ class PostformeAccount < ApplicationRecord
   end
 
   def self.ransackable_associations(auth_object = nil)
-    %w[account]
+    %w[account hosting_account]
   end
 end

@@ -1,0 +1,65 @@
+<% content_for :page_title do %>
+  托管账号
+<% end %>
+<% content_for :page_subtitle do %>
+  客户托管的账号（独立于自有账号体系）
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">托管账号列表</div>
+      <div class="admin-card-subtitle">每个托管账号指定资源队列、主题、平台与发布渠道</div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">共 <%= @hosting_accounts.total_count %> 条</span>
+      <%= link_to "添加托管账号", new_admin_hosting_account_path, class: "admin-button-primary" %>
+    </div>
+  </div>
+
+  <% if @hosting_accounts.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>客户</th>
+            <th>平台</th>
+            <th>主题</th>
+            <th>资源队列</th>
+            <th>发布渠道</th>
+            <th>状态</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% status_labels = { "active" => "托管中", "paused" => "暂停", "terminated" => "终止" } %>
+          <% @hosting_accounts.each do |a| %>
+            <tr>
+              <td><span class="admin-label-muted"><%= a.id %></span></td>
+              <td><%= a.client&.name || '-' %></td>
+              <td><%= a.platform %></td>
+              <td><%= a.theme || '-' %></td>
+              <td><%= WorkMode.find(a.resource_queue)&.name || a.resource_queue || '-' %></td>
+              <td><%= a.publish_channel || '-' %></td>
+              <td><span class="admin-label-muted"><%= status_labels[a.status] || a.status %></span></td>
+              <td><span class="admin-label-muted"><%= a.created_at&.strftime('%m-%d %H:%M') %></span></td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "编辑", edit_admin_hosting_account_path(a), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "删除", admin_hosting_account_path(a), data: { turbo_method: :delete, turbo_confirm: "确定删除该托管账号吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @hosting_accounts %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无托管账号数据。</div>
+  <% end %>
+</div>

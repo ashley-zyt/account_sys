@@ -17,7 +17,8 @@
 #  index_postpeer_accounts_on_peer_account_id  (peer_account_id)
 #
 class PostpeerAccount < ApplicationRecord
-  belongs_to :account
+  belongs_to :account, optional: true
+  belongs_to :hosting_account, optional: true
 
   # 授权状态：pending=未授权 / authorizing=授权中 / authorized=已授权 / failed=失败
   enum auth_status: {
@@ -37,6 +38,6 @@ class PostpeerAccount < ApplicationRecord
   end
 
   def self.ransackable_associations(auth_object = nil)
-    %w[account]
+    %w[account hosting_account]
   end
 end

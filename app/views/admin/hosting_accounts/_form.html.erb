@@ -1,0 +1,49 @@
+<%= form_with model: [:admin, hosting_account], class: "admin-form" do |f| %>
+  <% if hosting_account.errors.any? %>
+    <div class="admin-empty-state" style="margin-bottom: 12px;">
+      <ul class="admin-list">
+        <% hosting_account.errors.full_messages.each do |msg| %>
+          <li class="admin-list-item">
+            <div class="admin-list-title"><%= msg %></div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">客户 <span style="color: #ef4444;">*</span></div>
+      <%= f.select :client_id, @clients.map { |c| [c.name, c.id] }, { prompt: "请选择客户" }, { class: "admin-input", required: true } %>
+    </div>
+    <div>
+      <div class="admin-field-label">平台 <span style="color: #ef4444;">*</span></div>
+      <%= f.select :platform, [["twitter", "twitter"], ["youtube", "youtube"], ["tiktok", "tiktok"], ["instagram", "instagram"], ["facebook", "facebook"]], {}, { class: "admin-input", required: true } %>
+    </div>
+    <div>
+      <div class="admin-field-label">主题</div>
+      <%= f.text_field :theme, class: "admin-input", placeholder: "主题名（用于资源分配匹配）" %>
+    </div>
+    <div>
+      <div class="admin-field-label">资源队列</div>
+      <%= f.select :resource_queue, @resource_queues, { prompt: "请选择资源队列" }, { class: "admin-input" } %>
+    </div>
+    <div>
+      <div class="admin-field-label">发布渠道</div>
+      <%= f.select :publish_channel, [["postpeer", "postpeer"], ["postforme", "postforme"], ["x", "x"]], { include_blank: "未配置" }, { class: "admin-input" } %>
+    </div>
+    <div>
+      <div class="admin-field-label">状态</div>
+      <%= f.select :status, [["托管中", "active"], ["暂停", "paused"], ["终止", "terminated"]], {}, class: "admin-input" %>
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <div class="admin-field-label">备注</div>
+      <%= f.text_area :remark, class: "admin-input", rows: 3, placeholder: "备注信息" %>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <button type="submit" class="admin-button-primary">保存</button>
+    <%= link_to "取消", admin_hosting_accounts_path, class: "admin-button-secondary" %>
+  </div>
+<% end %>

@@ -1,0 +1,41 @@
+<%= form_with model: [:admin, client], class: "admin-form" do |f| %>
+  <% if client.errors.any? %>
+    <div class="admin-empty-state" style="margin-bottom: 12px;">
+      <ul class="admin-list">
+        <% client.errors.full_messages.each do |msg| %>
+          <li class="admin-list-item">
+            <div class="admin-list-title"><%= msg %></div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">客户名称 <span style="color: #ef4444;">*</span></div>
+      <%= f.text_field :name, class: "admin-input", required: true, placeholder: "请输入客户名称" %>
+    </div>
+    <div>
+      <div class="admin-field-label">联系人</div>
+      <%= f.text_field :contact, class: "admin-input", placeholder: "联系人姓名" %>
+    </div>
+    <div>
+      <div class="admin-field-label">联系方式</div>
+      <%= f.text_field :contact_info, class: "admin-input", placeholder: "电话/微信/邮箱" %>
+    </div>
+    <div>
+      <div class="admin-field-label">状态</div>
+      <%= f.select :status, [["合作中", "active"], ["暂停", "paused"], ["终止", "terminated"]], {}, class: "admin-input" %>
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <div class="admin-field-label">备注</div>
+      <%= f.text_area :remark, class: "admin-input", rows: 3, placeholder: "备注信息" %>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <button type="submit" class="admin-button-primary">保存</button>
+    <%= link_to "取消", admin_clients_path, class: "admin-button-secondary" %>
+  </div>
+<% end %>
