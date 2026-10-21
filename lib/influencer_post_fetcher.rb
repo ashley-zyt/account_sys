@@ -71,7 +71,7 @@ class InfluencerPostFetcher
 
     # 调用发文获取 API，返回 data 数组
     def fetch_from_api(user_ids)
-      before_t = 1.hour.ago.to_i
+      before_t = 3.hour.ago.to_i
       response = HTTParty.get(
         API_BASE,
         query: { account_type: ACCOUNT_TYPE, user_id: user_ids.join(','), before_t: before_t },
