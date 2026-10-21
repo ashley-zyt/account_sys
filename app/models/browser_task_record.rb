@@ -34,6 +34,7 @@ class BrowserTaskRecord < ApplicationRecord
     'fetch'             => '采集',
     'send_message'      => '发私信',
     'check_reply'       => '检查回复',
+    'twitter_comment'   => '评论',
     'facebook_publish'  => 'Facebook发布',
     'twitter_publish'   => 'X发布',
     'youtube_publish'   => 'YouTube发布',

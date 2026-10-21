@@ -34,6 +34,7 @@ class CommentPublisher
       accepted = parse_accepted(response)
 
       if accepted
+        track_browser_task!(accepted['task_id'], body, account)
         { success: true, task_id: accepted['task_id'] }
       else
         { success: false, error: extract_error(response) }
@@ -44,6 +45,18 @@ class CommentPublisher
     end
 
     private
+
+    # 登记到 BrowserTaskRecord，供「异步任务」页本地登记明细展示评论进度
+    def track_browser_task!(machine_task_id, body, account)
+      return if machine_task_id.blank?
+      BrowserTaskRecord.track!(
+        machine_task_id: machine_task_id,
+        ref: body[:ref],
+        task_type: 'twitter_comment',
+        profile_name: body[:profile_name],
+        machine_ip: account&.browser&.machine_ip
+      )
+    end
 
     # 判断响应是否为「异步受理」，是则返回解析后的 data（含 task_id），否则返回 nil
     def parse_accepted(response)

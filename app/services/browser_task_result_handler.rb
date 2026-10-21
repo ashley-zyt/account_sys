@@ -137,6 +137,10 @@ class BrowserTaskResultHandler
     else
       task.update!(status: :failed, executed_at: Time.current, error_msg: message.presence || '评论失败')
     end
+
+    # 同步更新「异步任务」页本地登记明细（BrowserTaskRecord）里的评论任务状态
+    BrowserTaskRecord.mark_result!(task.machine_task_id.to_s, status, message)
+
     { type: 'success', message: '已更新评论执行状态' }
   end
 
