@@ -48,9 +48,13 @@ class CommentScheduler
       end
 
       account = pick_available_account(theme)
-      return 0 if account.nil?
+      if account.nil?
+        reason = themed_accounts(theme).exists? ? '今日账号互动均已达上限' : '无可用账号'
+        Rails.logger.info "[CommentScheduler] 跳过发文 #{post.id}：主题 #{theme} #{reason}"
+        return 0
+      end
 
-      content = CommentContentGenerator.generate(post, account, theme)
+      content = CommentContentGenerator.generate(post, theme)
       return 0 if content.blank?
 
       CommentTask.create!(
