@@ -50,7 +50,8 @@ class InfluencerPostFetcher
         record.assign_attributes(
           influencer_id: influencer.id,
           title: p['title'].to_s,
-          source_url: p['source_url'].to_s,
+          # 用 API 返回的 user_id 与发文 id 拼接贴文链接，不再直接采用 source_url
+          source_url: "https://x.com/#{p['user_id'].to_s}/status/#{post_id}",
           posted_at: parse_time(p['created_time'])
         )
         begin

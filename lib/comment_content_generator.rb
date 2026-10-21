@@ -26,9 +26,10 @@ class CommentContentGenerator
         ---
         #{post.title.to_s}
         ---
-
+        要求：
+        ---
         #{theme_prompt}
-
+        ---
         请用与推文相同的语言输出评论；若推文语言无法判断，默认使用英文，不要用中文。
 
         只输出评论正文本身，不要任何解释、前缀、引号或 markdown。
