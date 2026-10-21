@@ -1,5 +1,6 @@
 class Admin::CommentThemeConfigsController < Admin::BaseController
   before_action :set_config, only: [:edit, :update, :destroy]
+  before_action :load_form_options, only: [:new, :create, :edit, :update]
 
   def index
     @configs = CommentThemeConfig.order(:theme).page(params[:page])
@@ -7,7 +8,6 @@ class Admin::CommentThemeConfigsController < Admin::BaseController
 
   def new
     @config = CommentThemeConfig.new
-    @themes = Theme.order(:name)
   end
 
   def create
@@ -15,20 +15,17 @@ class Admin::CommentThemeConfigsController < Admin::BaseController
     if @config.save
       redirect_to admin_comment_theme_configs_path, notice: '评论 Prompt 已添加'
     else
-      @themes = Theme.order(:name)
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
-    @themes = Theme.order(:name)
   end
 
   def update
     if @config.update(config_params)
       redirect_to admin_comment_theme_configs_path, notice: '评论 Prompt 已更新'
     else
-      @themes = Theme.order(:name)
       render :edit, status: :unprocessable_entity
     end
   end
@@ -42,6 +39,12 @@ class Admin::CommentThemeConfigsController < Admin::BaseController
 
   def set_config
     @config = CommentThemeConfig.find(params[:id])
+  end
+
+  def load_form_options
+    @themes = Theme.order(:name)
+    # 已录入的主题 → prompt 映射，供前端选择主题后自动带入
+    @existing_prompts = CommentThemeConfig.pluck(:theme, :prompt).to_h
   end
 
   def config_params

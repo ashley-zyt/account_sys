@@ -11,19 +11,17 @@
     </div>
   <% end %>
 
+  <% theme_options = @themes.map { |t| [t.name, t.name] } %>
+  <% theme_options << [config.theme, config.theme] if config.theme.present? && theme_options.none? { |_label, val| val == config.theme } %>
+
   <div class="admin-two-column">
     <div>
       <div class="admin-field-label">主题名 <span style="color: #ef4444;">*</span></div>
-      <%= f.text_field :theme, class: "admin-input", list: "comment-theme-list", placeholder: "选择或输入主题名", required: true %>
-      <datalist id="comment-theme-list">
-        <% @themes.each do |t| %>
-          <option value="<%= t.name %>"></option>
-        <% end %>
-      </datalist>
+      <%= f.select :theme, theme_options, { prompt: "请选择主题" }, { class: "admin-input", required: true, id: "comment-theme-select" } %>
     </div>
     <div style="grid-column: 1 / -1;">
       <div class="admin-field-label">评论 Prompt（每行一条）</div>
-      <%= f.text_area :prompt, class: "admin-input", rows: 6, placeholder: "针对大V发文生成互动性评论的要求/背景，每行一条" %>
+      <%= f.text_area :prompt, class: "admin-input", rows: 6, placeholder: "针对大V发文生成互动性评论的要求/背景，每行一条", id: "comment-prompt-input" %>
     </div>
   </div>
 
@@ -31,4 +29,25 @@
     <button type="submit" class="admin-button-primary">保存</button>
     <%= link_to "取消", admin_comment_theme_configs_path, class: "admin-button-secondary" %>
   </div>
+
+  <script type="application/json" id="comment-theme-prompts">
+    <%= raw(@existing_prompts.to_json) %>
+  </script>
+  <script>
+    (function () {
+      var dataEl = document.getElementById('comment-theme-prompts');
+      var select = document.getElementById('comment-theme-select');
+      var promptInput = document.getElementById('comment-prompt-input');
+      if (!dataEl || !select || !promptInput) return;
+
+      var existingPrompts = JSON.parse(dataEl.textContent || '{}');
+
+      select.addEventListener('change', function () {
+        var theme = select.value;
+        if (theme && Object.prototype.hasOwnProperty.call(existingPrompts, theme)) {
+          promptInput.value = existingPrompts[theme] || '';
+        }
+      });
+    })();
+  </script>
 <% end %>
