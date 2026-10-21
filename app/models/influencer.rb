@@ -9,21 +9,16 @@
 #  username(用户名)                               :string(255)      not null
 #  created_at                                     :datetime         not null
 #  updated_at                                     :datetime         not null
-#  domain_id(所属领域)                            :bigint
+#  theme(主题名，决定评论账号与 prompt)           :string(255)
 #  user_id(平台用户 ID)                           :string(255)
 #  account_url(账号链接)                          :string(255)
 #
 # Indexes
 #
-#  index_influencers_on_domain_id  (domain_id)
-#  index_influencers_on_username   (username) UNIQUE
-#
-# Foreign Keys
-#
-#  fk_rails_...  (domain_id => domains.id)
+#  index_influencers_on_theme     (theme)
+#  index_influencers_on_username  (username) UNIQUE
 #
 class Influencer < ApplicationRecord
-  belongs_to :domain, optional: true
   has_many :influencer_posts, dependent: :destroy
 
   validates :username, presence: true, uniqueness: true
@@ -31,10 +26,10 @@ class Influencer < ApplicationRecord
   scope :enabled, -> { where(enabled: true) }
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id username user_id platform account_url domain_id enabled remark created_at updated_at]
+    %w[id username user_id platform account_url theme enabled remark created_at updated_at]
   end
 
   def self.ransackable_associations(auth_object = nil)
-    %w[domain influencer_posts]
+    %w[influencer_posts]
   end
 end

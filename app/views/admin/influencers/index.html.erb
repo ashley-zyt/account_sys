@@ -26,8 +26,8 @@
         <%= f.search_field :username_cont, class: "admin-input admin-filter-input", placeholder: "搜索用户名..." %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">领域</label>
-        <%= f.searchable_select :domain_id_eq, @domains.map { |d| [d.name, d.id] }, { include_blank: "所有领域" }, class: "admin-input admin-filter-input" %>
+        <label class="admin-filter-label">主题</label>
+        <%= f.searchable_select :theme_eq, @themes.map { |t| [t.name, t.name] }, { include_blank: "所有主题" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">启用</label>
@@ -50,7 +50,7 @@
             <th>用户 ID</th>
             <th>账号链接</th>
             <th>平台</th>
-            <th>领域</th>
+            <th>主题</th>
             <th>启用</th>
             <th>发文数</th>
             <th>备注</th>
@@ -79,7 +79,7 @@
                 <span class="admin-label-muted"><%= inf.platform %></span>
               </td>
               <td>
-                <span class="admin-label-muted"><%= inf.domain&.name || '-' %></span>
+                <span class="admin-label-muted"><%= inf.theme || '-' %></span>
               </td>
               <td>
                 <% if inf.enabled %>

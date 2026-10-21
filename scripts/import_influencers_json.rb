@@ -9,7 +9,8 @@
 #   备注     → remark
 #   账号ID   → user_id
 #   账号链接 → account_url
-#   固定：domain_id = 1，platform = 'twitter'
+#   主题     → theme（可选，从文件读；无则留空待录入）
+#   固定：platform = 'twitter'
 # 去重：按 username（唯一索引），已存在则更新其余字段（幂等，可重复执行）
 file = ARGV[0]
 confirm = ARGV[1] == 'confirm'
@@ -46,6 +47,7 @@ list.each do |row|
   account_url = row['账号链接'].to_s.strip
   user_id     = row['账号ID'].to_s.strip
   remark      = row['备注'].to_s.strip
+  theme       = row['主题'].to_s.strip
 
   if username.blank?
     puts "  跳过（昵称/账号为空）: account_url=#{account_url}"
@@ -57,7 +59,7 @@ list.each do |row|
   influencer.assign_attributes(
     user_id:     user_id.presence,
     account_url: account_url.presence,
-    domain_id:   1,
+    theme:       theme.presence,
     remark:      remark.presence,
     platform:    influencer.platform.presence || 'twitter'
   )

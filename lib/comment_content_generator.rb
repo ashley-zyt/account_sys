@@ -11,15 +11,17 @@ class CommentContentGenerator
     # @param post [InfluencerPost]
     # @param account [Account] 评论账号（用于差异化）
     # @return [String, nil] 评论正文，失败返回 nil
-    def generate(post, account)
-      prompt = build_prompt(post, account)
+    def generate(post, account, theme = nil)
+      prompt = build_prompt(post, account, theme)
       response = call_deepseek(prompt)
       parse_response(response)
     end
 
     private
 
-    def build_prompt(post, account)
+    def build_prompt(post, account, theme)
+      prompt_context = theme_prompts_context(theme)
+
       <<~PROMPT
         你是海外社交媒体运营专家，负责在 X（Twitter）上对领域大V的推文进行评论互动。
 
@@ -28,9 +30,9 @@ class CommentContentGenerator
         #{post.title.to_s}
         ---
 
-        你的账号身份：#{account.account_name}（领域：#{account.theme}）
+        你的账号身份：#{account.account_name}（主题：#{account.theme}）
 
-        请针对该推文生成一条评论，要求：
+        #{prompt_context}请针对该推文生成一条评论，要求：
         1. 言之有物，紧扣推文的具体观点、数据或信息展开，不要空泛的「好文」「学习了」「great post」。
         2. 提出自己的独立观点或补充信息，能吸引大V回复、引发其他网友点赞和评论，制造围观效果。
         3. 语气自然像真人，不要营销腔、不要广告味、不要表情符号堆砌。
@@ -39,6 +41,13 @@ class CommentContentGenerator
 
         请直接输出评论内容：
       PROMPT
+    end
+
+    # 主题的 prompts（Theme.prompts，人工录入）作为评论生成的背景/要求注入。
+    def theme_prompts_context(theme)
+      prompts = Theme.find_by(name: theme)&.prompts_array || []
+      return "" if prompts.empty?
+      "该主题的评论要求/背景（评论中自然体现即可，不要照抄）：\n#{prompts.join("\n")}\n\n"
     end
 
     def call_deepseek(prompt)

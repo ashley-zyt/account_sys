@@ -29,8 +29,13 @@
       <%= f.text_field :platform, class: "admin-input", placeholder: "如 twitter / youtube / instagram" %>
     </div>
     <div>
-      <div class="admin-field-label">领域</div>
-      <%= f.collection_select :domain_id, @domains, :id, :name, { include_blank: "选择领域" }, class: "admin-input" %>
+      <div class="admin-field-label">主题</div>
+      <%= f.text_field :theme, class: "admin-input", list: "influencer-theme-list", placeholder: "选择或输入主题名" %>
+      <datalist id="influencer-theme-list">
+        <% @themes.each do |t| %>
+          <option value="<%= t.name %>"></option>
+        <% end %>
+      </datalist>
     </div>
     <div>
       <div class="admin-field-label">启用</div>

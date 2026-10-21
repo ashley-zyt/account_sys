@@ -2,10 +2,11 @@
 #
 # 流程（每半小时跑一次）：
 #   1. InfluencerPostFetcher 获取启用大V的最新发文并落库
-#   2. 对新发文（尚未生成评论任务的），分配一个「当天未满上限」的同领域账号生成定制评论
+#   2. 对新发文（尚未生成评论任务的），分配一个「当天未满上限」的同主题账号生成定制评论
 #   3. 下发 pending 评论任务到机器端浏览器
+#
+# 主题粒度：账号按发文大V的 theme（Account.theme）匹配，评论 prompt 用主题的 Theme.prompts。
 class CommentScheduler
-  DIGITAL_CURRENCY_DOMAIN = '数字货币'
   # 单个账号每天最多评论互动的发文数
   MAX_COMMENTS_PER_DAY = 2
 
@@ -32,14 +33,18 @@ class CommentScheduler
       Rails.logger.info "[CommentScheduler] 评论互动扫描完成"
     end
 
-    # 为一条发文，分配「当天评论数未满上限」的同领域账号生成一条评论任务。
+    # 为一条发文，分配「当天评论数未满上限」的同主题账号生成一条评论任务。
+    # 主题取发文对应大V的 theme；账号 = Account.theme 匹配；prompt 用主题的 Theme.prompts。
     # 一条发文只用一个账号评论；每个账号每天最多评论 MAX_COMMENTS_PER_DAY 条发文。
     # @return [Integer] 新建任务数（0 或 1）
     def generate_tasks_for(post)
-      account = pick_available_account
+      theme = post.influencer&.theme
+      return 0 if theme.blank?
+
+      account = pick_available_account(theme)
       return 0 if account.nil?
 
-      content = CommentContentGenerator.generate(post, account)
+      content = CommentContentGenerator.generate(post, account, theme)
       return 0 if content.blank?
 
       CommentTask.create!(
@@ -53,10 +58,10 @@ class CommentScheduler
       0
     end
 
-    # 选一个「当天已生成评论任务数 < MAX_COMMENTS_PER_DAY」的同领域账号。
+    # 选一个「当天已生成评论任务数 < MAX_COMMENTS_PER_DAY」的同主题账号。
     # 按当天任务数升序选择，实现账号间均衡分配。
-    def pick_available_account
-      accounts = digital_currency_accounts.to_a
+    def pick_available_account(theme)
+      accounts = themed_accounts(theme).to_a
       return nil if accounts.empty?
 
       counts = CommentTask.where(account_id: accounts.map(&:id))
@@ -80,17 +85,11 @@ class CommentScheduler
       end
     end
 
-    # 数字货币领域 + X 平台 + 正常状态的账号
-    def digital_currency_accounts
-      domain = Domain.find_by(name: DIGITAL_CURRENCY_DOMAIN)
-      return Account.none unless domain
-
-      theme_names = Theme.where(domain_id: domain.id).pluck(:name)
-      return Account.none if theme_names.empty?
-
+    # 指定主题 + X 平台 + 正常状态的账号（Account.theme 直接匹配主题）
+    def themed_accounts(theme)
       Account.active
              .where(platform: Account.platforms[:twitter])
-             .where(theme: theme_names)
+             .where(theme: theme)
     end
 
     def setup_logger(file)

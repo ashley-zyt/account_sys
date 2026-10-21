@@ -3,13 +3,13 @@ class Admin::InfluencersController < Admin::BaseController
 
   def index
     @q = Influencer.ransack(params[:q])
-    @influencers = @q.result.includes(:domain).order(enabled: :desc, created_at: :desc).page(params[:page])
-    @domains = Domain.order(:name)
+    @influencers = @q.result.order(enabled: :desc, created_at: :desc).page(params[:page])
+    @themes = Theme.order(:name)
   end
 
   def new
     @influencer = Influencer.new(enabled: true)
-    @domains = Domain.order(:name)
+    @themes = Theme.order(:name)
   end
 
   def create
@@ -17,20 +17,20 @@ class Admin::InfluencersController < Admin::BaseController
     if @influencer.save
       redirect_to admin_influencers_path, notice: '大V 已添加'
     else
-      @domains = Domain.order(:name)
+      @themes = Theme.order(:name)
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
-    @domains = Domain.order(:name)
+    @themes = Theme.order(:name)
   end
 
   def update
     if @influencer.update(influencer_params)
       redirect_to admin_influencers_path, notice: '大V 已更新'
     else
-      @domains = Domain.order(:name)
+      @themes = Theme.order(:name)
       render :edit, status: :unprocessable_entity
     end
   end
@@ -47,6 +47,6 @@ class Admin::InfluencersController < Admin::BaseController
   end
 
   def influencer_params
-    params.require(:influencer).permit(:username, :user_id, :platform, :account_url, :domain_id, :enabled, :remark)
+    params.require(:influencer).permit(:username, :user_id, :platform, :account_url, :theme, :enabled, :remark)
   end
 end

@@ -9,7 +9,8 @@
 #   列2 备注     → remark
 #   列3 账号ID   → user_id
 #   列4 账号链接 → account_url
-#   固定：domain_id = 1，platform = 'twitter'
+#   列5 主题     → theme（可选，无则留空待录入）
+#   固定：platform = 'twitter'
 # 去重：按 username（唯一索引），已存在则更新其余字段（幂等，可重复执行）
 #
 # 注意：账号ID 列建议在 Excel 里设为「文本」格式，避免 18 位大整数被 Excel 转成
@@ -38,7 +39,8 @@ rows = []
     username:    username,
     remark:      sheet.cell(i, 2).to_s.strip,
     user_id:     user_id,
-    account_url: sheet.cell(i, 4).to_s.strip
+    account_url: sheet.cell(i, 4).to_s.strip,
+    theme:       sheet.cell(i, 5).to_s.strip
   }
 end
 
@@ -55,7 +57,7 @@ rows.each do |row|
   influencer.assign_attributes(
     user_id:     row[:user_id].presence,
     account_url: row[:account_url].presence,
-    domain_id:   1,
+    theme:       row[:theme].presence,
     remark:      row[:remark].presence,
     platform:    influencer.platform.presence || 'twitter'
   )
