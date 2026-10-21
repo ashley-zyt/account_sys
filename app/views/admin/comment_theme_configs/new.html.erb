@@ -1,0 +1,11 @@
+<% content_for :page_title do %>添加评论 Prompt<% end %>
+<% content_for :page_subtitle do %>为某个主题配置评论互动 prompt<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">添加评论 Prompt</div>
+    </div>
+  </div>
+  <%= render "form", config: @config %>
+</div>

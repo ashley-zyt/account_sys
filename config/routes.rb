@@ -189,6 +189,7 @@ Rails.application.routes.draw do
     resources :influencers
     resources :influencer_posts, only: [:index]
     resources :comment_tasks, only: [:index]
+    resources :comment_theme_configs
     # KOL 限制统一管理：账号休眠、联系方式停用、每日尝试上限
     resources :restrictions, only: [:index] do
       collection do

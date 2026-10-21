@@ -1,0 +1,34 @@
+<%= form_with model: [:admin, config], class: "admin-form" do |f| %>
+  <% if config.errors.any? %>
+    <div class="admin-empty-state" style="margin-bottom: 12px;">
+      <ul class="admin-list">
+        <% config.errors.full_messages.each do |msg| %>
+          <li class="admin-list-item">
+            <div class="admin-list-title"><%= msg %></div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">主题名 <span style="color: #ef4444;">*</span></div>
+      <%= f.text_field :theme, class: "admin-input", list: "comment-theme-list", placeholder: "选择或输入主题名", required: true %>
+      <datalist id="comment-theme-list">
+        <% @themes.each do |t| %>
+          <option value="<%= t.name %>"></option>
+        <% end %>
+      </datalist>
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <div class="admin-field-label">评论 Prompt（每行一条）</div>
+      <%= f.text_area :prompt, class: "admin-input", rows: 6, placeholder: "针对大V发文生成互动性评论的要求/背景，每行一条" %>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <button type="submit" class="admin-button-primary">保存</button>
+    <%= link_to "取消", admin_comment_theme_configs_path, class: "admin-button-secondary" %>
+  </div>
+<% end %>

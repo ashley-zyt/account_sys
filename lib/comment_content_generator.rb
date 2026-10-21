@@ -43,9 +43,9 @@ class CommentContentGenerator
       PROMPT
     end
 
-    # 主题的 prompts（Theme.prompts，人工录入）作为评论生成的背景/要求注入。
+    # 主题的评论 prompt（CommentThemeConfig，评论互动模块独立配置）作为评论生成的背景/要求注入。
     def theme_prompts_context(theme)
-      prompts = Theme.find_by(name: theme)&.prompts_array || []
+      prompts = CommentThemeConfig.find_by(theme: theme)&.prompt_array || []
       return "" if prompts.empty?
       "该主题的评论要求/背景（评论中自然体现即可，不要照抄）：\n#{prompts.join("\n")}\n\n"
     end
