@@ -175,7 +175,7 @@ end
 # ==================== 大V评论互动 ====================
 # 每半小时获取大V最新发文，为数字货币领域 X 账号生成定制评论并下发评论任务
 set :output, "log/comment_scheduler.log"
-every 30.minutes do
+every 1.hour do
   runner 'CommentScheduler.run'
 end
 
