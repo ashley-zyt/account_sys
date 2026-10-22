@@ -52,14 +52,7 @@
   <% end %>
 
   <div class="form-group">
-    <label class="form-label">发布渠道</label>
-    <select id="channel-select" class="form-input"></select>
-    <div class="form-hint">twitter 固定 x_api；其他平台可选 postpeer / postforme</div>
-  </div>
-  <button type="button" class="btn btn-primary" onclick="saveChannel()">保存渠道</button>
-
-  <div class="form-group" style="margin-top: 20px;">
-    <label class="form-label">授权</label>
+    <label class="form-label">授权（渠道：<%= @hosting_account.publish_channel %>）</label>
     <div class="auth-actions">
       <% case @hosting_account.publish_channel %>
       <% when 'postpeer' %>
@@ -72,54 +65,12 @@
         <%= link_to "发起授权", start_x_auth_admin_hosting_account_path(@hosting_account), data: { turbo_method: :post }, class: "btn btn-primary" %>
         <button type="button" class="btn btn-success" onclick="completeXAuth()">完成认证</button>
       <% else %>
-        <span style="font-size: 13px; color: #64748b;">请先选择并保存发布渠道</span>
+        <span style="font-size: 13px; color: #64748b;">未配置发布渠道</span>
       <% end %>
     </div>
   </div>
 
   <script>
-    var CHANNEL_OPTIONS = {
-      twitter:   [['x_api', 'x_api']],
-      youtube:   [['postpeer', 'postpeer'], ['postforme', 'postforme']],
-      tiktok:    [['postpeer', 'postpeer'], ['postforme', 'postforme']],
-      instagram: [['postpeer', 'postpeer'], ['postforme', 'postforme']],
-      facebook:  [['postpeer', 'postpeer'], ['postforme', 'postforme']]
-    };
-
-    function renderChannels(platform, selected) {
-      var opts = CHANNEL_OPTIONS[platform] || [];
-      var sel = document.getElementById('channel-select');
-      sel.innerHTML = '';
-      opts.forEach(function(pair) {
-        var o = document.createElement('option');
-        o.value = pair[1];
-        o.textContent = pair[0];
-        if (pair[1] === selected) { o.selected = true; }
-        sel.appendChild(o);
-      });
-    }
-
-    renderChannels('<%= @hosting_account.platform %>', '<%= @hosting_account.publish_channel %>');
-
-    function saveChannel() {
-      var channel = document.getElementById('channel-select').value;
-      var csrf = document.querySelector('meta[name="csrf-token"]').content;
-      fetch('<%= update_channel_admin_hosting_account_path(@hosting_account) %>', {
-        method: 'POST',
-        headers: { 'X-CSRF-Token': csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ publish_channel: channel })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.success) {
-          if (window.parent && window.parent.closeChannelModal) { window.parent.closeChannelModal(true); }
-        } else {
-          alert(data.message || '保存失败');
-        }
-      })
-      .catch(function() { alert('保存失败，请重试'); });
-    }
-
     function completeXAuth() {
       var code = prompt('请粘贴 X 授权码或整段回调 URL：');
       if (!code || code.trim() === '') return;

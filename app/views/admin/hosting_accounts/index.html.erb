@@ -91,7 +91,21 @@
               <td><%= a.platform %></td>
               <td><%= a.theme || '-' %></td>
               <td><%= WorkMode.find(a.resource_queue)&.name || a.resource_queue || '-' %></td>
-              <td><%= a.publish_channel || '-' %></td>
+              <td>
+                <% if a.publish_channel.blank? %>
+                  <select onchange="saveChannel(this, <%= a.id %>)" style="padding: 4px 8px; font-size: 13px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0;">
+                    <option value="">选择渠道</option>
+                    <% if a.platform == 'twitter' %>
+                      <option value="x_api">x_api</option>
+                    <% else %>
+                      <option value="postpeer">postpeer</option>
+                      <option value="postforme">postforme</option>
+                    <% end %>
+                  </select>
+                <% else %>
+                  <%= a.publish_channel %>
+                <% end %>
+              </td>
               <td>
                 <% 
                   auth_labels = { "pending" => "未授权", "authorizing" => "授权中", "authorized" => "已授权", "failed" => "失败" }
@@ -113,7 +127,11 @@
                   <% else %>
                     <span class="admin-label-muted" title="未授权或未配置渠道，无法生成任务" style="cursor: not-allowed;">生成任务</span>
                   <% end %>
-                  <button type="button" onclick="openChannelModal(<%= a.id %>)" class="admin-link-quiet" style="color: var(--success); background: none; border: none; cursor: pointer; padding: 0;">渠道授权</button>
+                  <% if a.publish_channel.blank? %>
+                    <span class="admin-label-muted" title="请先选择发布渠道" style="cursor: not-allowed;">渠道授权</span>
+                  <% else %>
+                    <button type="button" onclick="openChannelModal(<%= a.id %>)" class="admin-link-quiet" style="color: var(--success); background: none; border: none; cursor: pointer; padding: 0;">渠道授权</button>
+                  <% end %>
                   <%= link_to "删除", admin_hosting_account_path(a), data: { turbo_method: :delete, turbo_confirm: "确定删除该托管账号吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
                 </div>
               </td>
@@ -186,6 +204,23 @@
   function openChannelModal(id) {
     channelIframe.src = '/admin/hosting_accounts/' + id + '/channel_modal';
     channelModal.style.display = 'flex';
+  }
+
+  function saveChannel(sel, id) {
+    var channel = sel.value;
+    if (!channel) return;
+    var csrf = document.querySelector('meta[name="csrf-token"]').content;
+    fetch('/admin/hosting_accounts/' + id + '/update_channel', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ publish_channel: channel })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) { location.reload(); }
+      else { alert(data.message || '保存失败'); }
+    })
+    .catch(function() { alert('保存失败，请重试'); });
   }
 
   function closeChannelModal(refresh) {
