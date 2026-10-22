@@ -12,6 +12,8 @@
 #  created_at                                                  :datetime         not null
 #  updated_at                                                  :datetime         not null
 #  client_id(归属客户)                                         :bigint           not null
+#  homepage_url(账号主页链接)                                  :string(255)
+#  username(账号用户名)                                        :string(255)
 #
 # Indexes
 #
@@ -41,7 +43,7 @@ class HostingAccount < ApplicationRecord
   end
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id client_id platform theme resource_queue publish_channel status remark created_at updated_at]
+    %w[id client_id platform theme resource_queue publish_channel status username homepage_url remark created_at updated_at]
   end
 
   def self.ransackable_associations(auth_object = nil)

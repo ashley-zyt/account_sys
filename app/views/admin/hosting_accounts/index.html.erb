@@ -67,6 +67,8 @@
             <th>ID</th>
             <th>客户</th>
             <th>平台</th>
+            <th>用户名</th>
+            <th>主页链接</th>
             <th>主题</th>
             <th>资源队列</th>
             <th>发布渠道</th>
@@ -89,6 +91,14 @@
               <td><span class="admin-label-muted"><%= a.id %></span></td>
               <td><%= a.client&.name || '-' %></td>
               <td><%= a.platform %></td>
+              <td><%= a.username || '-' %></td>
+              <td>
+                <% if a.homepage_url.present? %>
+                  <a href="<%= a.homepage_url %>" target="_blank" rel="noopener" class="admin-link-quiet" title="<%= a.homepage_url %>"><%= truncate(a.homepage_url, length: 28) %></a>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
               <td><%= a.theme || '-' %></td>
               <td><%= WorkMode.find(a.resource_queue)&.name || a.resource_queue || '-' %></td>
               <td>

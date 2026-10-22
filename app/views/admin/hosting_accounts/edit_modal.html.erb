@@ -57,8 +57,12 @@
         <%= admin_searchable_select "hosting_account[resource_queue]", @resource_queues, selected: @hosting_account.resource_queue, placeholder: "请选择资源队列" %>
       </div>
       <div class="form-group">
-        <label class="form-label">发布渠道</label>
-        <select name="hosting_account[publish_channel]" id="hosting-publish-channel" class="form-input"></select>
+        <label class="form-label">用户名</label>
+        <input type="text" name="hosting_account[username]" class="form-input" value="<%= @hosting_account.username %>" placeholder="账号用户名" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">主页链接</label>
+        <input type="text" name="hosting_account[homepage_url]" class="form-input" value="<%= @hosting_account.homepage_url %>" placeholder="https://..." />
       </div>
       <div class="form-group">
         <label class="form-label">状态</label>
@@ -81,31 +85,6 @@
   </form>
 
   <script>
-    var CHANNEL_OPTIONS = {
-      twitter:   [['x_api', 'x_api']],
-      youtube:   [['postpeer', 'postpeer'], ['postforme', 'postforme']],
-      tiktok:    [['postpeer', 'postpeer'], ['postforme', 'postforme']],
-      instagram: [['postpeer', 'postpeer'], ['postforme', 'postforme']],
-      facebook:  [['postpeer', 'postpeer'], ['postforme', 'postforme']]
-    };
-
-    function renderChannels(platform, selected) {
-      var opts = CHANNEL_OPTIONS[platform] || [];
-      var sel = document.getElementById('hosting-publish-channel');
-      sel.innerHTML = '';
-      opts.forEach(function(pair) {
-        var o = document.createElement('option');
-        o.value = pair[1];
-        o.textContent = pair[0];
-        if (pair[1] === selected) { o.selected = true; }
-        sel.appendChild(o);
-      });
-    }
-
-    var platformSel = document.getElementById('hosting-platform');
-    platformSel.addEventListener('change', function() { renderChannels(this.value, null); });
-    renderChannels(platformSel.value, '<%= @hosting_account.publish_channel %>');
-
     document.getElementById('hosting-form').addEventListener('submit', function(e) {
       e.preventDefault();
       var form = this;
