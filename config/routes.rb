@@ -211,6 +211,10 @@ Rails.application.routes.draw do
         get :edit_modal
         post :start_postpeer_auth
         post :confirm_postpeer_auth
+        post :start_postforme_auth
+        post :confirm_postforme_auth
+        post :start_x_auth
+        post :complete_x_auth
         post :create_task
       end
     end

@@ -37,7 +37,13 @@
       </div>
       <div class="form-group">
         <label class="form-label">平台 <span style="color: #f87171;">*</span></label>
-        <%= admin_searchable_select "hosting_account[platform]", [["twitter", "twitter"], ["youtube", "youtube"], ["tiktok", "tiktok"], ["instagram", "instagram"], ["facebook", "facebook"]], placeholder: "请选择平台", required: true %>
+        <select name="hosting_account[platform]" id="hosting-platform" class="form-input">
+          <option value="twitter">twitter</option>
+          <option value="youtube">youtube</option>
+          <option value="tiktok">tiktok</option>
+          <option value="instagram">instagram</option>
+          <option value="facebook">facebook</option>
+        </select>
       </div>
       <div class="form-group">
         <label class="form-label">主题</label>
@@ -49,7 +55,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">发布渠道</label>
-        <%= admin_searchable_select "hosting_account[publish_channel]", [["postpeer", "postpeer"], ["postforme", "postforme"], ["x", "x"]], placeholder: "未配置", include_blank: "未配置" %>
+        <select name="hosting_account[publish_channel]" id="hosting-publish-channel" class="form-input"></select>
       </div>
       <div class="form-group">
         <label class="form-label">状态</label>
@@ -72,6 +78,31 @@
   </form>
 
   <script>
+    var CHANNEL_OPTIONS = {
+      twitter:   [['x_api', 'x_api']],
+      youtube:   [['postpeer', 'postpeer'], ['postforme', 'postforme']],
+      tiktok:    [['postpeer', 'postpeer'], ['postforme', 'postforme']],
+      instagram: [['postpeer', 'postpeer'], ['postforme', 'postforme']],
+      facebook:  [['postpeer', 'postpeer'], ['postforme', 'postforme']]
+    };
+
+    function renderChannels(platform, selected) {
+      var opts = CHANNEL_OPTIONS[platform] || [];
+      var sel = document.getElementById('hosting-publish-channel');
+      sel.innerHTML = '';
+      opts.forEach(function(pair) {
+        var o = document.createElement('option');
+        o.value = pair[1];
+        o.textContent = pair[0];
+        if (pair[1] === selected) { o.selected = true; }
+        sel.appendChild(o);
+      });
+    }
+
+    var platformSel = document.getElementById('hosting-platform');
+    platformSel.addEventListener('change', function() { renderChannels(this.value, null); });
+    renderChannels(platformSel.value, null);
+
     document.getElementById('hosting-form').addEventListener('submit', function(e) {
       e.preventDefault();
       var form = this;

@@ -19,6 +19,34 @@
   </div>
 <% end %>
 
+<% if flash[:hosting_postforme_auth_url].present? %>
+  <div class="admin-card" style="margin-bottom: 12px;">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">postforme 授权链接</div>
+        <div class="admin-card-subtitle">复制链接在浏览器打开完成 OAuth，完成后回本页点「确认授权」</div>
+      </div>
+    </div>
+    <div style="padding: 0 20px 20px;">
+      <a href="<%= flash[:hosting_postforme_auth_url] %>" target="_blank" rel="noopener"><%= flash[:hosting_postforme_auth_url] %></a>
+    </div>
+  </div>
+<% end %>
+
+<% if flash[:hosting_x_auth_url].present? %>
+  <div class="admin-card" style="margin-bottom: 12px;">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">X 授权链接</div>
+        <div class="admin-card-subtitle">打开链接完成授权后，浏览器会跳转到 localhost?code=xxx，复制整段地址（或 code）后点「完成认证」</div>
+      </div>
+    </div>
+    <div style="padding: 0 20px 20px;">
+      <a href="<%= flash[:hosting_x_auth_url] %>" target="_blank" rel="noopener"><%= flash[:hosting_x_auth_url] %></a>
+    </div>
+  </div>
+<% end %>
+
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
@@ -59,9 +87,15 @@
               <td><%= WorkMode.find(a.resource_queue)&.name || a.resource_queue || '-' %></td>
               <td><%= a.publish_channel || '-' %></td>
               <td>
-                <% pa = a.postpeer_account %>
-                <% auth_labels = { "pending" => "未授权", "authorizing" => "授权中", "authorized" => "已授权", "failed" => "失败" } %>
-                <span class="admin-label-muted"><%= pa ? (auth_labels[pa.auth_status] || pa.auth_status) : '未授权' %></span>
+                <% 
+                  auth_labels = { "pending" => "未授权", "authorizing" => "授权中", "authorized" => "已授权", "failed" => "失败" }
+                  auth_status = case a.publish_channel
+                    when 'postpeer'  then a.postpeer_account&.auth_status
+                    when 'postforme' then a.postforme_account&.auth_status
+                    when 'x_api'     then a.x_credential&.auth_status
+                  end
+                %>
+                <span class="admin-label-muted"><%= auth_status ? (auth_labels[auth_status] || auth_status) : '未授权' %></span>
               </td>
               <td><span class="admin-label-muted"><%= status_labels[a.status] || a.status %></span></td>
               <td><span class="admin-label-muted"><%= a.created_at&.strftime('%m-%d %H:%M') %></span></td>
@@ -72,6 +106,12 @@
                   <% if a.publish_channel == 'postpeer' %>
                     <%= link_to "授权", start_postpeer_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--accent);" %>
                     <%= link_to "确认授权", confirm_postpeer_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% elsif a.publish_channel == 'postforme' %>
+                    <%= link_to "授权", start_postforme_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to "确认授权", confirm_postforme_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% elsif a.publish_channel == 'x_api' %>
+                    <%= link_to "授权", start_x_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <button type="button" onclick="completeXAuth(<%= a.id %>)" class="admin-link-quiet" style="color: var(--success); background: none; border: none; cursor: pointer; padding: 0;">完成认证</button>
                   <% end %>
                   <%= link_to "删除", admin_hosting_account_path(a), data: { turbo_method: :delete, turbo_confirm: "确定删除该托管账号吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
                 </div>
@@ -122,6 +162,29 @@
     hostingModal.style.display = 'none';
     hostingIframe.src = '';
     if (refresh) { location.reload(); }
+  }
+
+  function completeXAuth(id) {
+    var code = prompt('请粘贴 X 授权码或整段回调 URL：');
+    if (!code || code.trim() === '') return;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/hosting_accounts/' + id + '/complete_x_auth';
+    var codeInput = document.createElement('input');
+    codeInput.type = 'hidden';
+    codeInput.name = 'code';
+    codeInput.value = code;
+    form.appendChild(codeInput);
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    if (csrf) {
+      var csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'authenticity_token';
+      csrfInput.value = csrf.content;
+      form.appendChild(csrfInput);
+    }
+    document.body.appendChild(form);
+    form.submit();
   }
 
   hostingModal.addEventListener('click', function(e) {
