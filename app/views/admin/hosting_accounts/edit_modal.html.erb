@@ -32,42 +32,48 @@
 
     <div class="form-group">
       <label class="form-label">客户 <span style="color: #f87171;">*</span></label>
-      <select name="hosting_account[client_id]" class="form-input" required>
-        <option value="">请选择客户</option>
+      <input type="text" name="hosting_account[client_name]" class="form-input" list="hosting-client-list" value="<%= @hosting_account.client&.name %>" required placeholder="选择或输入客户">
+      <datalist id="hosting-client-list">
         <% @clients.each do |c| %>
-          <option value="<%= c.id %>" <%= "selected" if @hosting_account.client_id == c.id %>><%= c.name %></option>
+          <option value="<%= c.name %>"></option>
         <% end %>
-      </select>
+      </datalist>
     </div>
     <div class="form-group">
       <label class="form-label">平台 <span style="color: #f87171;">*</span></label>
-      <select name="hosting_account[platform]" class="form-input" required>
+      <input type="text" name="hosting_account[platform]" class="form-input" list="hosting-platform-list" value="<%= @hosting_account.platform %>" required placeholder="选择或输入平台">
+      <datalist id="hosting-platform-list">
         <% %w[twitter youtube tiktok instagram facebook].each do |p| %>
-          <option value="<%= p %>" <%= "selected" if @hosting_account.platform == p %>><%= p %></option>
+          <option value="<%= p %>"></option>
         <% end %>
-      </select>
+      </datalist>
     </div>
     <div class="form-group">
       <label class="form-label">主题</label>
-      <input type="text" name="hosting_account[theme]" class="form-input" value="<%= @hosting_account.theme %>" placeholder="主题名（用于资源分配匹配）">
+      <input type="text" name="hosting_account[theme]" class="form-input" list="hosting-theme-list" value="<%= @hosting_account.theme %>" placeholder="选择或输入主题">
+      <datalist id="hosting-theme-list">
+        <% @themes.each do |t| %>
+          <option value="<%= t %>"></option>
+        <% end %>
+      </datalist>
     </div>
     <div class="form-group">
       <label class="form-label">资源队列</label>
-      <select name="hosting_account[resource_queue]" class="form-input">
-        <option value="">请选择资源队列</option>
-        <% @resource_queues.each do |name, key| %>
-          <option value="<%= key %>" <%= "selected" if @hosting_account.resource_queue == key %>><%= name %></option>
+      <input type="text" name="hosting_account[resource_queue]" class="form-input" list="hosting-queue-list" value="<%= WorkMode.find(@hosting_account.resource_queue)&.name %>" placeholder="选择或输入资源队列">
+      <datalist id="hosting-queue-list">
+        <% @resource_queues.each do |name| %>
+          <option value="<%= name %>"></option>
         <% end %>
-      </select>
+      </datalist>
     </div>
     <div class="form-group">
       <label class="form-label">发布渠道</label>
-      <select name="hosting_account[publish_channel]" class="form-input">
-        <option value="">未配置</option>
+      <input type="text" name="hosting_account[publish_channel]" class="form-input" list="hosting-channel-list" value="<%= @hosting_account.publish_channel %>" placeholder="选择或输入发布渠道">
+      <datalist id="hosting-channel-list">
         <% %w[postpeer postforme x].each do |ch| %>
-          <option value="<%= ch %>" <%= "selected" if @hosting_account.publish_channel == ch %>><%= ch %></option>
+          <option value="<%= ch %>"></option>
         <% end %>
-      </select>
+      </datalist>
     </div>
     <div class="form-group">
       <label class="form-label">状态</label>
