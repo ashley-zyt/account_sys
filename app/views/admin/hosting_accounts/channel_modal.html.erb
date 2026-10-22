@@ -15,8 +15,12 @@
     .form-label { display: block; font-size: 13px; font-weight: 500; color: #94a3b8; margin-bottom: 6px; }
     .form-input { width: 100%; padding: 10px 12px; font-size: 14px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; outline: none; }
     .form-hint { font-size: 11px; color: #64748b; margin-top: 4px; }
-    .auth-url-box { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; font-size: 12px; word-break: break-all; }
-    .auth-url-box a { color: #3b82f6; }
+    .auth-url-box { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; }
+    .auth-url-label { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+    .auth-url-row { display: flex; align-items: center; gap: 8px; }
+    .auth-url-text { flex: 1; min-width: 0; font-size: 12px; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-copy { flex-shrink: 0; padding: 4px 10px; font-size: 12px; color: #3b82f6; background: #1e293b; border: 1px solid #334155; border-radius: 6px; cursor: pointer; text-decoration: none; }
+    .btn-copy:hover { background: #334155; }
     .btn { display: inline-block; padding: 8px 16px; font-size: 13px; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; }
     .btn-primary { background: #3b82f6; color: white; }
     .btn-secondary { background: #334155; color: #e2e8f0; }
@@ -42,13 +46,34 @@
   <% end %>
 
   <% if flash[:hosting_auth_url].present? %>
-    <div class="auth-url-box">postpeer 授权链接：<a href="<%= flash[:hosting_auth_url] %>" target="_blank" rel="noopener"><%= flash[:hosting_auth_url] %></a></div>
+    <div class="auth-url-box">
+      <div class="auth-url-label">postpeer 授权链接</div>
+      <div class="auth-url-row">
+        <span class="auth-url-text"><%= flash[:hosting_auth_url] %></span>
+        <button type="button" class="btn-copy" onclick="copyAuthUrl(this)" data-url="<%= flash[:hosting_auth_url] %>">复制</button>
+        <a href="<%= flash[:hosting_auth_url] %>" target="_blank" rel="noopener" class="btn-copy">打开</a>
+      </div>
+    </div>
   <% end %>
   <% if flash[:hosting_postforme_auth_url].present? %>
-    <div class="auth-url-box">postforme 授权链接：<a href="<%= flash[:hosting_postforme_auth_url] %>" target="_blank" rel="noopener"><%= flash[:hosting_postforme_auth_url] %></a></div>
+    <div class="auth-url-box">
+      <div class="auth-url-label">postforme 授权链接</div>
+      <div class="auth-url-row">
+        <span class="auth-url-text"><%= flash[:hosting_postforme_auth_url] %></span>
+        <button type="button" class="btn-copy" onclick="copyAuthUrl(this)" data-url="<%= flash[:hosting_postforme_auth_url] %>">复制</button>
+        <a href="<%= flash[:hosting_postforme_auth_url] %>" target="_blank" rel="noopener" class="btn-copy">打开</a>
+      </div>
+    </div>
   <% end %>
   <% if flash[:hosting_x_auth_url].present? %>
-    <div class="auth-url-box">X 授权链接：<a href="<%= flash[:hosting_x_auth_url] %>" target="_blank" rel="noopener"><%= flash[:hosting_x_auth_url] %></a></div>
+    <div class="auth-url-box">
+      <div class="auth-url-label">X 授权链接</div>
+      <div class="auth-url-row">
+        <span class="auth-url-text"><%= flash[:hosting_x_auth_url] %></span>
+        <button type="button" class="btn-copy" onclick="copyAuthUrl(this)" data-url="<%= flash[:hosting_x_auth_url] %>">复制</button>
+        <a href="<%= flash[:hosting_x_auth_url] %>" target="_blank" rel="noopener" class="btn-copy">打开</a>
+      </div>
+    </div>
   <% end %>
 
   <div class="form-group">
@@ -71,6 +96,32 @@
   </div>
 
   <script>
+    function copyAuthUrl(btn) {
+      var url = btn.getAttribute('data-url');
+      if (!url) return;
+      function done() {
+        btn.textContent = '已复制';
+        setTimeout(function() { btn.textContent = '复制'; }, 1500);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(function() { fallbackCopy(url, done); });
+      } else {
+        fallbackCopy(url, done);
+      }
+    }
+
+    function fallbackCopy(text, done) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      done();
+    }
+
     function completeXAuth() {
       var code = prompt('请粘贴 X 授权码或整段回调 URL：');
       if (!code || code.trim() === '') return;
