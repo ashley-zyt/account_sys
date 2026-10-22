@@ -20,7 +20,7 @@
 #
 #  index_hosting_publish_tasks_on_client_id                      (client_id)
 #  index_hosting_publish_tasks_on_hosting_account_id             (hosting_account_id)
-#  index_hosting_publish_tasks_on_resource_type_and_resource_id  (resource_type,resource_id)
+#  index_hosting_publish_tasks_on_resource_type_and_resource_id  (resource_type,resource_id) UNIQUE
 #  index_hosting_publish_tasks_on_status                         (status)
 #
 # Foreign Keys
