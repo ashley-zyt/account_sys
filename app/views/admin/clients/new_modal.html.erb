@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+    .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #f1f5f9; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: #94a3b8; margin-bottom: 6px; }
+    .form-input { width: 100%; padding: 10px 12px; font-size: 14px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; outline: none; }
+    .form-input:focus { border-color: #3b82f6; }
+    textarea.form-input { resize: vertical; min-height: 80px; }
+    .form-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .btn { padding: 10px 20px; font-size: 14px; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .error-message { color: #f87171; font-size: 13px; margin-bottom: 12px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="modal-title">新增客户</div>
+  <div id="client-error" class="error-message"></div>
+
+  <form id="client-form">
+    <div class="form-group">
+      <label class="form-label">客户名称 <span style="color: #f87171;">*</span></label>
+      <input type="text" name="client[name]" class="form-input" required placeholder="请输入客户名称">
+    </div>
+    <div class="form-group">
+      <label class="form-label">联系人</label>
+      <input type="text" name="client[contact]" class="form-input" placeholder="联系人姓名">
+    </div>
+    <div class="form-group">
+      <label class="form-label">联系方式</label>
+      <input type="text" name="client[contact_info]" class="form-input" placeholder="电话/微信/邮箱">
+    </div>
+    <div class="form-group">
+      <label class="form-label">状态</label>
+      <select name="client[status]" class="form-input">
+        <option value="active">合作中</option>
+        <option value="paused">暂停</option>
+        <option value="terminated">终止</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注</label>
+      <textarea name="client[remark]" class="form-input" rows="3" placeholder="备注信息"></textarea>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button type="submit" class="btn btn-primary">保存</button>
+    </div>
+  </form>
+
+  <script>
+    document.getElementById('client-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var form = this;
+      var formData = new FormData(form);
+      var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+      var errorDiv = document.getElementById('client-error');
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
+
+      fetch('<%= admin_clients_path %>', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrfToken, 'Accept': 'application/json' },
+        body: formData
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          if (window.parent && window.parent.closeClientModal) { window.parent.closeClientModal(true); }
+        } else {
+          errorDiv.textContent = data.message || '保存失败';
+          errorDiv.style.display = 'block';
+        }
+      })
+      .catch(function() {
+        errorDiv.textContent = '保存失败，请重试';
+        errorDiv.style.display = 'block';
+      });
+    });
+
+    function closeModal() {
+      if (window.parent && window.parent.closeClientModal) { window.parent.closeClientModal(false); }
+    }
+  </script>
+</body>
+</html>

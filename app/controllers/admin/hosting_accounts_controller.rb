@@ -1,39 +1,50 @@
 class Admin::HostingAccountsController < Admin::BaseController
-  before_action :set_hosting_account, only: [:show, :edit, :update, :destroy, :start_postpeer_auth, :confirm_postpeer_auth, :create_task]
-  before_action :load_form_options, only: [:new, :create, :edit, :update]
+  before_action :set_hosting_account, only: [:update, :destroy, :start_postpeer_auth, :confirm_postpeer_auth, :create_task]
+  before_action :load_form_options, only: [:new_modal, :edit_modal, :create, :update]
 
   def index
     @q = HostingAccount.ransack(params[:q])
     @hosting_accounts = @q.result.includes(:client).order(created_at: :desc).page(params[:page])
   end
 
-  def new
-    @hosting_account = HostingAccount.new
-  end
-
   def create
     @hosting_account = HostingAccount.new(hosting_account_params)
-    if @hosting_account.save
-      redirect_to admin_hosting_accounts_path, notice: '托管账号已添加'
-    else
-      render :new, status: :unprocessable_entity
+    respond_to do |format|
+      if @hosting_account.save
+        format.html { redirect_to admin_hosting_accounts_path, notice: '托管账号已添加' }
+        format.json { render json: { success: true, message: '托管账号已添加' } }
+      else
+        format.html { render :new_modal, layout: false, status: :unprocessable_entity }
+        format.json { render json: { success: false, message: @hosting_account.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+      end
     end
   end
 
-  def edit
-  end
-
   def update
-    if @hosting_account.update(hosting_account_params)
-      redirect_to admin_hosting_accounts_path, notice: '托管账号已更新'
-    else
-      render :edit, status: :unprocessable_entity
+    respond_to do |format|
+      if @hosting_account.update(hosting_account_params)
+        format.html { redirect_to admin_hosting_accounts_path, notice: '托管账号已更新' }
+        format.json { render json: { success: true, message: '托管账号已更新' } }
+      else
+        format.html { render :edit_modal, layout: false, status: :unprocessable_entity }
+        format.json { render json: { success: false, message: @hosting_account.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+      end
     end
   end
 
   def destroy
     @hosting_account.destroy
     redirect_to admin_hosting_accounts_path, notice: '托管账号已删除'
+  end
+
+  def new_modal
+    @hosting_account = HostingAccount.new
+    render layout: false
+  end
+
+  def edit_modal
+    @hosting_account = HostingAccount.find(params[:id])
+    render layout: false
   end
 
   # 发起 postpeer 授权（全手动，不做机器端动作）：生成授权链接供人工完成 OAuth

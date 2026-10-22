@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+    .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #f1f5f9; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: #94a3b8; margin-bottom: 6px; }
+    .form-input { width: 100%; padding: 10px 12px; font-size: 14px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; outline: none; }
+    .form-input:focus { border-color: #3b82f6; }
+    textarea.form-input { resize: vertical; min-height: 60px; }
+    .form-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .btn { padding: 10px 20px; font-size: 14px; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .error-message { color: #f87171; font-size: 13px; margin-bottom: 12px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="modal-title">新增托管账号</div>
+  <div id="hosting-error" class="error-message"></div>
+
+  <form id="hosting-form">
+    <div class="form-group">
+      <label class="form-label">客户 <span style="color: #f87171;">*</span></label>
+      <select name="hosting_account[client_id]" class="form-input" required>
+        <option value="">请选择客户</option>
+        <% @clients.each do |c| %>
+          <option value="<%= c.id %>"><%= c.name %></option>
+        <% end %>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">平台 <span style="color: #f87171;">*</span></label>
+      <select name="hosting_account[platform]" class="form-input" required>
+        <option value="twitter">twitter</option>
+        <option value="youtube">youtube</option>
+        <option value="tiktok">tiktok</option>
+        <option value="instagram">instagram</option>
+        <option value="facebook">facebook</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">主题</label>
+      <input type="text" name="hosting_account[theme]" class="form-input" placeholder="主题名（用于资源分配匹配）">
+    </div>
+    <div class="form-group">
+      <label class="form-label">资源队列</label>
+      <select name="hosting_account[resource_queue]" class="form-input">
+        <option value="">请选择资源队列</option>
+        <% @resource_queues.each do |name, key| %>
+          <option value="<%= key %>"><%= name %></option>
+        <% end %>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">发布渠道</label>
+      <select name="hosting_account[publish_channel]" class="form-input">
+        <option value="">未配置</option>
+        <option value="postpeer">postpeer</option>
+        <option value="postforme">postforme</option>
+        <option value="x">x</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">状态</label>
+      <select name="hosting_account[status]" class="form-input">
+        <option value="active">托管中</option>
+        <option value="paused">暂停</option>
+        <option value="terminated">终止</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注</label>
+      <textarea name="hosting_account[remark]" class="form-input" rows="2" placeholder="备注信息"></textarea>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button type="submit" class="btn btn-primary">保存</button>
+    </div>
+  </form>
+
+  <script>
+    document.getElementById('hosting-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var form = this;
+      var formData = new FormData(form);
+      var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+      var errorDiv = document.getElementById('hosting-error');
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
+
+      fetch('<%= admin_hosting_accounts_path %>', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrfToken, 'Accept': 'application/json' },
+        body: formData
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          if (window.parent && window.parent.closeHostingModal) { window.parent.closeHostingModal(true); }
+        } else {
+          errorDiv.textContent = data.message || '保存失败';
+          errorDiv.style.display = 'block';
+        }
+      })
+      .catch(function() {
+        errorDiv.textContent = '保存失败，请重试';
+        errorDiv.style.display = 'block';
+      });
+    });
+
+    function closeModal() {
+      if (window.parent && window.parent.closeHostingModal) { window.parent.closeHostingModal(false); }
+    }
+  </script>
+</body>
+</html>

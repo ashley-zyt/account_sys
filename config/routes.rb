@@ -195,9 +195,20 @@ Rails.application.routes.draw do
     end
     resources :comment_theme_configs
     # 客户托管模块（独立于自有账号体系）
-    resources :clients
-    resources :hosting_accounts do
+    resources :clients do
+      collection do
+        get :new_modal
+      end
       member do
+        get :edit_modal
+      end
+    end
+    resources :hosting_accounts do
+      collection do
+        get :new_modal
+      end
+      member do
+        get :edit_modal
         post :start_postpeer_auth
         post :confirm_postpeer_auth
         post :create_task

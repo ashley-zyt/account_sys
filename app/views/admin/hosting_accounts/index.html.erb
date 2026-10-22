@@ -27,7 +27,7 @@
     </div>
     <div class="admin-card-header-right">
       <span class="admin-tag">共 <%= @hosting_accounts.total_count %> 条</span>
-      <%= link_to "添加托管账号", new_admin_hosting_account_path, class: "admin-button-primary" %>
+      <button type="button" class="admin-button-primary" onclick="openNewHostingModal()">添加托管账号</button>
     </div>
   </div>
 
@@ -67,7 +67,7 @@
               <td><span class="admin-label-muted"><%= a.created_at&.strftime('%m-%d %H:%M') %></span></td>
               <td>
                 <div style="display: flex; gap: 8px;">
-                  <%= link_to "编辑", edit_admin_hosting_account_path(a), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <button type="button" onclick="openEditHostingModal(<%= a.id %>)" class="admin-link-quiet" style="color: var(--accent); background: none; border: none; cursor: pointer; padding: 0;">编辑</button>
                   <%= link_to "生成任务", create_task_admin_hosting_account_path(a), data: { turbo_method: :post, turbo_confirm: "从资源队列取一条成品生成托管发布任务？" }, class: "admin-link-quiet", style: "color: var(--accent);" %>
                   <% if a.publish_channel == 'postpeer' %>
                     <%= link_to "授权", start_postpeer_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--accent);" %>
@@ -88,3 +88,34 @@
     <div class="admin-empty-state">暂无托管账号数据。</div>
   <% end %>
 </div>
+
+<div id="hosting-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 1000; justify-content: center; align-items: center;">
+  <div style="background: #1e293b; border-radius: 12px; width: 560px; max-width: 90%; max-height: 90%; overflow: hidden;">
+    <iframe id="hosting-iframe" style="width: 100%; height: 100%; border: none; min-height: 660px;" src=""></iframe>
+  </div>
+</div>
+
+<script>
+  var hostingModal = document.getElementById('hosting-modal');
+  var hostingIframe = document.getElementById('hosting-iframe');
+
+  function openNewHostingModal() {
+    hostingIframe.src = '<%= new_modal_admin_hosting_accounts_path %>';
+    hostingModal.style.display = 'flex';
+  }
+
+  function openEditHostingModal(id) {
+    hostingIframe.src = '/admin/hosting_accounts/' + id + '/edit_modal';
+    hostingModal.style.display = 'flex';
+  }
+
+  function closeHostingModal(refresh) {
+    hostingModal.style.display = 'none';
+    hostingIframe.src = '';
+    if (refresh) { location.reload(); }
+  }
+
+  hostingModal.addEventListener('click', function(e) {
+    if (e.target === hostingModal) { closeHostingModal(false); }
+  });
+</script>
