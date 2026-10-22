@@ -20,6 +20,8 @@
     .btn-primary { background: #3b82f6; color: white; }
     .btn-secondary { background: #334155; color: #e2e8f0; }
     .error-message { color: #f87171; font-size: 13px; margin-bottom: 12px; display: none; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    .form-group-full { grid-column: 1 / -1; }
   </style>
 </head>
 <body>
@@ -27,17 +29,10 @@
   <div id="client-error" class="error-message"></div>
 
   <form id="client-form">
+    <div class="form-grid">
     <div class="form-group">
       <label class="form-label">客户名称 <span style="color: #f87171;">*</span></label>
       <input type="text" name="client[name]" class="form-input" required placeholder="请输入客户名称">
-    </div>
-    <div class="form-group">
-      <label class="form-label">联系人</label>
-      <input type="text" name="client[contact]" class="form-input" placeholder="联系人姓名">
-    </div>
-    <div class="form-group">
-      <label class="form-label">联系方式</label>
-      <input type="text" name="client[contact_info]" class="form-input" placeholder="电话/微信/邮箱">
     </div>
     <div class="form-group">
       <label class="form-label">状态</label>
@@ -48,8 +43,17 @@
       </select>
     </div>
     <div class="form-group">
+      <label class="form-label">联系人</label>
+      <input type="text" name="client[contact]" class="form-input" placeholder="联系人姓名">
+    </div>
+    <div class="form-group">
+      <label class="form-label">联系方式</label>
+      <input type="text" name="client[contact_info]" class="form-input" placeholder="电话/微信/邮箱">
+    </div>
+    <div class="form-group form-group-full">
       <label class="form-label">备注</label>
       <textarea name="client[remark]" class="form-input" rows="3" placeholder="备注信息"></textarea>
+    </div>
     </div>
 
     <div class="form-actions">
