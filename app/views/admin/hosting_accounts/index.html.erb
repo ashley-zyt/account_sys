@@ -79,6 +79,12 @@
         <tbody>
           <% status_labels = { "active" => "托管中", "paused" => "暂停", "terminated" => "终止" } %>
           <% @hosting_accounts.each do |a| %>
+            <% a_authorized = case a.publish_channel
+                 when 'postpeer'  then a.postpeer_account&.authorized?
+                 when 'postforme' then a.postforme_account&.authorized?
+                 when 'x_api'     then a.x_credential&.authorized?
+                 else false
+               end %>
             <tr>
               <td><span class="admin-label-muted"><%= a.id %></span></td>
               <td><%= a.client&.name || '-' %></td>
@@ -102,7 +108,11 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <button type="button" onclick="openEditHostingModal(<%= a.id %>)" class="admin-link-quiet" style="color: var(--accent); background: none; border: none; cursor: pointer; padding: 0;">编辑</button>
-                  <%= link_to "生成任务", create_task_admin_hosting_account_path(a), data: { turbo_method: :post, turbo_confirm: "从资源队列取一条成品生成托管发布任务？" }, class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if a_authorized %>
+                    <%= link_to "生成任务", create_task_admin_hosting_account_path(a), data: { turbo_method: :post, turbo_confirm: "从资源队列取一条成品生成托管发布任务？" }, class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% else %>
+                    <span class="admin-label-muted" title="未授权或未配置渠道，无法生成任务" style="cursor: not-allowed;">生成任务</span>
+                  <% end %>
                   <button type="button" onclick="openChannelModal(<%= a.id %>)" class="admin-link-quiet" style="color: var(--success); background: none; border: none; cursor: pointer; padding: 0;">渠道授权</button>
                   <%= link_to "删除", admin_hosting_account_path(a), data: { turbo_method: :delete, turbo_confirm: "确定删除该托管账号吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
                 </div>

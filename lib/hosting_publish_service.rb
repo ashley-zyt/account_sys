@@ -14,6 +14,8 @@ module HostingPublishService
     wm = WorkMode.find(hosting_account.resource_queue)
     return { success: false, message: '未配置资源队列' } if wm.nil? || !wm.resource?
     return { success: false, message: '未配置主题' } if hosting_account.theme.blank?
+    return { success: false, message: '未配置发布渠道，请先设置渠道' } if hosting_account.publish_channel.blank?
+    return { success: false, message: '未完成授权，无法生成发布任务' } unless authorized?(hosting_account)
 
     model = wm.task_model_class
 
@@ -40,6 +42,16 @@ module HostingPublishService
     { success: true, task: task }
   rescue ActiveRecord::RecordNotUnique
     { success: false, message: '该成品已被消费，请重试' }
+  end
+
+  # 托管账号是否已完成对应发布渠道的授权
+  def self.authorized?(hosting_account)
+    case hosting_account.publish_channel.to_s
+    when 'postpeer'  then hosting_account.postpeer_account&.authorized? || false
+    when 'postforme' then hosting_account.postforme_account&.authorized? || false
+    when 'x_api'     then hosting_account.x_credential&.authorized? || false
+    else false
+    end
   end
 
   # 执行发布：按托管账号配置的发布渠道分支
