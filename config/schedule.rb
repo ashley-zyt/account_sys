@@ -247,6 +247,15 @@ every 30.minutes do
   runner 'XAuthService.refresh_all'
 end
 
+# ==================== 客户托管账号自动发布 ====================
+# 每天 7:00 开始，遍历「托管中 + 已配置渠道 + 已授权」的托管账号：
+#   按账号「资源队列 + 主题 + 平台」取一条成品生成发布任务并发布；
+#   每处理完一个账号主动 sleep 30 秒（第三方 API 内部另有 30 秒节流兜底），避免触发限流。
+set :output, "log/hosting_publish_scheduler.log"
+every :day, at: '7:00 am' do
+  runner 'HostingPublishScheduler.run'
+end
+
 # ==================== 视频存储清理 ====================
 # 每周日下午 14:00（避开各平台发布窗口）：
 #   ① clean_published_queues：清成品资源队列中「无账号平台的孤儿记录」+「全终态成片的 OSS 文件」
