@@ -16,6 +16,7 @@
     .form-input { width: 100%; padding: 10px 12px; font-size: 14px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; outline: none; }
     .form-input:focus { border-color: #3b82f6; }
     textarea.form-input { resize: vertical; min-height: 60px; }
+    .form-hint { font-size: 11px; color: #64748b; margin-top: 4px; }
     .form-actions { display: flex; gap: 10px; margin-top: 24px; }
     .btn { padding: 10px 20px; font-size: 14px; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; }
     .btn-primary { background: #3b82f6; color: white; }
@@ -23,6 +24,8 @@
     .error-message { color: #f87171; font-size: 13px; margin-bottom: 12px; display: none; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
     .form-group-full { grid-column: 1 / -1; }
+    .platform-options { display: flex; flex-wrap: wrap; gap: 10px; }
+    .platform-options label { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #cbd5e1; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -37,13 +40,12 @@
       </div>
       <div class="form-group">
         <label class="form-label">平台 <span style="color: #f87171;">*</span></label>
-        <select name="hosting_account[platform]" id="hosting-platform" class="form-input">
-          <option value="twitter">twitter</option>
-          <option value="youtube">youtube</option>
-          <option value="tiktok">tiktok</option>
-          <option value="instagram">instagram</option>
-          <option value="facebook">facebook</option>
-        </select>
+        <div class="platform-options">
+          <% %w[twitter youtube tiktok instagram facebook].each do |p| %>
+            <label><input type="checkbox" name="hosting_account[platforms][]" value="<%= p %>"> <%= p %></label>
+          <% end %>
+        </div>
+        <div class="form-hint">可多选，每个平台会创建一个独立托管账号</div>
       </div>
       <div class="form-group">
         <label class="form-label">主题</label>
@@ -54,8 +56,12 @@
         <%= admin_searchable_select "hosting_account[resource_queue]", @resource_queues, placeholder: "请选择资源队列" %>
       </div>
       <div class="form-group">
-        <label class="form-label">发布渠道</label>
-        <select name="hosting_account[publish_channel]" id="hosting-publish-channel" class="form-input"></select>
+        <label class="form-label">发布渠道（其他平台）</label>
+        <select name="hosting_account[publish_channel]" class="form-input">
+          <option value="postpeer">postpeer</option>
+          <option value="postforme">postforme</option>
+        </select>
+        <div class="form-hint">twitter 固定走 x_api；此处仅用于 youtube/tiktok/instagram/facebook</div>
       </div>
       <div class="form-group">
         <label class="form-label">状态</label>
@@ -78,31 +84,6 @@
   </form>
 
   <script>
-    var CHANNEL_OPTIONS = {
-      twitter:   [['x_api', 'x_api']],
-      youtube:   [['postpeer', 'postpeer'], ['postforme', 'postforme']],
-      tiktok:    [['postpeer', 'postpeer'], ['postforme', 'postforme']],
-      instagram: [['postpeer', 'postpeer'], ['postforme', 'postforme']],
-      facebook:  [['postpeer', 'postpeer'], ['postforme', 'postforme']]
-    };
-
-    function renderChannels(platform, selected) {
-      var opts = CHANNEL_OPTIONS[platform] || [];
-      var sel = document.getElementById('hosting-publish-channel');
-      sel.innerHTML = '';
-      opts.forEach(function(pair) {
-        var o = document.createElement('option');
-        o.value = pair[1];
-        o.textContent = pair[0];
-        if (pair[1] === selected) { o.selected = true; }
-        sel.appendChild(o);
-      });
-    }
-
-    var platformSel = document.getElementById('hosting-platform');
-    platformSel.addEventListener('change', function() { renderChannels(this.value, null); });
-    renderChannels(platformSel.value, null);
-
     document.getElementById('hosting-form').addEventListener('submit', function(e) {
       e.preventDefault();
       var form = this;

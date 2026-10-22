@@ -8,14 +8,37 @@ class Admin::HostingAccountsController < Admin::BaseController
   end
 
   def create
-    @hosting_account = HostingAccount.new(hosting_account_params)
+    platforms = Array(params.dig(:hosting_account, :platforms)).map(&:to_s).reject(&:blank?)
+    if platforms.empty?
+      return respond_to do |format|
+        format.json { render json: { success: false, message: '请至少选择一个平台' }, status: :unprocessable_entity }
+      end
+    end
+
+    base = hosting_account_params.except(:platform)
+    created = []
+    errors = []
+
+    ActiveRecord::Base.transaction do
+      platforms.each do |platform|
+        channel = platform == 'twitter' ? 'x_api' : base[:publish_channel]
+        ha = HostingAccount.new(base.except(:publish_channel).merge(platform: platform, publish_channel: channel))
+        if ha.save
+          created << ha.id
+        else
+          errors << "#{platform}: #{ha.errors.full_messages.join(', ')}"
+        end
+      end
+      raise ActiveRecord::Rollback if errors.any?
+    end
+
     respond_to do |format|
-      if @hosting_account.save
-        format.html { redirect_to admin_hosting_accounts_path, notice: '托管账号已添加' }
-        format.json { render json: { success: true, message: '托管账号已添加' } }
+      if errors.any?
+        format.html { redirect_to admin_hosting_accounts_path, alert: errors.join('; ') }
+        format.json { render json: { success: false, message: errors.join('; ') }, status: :unprocessable_entity }
       else
-        format.html { render :new_modal, layout: false, status: :unprocessable_entity }
-        format.json { render json: { success: false, message: @hosting_account.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+        format.html { redirect_to admin_hosting_accounts_path, notice: "已创建 #{created.size} 个托管账号" }
+        format.json { render json: { success: true, message: "已创建 #{created.size} 个托管账号" } }
       end
     end
   end
