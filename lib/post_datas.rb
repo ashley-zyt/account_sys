@@ -37,7 +37,7 @@ class PostDatas
   #         避免出错账号（浏览器打不开/页面打不开，数据不回传）每轮都被选中占满配额、饿死正常账号。
   #         传 nil 不退避。仅 when only_uncollected 时生效。
   # @param machine_ips [Array<String>, nil] 只采集指定机器（machine_ip）的账号；nil 采集全部机器。
-  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil, machine_ips: nil, log_file: 'postdatas_fetch.log', prioritize_yesterday_published: false)
+  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil, machine_ips: nil, log_file: 'postdatas_fetch.log', prioritize_yesterday_published: false, clear_pending: false)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', log_file))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
@@ -122,6 +122,12 @@ class PostDatas
     end
 
     return { success_count: 0, fail_count: 0, total: 0, failed_items: [] } if accounts.empty?
+
+    # 下发前清理本轮涉及机器的残留采集任务（只清这些机器，避免误清其他机器正常排队的任务）
+    if clear_pending
+      ips = accounts.map { |a| a.browser.machine_ip }.uniq.compact
+      clear_pending_fetch_tasks(ips) if ips.any?
+    end
 
     # 3. 按浏览器分组：一个分组 = 一个指纹浏览器下的所有账号。
     #    组内顺序执行（同一浏览器一次只能开一个），组间由 worker 并行下发；
@@ -227,11 +233,11 @@ class PostDatas
     fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours, prioritize_yesterday_published: true)
   end
 
-  # 一次性下发所有「今日未采集」的账号到各机器（不限额、不退避），
-  # 机器端任务队列排队、空闲时逐个消化，直到全部采完。
+  # 一次性下发所有「今日未采集」的账号到各机器（每台限额、3 小时退避防重复）。
+  # 下发前只清理本轮涉及机器的残留采集任务，避免旧任务累积压死机器。
   # 用于每天 00:30 一次性下发，替代凌晨分批采集；白天穿插采集仍作兜底补采。
   def self.fetch_all_uncollected
-    fetch(only_uncollected: true, per_machine: nil, cooldown_hours: nil, prioritize_yesterday_published: true)
+    fetch(only_uncollected: true, per_machine: 500, cooldown_hours: 3, prioritize_yesterday_published: true, clear_pending: true)
   end
 
   # 空闲机器穿插采集：只采集「机器端当前无非采集任务在排队/执行」的机器上的账号。
