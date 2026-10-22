@@ -88,7 +88,10 @@
         <button type="button" class="btn btn-success" onclick="confirmAuth('<%= confirm_postforme_auth_admin_hosting_account_path(@hosting_account) %>')">确认授权</button>
       <% when 'x_api' %>
         <%= link_to "发起授权", start_x_auth_admin_hosting_account_path(@hosting_account), data: { turbo_method: :post }, class: "btn btn-primary" %>
-        <button type="button" class="btn btn-success" onclick="completeXAuth()">完成认证</button>
+        <div style="display: flex; gap: 8px; margin-top: 8px; width: 100%;">
+          <input type="text" id="x-auth-code" placeholder="粘贴授权码或整段回调 URL" style="flex: 1; min-width: 0; padding: 8px 12px; font-size: 13px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; outline: none;" />
+          <button type="button" class="btn btn-success" onclick="completeXAuth()">完成认证</button>
+        </div>
       <% else %>
         <span style="font-size: 13px; color: #64748b;">未配置发布渠道</span>
       <% end %>
@@ -140,8 +143,8 @@
     }
 
     function completeXAuth() {
-      var code = prompt('请粘贴 X 授权码或整段回调 URL：');
-      if (!code || code.trim() === '') return;
+      var code = document.getElementById('x-auth-code').value.trim();
+      if (!code) { alert('请先粘贴授权码或整段回调 URL'); return; }
       var csrf = document.querySelector('meta[name="csrf-token"]').content;
       fetch('<%= complete_x_auth_admin_hosting_account_path(@hosting_account) %>', {
         method: 'POST',
