@@ -77,23 +77,6 @@ module HostingXAuthService
       last_refreshed_at: Time.current
     )
 
-    # 回填 x_user_id（从 X /2/users/me 拿，失败不影响认证成功）
-    fetch_x_user_id(xc)
-
-    { success: true, message: '认证成功', x_user_id: xc.reload.x_user_id }
-  end
-
-  # 从 /2/users/me 拿 x_user_id 写回（best effort，失败不抛）
-  def self.fetch_x_user_id(xc)
-    token = xc.access_token
-    return if token.blank?
-
-    resp = XApi.me(access_token: token)
-    return unless XApi.success?(resp)
-
-    data = resp[:body].is_a?(Hash) ? resp[:body]['data'] : nil
-    xc.update!(x_user_id: data['id'].to_s) if data.is_a?(Hash) && data['id'].present?
-  rescue => e
-    Rails.logger.error "[HostingXAuth] 获取 x_user_id 失败: #{e.message}"
+    { success: true, message: '认证成功' }
   end
 end
