@@ -1,5 +1,5 @@
 class Admin::HostingAccountsController < Admin::BaseController
-  before_action :set_hosting_account, only: [:update, :destroy, :start_postpeer_auth, :confirm_postpeer_auth, :start_postforme_auth, :confirm_postforme_auth, :start_x_auth, :complete_x_auth, :create_task]
+  before_action :set_hosting_account, only: [:update, :destroy, :channel_modal, :update_channel, :start_postpeer_auth, :confirm_postpeer_auth, :start_postforme_auth, :confirm_postforme_auth, :start_x_auth, :complete_x_auth, :create_task]
   before_action :load_form_options, only: [:new_modal, :edit_modal, :create, :update]
 
   def index
@@ -21,8 +21,7 @@ class Admin::HostingAccountsController < Admin::BaseController
 
     ActiveRecord::Base.transaction do
       platforms.each do |platform|
-        channel = platform == 'twitter' ? 'x_api' : base[:publish_channel]
-        ha = HostingAccount.new(base.except(:publish_channel).merge(platform: platform, publish_channel: channel))
+        ha = HostingAccount.new(base.merge(platform: platform))
         if ha.save
           created << ha.id
         else
@@ -153,6 +152,20 @@ class Admin::HostingAccountsController < Admin::BaseController
     end
   end
 
+  # 渠道 + 授权弹窗
+  def channel_modal
+    render layout: false
+  end
+
+  # 保存发布渠道（渠道 + 授权弹窗内提交）
+  def update_channel
+    if @hosting_account.update(publish_channel: params[:publish_channel])
+      render json: { success: true, message: '发布渠道已保存' }
+    else
+      render json: { success: false, message: @hosting_account.errors.full_messages.join(', ') }
+    end
+  end
+
   private
 
   def set_hosting_account
@@ -183,7 +196,7 @@ class Admin::HostingAccountsController < Admin::BaseController
 
   def hosting_account_params
     params.require(:hosting_account).permit(
-      :client_id, :platform, :theme, :resource_queue, :publish_channel, :status, :remark
+      :client_id, :platform, :theme, :resource_queue, :status, :remark
     )
   end
 end

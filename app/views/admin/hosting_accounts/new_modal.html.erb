@@ -56,20 +56,15 @@
         <%= admin_searchable_select "hosting_account[resource_queue]", @resource_queues, placeholder: "请选择资源队列" %>
       </div>
       <div class="form-group">
-        <label class="form-label">发布渠道（其他平台）</label>
-        <select name="hosting_account[publish_channel]" class="form-input">
-          <option value="postpeer">postpeer</option>
-          <option value="postforme">postforme</option>
-        </select>
-        <div class="form-hint">twitter 固定走 x_api；此处仅用于 youtube/tiktok/instagram/facebook</div>
-      </div>
-      <div class="form-group">
         <label class="form-label">状态</label>
         <select name="hosting_account[status]" class="form-input">
           <option value="active">托管中</option>
           <option value="paused">暂停</option>
           <option value="terminated">终止</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">&nbsp;</label>
       </div>
       <div class="form-group form-group-full">
         <label class="form-label">备注</label>

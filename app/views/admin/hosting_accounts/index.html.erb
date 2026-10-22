@@ -103,16 +103,7 @@
                 <div style="display: flex; gap: 8px;">
                   <button type="button" onclick="openEditHostingModal(<%= a.id %>)" class="admin-link-quiet" style="color: var(--accent); background: none; border: none; cursor: pointer; padding: 0;">编辑</button>
                   <%= link_to "生成任务", create_task_admin_hosting_account_path(a), data: { turbo_method: :post, turbo_confirm: "从资源队列取一条成品生成托管发布任务？" }, class: "admin-link-quiet", style: "color: var(--accent);" %>
-                  <% if a.publish_channel == 'postpeer' %>
-                    <%= link_to "授权", start_postpeer_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--accent);" %>
-                    <%= link_to "确认授权", confirm_postpeer_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--success);" %>
-                  <% elsif a.publish_channel == 'postforme' %>
-                    <%= link_to "授权", start_postforme_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--accent);" %>
-                    <%= link_to "确认授权", confirm_postforme_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--success);" %>
-                  <% elsif a.publish_channel == 'x_api' %>
-                    <%= link_to "授权", start_x_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--accent);" %>
-                    <button type="button" onclick="completeXAuth(<%= a.id %>)" class="admin-link-quiet" style="color: var(--success); background: none; border: none; cursor: pointer; padding: 0;">完成认证</button>
-                  <% end %>
+                  <button type="button" onclick="openChannelModal(<%= a.id %>)" class="admin-link-quiet" style="color: var(--success); background: none; border: none; cursor: pointer; padding: 0;">渠道授权</button>
                   <%= link_to "删除", admin_hosting_account_path(a), data: { turbo_method: :delete, turbo_confirm: "确定删除该托管账号吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
                 </div>
               </td>
@@ -132,6 +123,12 @@
 <div id="hosting-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 1000; justify-content: center; align-items: center;">
   <div style="background: #1e293b; border-radius: 12px; width: 560px; max-width: 90%; max-height: 90%; overflow: hidden;">
     <iframe id="hosting-iframe" style="width: 100%; height: 420px; border: none;" src=""></iframe>
+  </div>
+</div>
+
+<div id="channel-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 1001; justify-content: center; align-items: center;">
+  <div style="background: #1e293b; border-radius: 12px; width: 520px; max-width: 90%; max-height: 90%; overflow: hidden;">
+    <iframe id="channel-iframe" style="width: 100%; height: 520px; border: none;" src=""></iframe>
   </div>
 </div>
 
@@ -164,28 +161,32 @@
     if (refresh) { location.reload(); }
   }
 
-  function completeXAuth(id) {
-    var code = prompt('请粘贴 X 授权码或整段回调 URL：');
-    if (!code || code.trim() === '') return;
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/admin/hosting_accounts/' + id + '/complete_x_auth';
-    var codeInput = document.createElement('input');
-    codeInput.type = 'hidden';
-    codeInput.name = 'code';
-    codeInput.value = code;
-    form.appendChild(codeInput);
-    var csrf = document.querySelector('meta[name="csrf-token"]');
-    if (csrf) {
-      var csrfInput = document.createElement('input');
-      csrfInput.type = 'hidden';
-      csrfInput.name = 'authenticity_token';
-      csrfInput.value = csrf.content;
-      form.appendChild(csrfInput);
-    }
-    document.body.appendChild(form);
-    form.submit();
+  var channelModal = document.getElementById('channel-modal');
+  var channelIframe = document.getElementById('channel-iframe');
+
+  channelIframe.onload = function() {
+    try {
+      var doc = channelIframe.contentDocument || channelIframe.contentWindow.document;
+      var h = doc.body.scrollHeight;
+      var max = Math.floor(window.innerHeight * 0.85);
+      channelIframe.style.height = Math.min(h, max) + 'px';
+    } catch (e) {}
+  };
+
+  function openChannelModal(id) {
+    channelIframe.src = '/admin/hosting_accounts/' + id + '/channel_modal';
+    channelModal.style.display = 'flex';
   }
+
+  function closeChannelModal(refresh) {
+    channelModal.style.display = 'none';
+    channelIframe.src = '';
+    if (refresh) { location.reload(); }
+  }
+
+  channelModal.addEventListener('click', function(e) {
+    if (e.target === channelModal) { closeChannelModal(false); }
+  });
 
   hostingModal.addEventListener('click', function(e) {
     if (e.target === hostingModal) { closeHostingModal(false); }

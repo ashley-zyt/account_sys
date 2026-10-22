@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+    .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #f1f5f9; }
+    .account-info { font-size: 13px; color: #94a3b8; margin-bottom: 16px; line-height: 1.6; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: #94a3b8; margin-bottom: 6px; }
+    .form-input { width: 100%; padding: 10px 12px; font-size: 14px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; outline: none; }
+    .form-hint { font-size: 11px; color: #64748b; margin-top: 4px; }
+    .auth-url-box { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; font-size: 12px; word-break: break-all; }
+    .auth-url-box a { color: #3b82f6; }
+    .btn { display: inline-block; padding: 8px 16px; font-size: 13px; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .btn-success { background: #16a34a; color: white; }
+    .auth-actions { display: flex; gap: 10px; margin-top: 8px; }
+    .notice { color: #4ade80; font-size: 13px; margin-bottom: 12px; }
+    .alert { color: #f87171; font-size: 13px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="modal-title">渠道 + 授权</div>
+
+  <div class="account-info">
+    客户：<%= @hosting_account.client&.name || '-' %><br>
+    平台：<%= @hosting_account.platform %> ｜ 主题：<%= @hosting_account.theme || '-' %> ｜ 资源队列：<%= WorkMode.find(@hosting_account.resource_queue)&.name || @hosting_account.resource_queue || '-' %>
+  </div>
+
+  <% if flash[:notice].present? %>
+    <div class="notice"><%= flash[:notice] %></div>
+  <% end %>
+  <% if flash[:alert].present? %>
+    <div class="alert"><%= flash[:alert] %></div>
+  <% end %>
+
+  <% if flash[:hosting_auth_url].present? %>
+    <div class="auth-url-box">postpeer 授权链接：<a href="<%= flash[:hosting_auth_url] %>" target="_blank" rel="noopener"><%= flash[:hosting_auth_url] %></a></div>
+  <% end %>
+  <% if flash[:hosting_postforme_auth_url].present? %>
+    <div class="auth-url-box">postforme 授权链接：<a href="<%= flash[:hosting_postforme_auth_url] %>" target="_blank" rel="noopener"><%= flash[:hosting_postforme_auth_url] %></a></div>
+  <% end %>
+  <% if flash[:hosting_x_auth_url].present? %>
+    <div class="auth-url-box">X 授权链接：<a href="<%= flash[:hosting_x_auth_url] %>" target="_blank" rel="noopener"><%= flash[:hosting_x_auth_url] %></a></div>
+  <% end %>
+
+  <div class="form-group">
+    <label class="form-label">发布渠道</label>
+    <select id="channel-select" class="form-input"></select>
+    <div class="form-hint">twitter 固定 x_api；其他平台可选 postpeer / postforme</div>
+  </div>
+  <button type="button" class="btn btn-primary" onclick="saveChannel()">保存渠道</button>
+
+  <div class="form-group" style="margin-top: 20px;">
+    <label class="form-label">授权</label>
+    <div class="auth-actions">
+      <% case @hosting_account.publish_channel %>
+      <% when 'postpeer' %>
+        <%= link_to "发起授权", start_postpeer_auth_admin_hosting_account_path(@hosting_account), data: { turbo_method: :post }, class: "btn btn-primary" %>
+        <%= link_to "确认授权", confirm_postpeer_auth_admin_hosting_account_path(@hosting_account), data: { turbo_method: :post }, class: "btn btn-success" %>
+      <% when 'postforme' %>
+        <%= link_to "发起授权", start_postforme_auth_admin_hosting_account_path(@hosting_account), data: { turbo_method: :post }, class: "btn btn-primary" %>
+        <%= link_to "确认授权", confirm_postforme_auth_admin_hosting_account_path(@hosting_account), data: { turbo_method: :post }, class: "btn btn-success" %>
+      <% when 'x_api' %>
+        <%= link_to "发起授权", start_x_auth_admin_hosting_account_path(@hosting_account), data: { turbo_method: :post }, class: "btn btn-primary" %>
+        <button type="button" class="btn btn-success" onclick="completeXAuth()">完成认证</button>
+      <% else %>
+        <span style="font-size: 13px; color: #64748b;">请先选择并保存发布渠道</span>
+      <% end %>
+    </div>
+  </div>
+
+  <script>
+    var CHANNEL_OPTIONS = {
+      twitter:   [['x_api', 'x_api']],
+      youtube:   [['postpeer', 'postpeer'], ['postforme', 'postforme']],
+      tiktok:    [['postpeer', 'postpeer'], ['postforme', 'postforme']],
+      instagram: [['postpeer', 'postpeer'], ['postforme', 'postforme']],
+      facebook:  [['postpeer', 'postpeer'], ['postforme', 'postforme']]
+    };
+
+    function renderChannels(platform, selected) {
+      var opts = CHANNEL_OPTIONS[platform] || [];
+      var sel = document.getElementById('channel-select');
+      sel.innerHTML = '';
+      opts.forEach(function(pair) {
+        var o = document.createElement('option');
+        o.value = pair[1];
+        o.textContent = pair[0];
+        if (pair[1] === selected) { o.selected = true; }
+        sel.appendChild(o);
+      });
+    }
+
+    renderChannels('<%= @hosting_account.platform %>', '<%= @hosting_account.publish_channel %>');
+
+    function saveChannel() {
+      var channel = document.getElementById('channel-select').value;
+      var csrf = document.querySelector('meta[name="csrf-token"]').content;
+      fetch('<%= update_channel_admin_hosting_account_path(@hosting_account) %>', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ publish_channel: channel })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          if (window.parent && window.parent.closeChannelModal) { window.parent.closeChannelModal(true); }
+        } else {
+          alert(data.message || '保存失败');
+        }
+      })
+      .catch(function() { alert('保存失败，请重试'); });
+    }
+
+    function completeXAuth() {
+      var code = prompt('请粘贴 X 授权码或整段回调 URL：');
+      if (!code || code.trim() === '') return;
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '<%= complete_x_auth_admin_hosting_account_path(@hosting_account) %>';
+      var codeInput = document.createElement('input');
+      codeInput.type = 'hidden';
+      codeInput.name = 'code';
+      codeInput.value = code;
+      form.appendChild(codeInput);
+      var csrf = document.querySelector('meta[name="csrf-token"]');
+      if (csrf) {
+        var csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'authenticity_token';
+        csrfInput.value = csrf.content;
+        form.appendChild(csrfInput);
+      }
+      document.body.appendChild(form);
+      form.submit();
+    }
+  </script>
+</body>
+</html>

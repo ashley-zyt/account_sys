@@ -209,6 +209,8 @@ Rails.application.routes.draw do
       end
       member do
         get :edit_modal
+        get :channel_modal
+        post :update_channel
         post :start_postpeer_auth
         post :confirm_postpeer_auth
         post :start_postforme_auth
