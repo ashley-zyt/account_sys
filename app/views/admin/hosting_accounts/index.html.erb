@@ -5,6 +5,20 @@
   客户托管的账号（独立于自有账号体系）
 <% end %>
 
+<% if flash[:hosting_auth_url].present? %>
+  <div class="admin-card" style="margin-bottom: 12px;">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-title">postpeer 授权链接</div>
+        <div class="admin-card-subtitle">复制链接在浏览器打开完成 OAuth，完成后回本页点「确认授权」</div>
+      </div>
+    </div>
+    <div style="padding: 0 20px 20px;">
+      <a href="<%= flash[:hosting_auth_url] %>" target="_blank" rel="noopener"><%= flash[:hosting_auth_url] %></a>
+    </div>
+  </div>
+<% end %>
+
 <div class="admin-card">
   <div class="admin-card-header">
     <div>
@@ -28,6 +42,7 @@
             <th>主题</th>
             <th>资源队列</th>
             <th>发布渠道</th>
+            <th>授权</th>
             <th>状态</th>
             <th>创建时间</th>
             <th>操作</th>
@@ -43,11 +58,21 @@
               <td><%= a.theme || '-' %></td>
               <td><%= WorkMode.find(a.resource_queue)&.name || a.resource_queue || '-' %></td>
               <td><%= a.publish_channel || '-' %></td>
+              <td>
+                <% pa = a.postpeer_account %>
+                <% auth_labels = { "pending" => "未授权", "authorizing" => "授权中", "authorized" => "已授权", "failed" => "失败" } %>
+                <span class="admin-label-muted"><%= pa ? (auth_labels[pa.auth_status] || pa.auth_status) : '未授权' %></span>
+              </td>
               <td><span class="admin-label-muted"><%= status_labels[a.status] || a.status %></span></td>
               <td><span class="admin-label-muted"><%= a.created_at&.strftime('%m-%d %H:%M') %></span></td>
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "编辑", edit_admin_hosting_account_path(a), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <%= link_to "生成任务", create_task_admin_hosting_account_path(a), data: { turbo_method: :post, turbo_confirm: "从资源队列取一条成品生成托管发布任务？" }, class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if a.publish_channel == 'postpeer' %>
+                    <%= link_to "授权", start_postpeer_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--accent);" %>
+                    <%= link_to "确认授权", confirm_postpeer_auth_admin_hosting_account_path(a), data: { turbo_method: :post }, class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% end %>
                   <%= link_to "删除", admin_hosting_account_path(a), data: { turbo_method: :delete, turbo_confirm: "确定删除该托管账号吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
                 </div>
               </td>

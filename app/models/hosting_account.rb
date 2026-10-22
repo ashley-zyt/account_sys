@@ -26,6 +26,9 @@
 class HostingAccount < ApplicationRecord
   belongs_to :client
   has_many :hosting_publish_tasks, dependent: :destroy
+  has_one :postpeer_account, dependent: :destroy
+  has_one :postforme_account, dependent: :destroy
+  has_one :x_credential, dependent: :destroy
 
   enum status: { active: 0, paused: 1, terminated: 2 }
 
@@ -42,6 +45,6 @@ class HostingAccount < ApplicationRecord
   end
 
   def self.ransackable_associations(auth_object = nil)
-    %w[client hosting_publish_tasks]
+    %w[client hosting_publish_tasks postpeer_account postforme_account x_credential]
   end
 end

@@ -196,8 +196,18 @@ Rails.application.routes.draw do
     resources :comment_theme_configs
     # 客户托管模块（独立于自有账号体系）
     resources :clients
-    resources :hosting_accounts
-    resources :hosting_publish_tasks, only: [:index]
+    resources :hosting_accounts do
+      member do
+        post :start_postpeer_auth
+        post :confirm_postpeer_auth
+        post :create_task
+      end
+    end
+    resources :hosting_publish_tasks, only: [:index] do
+      member do
+        post :publish
+      end
+    end
     # KOL 限制统一管理：账号休眠、联系方式停用、每日尝试上限
     resources :restrictions, only: [:index] do
       collection do

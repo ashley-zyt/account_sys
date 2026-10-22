@@ -32,6 +32,7 @@
             <th>失败原因</th>
             <th>执行时间</th>
             <th>创建时间</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -53,6 +54,13 @@
               <td><span class="admin-label-muted" title="<%= t.error_msg.to_s %>"><%= truncate(t.error_msg.to_s, length: 20) %></span></td>
               <td><span class="admin-label-muted"><%= t.executed_at&.strftime('%m-%d %H:%M') || '-' %></span></td>
               <td><span class="admin-label-muted"><%= t.created_at&.strftime('%m-%d %H:%M') %></span></td>
+              <td>
+                <% if %w[pending failed].include?(t.status) %>
+                  <%= link_to "发布", publish_admin_hosting_publish_task_path(t), data: { turbo_method: :post, turbo_confirm: "确定执行发布该托管任务吗？" }, class: "admin-link-quiet", style: "color: var(--success);" %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
             </tr>
           <% end %>
         </tbody>

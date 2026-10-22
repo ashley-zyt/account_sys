@@ -1,5 +1,5 @@
 class Admin::HostingAccountsController < Admin::BaseController
-  before_action :set_hosting_account, only: [:show, :edit, :update, :destroy]
+  before_action :set_hosting_account, only: [:show, :edit, :update, :destroy, :start_postpeer_auth, :confirm_postpeer_auth, :create_task]
   before_action :load_form_options, only: [:new, :create, :edit, :update]
 
   def index
@@ -34,6 +34,37 @@ class Admin::HostingAccountsController < Admin::BaseController
   def destroy
     @hosting_account.destroy
     redirect_to admin_hosting_accounts_path, notice: '托管账号已删除'
+  end
+
+  # 发起 postpeer 授权（全手动，不做机器端动作）：生成授权链接供人工完成 OAuth
+  def start_postpeer_auth
+    result = HostingPostpeerAuthService.start_authorization(@hosting_account)
+    if result[:success]
+      flash[:hosting_auth_url] = result[:auth_url]
+      redirect_back fallback_location: admin_hosting_accounts_path, notice: result[:message]
+    else
+      redirect_back fallback_location: admin_hosting_accounts_path, alert: result[:message]
+    end
+  end
+
+  # 确认 postpeer 授权：反查 accountId 标记「已授权」
+  def confirm_postpeer_auth
+    result = HostingPostpeerAuthService.confirm_authorization(@hosting_account)
+    if result
+      redirect_back fallback_location: admin_hosting_accounts_path, notice: "postpeer 授权成功（peer_account_id=#{result[:peer_account_id]}）"
+    else
+      redirect_back fallback_location: admin_hosting_accounts_path, alert: 'postpeer 授权未完成，请先完成 OAuth 后再试'
+    end
+  end
+
+  # 手动触发：从资源队列取一条成品，生成托管发布任务
+  def create_task
+    result = HostingPublishService.fetch_and_create_task(@hosting_account)
+    if result[:success]
+      redirect_back fallback_location: admin_hosting_accounts_path, notice: "已生成托管发布任务 ##{result[:task].id}"
+    else
+      redirect_back fallback_location: admin_hosting_accounts_path, alert: result[:message]
+    end
   end
 
   private
