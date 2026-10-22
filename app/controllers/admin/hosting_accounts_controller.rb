@@ -83,10 +83,21 @@ class Admin::HostingAccountsController < Admin::BaseController
   # 确认 postpeer 授权：反查 accountId 标记「已授权」
   def confirm_postpeer_auth
     result = HostingPostpeerAuthService.confirm_authorization(@hosting_account)
-    if result
-      redirect_back fallback_location: admin_hosting_accounts_path, notice: "postpeer 授权成功（peer_account_id=#{result[:peer_account_id]}）"
-    else
-      redirect_back fallback_location: admin_hosting_accounts_path, alert: 'postpeer 授权未完成，请先完成 OAuth 后再试'
+    respond_to do |format|
+      format.html do
+        if result
+          redirect_back fallback_location: admin_hosting_accounts_path, notice: "postpeer 授权成功（peer_account_id=#{result[:peer_account_id]}）"
+        else
+          redirect_back fallback_location: admin_hosting_accounts_path, alert: 'postpeer 授权未完成，请先完成 OAuth 后再试'
+        end
+      end
+      format.json do
+        if result
+          render json: { success: true, message: "postpeer 授权成功（peer_account_id=#{result[:peer_account_id]}）" }
+        else
+          render json: { success: false, message: 'postpeer 授权未完成，请先完成 OAuth 后再试' }
+        end
+      end
     end
   end
 
@@ -114,10 +125,21 @@ class Admin::HostingAccountsController < Admin::BaseController
   # 确认 postforme 授权：反查 social_account_id 标记「已授权」
   def confirm_postforme_auth
     result = HostingPostformeAuthService.confirm_authorization(@hosting_account)
-    if result
-      redirect_back fallback_location: admin_hosting_accounts_path, notice: "postforme 授权成功（social_account_id=#{result[:social_account_id]}）"
-    else
-      redirect_back fallback_location: admin_hosting_accounts_path, alert: 'postforme 授权未完成，请先完成 OAuth 后再试'
+    respond_to do |format|
+      format.html do
+        if result
+          redirect_back fallback_location: admin_hosting_accounts_path, notice: "postforme 授权成功（social_account_id=#{result[:social_account_id]}）"
+        else
+          redirect_back fallback_location: admin_hosting_accounts_path, alert: 'postforme 授权未完成，请先完成 OAuth 后再试'
+        end
+      end
+      format.json do
+        if result
+          render json: { success: true, message: "postforme 授权成功（social_account_id=#{result[:social_account_id]}）" }
+        else
+          render json: { success: false, message: 'postforme 授权未完成，请先完成 OAuth 后再试' }
+        end
+      end
     end
   end
 
@@ -136,20 +158,16 @@ class Admin::HostingAccountsController < Admin::BaseController
   def complete_x_auth
     raw = params[:code].to_s.strip
     if raw.blank?
-      return redirect_back fallback_location: admin_hosting_accounts_path, alert: '请粘贴授权码或回调 URL'
+      return render json: { success: false, message: '请粘贴授权码或回调 URL' }
     end
 
     code, state = parse_manual_auth_input(raw)
     if code.blank?
-      return redirect_back fallback_location: admin_hosting_accounts_path, alert: '无法从粘贴内容中解析出授权码'
+      return render json: { success: false, message: '无法从粘贴内容中解析出授权码' }
     end
 
     result = HostingXAuthService.complete_authorization(@hosting_account, code: code, state: state)
-    if result[:success]
-      redirect_back fallback_location: admin_hosting_accounts_path, notice: result[:message]
-    else
-      redirect_back fallback_location: admin_hosting_accounts_path, alert: result[:message]
-    end
+    render json: { success: result[:success], message: result[:message] }
   end
 
   # 渠道 + 授权弹窗
