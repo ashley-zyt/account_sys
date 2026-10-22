@@ -87,32 +87,12 @@ class Admin::HostingAccountsController < Admin::BaseController
   def load_form_options
     @clients = Client.order(:name)
     @themes = Theme.order(:name).pluck(:name)
-    @resource_queues = WorkMode.resource_modes.map(&:name)
+    @resource_queues = WorkMode.resource_modes.map { |m| [m.name, m.key] }
   end
 
   def hosting_account_params
-    raw = params.require(:hosting_account).permit(
-      :client_name, :platform, :theme, :resource_queue, :publish_channel, :status, :remark
+    params.require(:hosting_account).permit(
+      :client_id, :platform, :theme, :resource_queue, :publish_channel, :status, :remark
     )
-
-    attrs = {
-      platform: raw[:platform],
-      theme: raw[:theme].presence,
-      publish_channel: raw[:publish_channel].presence,
-      status: raw[:status],
-      remark: raw[:remark]
-    }
-
-    if raw[:client_name].present?
-      attrs[:client_id] = Client.find_by(name: raw[:client_name])&.id
-    end
-
-    rq = raw[:resource_queue].to_s.strip
-    if rq.present?
-      wm = WorkMode.resource_modes.find { |m| m.name == rq }
-      attrs[:resource_queue] = wm ? wm.key : rq
-    end
-
-    attrs
   end
 end
