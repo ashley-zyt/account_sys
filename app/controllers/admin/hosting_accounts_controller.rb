@@ -175,10 +175,20 @@ class Admin::HostingAccountsController < Admin::BaseController
     render layout: false
   end
 
-  # 保存发布渠道（渠道 + 授权弹窗内提交）
+  # 保存发布渠道（列表内联选择）；渠道变化时重置对应渠道授权，强制重新授权
   def update_channel
-    if @hosting_account.update(publish_channel: params[:publish_channel])
-      render json: { success: true, message: '发布渠道已保存' }
+    new_channel = params[:publish_channel].to_s.presence
+    old_channel = @hosting_account.publish_channel.to_s
+
+    if new_channel == old_channel
+      return render json: { success: true, message: '发布渠道未变化' }
+    end
+
+    @hosting_account.publish_channel = new_channel
+    if @hosting_account.save
+      reset_authorization(new_channel) if new_channel.present?
+      message = new_channel.present? ? '发布渠道已保存，需重新授权' : '发布渠道已清空'
+      render json: { success: true, message: message }
     else
       render json: { success: false, message: @hosting_account.errors.full_messages.join(', ') }
     end
@@ -188,6 +198,32 @@ class Admin::HostingAccountsController < Admin::BaseController
 
   def set_hosting_account
     @hosting_account = HostingAccount.find(params[:id])
+  end
+
+  # 修改发布渠道后，重置对应渠道的授权状态为「未授权」，强制重新授权
+  def reset_authorization(channel)
+    case channel.to_s
+    when 'postpeer'
+      pa = @hosting_account.postpeer_account
+      pa&.update!(auth_status: :pending, peer_account_id: nil, profile_id: nil, authorized_at: nil)
+    when 'postforme'
+      pf = @hosting_account.postforme_account
+      pf&.update!(auth_status: :pending, social_account_id: nil, authorized_at: nil)
+    when 'x_api'
+      xc = @hosting_account.x_credential
+      xc&.update!(
+        auth_status: :pending,
+        access_token_encrypted: nil,
+        refresh_token_encrypted: nil,
+        x_user_id: nil,
+        code_verifier: nil,
+        state: nil,
+        token_expires_at: nil,
+        scope: nil,
+        last_refreshed_at: nil,
+        authorized_at: nil
+      )
+    end
   end
 
   # 解析全手动 X 认证输入：整段回调 URL 或纯授权码 → [code, state]

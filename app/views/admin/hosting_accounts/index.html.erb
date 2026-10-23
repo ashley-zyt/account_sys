@@ -102,19 +102,15 @@
               <td><%= a.theme || '-' %></td>
               <td><%= WorkMode.find(a.resource_queue)&.name || a.resource_queue || '-' %></td>
               <td>
-                <% if a.publish_channel.blank? %>
-                  <select onchange="saveChannel(this, <%= a.id %>)" style="padding: 4px 8px; font-size: 13px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0;">
-                    <option value="">选择渠道</option>
-                    <% if a.platform == 'twitter' %>
-                      <option value="x_api">x_api</option>
-                    <% else %>
-                      <option value="postpeer">postpeer</option>
-                      <option value="postforme">postforme</option>
-                    <% end %>
-                  </select>
-                <% else %>
-                  <%= a.publish_channel %>
-                <% end %>
+                <select onchange="saveChannel(this, <%= a.id %>, '<%= a.publish_channel || '' %>')" style="padding: 4px 8px; font-size: 13px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0;">
+                  <option value="">选择渠道</option>
+                  <% if a.platform == 'twitter' %>
+                    <option value="x_api" <%= 'selected' if a.publish_channel == 'x_api' %>>x_api</option>
+                  <% else %>
+                    <option value="postpeer" <%= 'selected' if a.publish_channel == 'postpeer' %>>postpeer</option>
+                    <option value="postforme" <%= 'selected' if a.publish_channel == 'postforme' %>>postforme</option>
+                  <% end %>
+                </select>
               </td>
               <td>
                 <% 
@@ -216,9 +212,17 @@
     channelModal.style.display = 'flex';
   }
 
-  function saveChannel(sel, id) {
+  function saveChannel(sel, id, originalChannel) {
     var channel = sel.value;
     if (!channel) return;
+    originalChannel = originalChannel || '';
+    if (channel === originalChannel) return;
+    if (originalChannel) {
+      if (!confirm('修改发布渠道后需要重新授权（原授权将失效），确定修改为 ' + channel + ' 吗？')) {
+        sel.value = originalChannel;
+        return;
+      }
+    }
     var csrf = document.querySelector('meta[name="csrf-token"]').content;
     fetch('/admin/hosting_accounts/' + id + '/update_channel', {
       method: 'POST',
@@ -228,9 +232,9 @@
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.success) { location.reload(); }
-      else { alert(data.message || '保存失败'); }
+      else { alert(data.message || '保存失败'); location.reload(); }
     })
-    .catch(function() { alert('保存失败，请重试'); });
+    .catch(function() { alert('保存失败，请重试'); location.reload(); });
   }
 
   function closeChannelModal(refresh) {
