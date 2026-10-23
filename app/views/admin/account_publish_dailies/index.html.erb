@@ -15,6 +15,10 @@
   'no_browser'       => ['无浏览器', '#06b6d4'],
   'unpublished'      => ['未发布', '#94a3b8']
 } %>
+<% source_labels = {
+  'realtime' => ['当场记录', '#22c55e'],
+  'backfill' => ['反推兜底', '#f59e0b']
+} %>
 
 <div class="admin-card">
   <div class="admin-card-header">
@@ -63,6 +67,15 @@
           <% end %>
         </select>
       </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">来源</label>
+        <select name="source" class="admin-input admin-filter-input">
+          <option value="">全部来源</option>
+          <% source_labels.each do |key, (label, _color)| %>
+            <option value="<%= key %>" <%= 'selected' if @source_filter == key %>><%= label %></option>
+          <% end %>
+        </select>
+      </div>
       <div>
         <button type="submit" class="admin-button-primary">筛选</button>
         <a href="<%= admin_account_publish_dailies_path %>" class="admin-button-secondary" style="margin-left: 8px;">重置</a>
@@ -80,6 +93,7 @@
           <th>主题</th>
           <th>工作模式</th>
           <th>结果</th>
+          <th>来源</th>
           <th>原因</th>
         </tr>
       </thead>
@@ -99,6 +113,10 @@
             <td>
               <% label, color = result_labels[r.result] || [r.result, '#94a3b8'] %>
               <span style="display: inline-block; background: <%= color %>; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px;"><%= label %></span>
+            </td>
+            <td>
+              <% slabel, scolor = source_labels[r.source] || [r.source, '#94a3b8'] %>
+              <span style="display: inline-block; background: <%= scolor %>; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px;"><%= slabel %></span>
             </td>
             <td style="max-width: 360px; word-break: break-all;"><%= r.reason %></td>
           </tr>

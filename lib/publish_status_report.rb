@@ -47,6 +47,25 @@ class PublishStatusReport
     ['facebook',  'Facebook']
   ].freeze
 
+  # 对账展示项顺序与标签（success/failed 取顶层，其余取 unpublished_detail；数量为 0 的不展示）
+  BREAKDOWN_ITEMS = [
+    [:success,          '成功'],
+    [:failed,           '失败'],
+    [:no_resource,      '资源不足'],
+    [:no_browser,       '无浏览器'],
+    [:agent,            'agent'],
+    [:tiktok_low_views, '低浏览'],
+    [:unpublished,      '有资源未发']
+  ].freeze
+
+  # 发布渠道中文名（对应 task_logs.publish_channel 枚举，展示成功数的渠道占比用）
+  CHANNEL_LABELS = {
+    'ag_center' => '浏览器',
+    'postforme' => 'postforme',
+    'x_api'     => 'x_api',
+    'postpeer'  => 'postpeer'
+  }.freeze
+
   class << self
     # 生成并推送日报（同时落快照）
     def run
@@ -116,6 +135,7 @@ class PublishStatusReport
         failed:      failed,
         unpublished: unpublished,
         banned:      banned,
+        success_channels: success_channels(platform, date),
         unpublished_detail: {
           agent:            agent,
           tiktok_low_views: tiktok,
@@ -129,6 +149,25 @@ class PublishStatusReport
     def result_counts_for(platform, date)
       AccountPublishDaily.where(stat_date: date, platform: Account.platforms[platform])
                          .group(:result).count
+    end
+
+    # 昨天成功账号按发布渠道的分布（成功记录关联 task_logs 取 publish_channel）
+    def success_channels(platform, date)
+      task_log_ids = AccountPublishDaily
+        .where(stat_date: date, platform: Account.platforms[platform], result: :success)
+        .pluck(:task_log_id).compact
+      return {} if task_log_ids.empty?
+
+      TaskLog.where(id: task_log_ids).group(:publish_channel).count.each_with_object({}) do |(channel, count), h|
+        key = normalize_channel(channel)
+        h[key] = count.to_i if key
+      end
+    end
+
+    # group 对 enum 列返回名称字符串；防御性兼容整数 key
+    def normalize_channel(channel)
+      return nil if channel.nil?
+      channel.is_a?(Integer) ? TaskLog.publish_channels.key(channel) : channel.to_s
     end
 
     # 正常状态账号在某天的发文条数（post_stats 采集口径，有滞后、跨天补采）
@@ -234,14 +273,40 @@ class PublishStatusReport
 
     # ---- 展示 ----
 
-    # 组装单个平台的播报行（对账式：成功 + 失败 + 未发 = 正常账号数，未发细分原因）
+    # 组装单个平台的播报行（对账式：成功 + 失败 + 各未发原因 = 正常账号数；为 0 的项不展示）
     def build_line(label, cur, prev)
       account_diff = diff_text(cur[:accounts], prev[:accounts], '个')
       post_diff    = diff_text(cur[:posts],    prev[:posts],    '条')
       d = cur[:unpublished_detail]
-      "正常状态#{label}账号数 #{cur[:accounts]} 个，#{account_diff}；" \
-        "正常发文数 #{cur[:posts]} 条（采集口径），#{post_diff}；" \
-        "成功 #{cur[:success]} + 失败 #{cur[:failed]} + 未发 #{cur[:unpublished]}（资源不足#{d[:no_resource]}/无浏览器#{d[:no_browser]}/agent#{d[:agent]}/低浏览#{d[:tiktok_low_views]}/有资源未发#{d[:unpublished]}）"
+
+      parts = []
+      BREAKDOWN_ITEMS.each do |key, display|
+        n = (key == :success ? cur[:success] : key == :failed ? cur[:failed] : d[key]).to_i
+        next unless n.positive?
+
+        text = "#{display} #{n}"
+        text += success_channel_text(cur) if key == :success
+        parts << text
+      end
+
+      line = "正常状态#{label}账号数 #{cur[:accounts]} 个，#{account_diff}；" \
+             "正常发文数 #{cur[:posts]} 条（采集），#{post_diff}"
+      line += "；#{parts.join(' + ')} = #{cur[:accounts]}" unless parts.empty?
+      line
+    end
+
+    # 成功数的渠道分布文案，如「（浏览器88 · postforme40 · x_api20）」；无数据返回空串
+    def success_channel_text(cur)
+      channels = cur[:success_channels]
+      return "" if channels.blank?
+
+      parts = []
+      CHANNEL_LABELS.each do |key, label|
+        n = channels[key].to_i
+        next if n.zero?
+        parts << "#{label}#{n}"
+      end
+      parts.empty? ? "" : "（#{parts.join(' · ')}）"
     end
 
     # 对比文案：多/少加粗；差异为 0 时显示「与昨日持平」

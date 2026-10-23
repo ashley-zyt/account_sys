@@ -10,15 +10,22 @@ class Admin::AccountPublishDailiesController < Admin::BaseController
     'unpublished'      => '未发布(待核查)'
   }.freeze
 
+  SOURCE_LABELS = {
+    'realtime' => '当场记录',
+    'backfill' => '反推兜底'
+  }.freeze
+
   # 发布对账页面：按日期查看每个账号当天的发布结果 + 未发布原因
   def index
     @stat_date = parse_date(params[:stat_date]) || AccountPublishDaily.maximum(:stat_date) || Date.today
     @result_filter = params[:result].presence
     @platform_filter = params[:platform].presence
+    @source_filter = params[:source].presence
 
     scope = AccountPublishDaily.where(stat_date: @stat_date)
     scope = scope.where(result: @result_filter) if @result_filter.present?
     scope = scope.where(platform: @platform_filter) if @platform_filter.present?
+    scope = scope.where(source: @source_filter) if @source_filter.present?
 
     @records = scope.includes(:account).order(:platform, :account_id)
 
@@ -29,6 +36,7 @@ class Admin::AccountPublishDailiesController < Admin::BaseController
 
     @result_options = AccountPublishDaily.results.keys
     @platform_options = Account.platforms.keys
+    @source_options = AccountPublishDaily.sources.keys
   end
 
   private

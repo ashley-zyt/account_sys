@@ -37,8 +37,14 @@ class AccountPublishDaily < ApplicationRecord
     unpublished: 7         # 有资源未发布（含无资源队列模式，待核查）
   }
 
+  # 记录来源：区分「发布链路当场记录」与「事后反推兜底」，方便核对数据准确性
+  enum source: {
+    realtime: 0,           # 当场记录（发布链路实时写）
+    backfill: 1            # 反推兜底（backfill!/build_for 事后 classify）
+  }
+
   def self.ransackable_attributes(auth_object = nil)
-    %w[id stat_date account_id platform theme work_type result reason error_msg created_at]
+    %w[id stat_date account_id platform theme work_type result source reason error_msg created_at]
   end
 
   def self.ransackable_associations(auth_object = nil)
@@ -64,7 +70,8 @@ class AccountPublishDaily < ApplicationRecord
       result:      result,
       reason:      reason,
       error_msg:   error_msg,
-      task_log_id: task_log_id
+      task_log_id: task_log_id,
+      source:      :realtime
     )
     record
   rescue => e
@@ -126,7 +133,8 @@ class AccountPublishDaily < ApplicationRecord
           result:      result,
           reason:      reason,
           error_msg:   error_msg,
-          task_log_id: task_log_id
+          task_log_id: task_log_id,
+          source:      :backfill
         )
         count += 1
       rescue ActiveRecord::RecordNotUnique
@@ -167,7 +175,8 @@ class AccountPublishDaily < ApplicationRecord
         result:      result,
         reason:      reason,
         error_msg:   error_msg,
-        task_log_id: task_log_id
+        task_log_id: task_log_id,
+        source:      :backfill
       )
       count += 1
     end
