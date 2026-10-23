@@ -47,7 +47,7 @@ module TaskReportHelper
     error_msg = safe_utf8(error_msg)
     raw_response = safe_utf8(raw_response)
 
-    TaskLog.create!(
+    log = TaskLog.create!(
       task_uuid: task.task_uuid,
       account_id: snapshot_account_id,
       browser_id: snapshot_browser_id,
@@ -56,6 +56,15 @@ module TaskReportHelper
       error_msg: error_msg,
       publish_channel: publish_channel,
       run_at: Time.current
+    )
+
+    # 同步写入「每日发布对账」：把发布结果当场落到 account_publish_dailies，供日报聚合。
+    # account_id 拿不到（任务释放且无归属快照）时跳过，不写对账。
+    AccountPublishDaily.record_publish_result!(
+      snapshot_account_id,
+      task_status,
+      error_msg: error_msg,
+      task_log_id: log.id
     )
 
     if error_msg.present?

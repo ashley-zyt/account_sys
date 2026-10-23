@@ -47,6 +47,97 @@ class AccountPublishDaily < ApplicationRecord
 
   # ---- 每日对账计算 ----
 
+  # 当场记录单个账号某天的发布结果（覆盖式：同一天同账号后写覆盖先写）。
+  # 供发布链路各节点在「事件发生的当下」调用，避免事后反推时资源/状态已变化导致误差。
+  # @param account [Account] 账号对象
+  # @param result [Symbol, String] 见 result 枚举
+  # @param reason [String] 结果原因文案
+  # @param date [Date] 归属统计日期，默认今天
+  def self.record!(account, result:, reason:, error_msg: nil, task_log_id: nil, date: Date.today)
+    return nil if account.nil?
+
+    record = find_or_initialize_by(stat_date: date, account_id: account.id)
+    record.update!(
+      platform:    Account.platforms[account.platform],
+      theme:       account.theme,
+      work_type:   account.work_type,
+      result:      result,
+      reason:      reason,
+      error_msg:   error_msg,
+      task_log_id: task_log_id
+    )
+    record
+  rescue => e
+    # 对账记录是「旁路」数据，绝不能因写对账失败而阻断发布主流程
+    Rails.logger.error "[AccountPublishDaily] 当场记录失败 account=#{account&.id} result=#{result}: #{e.message}"
+    nil
+  end
+
+  # 发布结果当场记录（success/failed）：供发布日志落库处复用，把「发布日志」同步成对账结果。
+  # @param account_id [Integer, nil] 执行账号快照 ID（拿不到则跳过，不写对账）
+  def self.record_publish_result!(account_id, status, error_msg: nil, task_log_id: nil, date: Date.today)
+    return nil if account_id.blank?
+
+    account = Account.unscoped.find_by(id: account_id)
+    return nil unless account
+
+    succeeded = status.to_s == 'success'
+    record!(
+      account,
+      result:      succeeded ? :success : :failed,
+      reason:      succeeded ? '发布成功' : (error_msg.presence || '发布失败'),
+      error_msg:   error_msg,
+      task_log_id: task_log_id,
+      date:        date
+    )
+  end
+
+  # 兜底补缺：只对「date 当天还没有对账记录」的账号跑 classify 补上原因。
+  # 与 build_for（全量 upsert）不同，这里绝不覆盖当天已由发布链路「当场记录」的准确结果，
+  # 只补那些没被记录到的漏网账号（agent / 无浏览器 / 有资源未发 / 未轮到分配等静态或边缘原因）。
+  # @return [Integer] 补缺的账号条数
+  def self.backfill!(date = Date.today)
+    day_start = date.beginning_of_day
+    day_end   = date.end_of_day
+
+    recorded_ids = where(stat_date: date).pluck(:account_id)
+
+    last_log_by_account = {}
+    TaskLog.where(run_at: day_start..day_end)
+           .where.not(account_id: nil)
+           .order(:run_at, :id)
+           .pluck(:account_id, :status, :error_msg, :id)
+           .each do |account_id, status, error_msg, id|
+             last_log_by_account[account_id] = { status: status, error_msg: error_msg, id: id }
+           end
+
+    count = 0
+    scope = Account.unscoped.where(deleted_at: nil)
+    scope = scope.where.not(id: recorded_ids) if recorded_ids.any?
+    scope.find_each do |account|
+      begin
+        result, reason, error_msg, task_log_id = classify(account, last_log_by_account[account.id])
+        create!(
+          stat_date:   date,
+          account_id:  account.id,
+          platform:    Account.platforms[account.platform],
+          theme:       account.theme,
+          work_type:   account.work_type,
+          result:      result,
+          reason:      reason,
+          error_msg:   error_msg,
+          task_log_id: task_log_id
+        )
+        count += 1
+      rescue ActiveRecord::RecordNotUnique
+        next
+      rescue => e
+        Rails.logger.error "[AccountPublishDaily] 兜底补缺失败 account=#{account.id}: #{e.message}"
+      end
+    end
+    count
+  end
+
   # 生成某天的对账快照（幂等：按 stat_date+account_id upsert，可重复跑）
   # @param date [Date] 统计日期，默认今天
   # @return [Integer] 落库的账号条数

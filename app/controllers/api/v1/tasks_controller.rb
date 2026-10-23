@@ -126,7 +126,7 @@ module Api
 			def create_task_log!(task, status, snapshot_account_id = nil, snapshot_browser_id = nil)
 				task_status = status == 'success' ? "success" : "failed"
 
-				TaskLog.create!(
+				log = TaskLog.create!(
 					task_uuid: task.task_uuid,
 					account_id: snapshot_account_id,
 					browser_id: snapshot_browser_id,
@@ -134,6 +134,14 @@ module Api
 					status: task_status,
 					error_msg: params[:status_desp],
 					run_at: Time.current
+				)
+
+				# 同步写入「每日发布对账」：把发布结果当场落到 account_publish_dailies，供日报聚合
+				AccountPublishDaily.record_publish_result!(
+					snapshot_account_id,
+					task_status,
+					error_msg: params[:status_desp],
+					task_log_id: log.id
 				)
 
 				# 账号/浏览器网络问题 → 全局封禁（复用统一判定）

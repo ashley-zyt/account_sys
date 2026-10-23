@@ -195,12 +195,12 @@ every :day, at: '09:30' do
   runner 'PublishStatusReport.run'
 end
 
-# ==================== 每日发布对账快照 ====================
-# 每天 21:30 生成当天每个账号的「发布结果 + 未发布原因」快照，
-# 供「发布对账」页（/admin/account_publish_dailies）按日期回溯，排查某天发布数字对不上的原因。
+# ==================== 每日发布对账兜底 ====================
+# 每天 21:30 对当天「尚未被发布链路当场记录」的账号跑兜底补缺（agent/无浏览器/有资源未发等），
+# 供「发布对账」页（/admin/account_publish_dailies）按日期回溯。当场记录优先，这里只补缺、不覆盖。
 set :output, "log/account_publish_daily.log"
 every :day, at: '21:30' do
-  runner 'AccountPublishDaily.build_for(Date.today)'
+  runner 'AccountPublishDaily.backfill!(Date.today)'
 end
 
 

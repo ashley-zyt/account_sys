@@ -54,6 +54,7 @@ class TaskScheduler
 					# 按账号自身平台判断（而非传入的 platform 参数），保证全平台补发轮也能正确冷却
 					if account.platform == 'tiktok' && account.zero_views_in_past_3_days?
 						Rails.logger.info "TikTok账号 #{account.account_name}[#{account.platform}-#{account.theme}] 过去3天发文浏览量均为0，暂停3天后再分配资源"
+						AccountPublishDaily.record!(account, result: :tiktok_low_views, reason: 'TikTok 近3天0浏览量，跳过分配', date: today)
 						next
 					end
 
@@ -79,6 +80,7 @@ class TaskScheduler
 						Rails.logger.info "#{type_name}账号 #{account.account_name}[#{account.platform}-#{account.theme}] 分配 #{type_name} 资源成功"
 					else
 						Rails.logger.warn "#{type_name}账号 #{account.account_name}[#{account.platform}-#{account.theme}] 暂无可用 #{type_name} 资源"
+						AccountPublishDaily.record!(account, result: :no_resource, reason: '资源不足（无 pending 资源）', date: today)
 					end
 				end
 			rescue => e

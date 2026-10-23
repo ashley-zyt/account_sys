@@ -55,17 +55,12 @@ class PublishStatusReport
       report_date = Date.yesterday
       base_date   = report_date - 1
 
-      # 各平台「日志成功数/失败数」：按账号去重、取最后一次发文的结果（复用 PublishDailySummary）
-      cur_platforms = PublishDailySummary.compute(report_date, include_failed_accounts: false)
-                                         .fetch(:platforms)
-                                         .to_h { |p| [p[:key], p] }
+      # 兜底补缺：只补昨天「没被发布链路当场记录」的账号（agent/无浏览器/有资源未发等），
+      # 不覆盖已当场记录的准确结果。
+      backfilled = AccountPublishDaily.backfill!(report_date)
 
       rows = PLATFORMS.map do |platform, label|
-        cp = cur_platforms[platform] || {}
-        stats = stats_for(platform, report_date).merge(
-          success: cp[:success] || 0,
-          failed:  cp[:failed] || 0
-        )
+        stats = build_stats(platform, report_date)
         { platform: platform, label: label, stats: stats }
       end
 
@@ -81,7 +76,7 @@ class PublishStatusReport
 
       content = lines.join("\n\n")
       ok = Dingtalk.send_markdown(NOTIFY_ROBOT, '发布状况', content)
-      Rails.logger.info "[PublishStatusReport] 快照=#{path || '已存在，未覆盖'}；" \
+      Rails.logger.info "[PublishStatusReport] 快照=#{path || '已存在，未覆盖'}；补缺=#{backfilled}；" \
                         "推送#{ok ? '成功' : '失败'}（报告日=#{report_date} 基准日=#{base_date}，基准来源=#{prev_source(base_date, rows)}）"
       ok
     rescue => e
@@ -95,12 +90,54 @@ class PublishStatusReport
       {
         accounts: Account.where(status: Account.statuses['正常'],
                                 platform: Account.platforms[platform]).count,
-        posts:    PostStat.joins(:account)
-                          .where(accounts: { status: Account.statuses['正常'],
-                                             platform: Account.platforms[platform] })
-                          .where(post_date: date)
-                          .count
+        posts:    posts_count(platform, date)
       }
+    end
+
+    # 指定平台、指定日期的对账统计：成功/失败/未发及原因。
+    # 数据来自 account_publish_dailies（发布链路当场记录 + 兜底补缺），
+    # 「正常账号数」= 成功 + 失败 + 未发，保证三者之和严格等于正常账号数。
+    def build_stats(platform, date)
+      counts = result_counts_for(platform, date)
+      success = counts['success'].to_i
+      failed  = counts['failed'].to_i
+      agent   = counts['agent'].to_i
+      tiktok  = counts['tiktok_low_views'].to_i
+      no_res  = counts['no_resource'].to_i
+      no_brw  = counts['no_browser'].to_i
+      unpub   = counts['unpublished'].to_i
+      banned  = counts['banned'].to_i
+      unpublished = agent + tiktok + no_res + no_brw + unpub
+
+      {
+        accounts:    success + failed + unpublished,
+        posts:       posts_count(platform, date),
+        success:     success,
+        failed:      failed,
+        unpublished: unpublished,
+        banned:      banned,
+        unpublished_detail: {
+          agent:            agent,
+          tiktok_low_views: tiktok,
+          no_resource:      no_res,
+          no_browser:       no_brw,
+          unpublished:      unpub
+        }
+      }
+    end
+
+    def result_counts_for(platform, date)
+      AccountPublishDaily.where(stat_date: date, platform: Account.platforms[platform])
+                         .group(:result).count
+    end
+
+    # 正常状态账号在某天的发文条数（post_stats 采集口径，有滞后、跨天补采）
+    def posts_count(platform, date)
+      PostStat.joins(:account)
+              .where(accounts: { status: Account.statuses['正常'],
+                                 platform: Account.platforms[platform] })
+              .where(post_date: date)
+              .count
     end
 
     # ---- 快照读写 ----
@@ -140,12 +177,15 @@ class PublishStatusReport
       end
 
       platforms = rows.each_with_object({}) do |row, h|
+        s = row[:stats]
         h[row[:platform]] = {
           'label'           => row[:label],
-          'normal_accounts' => row[:stats][:accounts].to_i,
-          'posts'           => row[:stats][:posts].to_i,
-          'success'         => row[:stats][:success].to_i,
-          'failed'          => row[:stats][:failed].to_i
+          'normal_accounts' => s[:accounts].to_i,
+          'posts'           => s[:posts].to_i,
+          'success'         => s[:success].to_i,
+          'failed'          => s[:failed].to_i,
+          'unpublished'     => s[:unpublished].to_i,
+          'banned'          => s[:banned].to_i
         }
       end
 
@@ -157,7 +197,9 @@ class PublishStatusReport
           'normal_accounts' => platforms.values.sum { |v| v['normal_accounts'] },
           'posts'           => platforms.values.sum { |v| v['posts'] },
           'success'         => platforms.values.sum { |v| v['success'] },
-          'failed'          => platforms.values.sum { |v| v['failed'] }
+          'failed'          => platforms.values.sum { |v| v['failed'] },
+          'unpublished'     => platforms.values.sum { |v| v['unpublished'] },
+          'banned'          => platforms.values.sum { |v| v['banned'] }
         }
       }
 
@@ -192,14 +234,14 @@ class PublishStatusReport
 
     # ---- 展示 ----
 
-    # 组装单个平台的播报行
-    # 示例：正常状态YouTube账号数 145 个，比昨日**少**5个；正常发文数 118 条，比昨日**多**11条；日志成功数 133 次，日志失败数 10 次
+    # 组装单个平台的播报行（对账式：成功 + 失败 + 未发 = 正常账号数，未发细分原因）
     def build_line(label, cur, prev)
       account_diff = diff_text(cur[:accounts], prev[:accounts], '个')
       post_diff    = diff_text(cur[:posts],    prev[:posts],    '条')
+      d = cur[:unpublished_detail]
       "正常状态#{label}账号数 #{cur[:accounts]} 个，#{account_diff}；" \
-        "正常发文数 #{cur[:posts]} 条，#{post_diff}；" \
-        "日志成功数 #{cur[:success]} 次，日志失败数 #{cur[:failed]} 次"
+        "正常发文数 #{cur[:posts]} 条（采集口径），#{post_diff}；" \
+        "成功 #{cur[:success]} + 失败 #{cur[:failed]} + 未发 #{cur[:unpublished]}（资源不足#{d[:no_resource]}/无浏览器#{d[:no_browser]}/agent#{d[:agent]}/低浏览#{d[:tiktok_low_views]}/有资源未发#{d[:unpublished]}）"
     end
 
     # 对比文案：多/少加粗；差异为 0 时显示「与昨日持平」
