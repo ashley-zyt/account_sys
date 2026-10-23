@@ -94,10 +94,12 @@ class PublishStatusReport
       end
 
       content = lines.join("\n\n")
-      ok = Dingtalk.send_markdown(NOTIFY_ROBOT, '发布状况', content)
+      # 先打印预览，不发送到钉钉群（确认格式无误后再恢复 Dingtalk.send_markdown）
+      puts content
+      # ok = Dingtalk.send_markdown(NOTIFY_ROBOT, '发布状况', content)
       Rails.logger.info "[PublishStatusReport] 快照=#{path || '已存在，未覆盖'}；补缺=#{backfilled}；" \
-                        "推送#{ok ? '成功' : '失败'}（报告日=#{report_date} 基准日=#{base_date}，基准来源=#{prev_source(base_date, rows)}）"
-      ok
+                        "（报告日=#{report_date} 基准日=#{base_date}，基准来源=#{prev_source(base_date, rows)}）内容已打印，未发送钉钉"
+      true
     rescue => e
       Rails.logger.error "[PublishStatusReport] 执行异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
       false
