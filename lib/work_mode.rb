@@ -36,7 +36,10 @@ class WorkMode
     @scheduler_assign = hash.fetch("scheduler_assign", true)
     @publish          = hash.fetch("publish", true)
     @manual_assign    = hash.fetch("manual_assign", true)
-    @low_stock_track  = hash.fetch("low_stock_track", false)
+    # 低库存预警默认对所有「有资源队列」的模式生效（有资源队列天然有库存概念）；
+    # 无资源队列的模式（coze/agent）本就不在 resource_modes 内、不参与；
+    # 若个别有资源队列的模式不想参与，可显式配 low_stock_track: false。
+    @low_stock_track  = hash.fetch("low_stock_track", true)
     # 仪表盘账号资产矩阵默认只展示有资源队列的模式（保持历史行为）；
     # 无资源队列的模式（如 agent）需显式开启 dashboard_track 才会出现在矩阵中
     @dashboard_track  = hash.fetch("dashboard_track", hash["task_model"].present?)

@@ -20,7 +20,7 @@
 #   scheduler_assign 是否参与 TaskScheduler 自动分配资源（默认 true）
 #   publish          是否参与 PublishScheduler 发布执行（默认 true）
 #   manual_assign    是否支持 Util 手动分配资源（默认 true）
-#   low_stock_track  是否参与仪表盘低库存预警（默认 false）
+#   low_stock_track  是否参与仪表盘低库存预警（默认 true，有资源队列的模式默认参与）
 #   dashboard_track  是否参与仪表盘账号资产矩阵（无资源队列的模式默认不参与，需显式开启）
 # ============================================================
 work_modes:
