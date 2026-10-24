@@ -16,6 +16,8 @@ class KolScheduler
   MAX_ACCOUNTS_PER_PLATFORM = 2
   # 每轮 run 最多下发到机器端（浏览器通道）的私信条数，避免机器端异步任务堆积
   MAX_BROWSER_DISPATCH_PER_RUN = 20
+  # 私信下发后超过此时长仍未收到结果反馈，判定为「发送超时」并标记 sent_timeout
+  SEND_TIMEOUT_HOURS = 6
 
   CONFIG_PATH = Rails.root.join('config/kol_scheduler.yml')
 
@@ -58,6 +60,27 @@ class KolScheduler
       process_due_contacting
       process_contact_expiry
       Rails.logger.info "[KolScheduler] 自动化触达扫描完成（本轮浏览器通道下发 #{@browser_dispatch_count.to_i} 条）"
+    end
+
+    # 私信发送超时兜底：把「下发后超过 SEND_TIMEOUT_HOURS 小时仍未收到结果反馈」的待发送私信
+    # 标记为 sent_timeout（区别于明确失败的 sent_failed），并同步登记记录为「已丢失/结果未知」。
+    def process_send_timeouts
+      cutoff = SEND_TIMEOUT_HOURS.hours.ago
+
+      stale = KolMessage.where(status: :queued)
+                        .where("created_at <= ?", cutoff)
+
+      count = 0
+      stale.find_each do |message|
+        message.update!(status: :sent_timeout, error_msg: "下发后超过 #{SEND_TIMEOUT_HOURS} 小时未反馈")
+        BrowserTaskRecord.where(ref: "kol_message:#{message.id}", status: BrowserTaskRecord::STATUS_PENDING)
+                         .update_all(status: BrowserTaskRecord::STATUS_UNKNOWN,
+                                     message: "发送超时（超过 #{SEND_TIMEOUT_HOURS} 小时未反馈）")
+        count += 1
+      end
+
+      Rails.logger.info "[KolScheduler] 私信发送超时兜底：标记 #{count} 条为 sent_timeout"
+      count
     end
 
     def process_pending

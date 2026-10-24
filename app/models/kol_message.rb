@@ -71,7 +71,8 @@ class KolMessage < ApplicationRecord
     sent_success: 1,  # 发送成功
     sent_failed: 2,   # 发送失败
     replied: 3,       # 已回复
-    ignored: 4        # 已放弃
+    ignored: 4,       # 已放弃
+    sent_timeout: 5   # 发送超时（下发后超时未反馈）
   }
 
   validates :kol_id, presence: true

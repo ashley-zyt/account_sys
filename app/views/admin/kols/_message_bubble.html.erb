@@ -25,6 +25,8 @@
         <span class="admin-pill-status" style="background: rgba(34,197,94,0.1); color: #22c55e; font-size: 11px;">发送成功</span>
       <% elsif m.queued? %>
         <span class="admin-pill-status" style="background: rgba(156,163,175,0.1); color: #9ca3af; font-size: 11px;">待发送</span>
+      <% elsif m.sent_timeout? %>
+        <span class="admin-pill-status" style="background: rgba(245,158,11,0.12); color: #f59e0b; font-size: 11px;">发送超时</span>
       <% elsif m.ignored? %>
         <span class="admin-pill-status" style="background: rgba(100,116,139,0.15); color: #94a3b8; font-size: 11px;">已放弃</span>
       <% elsif m.replied? %>
