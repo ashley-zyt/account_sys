@@ -262,6 +262,14 @@ every :day, at: '7:00 am' do
   runner 'HostingPublishScheduler.run'
 end
 
+# ==================== 搬运混剪下载优先级重建 ====================
+# 每晚 23:00 统计各主题「搬运混剪」库存可用天数，按无库存→低天数→高天数排序写文件，
+# 供 move_videos/fetch_for_download 下载源视频时按此顺序取主题。
+set :output, "log/download_theme_order.log"
+every :day, at: '23:00' do
+  runner 'MoveVideo.rebuild_download_order!'
+end
+
 # ==================== 视频存储清理 ====================
 # 每周日下午 14:00（避开各平台发布窗口）：
 #   ① clean_published_queues：清成品资源队列中「无账号平台的孤儿记录」+「全终态成片的 OSS 文件」

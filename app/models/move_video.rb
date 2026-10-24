@@ -35,6 +35,9 @@ class MoveVideo < ApplicationRecord
 
   DEFAULT_PLATFORMS = %w[youtube facebook instagram twitter tiktok].freeze
 
+  # 下载优先级文件：每晚 23:00 重建，存「搬运混剪」各主题库存可用天数排序，供下载顺序读取
+  DOWNLOAD_ORDER_FILE = Rails.root.join('storage', 'download_theme_order.json')
+
   # 下载主题白名单：下载软件只在以下主题之间「平均轮询」下载，其余主题（如武颜集萃/舞男/御马飞驰/中国美食制作）不参与下载。
   # 主题名与 config/theme_config.yml 的 key（即 move_video.theme 实际存值）精确一致。
   # DOWNLOAD_THEMES = %w[
@@ -216,49 +219,71 @@ class MoveVideo < ApplicationRecord
     }
   end
 
-  # ---------- 下载阶段领取（原子 + 按消耗速度加权） ----------
-  # 拉取一条 pending_download 并原子置为 downloading，并发安全
-  # 主题选择：按「消耗速度 / 储备量」加权（消耗快 + 储备少优先），
-  # 再从该主题取最早录入的一条。避免消耗快的主题先耗尽、慢的主题堆积。
+  # ---------- 下载阶段领取（按库存紧急度排序） ----------
+  # 拉取一条 pending_download 并原子置为 downloading，并发安全。
+  # 主题顺序来自每晚 23:00 重建的库存排序文件（无库存→低天数→高天数），
+  # 从最紧急主题开始，找第一个「还有待下载源视频」的主题领取。
   # @return [MoveVideo, nil] 领取到的视频（已 reload 为 downloading），无则 nil
   def self.claim_for_download!
-    theme = next_download_theme
-    # 仅限白名单主题：next_download_theme 返回 nil（14 个主题均无待下载）时也不落回其它主题
-    candidates = theme ? pending_download.where(theme: theme) : pending_download.where(theme: DOWNLOAD_THEMES)
+    ordered = download_order_themes
 
-    candidates.order(created_at: :asc).limit(50).each do |record|
+    if ordered.any?
+      ordered.each do |theme|
+        record = pending_download.where(theme: theme).order(created_at: :asc).first
+        return record if record&.claim_download!
+      end
+      return nil
+    end
+
+    # 兜底：排序文件还没生成（23:00 前），退回按时间取最早的待下载源视频
+    pending_download.order(created_at: :asc).limit(50).each do |record|
       return record if record.claim_download!
     end
     nil
   end
 
-  # 选下一个要领取的主题：只在下载白名单（DOWNLOAD_THEMES）中、有待下载视频的主题里，
-  # 按「消耗速度 / 储备量」加权选主题（消耗快 + 储备少优先）。
-  #   - 消耗权重：该主题的活跃（正常）账号数，账号越多消耗越快
-  #   - 储备量：该主题待下载源视频数
-  # 所有主题都无活跃账号时，退回平均轮询（按最后领取时间）。
-  # @return [String, nil] 主题名；白名单内无待下载视频时返回 nil
-  def self.next_download_theme
-    themes = pending_download.where(theme: DOWNLOAD_THEMES).distinct.pluck(:theme)
-    return nil if themes.empty?
+  # 每晚 23:00 重建下载优先级：统计「搬运混剪」各主题库存可用天数，
+  # 按无库存→低天数→高天数排序写文件（多平台取最缺的那个平台为准）。
+  # @return [Array<String>] 排序后的主题名数组
+  def self.rebuild_download_order!(date: Date.today)
+    work_type = WorkMode.for_model(HunjianTask).name  # '搬运混剪'
 
-    # 储备量：每个主题待下载数
-    stock = pending_download.where(theme: themes).group(:theme).count
+    account_counts = Account.active.where(work_type: work_type).group(:theme, :platform).count
+    pending_counts = HunjianTask.where(status: :pending).group(:theme, :platform).count
 
-    # 消耗权重：每个主题的活跃（正常）账号数
-    consumption = Account.active.where(theme: themes).group(:theme).count
-
-    # 无任何活跃账号时退回平均轮询（避免权重全 0 退化成固定选第一个）
-    if consumption.values.all?(&:zero?)
-      last_claimed = where(theme: themes).group(:theme).maximum(:download_started_at)
-      return themes.min_by do |t|
-        claimed = last_claimed[t]
-        [claimed ? 1 : 0, claimed || Time.at(0), t]
-      end
+    min_days = {}
+    account_counts.each do |(theme, platform), active_accounts|
+      pending = pending_counts[[theme, platform]].to_i
+      days = pending.to_f / active_accounts
+      min_days[theme] = days if min_days[theme].nil? || days < min_days[theme]
     end
 
-    # 按「消耗权重 / (储备量 + 1)」取最大：消耗快 + 储备少优先
-    themes.max_by { |t| consumption[t].to_f / (stock[t].to_i + 1) }
+    video_counts = pending_download.group(:theme).count
+
+    ordered = min_days.keys.sort_by { |t| [min_days[t], -video_counts[t].to_i] }
+
+    payload = {
+      stat_date: date.strftime('%Y-%m-%d'),
+      generated_at: Time.current.strftime('%Y-%m-%d %H:%M:%S'),
+      themes: ordered.map do |t|
+        { theme: t, min_available_days: min_days[t], pending_videos: video_counts[t].to_i }
+      end
+    }
+
+    FileUtils.mkdir_p(File.dirname(DOWNLOAD_ORDER_FILE))
+    File.write(DOWNLOAD_ORDER_FILE, JSON.pretty_generate(payload))
+    ordered
+  end
+
+  # 读取下载优先级文件，返回按紧急度排序的主题名数组；文件不存在/解析失败返回 []
+  def self.download_order_themes
+    return [] unless File.exist?(DOWNLOAD_ORDER_FILE)
+
+    data = JSON.parse(File.read(DOWNLOAD_ORDER_FILE))
+    Array(data['themes']).map { |e| e['theme'] }.compact
+  rescue => e
+    Rails.logger.error "[MoveVideo] 读取下载优先级文件失败: #{e.message}"
+    []
   end
 
   def claim_download!
