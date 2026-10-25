@@ -37,6 +37,8 @@ class MoveVideo < ApplicationRecord
 
   # 下载优先级文件：每晚 23:00 重建，存「搬运混剪」各主题库存可用天数排序，供下载顺序读取
   DOWNLOAD_ORDER_FILE = Rails.root.join('storage', 'download_theme_order.json')
+  # 每次只保留「最缺资源」的前 N 个主题参与下载（之间平均轮询）
+  DOWNLOAD_TOP_N = 6
 
   # 下载主题白名单：下载软件只在以下主题之间「平均轮询」下载，其余主题（如武颜集萃/舞男/御马飞驰/中国美食制作）不参与下载。
   # 主题名与 config/theme_config.yml 的 key（即 move_video.theme 实际存值）精确一致。
@@ -219,16 +221,17 @@ class MoveVideo < ApplicationRecord
     }
   end
 
-  # ---------- 下载阶段领取（按库存紧急度排序） ----------
+  # ---------- 下载阶段领取（前 N 名主题平均轮询） ----------
   # 拉取一条 pending_download 并原子置为 downloading，并发安全。
-  # 主题顺序来自每晚 23:00 重建的库存排序文件（无库存→低天数→高天数），
-  # 从最紧急主题开始，找第一个「还有待下载源视频」的主题领取。
+  # 主题集合来自每晚 23:00 重建的库存排序文件的前 N 名（最缺资源），
+  # 在这些主题之间「平均轮询」：选最久没下载过的主题，一次一个轮流。
   # @return [MoveVideo, nil] 领取到的视频（已 reload 为 downloading），无则 nil
   def self.claim_for_download!
     ordered = download_order_themes
 
     if ordered.any?
-      ordered.each do |theme|
+      last_claimed = where(theme: ordered).group(:theme).maximum(:download_started_at)
+      ordered.sort_by { |t| last_claimed[t] || Time.at(0) }.each do |theme|
         record = pending_download.where(theme: theme).order(created_at: :asc).first
         return record if record&.claim_download!
       end
@@ -261,18 +264,19 @@ class MoveVideo < ApplicationRecord
     video_counts = pending_download.group(:theme).count
 
     ordered = min_days.keys.sort_by { |t| [min_days[t], -video_counts[t].to_i] }
+    top = ordered.first(DOWNLOAD_TOP_N)
 
     payload = {
       stat_date: date.strftime('%Y-%m-%d'),
       generated_at: Time.current.strftime('%Y-%m-%d %H:%M:%S'),
-      themes: ordered.map do |t|
+      themes: top.map do |t|
         { theme: t, min_available_days: min_days[t], pending_videos: video_counts[t].to_i }
       end
     }
 
     FileUtils.mkdir_p(File.dirname(DOWNLOAD_ORDER_FILE))
     File.write(DOWNLOAD_ORDER_FILE, JSON.pretty_generate(payload))
-    ordered
+    top
   end
 
   # 读取下载优先级文件，返回按紧急度排序的主题名数组；文件不存在/解析失败返回 []
