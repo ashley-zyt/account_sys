@@ -2,24 +2,28 @@
 #
 # Table name: browsers
 #
-#  id                                                                         :bigint           not null, primary key
-#  machine_ip(运营机器IP（该浏览器固定由这台机器运营，避免频繁换IP导致封号）) :string(255)
-#  profile_name(指纹浏览器名称)                                               :string(255)
-#  proxy_host(代理IP)                                                         :string(255)
-#  proxy_password(代理密码)                                                   :string(255)
-#  proxy_port(代理端口)                                                       :integer
-#  proxy_type(代理类型 http/socks5)                                           :string(255)
-#  proxy_username(代理用户名)                                                 :string(255)
-#  purpose(用途：养号/采集)                                                   :integer          default("账号培育")
-#  remark(备注信息)                                                           :string(255)
-#  status(浏览器状态：online/offline/network_error/busy)                      :integer          default("正常")
-#  created_at                                                                 :datetime         not null
-#  updated_at                                                                 :datetime         not null
-#  cloud_id(指纹浏览器名称ID)                                                 :string(255)
+#  id                                                    :bigint           not null, primary key
+#  profile_name(指纹浏览器名称)                          :string(255)
+#  proxy_host(代理IP)                                    :string(255)
+#  proxy_password(代理密码)                              :string(255)
+#  proxy_port(代理端口)                                  :integer
+#  proxy_type(代理类型 http/socks5)                      :string(255)
+#  proxy_username(代理用户名)                            :string(255)
+#  purpose(用途：养号/采集)                              :integer          default("账号培育")
+#  remark(备注信息)                                      :string(255)
+#  status(浏览器状态：online/offline/network_error/busy) :integer          default("正常")
+#  created_at                                            :datetime         not null
+#  updated_at                                            :datetime         not null
+#  cloud_id(指纹浏览器名称ID)                            :string(255)
+#  machine_id                                            :bigint
 #
 # Indexes
 #
-#  index_browsers_on_machine_ip  (machine_ip)
+#  index_browsers_on_machine_id  (machine_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (machine_id => machines.id)
 #
 class Browser < ApplicationRecord
 	# 一个浏览器固定由一台运营机器管理（machine.host 为当前地址，换服务器只改 host）
