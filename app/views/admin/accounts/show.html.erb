@@ -141,9 +141,9 @@
             运营机器 IP
           </div>
           <div class="admin-field-value">
-            <% if @account.browser.machine_ip.present? %>
+            <% if @account.browser.machine_host.present? %>
               <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                <%= @account.browser.machine_ip %>
+                <%= @account.browser.machine_host %>
               </span>
             <% else %>
               <span class="admin-label-muted">未设置</span>
@@ -445,9 +445,9 @@
             运营机器
           </div>
           <div class="admin-field-value">
-            <% if @account.browser&.machine_ip.present? %>
+            <% if @account.browser&.machine_host.present? %>
               <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                <%= @account.browser.machine_ip %>
+                <%= @account.browser.machine_host %>
               </span>
             <% else %>
               <span class="admin-label-muted">未设置</span>

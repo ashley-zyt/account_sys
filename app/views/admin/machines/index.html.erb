@@ -1,0 +1,50 @@
+<% content_for :page_title do %>
+  机器管理
+<% end %>
+<% content_for :page_subtitle do %>
+  运营机器（换服务器只改 host，浏览器绑定不变）
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">机器列表</div>
+      <div class="admin-card-subtitle">name 为稳定标识，host 为当前地址（IP 或域名）</div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "添加机器", new_admin_machine_path, class: "admin-button-primary" %>
+    </div>
+  </div>
+
+  <div class="admin-table-wrapper admin-table-scroll">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>标识</th>
+          <th>地址</th>
+          <th>备注</th>
+          <th>浏览器数</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @machines.each do |m| %>
+          <tr>
+            <td><span class="admin-label-muted"><%= m.id %></span></td>
+            <td><%= m.name %></td>
+            <td><%= m.host %></td>
+            <td><%= m.remark || '-' %></td>
+            <td><%= m.browsers.size %></td>
+            <td>
+              <div style="display: flex; gap: 8px;">
+                <%= link_to "编辑", edit_admin_machine_path(m), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                <%= link_to "删除", admin_machine_path(m), data: { turbo_method: :delete, turbo_confirm: "确定删除该机器吗？关联的浏览器会解除绑定" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

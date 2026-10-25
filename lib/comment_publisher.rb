@@ -14,12 +14,12 @@ class CommentPublisher
       account = task.account
       post    = task.influencer_post
 
-      return { success: false, error: '账号未绑定浏览器' } if account.nil? || account.browser&.machine_ip.blank?
+      return { success: false, error: '账号未绑定浏览器' } if account.nil? || account.browser&.machine_host.blank?
       return { success: false, error: '账号浏览器缺 profile_name' } if account.browser&.profile_name.blank?
       return { success: false, error: '发文缺失' } if post.nil?
       return { success: false, error: '发文链接缺失' } if post.source_url.blank?
 
-      url = "https://#{account.browser.machine_ip}/twitter/comment"
+      url = "https://#{account.browser.machine_host}/twitter/comment"
       body = {
         profile_name: account.browser.profile_name,
         platform: 'twitter',
@@ -54,7 +54,7 @@ class CommentPublisher
         ref: body[:ref],
         task_type: 'twitter_comment',
         profile_name: body[:profile_name],
-        machine_ip: account&.browser&.machine_ip
+        machine_ip: account&.browser&.machine_host
       )
     end
 

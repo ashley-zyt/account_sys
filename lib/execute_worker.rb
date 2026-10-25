@@ -9,7 +9,7 @@ class ExecuteWorker
     browser = account.browser
 
     # 端点取自浏览器所属运营机器；若未设置则报错并标记失败
-    machine_ip = browser.machine_ip.presence || warmup_task.machine.presence
+    machine_ip = browser.machine_host.presence || warmup_task.machine.presence
     unless machine_ip.present?
       error_msg = "浏览器 #{browser.profile_name} 未设置运营机器 IP，无法执行养号"
       Rails.logger.error "[ExecuteWorker] #{error_msg}"

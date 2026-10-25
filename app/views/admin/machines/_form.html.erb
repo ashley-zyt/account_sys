@@ -1,0 +1,43 @@
+<%= form_with model: [:admin, machine], class: "admin-form" do |f| %>
+  <% if machine.errors.any? %>
+    <div class="admin-empty-state" style="margin-bottom: 12px;">
+      <ul class="admin-list">
+        <% machine.errors.full_messages.each do |msg| %>
+          <li class="admin-list-item">
+            <div class="admin-list-title"><%= msg %></div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="admin-two-column">
+    <div>
+      <div class="admin-field-label">
+        标识
+      </div>
+      <%= f.text_field :name, class: "admin-input", placeholder: "如 机器A" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        地址
+      </div>
+      <%= f.text_field :host, class: "admin-input", placeholder: "IP 或域名" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        备注
+      </div>
+      <%= f.text_field :remark, class: "admin-input" %>
+    </div>
+  </div>
+
+  <div class="admin-section-subtitle" style="margin-top: 6px;">
+    标识（name）是稳定不变的；换服务器时只改地址（host），绑定该机器的浏览器无需改动。
+  </div>
+
+  <div style="margin-top: 20px;">
+    <button type="submit" class="admin-button-primary">保存</button>
+    <%= link_to "取消", admin_machines_path, class: "admin-button-secondary" %>
+  </div>
+<% end %>

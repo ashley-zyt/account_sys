@@ -66,7 +66,7 @@ class Util
       return { success: false, message: msg, task: nil }
     end
 
-    unless account.browser.machine_ip.present?
+    unless account.browser.machine_host.present?
       msg = "账号 #{account.account_name} 绑定的浏览器 #{account.browser.profile_name} 未设置 machine_ip，无法发布"
       Rails.logger.error "[Util] #{msg}"
       return { success: false, message: msg, task: nil }
@@ -118,7 +118,7 @@ class Util
     type_name = work_type
     Rails.logger.info "[Util] 账号 #{account.account_name} 分配 #{type_name} 资源成功，任务 ID=#{assigned_task.id}，开始执行发布..."
 
-    machine_ip = account.browser.machine_ip
+    machine_ip = account.browser.machine_host
     task_type  = PublishScheduler.task_type_name(assigned_task)
 
     ActiveRecord::Base.transaction do
@@ -169,7 +169,7 @@ class Util
       return { success: false, message: msg, response: nil }
     end
 
-    machine_ip = account.browser.machine_ip
+    machine_ip = account.browser.machine_host
     unless machine_ip.present?
       msg = "账号 #{account.account_name} 绑定的浏览器 #{account.browser.profile_name} 未设置 machine_ip，无法采集"
       Rails.logger.error "[Util] #{msg}"

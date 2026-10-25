@@ -343,10 +343,10 @@ class TaskScheduler
 		refs.each do |ref|
 			_, id = ref.split(':', 2)
 			warmup_task = WarmupTask.find_by(id: id.to_i)
-			next unless warmup_task && warmup_task.account && warmup_task.account.browser&.machine_ip.present?
+			next unless warmup_task && warmup_task.account && warmup_task.account.browser&.machine_host.present?
 
 			begin
-				result = WarmupScheduler.execute_warmup_for_account(warmup_task.account, warmup_task.account.browser.machine_ip)
+				result = WarmupScheduler.execute_warmup_for_account(warmup_task.account, warmup_task.account.browser.machine_host)
 				count += 1 if result == :executed
 			rescue => e
 				Rails.logger.error "[TaskScheduler] 重新启动养号 #{ref} 异常: #{e.message}"
@@ -363,7 +363,7 @@ class TaskScheduler
 		refs.each do |ref|
 			_, id = ref.split(':', 2)
 			account = Account.find_by(id: id.to_i)
-			next unless account && account.browser&.machine_ip.present?
+			next unless account && account.browser&.machine_host.present?
 
 			begin
 				result = Util.fetch_account_post_data(account_id: account.id)
@@ -376,7 +376,7 @@ class TaskScheduler
 	end
 
 	# 找出待执行任务中与锁定接口重合的指纹浏览器名称
-	# 遍历所有运营机器（browser.machine_ip）查询锁定状态，避免遗漏其他机器上的锁
+	# 遍历所有运营机器（browser.machine_host）查询锁定状态，避免遗漏其他机器上的锁
 	def self.find_locked_browsers_in_pending_tasks
 
 		# 1. 获取待执行任务中的指纹浏览器（遍历注册表所有资源队列）
@@ -393,7 +393,7 @@ class TaskScheduler
 		return { pending_browsers: pending_browser_names, locked_browsers: [], matched_browsers: [] } if pending_browser_names.empty?
 
 		# 待发布任务覆盖的运营机器 IP；同时遍历所有运营机器以发现跨机器的锁
-		machine_ips = Browser.where.not(machine_ip: [nil, ""]).distinct.pluck(:machine_ip).sort
+		machine_ips = Machine.distinct.pluck(:host).sort
 
 		if machine_ips.empty?
 			Rails.logger.warn "[TaskScheduler] 暂无已配置 machine_ip 的运营机器，无法查询锁定状态"
@@ -482,7 +482,7 @@ class TaskScheduler
 		kept_refs = []
 
 		overdue.each do |record|
-			remote = fetch_remote_task(record.machine_ip, record.machine_task_id)
+			remote = fetch_remote_task(record.machine_host, record.machine_task_id)
 			status = remote ? remote['status'].to_s : nil
 
 			if status && MACHINE_TERMINAL_STATUSES.include?(status)

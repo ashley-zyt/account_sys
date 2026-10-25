@@ -38,7 +38,7 @@ class Admin::WarmupTasksController < Admin::BaseController
     machine_ips = WarmupTask.where.not(machine: [nil, ""]).distinct.pluck(:machine).sort
     @machine_stats = machine_ips.map do |ip|
       task_counts = WarmupTask.where(machine: ip).group(:status).count
-      browser_ids = Browser.where(machine_ip: ip).pluck(:id)
+      browser_ids = Browser.joins(:machine).where(machines: { host: ip }).pluck(:id)
       total_accounts   = Account.where(browser_id: browser_ids, status: [0, 3]).count
       enabled_accounts = Account.joins(:warmup_profile)
                                 .where(browser_id: browser_ids, status: [0, 3], warmup_profiles: { warmup_enabled: true })

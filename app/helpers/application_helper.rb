@@ -20,7 +20,7 @@ module ApplicationHelper
     browser = account&.browser
     return nil if browser.nil?
     parts = []
-    parts << "机器: #{browser.machine_ip}" if browser.machine_ip.present?
+    parts << "机器: #{browser.machine_host}" if browser.machine_host.present?
     parts << "浏览器: #{browser.profile_name}" if browser.profile_name.present?
     parts.any? ? parts.join(" · ") : nil
   end

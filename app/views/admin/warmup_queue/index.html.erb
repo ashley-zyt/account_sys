@@ -103,7 +103,7 @@
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">运营机器</label>
-        <%= f.searchable_select :browser_machine_ip_eq, [["所有机器", ""]] + @machine_stats.map { |s| [s[:ip], s[:ip]] }, { include_blank: false }, class: "admin-input admin-filter-input" %>
+        <%= f.searchable_select :browser_machine_id_eq, [["所有机器", ""]] + Machine.all.order(:name).map { |m| [m.name, m.id] }, { include_blank: false }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
@@ -189,9 +189,9 @@
 
               <%# 机器 %>
               <td>
-                <% if account.browser&.machine_ip.present? %>
+                <% if account.browser&.machine_host.present? %>
                   <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                    <%= account.browser.machine_ip %>
+                    <%= account.browser.machine_host %>
                   </span>
                 <% else %>
                   <span style="color: #f59e0b; font-size: 12px;">未设置</span>

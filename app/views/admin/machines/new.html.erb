@@ -1,0 +1,17 @@
+<% content_for :page_title do %>
+  新增机器
+<% end %>
+<% content_for :page_subtitle do %>
+  添加一台运营机器
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">机器信息</div>
+      <div class="admin-card-subtitle">标识稳定不变，地址可随时更换</div>
+    </div>
+  </div>
+
+  <%= render "form", machine: @machine %>
+</div>

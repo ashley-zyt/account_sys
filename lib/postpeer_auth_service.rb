@@ -39,7 +39,7 @@ module PostpeerAuthService
     pa.update!(auth_status: :authorizing, peer_account_id: nil, authorized_at: nil, profile_id: profile_id)
 
     unless skip_machine
-      machine_ip = account.browser.machine_ip
+      machine_ip = account.browser.machine_host
       if machine_ip.blank?
         Rails.logger.warn "[PostpeerAuth] 账号 #{account.id} 浏览器未设 machine_ip，跳过下发打开授权页（授权 URL 需人工打开）"
       else

@@ -43,7 +43,7 @@ module XAuthService
     # 下发机器端：指纹浏览器打开授权页（复用 open_auth_url，机器端需扩展「检测跳转截 code」）。
     # skip_machine: true 时跳过（全手动流程：仅生成授权链接，人工自己打开、自己提交 code）。
     unless skip_machine
-      machine_ip = account.browser.machine_ip
+      machine_ip = account.browser.machine_host
       if machine_ip.blank?
         Rails.logger.warn "[XAuth] 账号 #{account.id} 浏览器未设 machine_ip，跳过下发打开授权页（授权 URL 需人工打开）"
       else

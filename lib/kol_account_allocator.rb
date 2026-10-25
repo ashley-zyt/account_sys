@@ -59,7 +59,7 @@ class KolAccountAllocator
         # X 认证方式：只选 X 授权成功的账号
         next if channel.to_s == 'x_api' && !account.x_credential&.authorized?
         # 指纹浏览器方式：只选绑定了浏览器（有 machine_ip）的账号
-        next if channel.to_s != 'x_api' && account.browser&.machine_ip.blank?
+        next if channel.to_s != 'x_api' && account.browser&.machine_host.blank?
         return account
       end
       nil

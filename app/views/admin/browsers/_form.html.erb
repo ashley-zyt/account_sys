@@ -32,7 +32,7 @@
       <div class="admin-field-label">
         运营机器
       </div>
-      <%= f.select :machine_ip, [["ag117.juzhiic.com", "ag117.juzhiic.com"], ["ag15.juzhiic.com", "ag15.juzhiic.com"]], { include_blank: "请选择运营机器" }, class: "admin-input" %>
+      <%= f.searchable_select :machine_id, Machine.all.order(:name).map { |m| ["#{m.name}（#{m.host}）", m.id] }, { include_blank: "请选择运营机器" }, class: "admin-input" %>
     </div>
     <div>
       <div class="admin-field-label">

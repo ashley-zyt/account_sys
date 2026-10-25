@@ -3,10 +3,10 @@
 # 支持 OperationTask / GrokTask / HeygenTask / JianyingTask 多种任务类型
 #
 # 调度模型：
-#   - 按浏览器所属运营机器 IP（browser.machine_ip）分组
+#   - 按浏览器所属运营机器 IP（browser.machine_host）分组
 #   - 每台机器一个 Thread 并行执行，互不影响
 #   - 同一台机器内的任务顺序执行（同一台机器同时只能操作一个 profile，避免 lock）
-#   - 端点动态生成：http://<browser.machine_ip>:8080/<platform>/publish（端口固定 8080）
+#   - 端点动态生成：http://<browser.machine_host>:8080/<platform>/publish（端口固定 8080）
 class PublishScheduler
 
   # 运营机器发布服务固定端口
@@ -16,7 +16,7 @@ class PublishScheduler
   # 同一机器内任务之间的间隔（秒），避免连续打开同一 profile 导致 lock
   TASK_INTERVAL = 40
 
-  # 统一入口：按 browser.machine_ip 分组，多台机器并行运行
+  # 统一入口：按 browser.machine_host 分组，多台机器并行运行
   # @param platform [String, nil] 限定平台，nil 表示所有平台
   def self.run(platform: nil)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'publishscheduler_run.log'))
@@ -53,7 +53,7 @@ class PublishScheduler
   def self.run_tasks_with_pool(tasks, machine_count: nil)
     return if tasks.empty?
 
-    machine_count ||= tasks.map { |t| t.browser&.machine_ip }.compact.uniq.size
+    machine_count ||= tasks.map { |t| t.browser&.machine_host }.compact.uniq.size
     db_pool_size = ActiveRecord::Base.connection_pool.size
     # 并发已交给机器端（async 模式下机器端自己排队），worker 池只负责并行「下发指令」，
     # 不再受「每机器 N 浏览器」约束，仅受连接池大小限制。
@@ -123,7 +123,7 @@ class PublishScheduler
 
     # 默认：浏览器渠道
     browser = task.browser
-    return :done if browser.nil? || browser.machine_ip.blank?
+    return :done if browser.nil? || browser.machine_host.blank?
 
     today_range = Date.today.beginning_of_day..Date.today.end_of_day
 
@@ -153,7 +153,7 @@ class PublishScheduler
     end
     return :done unless executed
 
-    execute_task(task, task_type, browser.machine_ip)
+    execute_task(task, task_type, browser.machine_host)
     :done
   end
 
@@ -301,7 +301,7 @@ class PublishScheduler
     end
 
     # 端点由该任务浏览器的 machine_ip 决定
-    machine_ip = task.browser&.machine_ip
+    machine_ip = task.browser&.machine_host
     execute_task(task, task_type, machine_ip)
     sleep(TASK_INTERVAL)
     true
@@ -320,19 +320,19 @@ class PublishScheduler
     tasks
   end
 
-  # 当前需要参与发布的所有运营机器 IP
+  # 当前需要参与发布的所有运营机器 host
   def self.target_machine_ips(platform: nil)
     browser_ids = fetch_all_tasks(platform: platform).map(&:browser_id).compact.uniq
     Browser.where(id: browser_ids)
-           .where.not(machine_ip: [nil, ""])
+           .joins(:machine)
            .distinct
-           .pluck(:machine_ip)
+           .pluck('machines.host')
   end
 
   # 待发布任务中浏览器未设置 machine_ip 的数量（用于日志提醒）
   def self.orphan_browser_count(platform: nil)
     tasks = fetch_all_tasks(platform: platform)
-    tasks.count { |t| t.browser&.machine_ip.blank? }
+    tasks.count { |t| t.browser&.machine_host.blank? }
   end
 
   # === 任务选择 ===
@@ -395,7 +395,7 @@ class PublishScheduler
   def self.execute_single_task(task)
     return false if task.nil?
     return false unless task.respond_to?(:waiting_publish?) && task.waiting_publish?
-    return false if task.browser.nil? || task.browser.machine_ip.blank?
+    return false if task.browser.nil? || task.browser.machine_host.blank?
 
     ActiveRecord::Base.transaction do
       task.lock!
@@ -403,7 +403,7 @@ class PublishScheduler
       task.update!(status: :executing, start_at: Time.current)
     end
 
-    execute_task(task, task_type_name(task), task.browser.machine_ip)
+    execute_task(task, task_type_name(task), task.browser.machine_host)
     true
   end
 
@@ -432,7 +432,7 @@ class PublishScheduler
     if account.browser.blank?
       return { success: false, message: "账号「#{account.account_name}」未绑定指纹浏览器，无法发布" }
     end
-    if account.browser.machine_ip.blank?
+    if account.browser.machine_host.blank?
       return { success: false, message: "账号「#{account.account_name}」绑定的浏览器未设置 machine_ip，无法发布" }
     end
 
@@ -544,7 +544,7 @@ class PublishScheduler
         ref: "#{task.class.name}:#{task.id}",
         task_type: "#{task.platform}_publish",
         profile_name: task.browser&.profile_name,
-        machine_ip: task.browser&.machine_ip
+        machine_ip: task.browser&.machine_host
       )
       Rails.logger.info "[PublishScheduler] 任务 #{task.id} 已受理（异步），task_id=#{response['task_id']}，等待回调"
       return

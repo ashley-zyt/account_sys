@@ -61,8 +61,8 @@ class PostDatas
 
     # 2. 过滤掉未设置machine_ip的浏览器；指定 machine_ips 时只保留这些机器
     accounts = accounts.select do |a|
-      a.browser.present? && a.browser.machine_ip.present? &&
-        (machine_ips.nil? || machine_ips.include?(a.browser.machine_ip))
+      a.browser.present? && a.browser.machine_host.present? &&
+        (machine_ips.nil? || machine_ips.include?(a.browser.machine_host))
     end
 
     # 3. 计算「今天已更新」的账号：今天 post_stats 有更新 或 account_stat 有今日快照 视为「已更新」。
@@ -102,7 +102,7 @@ class PostDatas
     # 保证早上推送前一日发布状况时，昨天有发文的活跃账号优先被采集齐全。
     if per_machine && per_machine.to_i > 0
       published_ids = prioritize_yesterday_published ? task_log_published_yesterday_ids : []
-      accounts = accounts.group_by { |a| a.browser.machine_ip }
+      accounts = accounts.group_by { |a| a.browser.machine_host }
                          .flat_map do |_ip, list|
         list.sort_by do |a|
           pri = (prioritize_yesterday_published && published_ids.include?(a.id)) ? 0 : 1
@@ -125,7 +125,7 @@ class PostDatas
 
     # 下发前清理本轮涉及机器的残留采集任务（只清这些机器，避免误清其他机器正常排队的任务）
     if clear_pending
-      ips = accounts.map { |a| a.browser.machine_ip }.uniq.compact
+      ips = accounts.map { |a| a.browser.machine_host }.uniq.compact
       clear_pending_fetch_tasks(ips) if ips.any?
     end
 
@@ -133,7 +133,7 @@ class PostDatas
     #    组内顺序执行（同一浏览器一次只能开一个），组间由 worker 并行下发；
     #    并发/占用由机器端统一把关（单机额度 + profile 串行锁 + 释放占用）。
     groups = accounts.group_by(&:browser_id).values.sort_by { |g| g.first.browser_id || 0 }
-    machine_count = accounts.map { |a| a.browser.machine_ip }.uniq.size
+    machine_count = accounts.map { |a| a.browser.machine_host }.uniq.size
     browser_names = groups.map { |g| "#{g.first.browser.profile_name}(#{g.size}个)" }
     Rails.logger.info "[PostDatas] 待采集浏览器 #{groups.size} 个（机器 #{machine_count} 台）: #{browser_names.join('、')}"
 
@@ -284,7 +284,7 @@ class PostDatas
   # @param machine_ips [Array<String>, nil] 要清理的机器 IP；nil 时清理全部配置了 machine_ip 的机器。
   # @return [Integer] 清除的任务总数
   def self.clear_pending_fetch_tasks(machine_ips = nil)
-    machine_ips ||= Browser.where.not(machine_ip: [nil, ""]).distinct.pluck(:machine_ip)
+    machine_ips ||= Machine.distinct.pluck(:host)
     cleared = 0
     machine_ips.each do |ip|
       url = "https://#{ip}/tasks/clear?type=fetch&status=queued,running"
@@ -305,13 +305,13 @@ class PostDatas
     browser = group.first.browser
     label = "[worker#{worker_idx}]"
 
-    dlog.info "#{label} START browser=#{browser.profile_name} ip=#{browser.machine_ip} accounts=#{group.size}"
+    dlog.info "#{label} START browser=#{browser.profile_name} ip=#{browser.machine_host} accounts=#{group.size}"
 
-    Rails.logger.info "[PostDatas] #{label} 开始采集浏览器 #{browser.profile_name}（#{group.size} 个账号，IP=#{browser.machine_ip}）"
+    Rails.logger.info "[PostDatas] #{label} 开始采集浏览器 #{browser.profile_name}（#{group.size} 个账号，IP=#{browser.machine_host}）"
 
     group.each_with_index do |account, index|
       begin
-        Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 开始采集账号 #{account.account_name}(ID=#{account.id}, 平台=#{account.platform}, 浏览器=#{browser.profile_name}, IP=#{browser.machine_ip})"
+        Rails.logger.info "[PostDatas] #{label} [#{index + 1}/#{group.size}] 开始采集账号 #{account.account_name}(ID=#{account.id}, 平台=#{account.platform}, 浏览器=#{browser.profile_name}, IP=#{browser.machine_host})"
 
         result = Util.fetch_account_post_data(account_id: account.id)
 
@@ -323,7 +323,7 @@ class PostDatas
             account_id: account.id,
             account_name: account.account_name,
             browser_name: browser.profile_name,
-            machine_ip: browser.machine_ip,
+            machine_ip: browser.machine_host,
             error: result[:message]
           }
           mutex.synchronize { stats[:fail] += 1; stats[:failed_items] << fail_info }
@@ -334,7 +334,7 @@ class PostDatas
           account_id: account.id,
           account_name: account.account_name,
           browser_name: browser&.profile_name,
-          machine_ip: browser&.machine_ip,
+          machine_ip: browser&.machine_host,
           error: "异常: #{e.message}"
         }
         mutex.synchronize { stats[:fail] += 1; stats[:failed_items] << fail_info }
@@ -404,7 +404,7 @@ class PostDatas
                       .where.not(browser_id: nil)
                       .includes(:browser)
                       .to_a
-                      .select { |a| a.browser.present? && a.browser.machine_ip.present? }
+                      .select { |a| a.browser.present? && a.browser.machine_host.present? }
 
     if accounts.empty?
       Rails.logger.warn "[PostDatas] 重试：未找到有效的未更新账号（传入 #{stale_account_ids.size} 个ID），跳过重试"
@@ -422,7 +422,7 @@ class PostDatas
     groups.each do |group|
       browser = group.first.browser
 
-      dlog.info "[retry] START browser=#{browser.profile_name} ip=#{browser.machine_ip} accounts=#{group.size}"
+      dlog.info "[retry] START browser=#{browser.profile_name} ip=#{browser.machine_host} accounts=#{group.size}"
 
       # 并发/占用已交给机器端（async 模式），直接下发采集指令
       group.each_with_index do |account, index|

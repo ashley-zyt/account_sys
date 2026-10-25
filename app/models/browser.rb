@@ -22,6 +22,9 @@
 #  index_browsers_on_machine_ip  (machine_ip)
 #
 class Browser < ApplicationRecord
+	# 一个浏览器固定由一台运营机器管理（machine.host 为当前地址，换服务器只改 host）
+	belongs_to :machine, optional: true
+
 	# 一个浏览器可被多个账号绑定（如一个浏览器登录多个账号）
 	has_many :accounts, dependent: :nullify
 
@@ -32,11 +35,7 @@ class Browser < ApplicationRecord
 	# 养号接口固定端口
 	NURTURE_PORT = 8080
 
-	# 校验：一个浏览器固定一台运营机器，避免频繁换IP导致封号
-	# 格式校验在填写时生效；未填写时不阻断保存（便于渐进迁移）
-	validates :machine_ip,
-		format: { with: /\A(\d{1,3}(\.\d{1,3}){3}|([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})\z/, message: "请填写合法的 IP 地址或域名（如 ag117.juzhiic.com）" },
-		allow_blank: true
+	# 一个浏览器固定一台运营机器（通过 machine 关联，避免频繁换 IP 导致封号）
 
 	# 浏览器状态枚举
 	# - online        : 在线且空闲，可分配任务
@@ -84,11 +83,15 @@ class Browser < ApplicationRecord
 		正常
 	}
 
+	# 该浏览器所属运营机器的当前地址
+	def machine_host
+		machine&.host
+	end
+
 	# 该浏览器所属运营机器的养号接口端点
-	# 例：machine_ip = 'ag117.juzhiic.com' -> 'http://ag117.juzhiic.com:8080/accounts/nurture'
 	def nurture_endpoint
-		return nil if machine_ip.blank?
-		"https://#{machine_ip}/accounts/nurture"
+		return nil if machine_host.blank?
+		"https://#{machine_host}/accounts/nurture"
 	end
 
 	def self.ransackable_attributes(auth_object = nil)
@@ -96,7 +99,7 @@ class Browser < ApplicationRecord
 			id
 			profile_name
 			cloud_id
-			machine_ip
+			machine_id
 			proxy_type
 			proxy_host
 			proxy_port
@@ -111,7 +114,7 @@ class Browser < ApplicationRecord
 	end
 	# ✅ 允许 Ransack 搜索关联
 	def self.ransackable_associations(auth_object = nil)
-		["accounts", "move_tasks"]
+		["accounts", "move_tasks", "machine"]
 	end
 
 end

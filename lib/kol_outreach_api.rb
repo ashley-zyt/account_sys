@@ -220,7 +220,7 @@ class KolOutreachApi
         ref: ref,
         task_type: task_type,
         profile_name: profile_name,
-        machine_ip: account&.browser&.machine_ip
+        machine_ip: account&.browser&.machine_host
       )
     end
 
@@ -240,7 +240,7 @@ class KolOutreachApi
     end
 
     def base_url(account)
-      ip = account&.browser&.machine_ip.to_s.strip
+      ip = account&.browser&.machine_host.to_s.strip
       raise "账号未绑定机器 IP" if ip.blank?
       "https://#{ip}"
     end

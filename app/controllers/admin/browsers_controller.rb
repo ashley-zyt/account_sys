@@ -67,7 +67,7 @@ class Admin::BrowsersController < Admin::BaseController
 		params.require(:browser).permit(
 			:profile_name,
 			:cloud_id,
-			:machine_ip,
+			:machine_id,
 			:proxy_type,
 			:proxy_host,
 			:proxy_port,

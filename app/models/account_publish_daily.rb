@@ -216,7 +216,7 @@ class AccountPublishDaily < ApplicationRecord
 
     return ['tiktok_low_views', 'TikTok 近3天0浏览量，跳过分配', nil, nil] if account.platform.to_s == 'tiktok' && account.zero_views_in_past_3_days?
 
-    return ['no_browser', '未绑定浏览器或无 machine_ip', nil, nil] if account.browser.blank? || account.browser.machine_ip.blank?
+    return ['no_browser', '未绑定浏览器或无 machine_ip', nil, nil] if account.browser.blank? || account.browser.machine_host.blank?
 
     model = account.task_model_for_work_type
     return ['unpublished', '无资源队列模式', nil, nil] if model.nil?

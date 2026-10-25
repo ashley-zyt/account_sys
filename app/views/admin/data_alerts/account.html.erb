@@ -70,7 +70,7 @@
         </div>
         <div class="drawer-info-item">
           <span class="drawer-info-label">运营机器IP</span>
-          <span class="drawer-info-value"><%= @browser.try(:machine_ip) || '-' %></span>
+          <span class="drawer-info-value"><%= @browser.try(:machine_host) || '-' %></span>
         </div>
         <div class="drawer-info-item">
           <span class="drawer-info-label">备注</span>

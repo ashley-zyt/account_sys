@@ -34,7 +34,7 @@ module PublishChannelChain
   def self.available?(account, channel)
     case channel
     when 'ag_center'
-      account.browser.present? && account.browser.machine_ip.present?
+      account.browser.present? && account.browser.machine_host.present?
     when 'x_api'
       account.x_credential&.authorized?
     when 'postforme'

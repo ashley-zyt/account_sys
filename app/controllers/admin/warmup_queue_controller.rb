@@ -10,9 +10,9 @@ class Admin::WarmupQueueController < Admin::BaseController
                   .per(20)
 
     # 按运营机器 IP（browser.machine_ip）分组统计
-    machine_ips = Browser.where.not(machine_ip: [nil, ""]).distinct.pluck(:machine_ip)
+    machine_ips = Machine.distinct.pluck(:host)
     @machine_stats = machine_ips.map do |ip|
-      browser_ids = Browser.where(machine_ip: ip).pluck(:id)
+      browser_ids = Browser.joins(:machine).where(machines: { host: ip }).pluck(:id)
       total   = Account.where(browser_id: browser_ids, status: [0, 3]).count
       enabled = Account.joins(:warmup_profile)
                        .where(browser_id: browser_ids, status: [0, 3], warmup_profiles: { warmup_enabled: true })
@@ -27,7 +27,7 @@ class Admin::WarmupQueueController < Admin::BaseController
     # 未设置机器IP的浏览器下的账号（需提醒补全）
     @orphan_total = Account.joins(:browser)
                             .where(status: [0, 3])
-                            .where(browsers: { machine_ip: [nil, ""] })
+                            .where(browsers: { machine_id: nil })
                             .count
 
     # 总计 = 各机器行之和（口径与分机器行完全一致：status [0,3] + 该机器浏览器 + warmup_enabled）

@@ -38,7 +38,7 @@ module MachinePauseMonitor
   class << self
     # 入口：扫一遍所有机器（由定时任务每 5 分钟调用）
     def run
-      ips = MachineTaskMonitor.machine_ips
+      ips = MachineTaskMonitor.machine_hosts
       if ips.empty?
         Rails.logger.info "[MachinePauseMonitor] 没有配置运营机器，跳过"
         return
@@ -266,7 +266,7 @@ module MachinePauseMonitor
       return false if task.nil?
 
       account = task.account
-      return false if account.nil? || account.browser&.machine_ip.blank?
+      return false if account.nil? || account.browser&.machine_host.blank?
 
       # 已被兜底标失败/成功的旧任务不再重发（避免重复养号）
       task.status == 'executing'
@@ -276,7 +276,7 @@ module MachinePauseMonitor
     def fetch_redispatchable?(ref)
       _, id = ref.split(':', 2)
       account = Account.find_by(id: id.to_i)
-      account.present? && account.browser&.machine_ip.present?
+      account.present? && account.browser&.machine_host.present?
     end
 
     # 旧养号任务已由本次重新下发取代 → 标失败并写明原因

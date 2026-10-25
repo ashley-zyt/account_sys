@@ -23,7 +23,7 @@ module PostformeAuthService
     # 下发机器端：指纹浏览器打开授权页（机器端 open_auth_url 接口，需机器端先行支持）。
     # skip_machine: true 时跳过（全手动流程：人工自己打开、完成后手动确认授权）。
     unless skip_machine
-      machine_ip = account.browser.machine_ip
+      machine_ip = account.browser.machine_host
       if machine_ip.blank?
         Rails.logger.warn "[PostformeAuth] 账号 #{account.id} 浏览器未设 machine_ip，跳过下发打开授权页（授权 URL 需人工打开）"
       else

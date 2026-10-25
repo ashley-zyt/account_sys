@@ -32,8 +32,8 @@
         <%= f.search_field :profile_name_cont, class: "admin-input admin-filter-input", placeholder: "搜索名称..." %>
       </div>
       <div class="admin-filter-group">
-        <label class="admin-filter-label">机器 IP</label>
-        <%= f.search_field :machine_ip_cont, class: "admin-input admin-filter-input", placeholder: "搜索 IP..." %>
+        <label class="admin-filter-label">机器地址</label>
+        <%= f.search_field :machine_host_cont, class: "admin-input admin-filter-input", placeholder: "搜索地址..." %>
       </div>
       <div class="admin-filter-group">
         <label class="admin-filter-label">状态</label>
@@ -92,9 +92,9 @@
                 </span>
               </td>
               <td>
-                <% if browser.machine_ip.present? %>
+                <% if browser.machine_host.present? %>
                   <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                    <%= browser.machine_ip %>
+                    <%= browser.machine_host %>
                   </span>
                 <% else %>
                   <span class="admin-label-muted">未设置</span>

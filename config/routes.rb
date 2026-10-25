@@ -73,6 +73,7 @@ Rails.application.routes.draw do
       end
     end
     resources :browsers, only: [:index, :show, :new, :create, :edit, :update, :destroy]
+    resources :machines, only: [:index, :new, :create, :edit, :update, :destroy]
     resources :task_logs, only: [:index, :show] do
       collection do
         get :publish_status

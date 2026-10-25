@@ -13,7 +13,7 @@ class WarmupScheduler
   # 养号任务卡在 executing 超过此时长（小时）仍无回调，判定为中断，标 failed 释放账号
   STUCK_TIMEOUT_HOURS = 3
 
-  # 统一入口：按 browser.machine_ip 分组，多台机器并行运行、互不影响
+  # 统一入口：按 browser.machine_host 分组，多台机器并行运行、互不影响
   def self.run
     machine_ips = target_machine_ips
     Rails.logger.info "[WarmupScheduler] 发现 #{machine_ips.size} 台运营机器: #{machine_ips.join(', ')}"
@@ -21,7 +21,7 @@ class WarmupScheduler
     # 提示存在未设置 machine_ip 的浏览器（其账号本轮会被跳过）
     orphan_accounts = Account.joins(:browser)
                              .where.not(status: ["未登录", "封禁/停用"])
-                             .where(browsers: { machine_ip: [nil, ""] })
+                             .where(browsers: { machine_id: nil })
                              .count
     if orphan_accounts > 0
       Rails.logger.warn "[WarmupScheduler] 有 #{orphan_accounts} 个账号的浏览器未设置 machine_ip，本轮跳过，请在浏览器页面补全机器IP"
@@ -104,10 +104,9 @@ class WarmupScheduler
 
   # 当前需要参与养号的所有运营机器 IP（来自浏览器配置）
   def self.target_machine_ips
-    Browser.where.not(machine_ip: [nil, ""])
-           .joins(:accounts)
+    Browser.joins(:accounts, :machine)
            .distinct
-           .pluck(:machine_ip)
+           .pluck('machines.host')
   end
 
   # 查询指定机器下需要养号的账号（每台机器单次最多 MAX_ACCOUNTS_PER_MACHINE 个）
@@ -115,7 +114,7 @@ class WarmupScheduler
   #   （刚下发的账号已有 executing 记录，下一轮被跳过，取到下一批）。
   # 排序：1) 从未养号优先 2) 上次报错优先 3) 上次养号时间更久优先
   def self.fetch_target_accounts_for_machine(machine_ip)
-    browser_ids = Browser.where(machine_ip: machine_ip).pluck(:id)
+    browser_ids = Browser.joins(:machine).where(machines: { host: machine_ip }).pluck(:id)
     executing_account_ids = WarmupTask.where(status: :executing).select(:account_id)
     Account.joins(:warmup_profile)
            .where(browser_id: browser_ids)

@@ -103,10 +103,9 @@ class MachineTaskMonitor
   Result = Struct.new(:machine_ip, :ok, :data, :error, :code, keyword_init: true)
 
   class << self
-    # 所有配置了 machine_ip 的机器（去重、去空白、排序）
+    # 所有配置了机器的 host（去重、去空白、排序）
     def machine_ips
-      Browser.where.not(machine_ip: [nil, ''])
-             .distinct.pluck(:machine_ip)
+      Machine.distinct.pluck(:host)
              .compact.map(&:strip).reject(&:empty?).uniq.sort
     end
 
