@@ -8,6 +8,8 @@
 #   5. 风控/发送失败的账号休眠一段时间，期间不参与分配
 class KolAccountAllocator
   MAX_CONTACTS_PER_DAY = 5  # 默认值，可被 config/kol_scheduler.yml 的 max_contacts_per_day 覆盖
+  # 同一账号两次发送私信的最小间隔，避免同一账号短时间高频发送
+  PER_ACCOUNT_INTERVAL = 5.minutes
   CONFIG_PATH = Rails.root.join('config/kol_scheduler.yml')
   # 当前已接通 twitter / tiktok / instagram / facebook
   SUPPORTED_PLATFORMS = %w[twitter tiktok instagram facebook].freeze
@@ -56,6 +58,8 @@ class KolAccountAllocator
         next if exclude_ids.include?(account.id)
         next if account.kol_sleeping?
         next if today_contact_count(account) >= max_contacts_per_day
+        # 同一账号 5 分钟内已发过私信：跳过，避免高频
+        next if account_recently_sent?(account)
         # X 认证方式：只选 X 授权成功的账号
         next if channel.to_s == 'x_api' && !account.x_credential&.authorized?
         # 指纹浏览器方式：只选绑定了浏览器（有 machine_ip）的账号
@@ -143,6 +147,12 @@ class KolAccountAllocator
           KolMessage.statuses[:sent_failed]
         ]
       ).where(created_at: Time.current.beginning_of_day..Time.current.end_of_day).count
+    end
+
+    # 该账号最近一次发送私信是否距今不足 5 分钟（用最后一条 outgoing 消息的发送时间判断）
+    def account_recently_sent?(account)
+      last = KolMessage.where(account_id: account.id, direction: :outgoing).maximum(:occurred_at)
+      last && Time.current - last < PER_ACCOUNT_INTERVAL
     end
   end
 end

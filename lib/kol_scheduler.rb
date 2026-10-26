@@ -18,6 +18,8 @@ class KolScheduler
   MAX_BROWSER_DISPATCH_PER_RUN = 20
   # 私信下发后超过此时长仍未收到结果反馈，判定为「发送超时」并标记 sent_timeout
   SEND_TIMEOUT_HOURS = 6
+  # 全局私信发送间隔：任意两次发送私信至少间隔 5 分钟（5 分钟只发一次，避免高频）
+  SEND_INTERVAL = 5.minutes
 
   CONFIG_PATH = Rails.root.join('config/kol_scheduler.yml')
 
@@ -123,6 +125,11 @@ class KolScheduler
         outcome = send_on_contact(kol, contact, scenario: scenario)
         return true if outcome == :success
         return false if outcome == :suspended  # 缺变量等 KOL 级问题，停止本次
+        if outcome == :rate_limited
+          # 全局限流：5 分钟内已发过私信，稍后再试
+          kol.update!(next_action_at: SEND_INTERVAL.from_now)
+          return false
+        end
         # :exhausted → 换下一个平台的联系方式继续
       end
 
@@ -230,6 +237,8 @@ class KolScheduler
         { ok: true, async: true, message: "已受理，发送结果稍后更新" }
       when :account_risk
         { ok: false, error: "内部账号异常（已自动休眠），请更换账号后重试" }
+      when :rate_limited
+        { ok: false, error: "私信发送间隔需 5 分钟，请稍后再试" }
       else
         { ok: false, error: "发送失败，请稍后重试" }
       end
@@ -273,6 +282,8 @@ class KolScheduler
         { ok: true, async: true, message: "已受理，发送结果稍后更新" }
       when :account_risk
         { ok: false, error: "内部账号异常（已自动休眠），请更换账号后重试" }
+      when :rate_limited
+        { ok: false, error: "私信发送间隔需 5 分钟，请稍后再试" }
       else
         { ok: false, error: "发送失败，请稍后重试" }
       end
@@ -295,6 +306,7 @@ class KolScheduler
         case result
         when :success, :async_accepted then return :success
         when :missing_variables then return :suspended
+        when :rate_limited then return :rate_limited  # 全局限流，本轮不再发
         when :target_invalid then return :exhausted  # 对方 user_id 无效，换账号无意义，停止该联系方式
         else
           # account_risk / other：换下一个账号；同平台换满 max_accounts_per_platform 个仍失败则换平台
@@ -320,6 +332,12 @@ class KolScheduler
           return :missing_variables
         end
         content = template ? template.render_for(kol) : fallback_content(kol)
+      end
+
+      # 全局节流：X API 通道 5 分钟内已发送过私信则本轮跳过（不落库、不发送）
+      if contact.x_api_channel? && global_send_rate_limited?
+        Rails.logger.info "[KolScheduler] X 私信全局限流（5 分钟内已发送），跳过 KOL##{kol.id}"
+        return :rate_limited
       end
 
       message = KolMessage.create!(
@@ -377,6 +395,12 @@ class KolScheduler
         KolOutreachApi.apply_send_result(message, success: false, error: result[:error], reason: "network")
         :other
       end
+    end
+
+    # 全局私信节流：最近一条 outgoing 消息距今不足 5 分钟（5 分钟只发一次）
+    def global_send_rate_limited?
+      last = KolMessage.where(direction: :outgoing).maximum(:occurred_at)
+      last && Time.current - last < SEND_INTERVAL
     end
 
     # 异步受理成功即把 KOL/联系方式转「联系中」，避免机器端回调到达前 KOL 仍 pending
