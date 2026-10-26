@@ -43,7 +43,8 @@ class GrokTask < ApplicationRecord
     waiting_publish: 1,
     executing: 2,
     success: 3,
-    failed: 4
+    failed: 4,
+    claimed: 5           # 人工认领（终态，系统不再发布）
   }
 
   enum platform: {

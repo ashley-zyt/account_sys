@@ -74,6 +74,10 @@ class StorageCleaner
         when 'success'
           releasable_urls << url if url.present?
           summary[:kept] += 1
+        when 'claimed'
+          # 人工认领：保留记录与成片文件，不清理（运营人员需下载后人工处理）
+          needed_urls << url if url.present?
+          summary[:kept] += 1
         when 'failed'
           delete_ids << t.id
           releasable_urls << url if url.present?

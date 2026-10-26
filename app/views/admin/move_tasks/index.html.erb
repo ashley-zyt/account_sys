@@ -164,6 +164,9 @@
                   <% if task.waiting_publish? %>
                     <%= link_to "立即执行", execute_admin_move_task_path(task), data: { turbo_method: :post, turbo_confirm: "确定立即执行该任务吗？" }, class: "admin-link-quiet", style: "color: var(--success);" %>
                   <% end %>
+                  <% if task.pending? || task.waiting_publish? %>
+                    <%= link_to "人工认领", claim_admin_move_task_path(task), data: { turbo_method: :post, turbo_confirm: "确定人工认领该任务吗？认领后系统不再发布" }, class: "admin-link-quiet", style: "color: #f59e0b;" %>
+                  <% end %>
                   <%= link_to "日志", admin_task_logs_path(q: { task_uuid_eq: task.task_uuid }), class: "admin-link-quiet", style: "color: var(--accent);" %>
                 </div>
               </td>

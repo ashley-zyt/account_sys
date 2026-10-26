@@ -753,6 +753,15 @@ body.admin {
   background: var(--danger);
 }
 
+.admin-pill-status-claimed {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+
+.admin-pill-status-claimed .admin-pill-status-dot {
+  background: #f59e0b;
+}
+
 .admin-link-quiet {
   color: var(--text-secondary);
   text-decoration: none;

@@ -41,7 +41,8 @@ class MoveTask < ApplicationRecord
 		waiting_publish: 1,  # 等待发布
 		executing: 2,        # 执行中
 		success: 3,          # 成功
-		failed: 4            # 失败
+		failed: 4,           # 失败
+		claimed: 5           # 人工认领（终态，系统不再发布）
 	}
 	# 平台枚举（与 Account.platform 完全一致）
 	enum platform: {

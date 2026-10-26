@@ -39,6 +39,35 @@ module TaskExecutable
     redirect_back(fallback_location: admin_root_path, notice: "任务 ##{task_id} 已开始执行")
   end
 
+  # 人工认领：把「待分配/等待发布」的任务改为认领终态，系统不再发布
+  def claim
+    task = task_model_class.find_by(id: params[:id])
+
+    if task.nil?
+      redirect_back(fallback_location: admin_root_path, alert: "任务不存在")
+      return
+    end
+
+    unless task.pending? || task.waiting_publish?
+      redirect_back(fallback_location: admin_root_path, alert: "任务当前状态为「#{task.status}」，仅「待分配/等待发布」可人工认领")
+      return
+    end
+
+    # 释放归属（若已发活），再置认领终态（清账号/浏览器，绕过 pending 外的 account_id 校验）
+    if task.respond_to?(:task_uuid) && task.task_uuid.present?
+      TaskAssignment.release!(task.task_uuid, '人工认领')
+    end
+    task.update_columns(
+      status: task.class.statuses[:claimed],
+      account_id: nil,
+      browser_id: nil,
+      error_msg: '人工认领',
+      updated_at: Time.current
+    )
+
+    redirect_back(fallback_location: admin_root_path, notice: "任务 ##{task.id} 已人工认领，系统不再发布")
+  end
+
   private
 
   # 子类需覆盖，返回对应任务模型类（如 MoveTask）

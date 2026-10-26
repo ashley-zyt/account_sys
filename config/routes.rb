@@ -31,11 +31,13 @@ Rails.application.routes.draw do
     resources :move_tasks, only: [:index, :show] do
       member do
         post :execute
+        post :claim
       end
     end
     resources :hunjian_tasks, only: [:index, :show] do
       member do
         post :execute
+        post :claim
       end
     end
     resources :move_videos, only: [:index, :show]
@@ -45,6 +47,7 @@ Rails.application.routes.draw do
       end
       member do
         post :execute
+        post :claim
       end
     end
     resources :huasheng_tasks, only: [:index, :show, :destroy] do
@@ -53,6 +56,7 @@ Rails.application.routes.draw do
       end
       member do
         post :execute
+        post :claim
       end
     end
     resources :notebooklm_tasks, only: [:index, :show, :destroy] do
@@ -61,6 +65,7 @@ Rails.application.routes.draw do
       end
       member do
         post :execute
+        post :claim
       end
     end
     resources :operation_tasks, only: [:index, :show, :new, :create, :destroy] do
@@ -70,6 +75,7 @@ Rails.application.routes.draw do
       end
       member do
         post :execute
+        post :claim
       end
     end
     resources :browsers, only: [:index, :show, :new, :create, :edit, :update, :destroy]
@@ -136,6 +142,7 @@ Rails.application.routes.draw do
     resources :grok_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member do
         post :execute
+        post :claim
       end
     end
     resources :heygen_tasks, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
