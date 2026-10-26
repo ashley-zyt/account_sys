@@ -114,31 +114,16 @@ class KolXOutreach
 
     # 失败分类：
     #   401 = token 失效 → account_risk（休眠账号重新授权）
-    #   403 靠 detail 措辞（实测 v2 DM 返回 RFC 7807 无 code）：
-    #     「do not have permission to DM / not allowed to send / this user」→ 对方拒绝 → dm_refused（停用联系方式）
-    #     「This operation is not permitted.」→ 歧义（账号被限流 或 对方关闭私信），结合账号近期成功率判断
-    #     其它 → account_risk
+    #   403 且 detail 含 "not permitted" = 账号被限流 或 对方关闭私信 → 结合账号近期成功率判断
+    #   其它（含「不能给对方发消息」等）= 正常状况，不触发限制（x_api_error）
     def classify_failure(resp, account: nil)
       code = resp[:code].to_i
       return 'account_risk' if code == 401
 
-      if code == 403
-        xcode = extract_error_code(resp).to_i
-        return 'dm_refused' if [63, 150].include?(xcode)
-        return 'account_risk' if [326, 261, 220, 87].include?(xcode)
-
-        detail = extract_error(resp).to_s.downcase
-        # 明确「对方拒绝」的 detail
-        return 'dm_refused' if detail.include?('do not have permission to dm') ||
-                               detail.include?('not allowed to send') ||
-                               detail.include?('direct message') ||
-                               detail.include?('this user') ||
-                               detail.include?('not following')
+      detail = extract_error(resp).to_s.downcase
+      if code == 403 && detail.include?('not permitted')
         # "This operation is not permitted." 歧义：结合账号近期成功率判断
-        if detail.include?('not permitted')
-          return 'dm_refused' if account && account_likely_healthy?(account)
-          return 'account_risk'
-        end
+        return 'dm_refused' if account && account_likely_healthy?(account)
         return 'account_risk'
       end
 
