@@ -39,6 +39,8 @@ class MoveVideo < ApplicationRecord
   DOWNLOAD_ORDER_FILE = Rails.root.join('storage', 'download_theme_order.json')
   # 每次只保留「最缺资源」的前 N 个主题参与下载（之间平均轮询）
   DOWNLOAD_TOP_N = 6
+  # 待下载源视频低库存阈值：前 N 名主题中低于该值的，发钉钉提醒补充
+  LOW_PENDING_THRESHOLD = 500
 
   # 下载主题白名单：下载软件只在以下主题之间「平均轮询」下载，其余主题（如武颜集萃/舞男/御马飞驰/中国美食制作）不参与下载。
   # 主题名与 config/theme_config.yml 的 key（即 move_video.theme 实际存值）精确一致。
@@ -266,6 +268,10 @@ class MoveVideo < ApplicationRecord
     ordered = min_days.keys.sort_by { |t| [min_days[t], -video_counts[t].to_i] }
     top = ordered.first(DOWNLOAD_TOP_N)
 
+    # 低库存提醒：前 N 名主题中待下载源视频不足阈值的，发钉钉提醒补充
+    low_themes = top.select { |t| video_counts[t].to_i < LOW_PENDING_THRESHOLD }
+    notify_low_pending(low_themes.map { |t| [t, video_counts[t].to_i] }) if low_themes.any?
+
     payload = {
       stat_date: date.strftime('%Y-%m-%d'),
       generated_at: Time.current.strftime('%Y-%m-%d %H:%M:%S'),
@@ -277,6 +283,15 @@ class MoveVideo < ApplicationRecord
     FileUtils.mkdir_p(File.dirname(DOWNLOAD_ORDER_FILE))
     File.write(DOWNLOAD_ORDER_FILE, JSON.pretty_generate(payload))
     top
+  end
+
+  # 待下载源视频低库存提醒：把「待下载 < 阈值」的主题发钉钉（机器人 zyt接收/养号）
+  def self.notify_low_pending(list)
+    lines = list.map { |theme, count| "- #{theme}：待下载 #{count} 条" }.join("\n")
+    content = "以下主题待下载源视频已低于 #{LOW_PENDING_THRESHOLD} 条，请及时补充源视频：\n\n#{lines}"
+    Dingtalk.send_markdown(:agic_zyt, "源视频下载库存不足", content)
+  rescue => e
+    Rails.logger.error "[MoveVideo] 低库存提醒发送失败: #{e.message}"
   end
 
   # 读取下载优先级文件，返回按紧急度排序的主题名数组；文件不存在/解析失败返回 []

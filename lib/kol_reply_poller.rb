@@ -75,6 +75,54 @@ class KolReplyPoller
       end
     end
 
+    # 一次性结算：针对指定账号私信过、仍在「等回复」的 X 通道联系方式，实时查一次回复。
+    # 有回复 → 转 replied；没回复 → 置 unresponsive（只设联系方式，不再跟进）。
+    # 用于「之前被限制的账号解除后」补查历史私信的回复情况。
+    def settle_unresponsive(account_ids:)
+      setup_logger("kol_settle.log")
+      ids = Array(account_ids).map(&:to_i).reject(&:zero?)
+      stats = { accounts: ids.size, checked: 0, replied: 0, unresponsive: 0, no_account: 0, error: 0 }
+      return stats if ids.empty?
+
+      contact_ids = KolMessage.where(account_id: ids, direction: KolMessage.directions[:outgoing])
+                              .distinct.pluck(:kol_contact_id)
+      contacts = KolContact.where(id: contact_ids, status: KolContact.statuses[:contacting]).to_a
+
+      Rails.logger.info "[KolSettle] 目标账号 #{ids.size} 个，待结算联系方式 #{contacts.size} 个"
+
+      contacts.each do |contact|
+        next unless contact.x_api_channel?
+
+        begin
+          account = contact.last_outgoing_account
+          if account.nil? || !account.x_credential&.authorized?
+            stats[:no_account] += 1
+            Rails.logger.info "[KolSettle]   contact##{contact.id} 无可用 X 账号，跳过"
+            next
+          end
+
+          result = KolXOutreach.fetch_replies(account: account, contact: contact)
+          stats[:checked] += 1
+
+          if result[:has_reply]
+            KolOutreachApi.apply_reply_result(contact, result[:replies])
+            stats[:replied] += 1
+            Rails.logger.info "[KolSettle]   contact##{contact.id} 有回复，转 replied"
+          else
+            contact.update!(status: :unresponsive, monitor_until: nil, next_poll_at: nil)
+            stats[:unresponsive] += 1
+            Rails.logger.info "[KolSettle]   contact##{contact.id} 无回复，置未回复"
+          end
+        rescue => e
+          stats[:error] += 1
+          Rails.logger.error "[KolSettle]   contact##{contact.id} 异常: #{e.message}"
+        end
+      end
+
+      Rails.logger.info "[KolSettle] 完成：#{stats.inspect}"
+      stats
+    end
+
     private
 
     # 距「最后发送成功」的整小时数（向下取整，避免 23.6h 被算成第二天）
