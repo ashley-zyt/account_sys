@@ -1,7 +1,8 @@
 # 弃用账号分析器
 #
-# 输入一批要弃用的账号 ID，打印每个涉及到的代理（浏览器）下，
-# 除这批弃用账号外，还剩多少个「正常状态」的账号，以及具体是哪些。
+# 输入一批要弃用的账号 ID，按代理（浏览器）分组打印：
+#   1. 该代理下要弃用的账号（ID + 名称 + 平台）
+#   2. 该代理下除弃用外，还剩多少个「正常状态」的账号（ID + 名称 + 平台）
 #
 # 用法：AccountDiscardAnalyzer.analyze([1, 2, 3])
 class AccountDiscardAnalyzer
@@ -13,15 +14,24 @@ class AccountDiscardAnalyzer
       accounts = Account.where(id: ids).includes(:browser).order(:id)
       browser_ids = accounts.map(&:browser_id).compact.uniq
 
-      puts "\n===== 弃用账号使用的代理 · 剩余正常账号 ====="
+      puts "\n===== 弃用账号使用的代理 ====="
       browser_ids.each do |bid|
         b = Browser.find_by(id: bid)
         next if b.nil?
 
-        remaining = b.accounts.where(status: Account.statuses["正常"]).where.not(id: ids)
-        puts "\n代理 #{proxy_text(b)}（浏览器 #{b.profile_name}）：剩余正常账号 #{remaining.count} 个"
+        discard = accounts.select { |a| a.browser_id == bid }
+        remaining = b.accounts.where(status: Account.statuses["正常"]).where.not(id: ids).order(:id)
+
+        puts "\n代理 #{proxy_text(b)}（浏览器 #{b.profile_name}）"
+
+        puts "  弃用账号（#{discard.size} 个）："
+        discard.each { |a| puts "    #{a.id} | #{a.account_name}（#{a.platform}）" }
+
+        puts "  剩余正常账号（#{remaining.count} 个）："
         if remaining.any?
-          remaining.each { |a| puts "    #{a.account_name}（#{a.platform}）" }
+          remaining.each { |a| puts "    #{a.id} | #{a.account_name}（#{a.platform}）" }
+        else
+          puts "    （无）"
         end
       end
 
