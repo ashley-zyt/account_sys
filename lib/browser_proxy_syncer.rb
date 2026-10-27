@@ -12,6 +12,7 @@ class BrowserProxySyncer
     # @return [Hash] 同步统计
     def run
       stats = { machines: 0, profiles: 0, updated: 0, skipped: 0, failed: 0 }
+      unmatched_samples = []
 
       Machine.find_each do |machine|
         next if machine.host.blank?
@@ -21,42 +22,43 @@ class BrowserProxySyncer
         stats[:updated]  += r[:updated]
         stats[:skipped]  += r[:skipped]
         stats[:failed]   += r[:failed]
+        unmatched_samples.concat(r[:unmatched_samples])
       end
 
       Rails.logger.info "[BrowserProxySyncer] 同步完成：#{stats.inspect}"
+      Rails.logger.info "[BrowserProxySyncer] browsers 表 profile_name 示例(前20)：#{Browser.limit(20).pluck(:profile_name).inspect}"
+      if unmatched_samples.any?
+        Rails.logger.info "[BrowserProxySyncer] 未匹配示例(前20)：#{unmatched_samples.first(20).inspect}"
+      end
       stats
     end
 
     # 同步单台机器的 profiles
     def sync_machine(machine)
       profiles = fetch_profiles(machine.host)
-      result = { profiles: profiles.size, updated: 0, skipped: 0, failed: 0 }
+      result = { profiles: profiles.size, updated: 0, skipped: 0, failed: 0, unmatched_samples: [] }
 
       profiles.each do |p|
         name = p['name'].to_s.strip
         next if name.blank?
 
         browser = Browser.find_by(profile_name: name)
+
         if browser.nil?
           result[:skipped] += 1
+          result[:unmatched_samples] << name if result[:unmatched_samples].size < 20
           next
         end
 
-        attrs = {}
-        parsed = parse_proxy(p['proxy'].to_s.strip)
-        attrs.merge!(parsed) if parsed
-        attrs[:cloud_id] = p['cloud_id'] if p['cloud_id'].present?
+        attrs = parse_proxy(p['proxy'].to_s.strip)
+        next if attrs.nil?
 
-        if attrs.any?
-          browser.update(attrs) ? result[:updated] += 1 : result[:failed] += 1
-        else
-          result[:skipped] += 1
-        end
+        browser.update(attrs) ? result[:updated] += 1 : result[:failed] += 1
       end
       result
     rescue => e
       Rails.logger.error "[BrowserProxySyncer] 机器 #{machine.host} 同步异常: #{e.message}"
-      { profiles: 0, updated: 0, skipped: 0, failed: 1 }
+      { profiles: 0, updated: 0, skipped: 0, failed: 1, unmatched_samples: [] }
     end
 
     # 拉取机器 profiles 列表
