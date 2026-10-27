@@ -66,10 +66,15 @@ class BrowserProxySyncer
     end
 
     # 解析 proxy 字符串 → { proxy_type:, proxy_host:, proxy_port:, proxy_username:, proxy_password: }
-    # 支持带认证 socks5://host:port@user:pass 与无认证 socks5://host:port 两种
+    # 支持三种格式：
+    #   带认证 @ 分隔：socks5://host:port@user:pass
+    #   带认证 : 分隔：socks5://host:port:user:pass
+    #   无认证：      socks5://host:port
     def parse_proxy(proxy)
       return nil if proxy.blank?
       if (m = proxy.match(%r{\A([a-z0-9]+)://([^:/@]+):(\d+)@([^:@]+):([^@]+)\z}))
+        { proxy_type: m[1], proxy_host: m[2], proxy_port: m[3].to_i, proxy_username: m[4], proxy_password: m[5] }
+      elsif (m = proxy.match(%r{\A([a-z0-9]+)://([^:/@]+):(\d+):([^:@]+):([^:@]+)\z}))
         { proxy_type: m[1], proxy_host: m[2], proxy_port: m[3].to_i, proxy_username: m[4], proxy_password: m[5] }
       elsif (m = proxy.match(%r{\A([a-z0-9]+)://([^:/@]+):(\d+)\z}))
         { proxy_type: m[1], proxy_host: m[2], proxy_port: m[3].to_i, proxy_username: nil, proxy_password: nil }
