@@ -19,7 +19,7 @@ class Admin::DashboardController < Admin::BaseController
 					total: ps.count,
 					active: ps.active.count,
 					unlogged: ps.where(status: "未登录").count,
-					banned: ps.where(status: "封禁/停用").count
+					banned: ps.where(status: "封禁/限制").count
 				}
 			end
 			{
@@ -27,7 +27,7 @@ class Admin::DashboardController < Admin::BaseController
 				total: scope.count,
 				active: scope.active.count,
 				unlogged: scope.where(status: "未登录").count,
-				banned: scope.where(status: "封禁/停用").count,
+				banned: scope.where(status: "封禁/限制").count,
 				platforms: platforms
 			}
 		end

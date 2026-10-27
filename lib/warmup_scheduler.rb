@@ -20,7 +20,7 @@ class WarmupScheduler
 
     # 提示存在未设置 machine_ip 的浏览器（其账号本轮会被跳过）
     orphan_accounts = Account.joins(:browser)
-                             .where.not(status: ["未登录", "封禁/停用"])
+                             .where.not(status: ["未登录", "封禁/限制", "停用"])
                              .where(browsers: { machine_id: nil })
                              .count
     if orphan_accounts > 0
@@ -118,7 +118,7 @@ class WarmupScheduler
     executing_account_ids = WarmupTask.where(status: :executing).select(:account_id)
     Account.joins(:warmup_profile)
            .where(browser_id: browser_ids)
-           .where.not(status: ["未登录", "封禁/停用"])
+           .where.not(status: ["未登录", "封禁/限制", "停用"])
            .where.not(id: executing_account_ids)
            .where(warmup_profiles: { warmup_enabled: true })
            .order(Arel.sql("warmup_profiles.last_warmup_at IS NULL DESC, warmup_profiles.warmup_status = 'failed' DESC, warmup_profiles.last_warmup_at ASC"))

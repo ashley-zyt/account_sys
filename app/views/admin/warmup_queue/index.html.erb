@@ -163,7 +163,7 @@
 
               <%# 状态 %>
               <td>
-                <% status_colors = { '正常' => '#22c55e', '未登录' => '#f59e0b', '封禁/停用' => '#ef4444', '浏览养护' => '#3b82f6' } %>
+                <% status_colors = { '正常' => '#22c55e', '未登录' => '#f59e0b', '封禁/限制' => '#ef4444', '浏览养护' => '#3b82f6', '停用' => '#9ca3af' } %>
                 <% color = status_colors[account.status] || '#9ca3af' %>
                 <span class="admin-pill-status" style="background: <%= color %>1a; color: <%= color %>;">
                   <%= account.status %>

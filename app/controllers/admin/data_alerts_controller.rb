@@ -72,7 +72,7 @@ class Admin::DataAlertsController < Admin::BaseController
 	# ===== 预警二：最近被封禁的账号 =====
 	# accounts 表无专门封禁时间字段，以状态变更时的 updated_at 近似
 	def fetch_recent_banned_accounts
-		Account.where(status: "封禁/停用")
+		Account.where(status: "封禁/限制")
 			.order(updated_at: :desc)
 			.limit(BANNED_LIST_LIMIT)
 	end

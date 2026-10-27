@@ -32,7 +32,7 @@ class AccountPublishDaily < ApplicationRecord
     success: 0,            # 发布成功
     failed: 1,             # 发布失败
     agent: 2,              # agent 外部发布（系统不发布，正常）
-    banned: 3,             # 账号封禁/停用/未登录
+    banned: 3,             # 账号封禁/限制/停用/未登录
     tiktok_low_views: 4,   # TikTok 近3天0浏览量跳过
     no_resource: 5,        # 资源不足（无 pending）
     no_browser: 6,         # 未绑定浏览器/无 machine_ip
@@ -188,7 +188,7 @@ class AccountPublishDaily < ApplicationRecord
   # 判定单个账号当天的结果
   # @return [Array] [result_key, reason, error_msg, task_log_id]
   def self.classify(account, last_log)
-    # 账号状态异常（封禁/停用/未登录）：优先看当天是否有日志（可能发布失败后才封禁）
+    # 账号状态异常（封禁/限制/停用/未登录）：优先看当天是否有日志（可能发布失败后才封禁）
     unless account.status == '正常'
       if last_log
         if last_log[:status] == 'success'

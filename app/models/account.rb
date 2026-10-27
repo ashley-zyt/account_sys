@@ -80,13 +80,14 @@ class Account < ApplicationRecord
 
 	# 账号状态枚举
 	# - normal    : 正常启用，可参与任务分配
-	# - restricted: 受限（如风控、临时限制），调度时应跳过
-	# - banned    : 封禁/停用，不再使用
+	# - restricted: 封禁/限制（平台封禁或被限制，可人工解封）
+	# - disabled  : 停用（使用者主动不想再运营，可恢复）
 	enum status: {
 		"正常": 0,
 		"未登录": 1,
-		"封禁/停用": 2,
+		"封禁/限制": 2,
 		"浏览养护": 3,
+		"停用": 4,
 	}
 
 	# 工作模式枚举：由 WorkMode 注册表（config/work_modes.yml）动态生成，
@@ -243,8 +244,8 @@ class Account < ApplicationRecord
 
 	# 类方法：统计所有已封禁或退出的账号及其最后一次成功运行时间
 	def self.banned_or_unlogged_last_success_stats
-		# status 1: 未登录, 2: 封禁/停用
-		where(status: [ "封禁/停用"]).where(platform:4).find_each.map do |account|
+		# status 1: 未登录, 2: 封禁/限制
+		where(status: [ "封禁/限制"]).where(platform:4).find_each.map do |account|
 			{
 				account_id: account.id,
 				account_name: account.account_name,
@@ -316,7 +317,7 @@ class Account < ApplicationRecord
 
 	# 同步养号启用状态：
 	# - 正常(0) 或 浏览养护(3) → warmup_enabled = true
-	# - 未登录(1) 或 封禁/停用(2) → warmup_enabled = false
+	# - 未登录(1) 或 封禁/限制(2) 或 停用(4) → warmup_enabled = false
 	def sync_warmup_enabled
 		profile = warmup_profile
 		return unless profile
@@ -324,7 +325,7 @@ class Account < ApplicationRecord
 		case status
 		when "正常", "浏览养护"
 			profile.update!(warmup_enabled: true) if !profile.warmup_enabled
-		when "封禁/停用", "未登录"
+		when "封禁/限制", "停用", "未登录"
 			profile.update!(warmup_enabled: false) if profile.warmup_enabled
 		end
 	end

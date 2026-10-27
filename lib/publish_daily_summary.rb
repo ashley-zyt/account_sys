@@ -80,8 +80,8 @@ class PublishDailySummary
       platform = platform_by_account[account_id]
       if e[:status].to_s == "success"
         success_counts[platform] += 1
-      elsif status_by_account[account_id] == "封禁/停用"
-        # 今日被封禁的账号，跳过不计入失败
+      elsif status_by_account[account_id].in?(["封禁/限制", "停用"])
+        # 今日被封禁/限制或停用的账号，跳过不计入失败
         next
       else
         failed_counts[platform] += 1

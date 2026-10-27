@@ -113,10 +113,10 @@ module TaskReportHelper
 
     account = Account.find_by(id: account_id)
     return false unless account
-    return false if account.status == "封禁/停用"
+    return false if account.status.in?(["封禁/限制", "停用"])
 
-    account.update!(status: "封禁/停用")
-    Rails.logger.warn "[TaskReportHelper] 账号 #{account_id} 检测到异常，已全局封禁（status=封禁/停用）"
+    account.update!(status: "封禁/限制")
+    Rails.logger.warn "[TaskReportHelper] 账号 #{account_id} 检测到异常，已全局封禁（status=封禁/限制）"
     true
   end
 
