@@ -19,8 +19,10 @@ class CommentScheduler
       created = InfluencerPostFetcher.fetch_latest_posts
       Rails.logger.info "[CommentScheduler] 新获取发文 #{created} 条"
 
-      # 2. 为新发文生成评论任务（只对还没生成过任务的新发文）
-      new_posts = InfluencerPost.left_joins(:comment_tasks).where(comment_tasks: { id: nil })
+      # 2. 为「今日」的新发文生成评论任务（只对今天发布且还没生成过任务的新发文）
+      new_posts = InfluencerPost.left_joins(:comment_tasks)
+                                .where(comment_tasks: { id: nil })
+                                .where(posted_at: Time.current.beginning_of_day..Time.current.end_of_day)
       generated = 0
       new_posts.find_each do |post|
         generated += generate_tasks_for(post)
