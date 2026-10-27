@@ -29,7 +29,7 @@ module HostingPublishScheduler
 
     # 待发布的托管账号：托管中 + 已配置渠道 + 已授权
     def active_authorized_accounts
-      HostingAccount.where(status: :active).order(:id).select do |a|
+      HostingAccount.publishable.order(:id).select do |a|
         a.publish_channel.present? && HostingPublishService.authorized?(a)
       end
     end

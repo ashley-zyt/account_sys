@@ -34,8 +34,16 @@ class HostingAccount < ApplicationRecord
 
   enum status: { active: 0, paused: 1, terminated: 2 }
 
+  # 可发布的托管账号：托管中 + 客户合作中（客户暂停/终止后，其下托管账号不再参与发布）
+  scope :publishable, -> { joins(:client).where(status: :active, clients: { status: :active }) }
+
   validates :client_id, presence: true
   validates :platform, presence: true
+
+  # 该托管账号当前是否可发布（账号与客户都处于正常状态）
+  def publishable?
+    active? && (client&.active? || false)
+  end
 
   # 该托管账号指定的资源队列对应的 WorkMode（resource_queue 存 WorkMode key）
   def work_mode

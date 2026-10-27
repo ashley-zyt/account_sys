@@ -11,6 +11,8 @@ module HostingPublishService
   # 取一条成品并生成托管发布任务
   # @return [Hash] { success: true, task: } 或 { success: false, message: }
   def self.fetch_and_create_task(hosting_account)
+    return { success: false, message: '托管账号或其客户已暂停/终止，无法发布' } unless hosting_account.publishable?
+
     wm = WorkMode.find(hosting_account.resource_queue)
     return { success: false, message: '未配置资源队列' } if wm.nil? || !wm.resource?
     return { success: false, message: '未配置主题' } if hosting_account.theme.blank?
@@ -57,6 +59,9 @@ module HostingPublishService
   # 执行发布：按托管账号配置的发布渠道分支
   # @return [Hash] { success:, message: }
   def self.publish(task)
+    account = task.hosting_account
+    return { success: false, message: '托管账号或其客户已暂停/终止，无法发布' } if account.nil? || !account.publishable?
+
     case task.publish_channel.to_s
     when 'postpeer'  then publish_postpeer(task)
     when 'postforme' then publish_postforme(task)
