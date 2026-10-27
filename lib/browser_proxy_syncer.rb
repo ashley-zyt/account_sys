@@ -1,11 +1,11 @@
 # 指纹浏览器代理信息同步器
 #
-# 反过来查询：先取系统里「状态正常」的浏览器，拿它们的 profile_name 去各机器
-# GET /api/browser/profiles 返回的内容里比对，命中后解析 proxy 更新代理信息。
+# 用固定 URL 获取指纹浏览器上所有 profile 的 name / proxy，
+# 反过来用系统里「状态正常」浏览器的 profile_name 去比对，命中后解析 proxy 更新代理信息。
 #
 # proxy 示例：socks5://193.160.218.20:62185@ufa8RDTT:j5bNJK45
 class BrowserProxySyncer
-  PORT = 8080
+  PROFILES_URL = 'http://67.43.156.15:8080/api/browser/profiles'
 
   class << self
     # 同步所有状态正常浏览器的代理信息
@@ -14,23 +14,17 @@ class BrowserProxySyncer
       stats = { profiles_fetched: 0, browsers: 0, updated: 0, unmatched: 0, failed: 0 }
       unmatched_samples = []
 
-      # 1. 合并所有机器的 profiles，建成 name → profile 映射
+      # 1. 拉取固定 URL 的 profiles，建成 name → profile 映射
       profiles_by_name = {}
-      Machine.find_each do |machine|
-        next if machine.host.blank?
-        fetch_profiles(machine.host).each do |p|
-          name = p['name'].to_s.strip
-          profiles_by_name[name] = p if name.present?
-        end
+      fetch_profiles.each do |p|
+        name = p['name'].to_s.strip
+        profiles_by_name[name] = p if name.present?
       end
       stats[:profiles_fetched] = profiles_by_name.size
 
       # 2. 遍历状态正常的浏览器，用 profile_name 去比对
       browsers = Browser.where(status: 0)
       stats[:browsers] = browsers.size
-
-      parse_failed_samples = []
-      update_failed_samples = []
 
       browsers.each do |browser|
         name = browser.profile_name.to_s.strip
@@ -41,45 +35,30 @@ class BrowserProxySyncer
           next
         end
 
-        proxy = p['proxy'].to_s.strip
-        attrs = parse_proxy(proxy)
+        attrs = parse_proxy(p['proxy'].to_s.strip)
         if attrs.nil?
           stats[:failed] += 1
-          parse_failed_samples << p if parse_failed_samples.size < 3
           next
         end
 
-        if browser.update(attrs)
-          stats[:updated] += 1
-        else
-          stats[:failed] += 1
-          update_failed_samples << "#{name} => #{attrs.inspect} | #{browser.errors.full_messages.join('; ')}" if update_failed_samples.size < 20
-        end
+        browser.update(attrs) ? stats[:updated] += 1 : stats[:failed] += 1
       end
 
       Rails.logger.info "[BrowserProxySyncer] 同步完成：#{stats.inspect}"
       if unmatched_samples.any?
         Rails.logger.info "[BrowserProxySyncer] 未匹配示例(前20)：#{unmatched_samples.inspect}"
       end
-      if parse_failed_samples.any?
-        debug_path = Rails.root.join('storage', 'browser_proxy_debug.txt')
-        File.write(debug_path, parse_failed_samples.map { |x| JSON.pretty_generate(x) }.join("\n\n"))
-        puts "[BrowserProxySyncer] proxy 为空的 profile 完整字段已写入 #{debug_path}"
-      end
-      if update_failed_samples.any?
-        Rails.logger.info "[BrowserProxySyncer] 更新失败示例(前20)：#{update_failed_samples.inspect}"
-      end
       stats
     end
 
-    # 拉取机器 profiles 列表
-    def fetch_profiles(host)
-      resp = RemoteApiClient.get("http://#{host}:#{PORT}/api/browser/profiles", open_timeout: 60, read_timeout: 60)
+    # 拉取 profiles 列表（固定 URL）
+    def fetch_profiles
+      resp = RemoteApiClient.get(PROFILES_URL, open_timeout: 60, read_timeout: 60)
       body = JSON.parse(resp.body)
       data = body.is_a?(Hash) ? body['data'] : body
       Array(data)
     rescue => e
-      Rails.logger.error "[BrowserProxySyncer] 获取 #{host} profiles 失败: #{e.message}"
+      Rails.logger.error "[BrowserProxySyncer] 获取 profiles 失败: #{e.message}"
       []
     end
 
