@@ -45,7 +45,7 @@ class BrowserProxySyncer
         attrs = parse_proxy(proxy)
         if attrs.nil?
           stats[:failed] += 1
-          parse_failed_samples << "#{name} => #{proxy}" if parse_failed_samples.size < 20
+          parse_failed_samples << p if parse_failed_samples.size < 3
           next
         end
 
@@ -62,7 +62,9 @@ class BrowserProxySyncer
         Rails.logger.info "[BrowserProxySyncer] 未匹配示例(前20)：#{unmatched_samples.inspect}"
       end
       if parse_failed_samples.any?
-        Rails.logger.info "[BrowserProxySyncer] proxy 解析失败示例(前20)：#{parse_failed_samples.inspect}"
+        debug_path = Rails.root.join('storage', 'browser_proxy_debug.txt')
+        File.write(debug_path, parse_failed_samples.map { |x| JSON.pretty_generate(x) }.join("\n\n"))
+        puts "[BrowserProxySyncer] proxy 为空的 profile 完整字段已写入 #{debug_path}"
       end
       if update_failed_samples.any?
         Rails.logger.info "[BrowserProxySyncer] 更新失败示例(前20)：#{update_failed_samples.inspect}"
