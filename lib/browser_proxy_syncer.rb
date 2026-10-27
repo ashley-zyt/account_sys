@@ -29,6 +29,9 @@ class BrowserProxySyncer
       browsers = Browser.where(status: 0)
       stats[:browsers] = browsers.size
 
+      parse_failed_samples = []
+      update_failed_samples = []
+
       browsers.each do |browser|
         name = browser.profile_name.to_s.strip
         p = profiles_by_name[name]
@@ -38,18 +41,31 @@ class BrowserProxySyncer
           next
         end
 
-        attrs = parse_proxy(p['proxy'].to_s.strip)
+        proxy = p['proxy'].to_s.strip
+        attrs = parse_proxy(proxy)
         if attrs.nil?
           stats[:failed] += 1
+          parse_failed_samples << "#{name} => #{proxy}" if parse_failed_samples.size < 20
           next
         end
 
-        browser.update(attrs) ? stats[:updated] += 1 : stats[:failed] += 1
+        if browser.update(attrs)
+          stats[:updated] += 1
+        else
+          stats[:failed] += 1
+          update_failed_samples << "#{name} => #{attrs.inspect} | #{browser.errors.full_messages.join('; ')}" if update_failed_samples.size < 20
+        end
       end
 
       Rails.logger.info "[BrowserProxySyncer] 同步完成：#{stats.inspect}"
       if unmatched_samples.any?
         Rails.logger.info "[BrowserProxySyncer] 未匹配示例(前20)：#{unmatched_samples.inspect}"
+      end
+      if parse_failed_samples.any?
+        Rails.logger.info "[BrowserProxySyncer] proxy 解析失败示例(前20)：#{parse_failed_samples.inspect}"
+      end
+      if update_failed_samples.any?
+        Rails.logger.info "[BrowserProxySyncer] 更新失败示例(前20)：#{update_failed_samples.inspect}"
       end
       stats
     end
