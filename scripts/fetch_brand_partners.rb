@@ -1,20 +1,22 @@
-# 按品牌获取「合作伙伴（被赞助创作者）」及其联系方式
+# 按品牌获取「合作伙伴（被赞助创作者）」列表（基础信息），可选再拉联系方式
 #
 # 用法：
 #   bundle exec rails runner scripts/fetch_brand_partners.rb search [关键词]         # 搜索品牌（默认 binance）
-#   bundle exec rails runner scripts/fetch_brand_partners.rb <brandId> [platform]    # 列出合作伙伴并拉联系方式
-#   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube email refresh  # 额外拉真实邮箱 + 强制刷新
+#   bundle exec rails runner scripts/fetch_brand_partners.rb <brandId> [platform] [limit]
+#   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 5      # 先预览 5 条
+#   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 500    # 拉前 500 条基础信息
+#   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 500 contacts   # 对已拉取的再拉联系方式(profile)
 #
 # 环境变量：CREATORDB_API_KEY
 # 缓存目录：tmp/creatordb/
 #   brand_search.json            品牌搜索结果
-#   brand_creators_<brand>.json  品牌赞助的创作者列表
-#   brand_contacts_<brand>.json  创作者 profile(含社交链接/Telegram) + 邮箱
+#   brand_creators_<brand>.json  品牌赞助的创作者列表（基础信息）
+#   brand_contacts_<brand>.json  创作者 profile(含社交链接/Telegram)
 #
 # 说明：
-#   - /sponsor/creators 返回每个创作者的 creatorId（YouTube 即 channelId）
-#   - 联系方式默认取 profile（含 otherLinks 里的 Telegram，2 积分/人）
-#   - 加 email 参数时，对 hasEmail 为 true 的创作者再调 /youtube/contact 取真实邮箱（15 积分/人，仅在有邮箱时计费）
+#   - 默认只拉「基础信息」（/sponsor/creators 已含 displayName/followers/country/topics/niches/sponsoredCount 等），
+#     不逐人调 profile，也不拉邮箱，避免一次性耗用过多积分。
+#   - 只有显式加 contacts 才会逐人调 /youtube/profile（2 积分/人）；再加 email 才会调 /youtube/contact（15 积分/人）。
 
 require 'net/http'
 require 'json'
@@ -57,6 +59,13 @@ def sanitize(str)
   str.to_s.gsub(/[^a-zA-Z0-9._-]/, '_')
 end
 
+def ts(ms)
+  return '' if ms.to_i.zero?
+  Time.at(ms.to_i / 1000).strftime('%Y-%m-%d')
+rescue
+  ''
+end
+
 # 搜索品牌（名称模糊匹配），返回 data.results 数组
 def search_brands(keyword)
   api_post('/sponsor/search', {
@@ -70,15 +79,16 @@ def search_brands(keyword)
   })
 end
 
-# 分页拉取某品牌在某平台赞助的创作者，返回数组
-def list_sponsored_creators(brand_id, platform)
+# 分页拉取某品牌在某平台赞助的创作者，最多 limit 条，返回数组（基础信息）
+def list_sponsored_creators(brand_id, platform, limit)
   all = []
   offset = 0
   loop do
+    break if all.size >= limit
     r = api_get('/sponsor/creators', {
       'brandId'  => brand_id,
       'platform' => platform,
-      'pageSize' => 100,
+      'pageSize' => [100, limit - all.size].min,
       'offset'   => offset,
       'sortBy'   => 'followers',
       'desc'     => 'true'
@@ -90,9 +100,9 @@ def list_sponsored_creators(brand_id, platform)
     all.concat(batch)
     total = data['totalResults'].to_i
     offset += batch.size
-    break if batch.empty? || offset >= total || offset >= 1000 # 安全上限 1000 人
+    break if batch.empty? || offset >= total
   end
-  all
+  all.first(limit)
 end
 
 def run_search(keyword)
@@ -106,32 +116,20 @@ def run_search(keyword)
   results.each do |b|
     puts "- brandId=#{b['brandId']}  name=#{b['name']}  country=#{b['country']}  industries=#{(b['industries'] || []).join(',')}"
   end
-
-  puts "\n请确认 Binance.US 的 brandId（一般是 binance.us），然后用："
-  puts "  bundle exec rails runner scripts/fetch_brand_partners.rb <brandId> youtube"
-  puts "继续拉取合作伙伴及联系方式。"
+  puts "\n确认 brandId 后运行："
+  puts "  bundle exec rails runner scripts/fetch_brand_partners.rb <brandId> youtube 5"
 end
 
-def run_fetch(brand_id, platform, with_email, force)
+def run_list(brand_id, platform, limit, force)
   creators_cache = File.join(CACHE_DIR, "brand_creators_#{sanitize(brand_id)}_#{platform}.json")
-  contacts_cache = File.join(CACHE_DIR, "brand_contacts_#{sanitize(brand_id)}_#{platform}.json")
 
-  # 已有联系方式缓存则直接读
-  if !force && File.exist?(contacts_cache)
-    puts "读取缓存联系方式：#{contacts_cache}"
-    contacts = JSON.parse(File.read(contacts_cache))
-    print_summary(contacts)
-    return
-  end
-
-  # 1. 列出创作者
   creators = if !force && File.exist?(creators_cache)
                JSON.parse(File.read(creators_cache))
              else
-               puts "调用 GET /sponsor/creators 拉取 #{brand_id} (#{platform}) 的合作伙伴..."
-               r = list_sponsored_creators(brand_id, platform)
+               puts "调用 GET /sponsor/creators 拉取 #{brand_id} (#{platform}) 合作伙伴（最多 #{limit} 条）..."
+               r = list_sponsored_creators(brand_id, platform, limit)
                File.write(creators_cache, JSON.pretty_generate(r))
-               puts "创作者列表已缓存：#{creators_cache}（#{r.size} 人）"
+               puts "创作者列表已缓存：#{creators_cache}（#{r.size} 条）"
                r
              end
 
@@ -140,7 +138,37 @@ def run_fetch(brand_id, platform, with_email, force)
     return
   end
 
-  # 2. 逐个拉 profile（含 otherLinks/Telegram），可选拉真实邮箱
+  puts "\n===== 合作伙伴基础信息（#{creators.size} 条）====="
+  creators.each_with_index do |c, i|
+    puts sprintf("[%3d] %-30s 粉丝%-10s %s | 赞助内容%d条 | 主题:%s | 最近赞助:%s",
+                 i + 1,
+                 c['displayName'],
+                 c['followers'],
+                 c['country'],
+                 c['sponsoredCount'].to_i,
+                 (c['topics'] || []).join('/'),
+                 ts(c['lastSponsoredDate']))
+  end
+end
+
+def run_contacts(brand_id, platform, limit, with_email, force)
+  creators_cache = File.join(CACHE_DIR, "brand_creators_#{sanitize(brand_id)}_#{platform}.json")
+  contacts_cache = File.join(CACHE_DIR, "brand_contacts_#{sanitize(brand_id)}_#{platform}.json")
+
+  if !force && File.exist?(contacts_cache)
+    puts "读取缓存联系方式：#{contacts_cache}"
+    contacts = JSON.parse(File.read(contacts_cache))
+    print_contacts_summary(contacts)
+    return
+  end
+
+  creators = if File.exist?(creators_cache)
+               JSON.parse(File.read(creators_cache))
+             else
+               list_sponsored_creators(brand_id, platform, limit)
+             end
+  creators = creators.first(limit)
+
   puts "\n开始拉取 #{creators.size} 个创作者的联系方式（profile 2 积分/人#{with_email ? '，邮箱 15 积分/人' : ''}）..."
   contacts = creators.each_with_index.map do |c, i|
     id = c['creatorId']
@@ -159,19 +187,18 @@ def run_fetch(brand_id, platform, with_email, force)
 
   File.write(contacts_cache, JSON.pretty_generate(contacts))
   puts "联系方式已缓存：#{contacts_cache}"
-
-  print_summary(contacts)
+  print_contacts_summary(contacts)
 end
 
-def print_summary(contacts)
-  puts "\n===== 合作伙伴汇总（#{contacts.size} 人）====="
+def print_contacts_summary(contacts)
+  puts "\n===== 合作伙伴联系方式（#{contacts.size} 人）====="
   contacts.each_with_index do |c, i|
     d = c.dig('profile', 'data') || {}
     links = d['otherLinks'] || []
     telegram = links.select { |l| (l['title'].to_s.downcase).include?('telegram') }.map { |l| l['url'] }
     emails = c.dig('contact', 'data', 'emails') || []
     email_txt = emails.any? ? emails.join(', ') : (d['hasEmail'] ? '有(未拉取)' : '无')
-    puts sprintf("[%2d] %-28s 粉丝%-10s %s | 邮箱:%s | Telegram:%s",
+    puts sprintf("[%3d] %-30s 粉丝%-10s %s | 邮箱:%s | Telegram:%s",
                  i + 1, c['displayName'], c['followers'], c['country'],
                  email_txt, telegram.join(','))
   end
@@ -191,9 +218,16 @@ def run
   else
     brand_id   = cmd
     platform   = ARGV[1] || 'youtube'
-    with_email = ARGV.include?('email')
-    force      = ARGV.include?('refresh')
-    run_fetch(brand_id, platform, with_email, force)
+    limit      = (ARGV[2] || '5').to_i
+    with_contacts = ARGV.include?('contacts')
+    with_email    = ARGV.include?('email')
+    force         = ARGV.include?('refresh')
+
+    if with_contacts
+      run_contacts(brand_id, platform, limit, with_email, force)
+    else
+      run_list(brand_id, platform, limit, force)
+    end
   end
 end
 
