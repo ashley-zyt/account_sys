@@ -5,7 +5,7 @@
 #
 # proxy 示例：socks5://193.160.218.20:62185@ufa8RDTT:j5bNJK45
 class BrowserProxySyncer
-  PROFILES_URL = 'http://67.43.156.15:8080/api/browser/profiles'
+  PROFILES_URL = 'http://agclienta.juzhiic.com/api/browser/profiles'
 
   class << self
     # 同步所有状态正常浏览器的代理信息
