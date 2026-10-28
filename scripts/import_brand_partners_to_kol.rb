@@ -160,18 +160,18 @@ def run
     end
 
     contacts = build_contacts(item)
+    if contacts.empty?
+      puts "跳过(无联系方式): #{name}"
+      skipped += 1
+      next
+    end
+
     urls = contacts.map { |c| c[:url] }
 
-    # 查重：优先按联系方式 url；无联系方式时按 name 兜底
-    if urls.any?
-      dup = Kol.find_duplicate(contact_urls: urls)
-      if dup
-        puts "跳过(url重复): #{name} -> #{dup[:value]}"
-        skipped += 1
-        next
-      end
-    elsif Kol.exists?(name: name)
-      puts "跳过(同名): #{name}"
+    # 查重：按联系方式 url
+    dup = Kol.find_duplicate(contact_urls: urls)
+    if dup
+      puts "跳过(url重复): #{name} -> #{dup[:value]}"
       skipped += 1
       next
     end
