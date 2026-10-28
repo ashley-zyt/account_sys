@@ -4,8 +4,12 @@
 #   bundle exec rails runner scripts/fetch_brand_partners.rb search [关键词]         # 搜索品牌（默认 binance）
 #   bundle exec rails runner scripts/fetch_brand_partners.rb <brandId> [platform] [limit]
 #   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 5      # 先预览 5 条
+#   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 5 sort=lastSponsoredDate  # 按最新合作排序
 #   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 500    # 拉前 500 条基础信息
 #   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 500 contacts   # 对已拉取的再拉联系方式(profile)
+#   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us sample 200             # 两平台各200条 + 每平台第1条联系方式
+#
+#   sortBy 可选：lastSponsoredDate(默认/最新合作) / followers / avgRecentSponsoredEngagementRate / sponsoredCount
 #
 # 环境变量：CREATORDB_API_KEY
 # 缓存目录：tmp/creatordb/
@@ -80,7 +84,7 @@ def search_brands(keyword)
 end
 
 # 分页拉取某品牌在某平台赞助的创作者，最多 limit 条，返回数组（基础信息）
-def list_sponsored_creators(brand_id, platform, limit)
+def list_sponsored_creators(brand_id, platform, limit, sort_by = 'lastSponsoredDate')
   all = []
   offset = 0
   loop do
@@ -90,7 +94,7 @@ def list_sponsored_creators(brand_id, platform, limit)
       'platform' => platform,
       'pageSize' => [100, limit - all.size].min,
       'offset'   => offset,
-      'sortBy'   => 'followers',
+      'sortBy'   => sort_by,
       'desc'     => 'true'
     })
     break if r['error']
@@ -120,18 +124,19 @@ def run_search(keyword)
   puts "  bundle exec rails runner scripts/fetch_brand_partners.rb <brandId> youtube 5"
 end
 
-def run_list(brand_id, platform, limit, force)
+def run_list(brand_id, platform, limit, force, sort_by = 'lastSponsoredDate')
   creators_cache = File.join(CACHE_DIR, "brand_creators_#{sanitize(brand_id)}_#{platform}.json")
 
   creators = if !force && File.exist?(creators_cache)
                JSON.parse(File.read(creators_cache))
              else
-               puts "调用 GET /sponsor/creators 拉取 #{brand_id} (#{platform}) 合作伙伴（最多 #{limit} 条）..."
-               r = list_sponsored_creators(brand_id, platform, limit)
+               puts "调用 GET /sponsor/creators 拉取 #{brand_id} (#{platform}) 合作伙伴（最多 #{limit} 条，按 #{sort_by} 排序）..."
+               r = list_sponsored_creators(brand_id, platform, limit, sort_by)
                File.write(creators_cache, JSON.pretty_generate(r))
                puts "创作者列表已缓存：#{creators_cache}（#{r.size} 条）"
                r
              end
+  creators = creators.first(limit)
 
   if creators.empty?
     puts '[提示] 未拉到创作者，请检查 brandId 是否正确（可先运行 search 确认）。'
@@ -151,43 +156,56 @@ def run_list(brand_id, platform, limit, force)
   end
 end
 
-def run_contacts(brand_id, platform, limit, with_email, force)
+def run_contacts(brand_id, platform, limit, with_email, force, sort_by = 'lastSponsoredDate')
   creators_cache = File.join(CACHE_DIR, "brand_creators_#{sanitize(brand_id)}_#{platform}.json")
   contacts_cache = File.join(CACHE_DIR, "brand_contacts_#{sanitize(brand_id)}_#{platform}.json")
-
-  if !force && File.exist?(contacts_cache)
-    puts "读取缓存联系方式：#{contacts_cache}"
-    contacts = JSON.parse(File.read(contacts_cache))
-    print_contacts_summary(contacts)
-    return
-  end
 
   creators = if File.exist?(creators_cache)
                JSON.parse(File.read(creators_cache))
              else
-               list_sponsored_creators(brand_id, platform, limit)
+               list_sponsored_creators(brand_id, platform, limit, sort_by)
              end
   creators = creators.first(limit)
 
-  puts "\n开始拉取 #{creators.size} 个创作者的联系方式（profile 2 积分/人#{with_email ? '，邮箱 15 积分/人' : ''}）..."
-  contacts = creators.each_with_index.map do |c, i|
+  # 读取已拉取的部分结果，按 creatorId 索引，支持断点续拉
+  done = {}
+  if !force && File.exist?(contacts_cache)
+    begin
+      JSON.parse(File.read(contacts_cache)).each do |e|
+        done[e['creatorId']] = e if e && e['creatorId']
+      end
+    rescue JSON::ParserError
+      done = {}
+    end
+  end
+
+  todo = creators.reject { |c| done.key?(c['creatorId']) }
+
+  if todo.empty?
+    puts "所有创作者的联系方式均已缓存（#{done.size} 人）。"
+    print_contacts_summary(creators.map { |c| done[c['creatorId']] }.compact)
+    return
+  end
+
+  puts "\n开始拉取联系方式（已缓存 #{done.size} 人，待拉 #{todo.size} 人；联系方式字段约 0.3 积分/人#{with_email ? '，邮箱 15 积分/人' : ''}）..."
+  todo.each do |c|
     id = c['creatorId']
     entry = c.dup
     if id.blank?
       entry['profile'] = { 'error' => '无 creatorId' }
     else
-      entry['profile'] = api_post('/youtube/profile', { 'channelId' => id })
+      entry['profile'] = profile_call(platform, id)
       if with_email && entry.dig('profile', 'data', 'hasEmail')
-        entry['contact'] = api_post('/youtube/contact', { 'channelId' => id })
+        entry['contact'] = contact_call(platform, id)
       end
     end
-    puts "  [#{i + 1}/#{creators.size}] #{c['displayName']} done"
-    entry
+    done[id] = entry
+    # 每拉完一个立即写盘，中断不丢已拉取的数据
+    File.write(contacts_cache, JSON.pretty_generate(done.values))
+    puts "  [#{done.size}/#{creators.size}] #{c['displayName']} done（已写盘）"
   end
 
-  File.write(contacts_cache, JSON.pretty_generate(contacts))
-  puts "联系方式已缓存：#{contacts_cache}"
-  print_contacts_summary(contacts)
+  print_contacts_summary(creators.map { |c| done[c['creatorId']] }.compact)
 end
 
 def print_contacts_summary(contacts)
@@ -204,6 +222,100 @@ def print_contacts_summary(contacts)
   end
 end
 
+# 只拉「联系方式相关」字段（fractional，比全量 profile 便宜）；未开启 Fractional Calls 时自动降级全量
+CONTACT_FIELDS = ['otherLinks', 'hasEmail', 'bio'].freeze
+
+def profile_call(platform, id)
+  body = platform == 'youtube' ? { 'channelId' => id } : { 'uniqueId' => id }
+  body['fields'] = CONTACT_FIELDS
+  resp = api_post("/#{platform}/profile", body)
+
+  # 未开启 Fractional Calls 时带 fields 会报错，降级为全量 profile
+  if resp['errorCode'].to_s.downcase.include?('fractional')
+    resp = api_post("/#{platform}/profile", body.except('fields'))
+  end
+  resp
+end
+
+def contact_call(platform, id)
+  body = platform == 'youtube' ? { 'channelId' => id } : { 'uniqueId' => id }
+  api_post("/#{platform}/contact", body)
+end
+
+def fetch_contact_for(platform, creator, with_email)
+  id = creator['creatorId']
+  if id.blank?
+    return { 'creator' => creator, 'profile' => { 'error' => '无 creatorId' }, 'contact' => nil }
+  end
+
+  profile = profile_call(platform, id)
+  contact = (with_email && profile.dig('data', 'hasEmail')) ? contact_call(platform, id) : nil
+  { 'creator' => creator, 'profile' => profile, 'contact' => contact }
+end
+
+def print_contact_fields(platform, data)
+  d = data.dig('profile', 'data') || {}
+  links = d['otherLinks'] || []
+  emails = data.dig('contact', 'data', 'emails') || []
+
+  puts "  creatorId  : #{data.dig('creator', 'creatorId')}"
+  puts "  displayName: #{data.dig('creator', 'displayName')}"
+  puts "  hasEmail   : #{d['hasEmail']}"
+  puts "  emails     : #{emails.join(', ')}"
+  puts "  otherLinks :"
+  if links.empty?
+    puts "    (无)"
+  else
+    links.each { |l| puts "    - #{l['title']}: #{l['url']}" }
+  end
+  puts "  bio        : #{d['bio'].to_s[0, 200]}"
+end
+
+def run_sample(brand_id, limit, sort_by, with_email, force)
+  %w[youtube instagram].each do |platform|
+    puts "\n#{'=' * 70}"
+    puts "平台：#{platform}（#{brand_id}）"
+    puts '=' * 70
+
+    creators_cache = File.join(CACHE_DIR, "brand_creators_#{sanitize(brand_id)}_#{platform}.json")
+    sample_cache  = File.join(CACHE_DIR, "brand_sample_#{sanitize(brand_id)}_#{platform}.json")
+
+    creators = if !force && File.exist?(creators_cache)
+                 JSON.parse(File.read(creators_cache))
+               else
+                 puts "拉取 #{platform} 合作伙伴（最多 #{limit} 条，按 #{sort_by} 排序）..."
+                 r = list_sponsored_creators(brand_id, platform, limit, sort_by)
+                 File.write(creators_cache, JSON.pretty_generate(r))
+                 puts "列表已缓存：#{creators_cache}（#{r.size} 条）"
+                 r
+               end
+    creators = creators.first(limit)
+
+    if creators.empty?
+      puts "[提示] #{platform} 未拉到创作者"
+      next
+    end
+
+    puts "\n--- #{platform} 基础信息（前 #{[creators.size, 10].min} 条预览）---"
+    creators.first(10).each_with_index do |c, i|
+      puts sprintf("[%3d] %-28s 粉丝%-10s %s | 赞助%d条 | 最近:%s",
+                   i + 1, c['displayName'], c['followers'], c['country'],
+                   c['sponsoredCount'].to_i, ts(c['lastSponsoredDate']))
+    end
+
+    first = creators.first
+    puts "\n--- #{platform} 第 1 条（#{first['displayName']}）联系方式 ---"
+    data = if !force && File.exist?(sample_cache)
+             JSON.parse(File.read(sample_cache))
+           else
+             r = fetch_contact_for(platform, first, with_email)
+             File.write(sample_cache, JSON.pretty_generate(r))
+             r
+           end
+    print_contact_fields(platform, data)
+  end
+end
+
 def run
   if API_KEY.blank?
     puts '[错误] 未设置 CREATORDB_API_KEY 环境变量'
@@ -217,16 +329,23 @@ def run
     run_search(ARGV[1] || 'binance')
   else
     brand_id   = cmd
-    platform   = ARGV[1] || 'youtube'
-    limit      = (ARGV[2] || '5').to_i
-    with_contacts = ARGV.include?('contacts')
-    with_email    = ARGV.include?('email')
-    force         = ARGV.include?('refresh')
+    sort_by    = (ARGV.find { |a| a.start_with?('sort=') } || '').split('=', 2)[1] || 'lastSponsoredDate'
+    with_email = ARGV.include?('email')
+    force      = ARGV.include?('refresh')
 
-    if with_contacts
-      run_contacts(brand_id, platform, limit, with_email, force)
+    if ARGV[1] == 'sample' || ARGV[1] == 'both'
+      limit = (ARGV[2] || '200').to_i
+      run_sample(brand_id, limit, sort_by, with_email, force)
     else
-      run_list(brand_id, platform, limit, force)
+      platform   = ARGV[1] || 'youtube'
+      limit      = (ARGV[2] || '5').to_i
+      with_contacts = ARGV.include?('contacts')
+
+      if with_contacts
+        run_contacts(brand_id, platform, limit, with_email, force, sort_by)
+      else
+        run_list(brand_id, platform, limit, force, sort_by)
+      end
     end
   end
 end
