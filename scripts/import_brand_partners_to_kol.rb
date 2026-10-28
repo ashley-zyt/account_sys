@@ -19,6 +19,30 @@ require 'uri'
 OWNER = '杜维'
 DOMAIN_NAME = '数字货币'
 
+# ISO 3166-1 alpha-3 → 中文国家/地区名（覆盖当前数据里出现的 66 个；未命中则回退原代码）
+COUNTRY_NAMES = {
+  'BRA' => '巴西', 'USA' => '美国', 'ARE' => '阿联酋', 'IND' => '印度',
+  'ARG' => '阿根廷', 'TUR' => '土耳其', 'TWN' => '中国台湾', 'PAK' => '巴基斯坦',
+  'EGY' => '埃及', 'ESP' => '西班牙', 'KOR' => '韩国', 'UKR' => '乌克兰',
+  'IDN' => '印度尼西亚', 'BGD' => '孟加拉国', 'VNM' => '越南', 'RUS' => '俄罗斯',
+  'LKA' => '斯里兰卡', 'HKG' => '中国香港', 'GBR' => '英国', 'COL' => '哥伦比亚',
+  'POL' => '波兰', 'FRA' => '法国', 'THA' => '泰国', 'ITA' => '意大利',
+  'MEX' => '墨西哥', 'ROU' => '罗马尼亚', 'KHM' => '柬埔寨', 'MAR' => '摩洛哥',
+  'DEU' => '德国', 'SGP' => '新加坡', 'KAZ' => '哈萨克斯坦', 'DOM' => '多米尼加',
+  'CAN' => '加拿大', 'PHL' => '菲律宾', 'CHL' => '智利', 'HUN' => '匈牙利',
+  'SRB' => '塞尔维亚', 'SWE' => '瑞典', 'MYS' => '马来西亚', 'JOR' => '约旦',
+  'EST' => '爱沙尼亚', 'GEO' => '格鲁吉亚', 'SAU' => '沙特阿拉伯', 'DZA' => '阿尔及利亚',
+  'CHE' => '瑞士', 'ZAF' => '南非', 'MLT' => '马耳他', 'VGB' => '英属维尔京群岛',
+  'BEL' => '比利时', 'AUT' => '奥地利', 'GRC' => '希腊', 'KWT' => '科威特',
+  'SVK' => '斯洛伐克', 'HND' => '洪都拉斯', 'PAN' => '巴拿马', 'HRV' => '克罗地亚',
+  'JPN' => '日本', 'FIN' => '芬兰', 'CZE' => '捷克', 'ISR' => '以色列',
+  'PRT' => '葡萄牙', 'SEN' => '塞内加尔', 'NGA' => '尼日利亚', 'SLV' => '萨尔瓦多',
+}.freeze
+
+def country_name(code)
+  COUNTRY_NAMES.fetch(code.to_s, code.to_s)
+end
+
 def sanitize(str)
   str.to_s.gsub(/[^a-zA-Z0-9._-]/, '_')
 end
@@ -87,7 +111,30 @@ def build_contacts(item)
   contacts
 end
 
+# 一次性修复：把之前已导入、仍存国家代码（如 USA）的 KOL 的 country 改成中文
+def fix_countries
+  domain = Domain.find_by(name: DOMAIN_NAME)
+  scope = domain ? Kol.where(owner: OWNER, domain_id: domain.id) : Kol.none
+
+  updated = 0
+  scope.find_each do |kol|
+    code = kol.country.to_s.strip
+    name = COUNTRY_NAMES[code]
+    next if name.nil? || name == code
+
+    kol.update_columns(country: name, updated_at: Time.current)
+    updated += 1
+    puts "更新: #{kol.name}: #{code} -> #{name}"
+  end
+  puts "\n完成：更新国家字段 #{updated} 条"
+end
+
 def run
+  if ARGV[0] == 'fix_countries'
+    fix_countries
+    return
+  end
+
   brand_id = ARGV[0] || 'binance.us'
   platform = ARGV[1] || 'youtube'
   dry_run  = ARGV.include?('dry')
@@ -138,7 +185,7 @@ def run
       name:       name,
       owner:      OWNER,
       domain_id:  domain.id,
-      country:    item['country'],
+      country:    country_name(item['country']),
       follower_tier: item['followers'].to_s,
       notes:      JSON.pretty_generate(item),
       status:     :reserved,
