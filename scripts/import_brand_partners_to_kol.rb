@@ -66,6 +66,7 @@ def build_contacts(item)
   (item.dig('profile', 'data', 'otherLinks') || []).each do |l|
     url = clean_url(l['url'])
     next if url.blank?
+    url = url[0, 255]  # kol_contacts.url 是 string(255)，超长截断避免入库报错
 
     platform = platform_from_url(url)
     next if platform.nil?
@@ -105,7 +106,7 @@ def run
   failed  = 0
 
   data.each do |item|
-    name = (item['displayName'] || '').to_s.strip
+    name = (item['displayName'] || '').to_s.strip[0, 255]
     if name.blank?
       skipped += 1
       next
