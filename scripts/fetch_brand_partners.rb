@@ -7,7 +7,7 @@
 #   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 5 sort=lastSponsoredDate  # 按最新合作排序
 #   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 500    # 拉前 500 条基础信息
 #   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us youtube 500 contacts   # 对已拉取的再拉联系方式(profile)
-#   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us sample 200             # 两平台各200条 + 每平台第1条联系方式
+#   bundle exec rails runner scripts/fetch_brand_partners.rb binance.us sample 500             # 两平台各500条 + 每人联系方式
 #
 #   sortBy 可选：lastSponsoredDate(默认/最新合作) / followers / avgRecentSponsoredEngagementRate / sponsoredCount
 #
@@ -20,7 +20,8 @@
 # 说明：
 #   - 默认只拉「基础信息」（/sponsor/creators 已含 displayName/followers/country/topics/niches/sponsoredCount 等），
 #     不逐人调 profile，也不拉邮箱，避免一次性耗用过多积分。
-#   - 只有显式加 contacts 才会逐人调 /youtube/profile（2 积分/人）；再加 email 才会调 /youtube/contact（15 积分/人）。
+#   - 只有显式加 contacts（或 sample/both）才会逐人调 profile，只取联系方式字段（约 0.3 积分/人）；
+#     再加 email 才会调 contact 取真实邮箱（15 积分/人）。
 
 require 'net/http'
 require 'json'
@@ -109,6 +110,15 @@ def list_sponsored_creators(brand_id, platform, limit, sort_by = 'lastSponsoredD
   all.first(limit)
 end
 
+def fetch_and_cache_creators(brand_id, platform, limit, sort_by)
+  creators_cache = File.join(CACHE_DIR, "brand_creators_#{sanitize(brand_id)}_#{platform}.json")
+  puts "拉取 #{brand_id} (#{platform}) 合作伙伴（最多 #{limit} 条，按 #{sort_by} 排序）..."
+  r = list_sponsored_creators(brand_id, platform, limit, sort_by)
+  File.write(creators_cache, JSON.pretty_generate(r))
+  puts "列表已缓存：#{creators_cache}（#{r.size} 条）"
+  r
+end
+
 def run_search(keyword)
   puts "搜索品牌关键词：#{keyword} ..."
   resp = search_brands(keyword)
@@ -128,13 +138,10 @@ def run_list(brand_id, platform, limit, force, sort_by = 'lastSponsoredDate')
   creators_cache = File.join(CACHE_DIR, "brand_creators_#{sanitize(brand_id)}_#{platform}.json")
 
   creators = if !force && File.exist?(creators_cache)
-               JSON.parse(File.read(creators_cache))
+               cached = JSON.parse(File.read(creators_cache))
+               cached.size >= limit ? cached : fetch_and_cache_creators(brand_id, platform, limit, sort_by)
              else
-               puts "调用 GET /sponsor/creators 拉取 #{brand_id} (#{platform}) 合作伙伴（最多 #{limit} 条，按 #{sort_by} 排序）..."
-               r = list_sponsored_creators(brand_id, platform, limit, sort_by)
-               File.write(creators_cache, JSON.pretty_generate(r))
-               puts "创作者列表已缓存：#{creators_cache}（#{r.size} 条）"
-               r
+               fetch_and_cache_creators(brand_id, platform, limit, sort_by)
              end
   creators = creators.first(limit)
 
@@ -160,10 +167,11 @@ def run_contacts(brand_id, platform, limit, with_email, force, sort_by = 'lastSp
   creators_cache = File.join(CACHE_DIR, "brand_creators_#{sanitize(brand_id)}_#{platform}.json")
   contacts_cache = File.join(CACHE_DIR, "brand_contacts_#{sanitize(brand_id)}_#{platform}.json")
 
-  creators = if File.exist?(creators_cache)
-               JSON.parse(File.read(creators_cache))
+  creators = if !force && File.exist?(creators_cache)
+               cached = JSON.parse(File.read(creators_cache))
+               cached.size >= limit ? cached : fetch_and_cache_creators(brand_id, platform, limit, sort_by)
              else
-               list_sponsored_creators(brand_id, platform, limit, sort_by)
+               fetch_and_cache_creators(brand_id, platform, limit, sort_by)
              end
   creators = creators.first(limit)
 
@@ -242,77 +250,10 @@ def contact_call(platform, id)
   api_post("/#{platform}/contact", body)
 end
 
-def fetch_contact_for(platform, creator, with_email)
-  id = creator['creatorId']
-  if id.blank?
-    return { 'creator' => creator, 'profile' => { 'error' => '无 creatorId' }, 'contact' => nil }
-  end
-
-  profile = profile_call(platform, id)
-  contact = (with_email && profile.dig('data', 'hasEmail')) ? contact_call(platform, id) : nil
-  { 'creator' => creator, 'profile' => profile, 'contact' => contact }
-end
-
-def print_contact_fields(platform, data)
-  d = data.dig('profile', 'data') || {}
-  links = d['otherLinks'] || []
-  emails = data.dig('contact', 'data', 'emails') || []
-
-  puts "  creatorId  : #{data.dig('creator', 'creatorId')}"
-  puts "  displayName: #{data.dig('creator', 'displayName')}"
-  puts "  hasEmail   : #{d['hasEmail']}"
-  puts "  emails     : #{emails.join(', ')}"
-  puts "  otherLinks :"
-  if links.empty?
-    puts "    (无)"
-  else
-    links.each { |l| puts "    - #{l['title']}: #{l['url']}" }
-  end
-  puts "  bio        : #{d['bio'].to_s[0, 200]}"
-end
-
 def run_sample(brand_id, limit, sort_by, with_email, force)
   %w[youtube instagram].each do |platform|
-    puts "\n#{'=' * 70}"
-    puts "平台：#{platform}（#{brand_id}）"
-    puts '=' * 70
-
-    creators_cache = File.join(CACHE_DIR, "brand_creators_#{sanitize(brand_id)}_#{platform}.json")
-    sample_cache  = File.join(CACHE_DIR, "brand_sample_#{sanitize(brand_id)}_#{platform}.json")
-
-    creators = if !force && File.exist?(creators_cache)
-                 JSON.parse(File.read(creators_cache))
-               else
-                 puts "拉取 #{platform} 合作伙伴（最多 #{limit} 条，按 #{sort_by} 排序）..."
-                 r = list_sponsored_creators(brand_id, platform, limit, sort_by)
-                 File.write(creators_cache, JSON.pretty_generate(r))
-                 puts "列表已缓存：#{creators_cache}（#{r.size} 条）"
-                 r
-               end
-    creators = creators.first(limit)
-
-    if creators.empty?
-      puts "[提示] #{platform} 未拉到创作者"
-      next
-    end
-
-    puts "\n--- #{platform} 基础信息（前 #{[creators.size, 10].min} 条预览）---"
-    creators.first(10).each_with_index do |c, i|
-      puts sprintf("[%3d] %-28s 粉丝%-10s %s | 赞助%d条 | 最近:%s",
-                   i + 1, c['displayName'], c['followers'], c['country'],
-                   c['sponsoredCount'].to_i, ts(c['lastSponsoredDate']))
-    end
-
-    first = creators.first
-    puts "\n--- #{platform} 第 1 条（#{first['displayName']}）联系方式 ---"
-    data = if !force && File.exist?(sample_cache)
-             JSON.parse(File.read(sample_cache))
-           else
-             r = fetch_contact_for(platform, first, with_email)
-             File.write(sample_cache, JSON.pretty_generate(r))
-             r
-           end
-    print_contact_fields(platform, data)
+    puts "\n#{'=' * 70}\n平台：#{platform}（#{brand_id}）\n#{'=' * 70}"
+    run_contacts(brand_id, platform, limit, with_email, force, sort_by)
   end
 end
 
@@ -334,7 +275,7 @@ def run
     force      = ARGV.include?('refresh')
 
     if ARGV[1] == 'sample' || ARGV[1] == 'both'
-      limit = (ARGV[2] || '200').to_i
+      limit = (ARGV[2] || '500').to_i
       run_sample(brand_id, limit, sort_by, with_email, force)
     else
       platform   = ARGV[1] || 'youtube'
