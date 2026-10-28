@@ -4,8 +4,7 @@
 #   bundle exec rails runner scripts/test_fetch_language.rb              # 取缓存里第一个创作者
 #   bundle exec rails runner scripts/test_fetch_language.rb UCxxxxxx    # 指定 channelId
 #
-# 说明：用 /youtube/profile 的 fractional 字段，只拉 mainLanguage/secondLanguage/languages，
-#       单次约 0.4 积分（0.1+0.1+0.2）。
+# 说明：用 /youtube/profile 的 fractional 字段，只拉 mainLanguage，单次约 0.1 积分。
 
 require 'net/http'
 require 'json'
@@ -47,10 +46,10 @@ def run
     puts "未指定 channelId，取缓存第一个：#{first['displayName']} (#{channel_id})"
   end
 
-  puts "\n调用 /youtube/profile 拉取语言字段..."
+  puts "\n调用 /youtube/profile 拉取主语言字段..."
   resp = api_post('/youtube/profile', {
     'channelId' => channel_id,
-    'fields'    => ['mainLanguage', 'secondLanguage', 'languages']
+    'fields'    => ['mainLanguage']
   })
 
   puts "\n===== 原始响应 ====="
@@ -59,8 +58,6 @@ def run
   d = resp['data'] || {}
   puts "\n===== 语言字段 ====="
   puts "mainLanguage  : #{d['mainLanguage'].inspect}"
-  puts "secondLanguage: #{d['secondLanguage'].inspect}"
-  puts "languages     : #{d['languages'].inspect}"
 end
 
 run
