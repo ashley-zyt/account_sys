@@ -23,13 +23,28 @@ def sanitize(str)
   str.to_s.gsub(/[^a-zA-Z0-9._-]/, '_')
 end
 
+# 清理 CreatorDB 返回的 URL：去掉反引号、不可见/双向控制字符（如 \u2069）
+def clean_url(url)
+  url.to_s
+     .delete('`')
+     .gsub(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/, '')
+     .strip
+end
+
 # 用 URL 域名识别平台（title 不规范，不能依赖 title）
 def platform_from_url(url)
-  u = url.to_s.strip
+  u = clean_url(url)
   return nil if u.blank?
   return 'email' if u.downcase.start_with?('mailto:')
 
-  host = URI.parse(u).host.to_s.downcase.sub(/\Awww\./, '')
+  # 无协议时补 https://（如 "tiktok.com/@xxx"），否则解析不出 host
+  u = "https://#{u}" unless u.match?(/\A[a-z][a-z0-9+.-]*:\/\//i)
+
+  host = begin
+    URI.parse(u).host.to_s.downcase.sub(/\Awww\./, '')
+  rescue URI::InvalidURIError
+    nil
+  end
   return nil if host.blank?
 
   return 'telegram'  if host == 't.me' || host.end_with?('.t.me') || host == 'telegram.me' || host.end_with?('telegram.org')
@@ -49,10 +64,11 @@ end
 def build_contacts(item)
   contacts = []
   (item.dig('profile', 'data', 'otherLinks') || []).each do |l|
-    url = (l['url'] || '').to_s.strip
+    url = clean_url(l['url'])
     next if url.blank?
 
     platform = platform_from_url(url)
+    next if platform.nil?
     # 未识别平台时，用 title 进一步细分官网（website）
     if platform == 'other'
       title = (l['title'] || '').to_s.downcase
