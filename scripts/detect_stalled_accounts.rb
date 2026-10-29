@@ -2,7 +2,7 @@
 #
 # 用法：
 #   bundle exec rails runner scripts/detect_stalled_accounts.rb [N]
-#   N = 停滞天数阈值（默认 3）
+#   N = 停滞天数阈值（默认 2，即今日+昨日）
 #
 # 信号（两个维度，同时停滞才判定为可疑）：
 #   1. 采集停滞：max(最新发文时间 post_date, 最后更新发文时间 data_updated_at) 早于 N 天前
@@ -11,7 +11,7 @@
 #
 # 只看「正常」状态账号；按「机器 → 浏览器」聚合输出。
 
-STALL_DAYS = 3
+STALL_DAYS = 2
 
 def run
   days = (ARGV[0].presence || STALL_DAYS).to_i
