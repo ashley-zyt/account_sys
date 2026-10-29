@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update, :quick_status, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_manual_postforme_auth, :confirm_postforme_auth, :start_postpeer_auth, :start_manual_postpeer_auth, :confirm_postpeer_auth, :start_x_auth, :start_manual_x_auth, :complete_manual_x_auth, :destroy]
+	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_manual_postforme_auth, :confirm_postforme_auth, :start_postpeer_auth, :start_manual_postpeer_auth, :confirm_postpeer_auth, :start_x_auth, :start_manual_x_auth, :complete_manual_x_auth, :destroy]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -119,21 +119,11 @@ class Admin::AccountsController < Admin::BaseController
 		redirect_back fallback_location: admin_account_path(@account), notice: "养号开关已#{profile.warmup_enabled ? '启用' : '停止'}"
 	end
 
-	# 状态快捷变更：改状态 + 可选变更原因，并落审计记录
-	def quick_status
-		new_status = params[:status].to_s
-		unless Account.statuses.key?(new_status)
-			redirect_back fallback_location: admin_account_path(@account), alert: "状态不合法"
-			return
-		end
-
-		@account.change_operator = current_admin&.email
-		@account.change_reason = params[:change_reason].presence
-		if @account.update(status: new_status)
-			redirect_back fallback_location: admin_account_path(@account), notice: "账号状态已更新为「#{new_status}」"
-		else
-			redirect_back fallback_location: admin_account_path(@account), alert: "更新失败：#{@account.errors.full_messages.join('; ')}"
-		end
+	# 弹窗编辑表单：返回纯 form partial（供列表/详情页 dialog 加载）
+	def edit_form
+		@account = Account.find(params[:id])
+		@themes = Theme.pluck(:name)
+		render partial: 'form', locals: { account: @account, themes: @themes }, layout: false
 	end
 
 	# 立即采集单个账号的粉丝/发文数据（异步推送采集指令到运营机器，落库由采集端回传完成）

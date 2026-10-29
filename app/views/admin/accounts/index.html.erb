@@ -218,9 +218,8 @@
               </td>
               <td>
                 <div style="display: flex; gap: 8px;">
-                  <%= link_to "编辑", edit_admin_account_path(account, q: request.query_parameters[:q], page: params[:page]), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <button type="button" class="admin-link-quiet" onclick="openAccountEditModal(<%= account.id %>)" style="color: var(--accent); cursor: pointer; background: none; border: none; padding: 0; font-size: 13px;">编辑</button>
                   <%= link_to "删除", admin_account_path(account), data: { turbo_method: :delete, turbo_confirm: "确定删除账号「#{account.account_name}」吗？" }, class: "admin-link-quiet", style: "color: var(--danger);" %>
-                  <button type="button" class="admin-link-quiet" data-quick-status-account="<%= account.id %>" style="color: #f59e0b; cursor: pointer; background: none; border: none; padding: 0; font-size: 13px;">状态</button>
                   <% if account.work_type == "人工运营" %>
                     <%= link_to "任务", admin_operation_tasks_path(q: { account_id_eq: account.id }), class: "admin-link-quiet", style: "color: var(--success);" %>
                   <% elsif account.work_type == "Grok" %>
@@ -249,36 +248,21 @@
   <% end %>
 </div>
 
-<dialog id="quick-status-dialog" style="border: 1px solid rgba(148,163,184,0.3); border-radius: 12px; padding: 20px; min-width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);">
-  <form method="post" id="quick-status-form" style="margin: 0;">
-    <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
-    <div style="font-size: 15px; font-weight: 600; margin-bottom: 12px;">变更账号状态</div>
-    <div style="margin-bottom: 12px;">
-      <div class="admin-field-label">新状态</div>
-      <select name="status" class="admin-input" style="width: 100%;">
-        <% Account.statuses.keys.each do |s| %>
-          <option value="<%= s %>"><%= s %></option>
-        <% end %>
-      </select>
-    </div>
-    <div style="margin-bottom: 12px;">
-      <div class="admin-field-label">变更原因（可选）</div>
-      <input type="text" name="change_reason" class="admin-input" placeholder="填写原因（可选）" style="width: 100%;">
-    </div>
-    <div style="display: flex; gap: 8px; justify-content: flex-end;">
-      <button type="button" class="admin-button-secondary" onclick="document.getElementById('quick-status-dialog').close()">取消</button>
-      <button type="submit" class="admin-button-primary">确认变更</button>
-    </div>
-  </form>
+<dialog id="edit-account-dialog" style="border: 1px solid rgba(148,163,184,0.3); border-radius: 12px; padding: 20px; max-width: 720px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.25);">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <div style="font-size: 15px; font-weight: 600;">编辑账号</div>
+    <button type="button" class="admin-button-secondary" onclick="document.getElementById('edit-account-dialog').close()" style="padding: 2px 10px;">关闭</button>
+  </div>
+  <div id="edit-account-form-container"></div>
 </dialog>
 
 <script>
-  document.querySelectorAll('[data-quick-status-account]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var id = btn.getAttribute('data-quick-status-account');
-      var form = document.getElementById('quick-status-form');
-      form.action = '/admin/accounts/' + id + '/quick_status';
-      document.getElementById('quick-status-dialog').showModal();
-    });
-  });
+  function openAccountEditModal(accountId) {
+    fetch('/admin/accounts/' + accountId + '/edit_form', { headers: { 'Accept': 'text/html' } })
+      .then(function(r) { return r.text(); })
+      .then(function(html) {
+        document.getElementById('edit-account-form-container').innerHTML = html;
+        document.getElementById('edit-account-dialog').showModal();
+      });
+  }
 </script>
