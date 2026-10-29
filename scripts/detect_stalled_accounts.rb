@@ -5,7 +5,7 @@
 #   N = 停滞天数阈值（默认 3）
 #
 # 信号（合并两个维度）：
-#   1. 采集停滞：post_stats 最后采集时间（COALESCE(MAX(data_updated_at), MAX(created_at))）早于 N 天前
+#   1. 采集停滞：max(最新发文时间 post_date, 最后更新发文时间 data_updated_at) 早于 N 天前
 #   2. 任务失败：最近 N 天内存在 status=failed 的 TaskLog
 #   任一命中即判定为「可疑账号」，并附上任务日志上下文（失败次数/最近错误/最后任务时间）
 #
@@ -30,11 +30,15 @@ def run
     return
   end
 
-  # 1. 采集最后时间（有 post_stats 的账号）
+  # 1. 采集时间：取「最新发文时间」与「最后更新发文时间」中较新的那个
   collect = {}
   Account.active.joins(:post_stats).group('accounts.id')
-          .select("accounts.id, COALESCE(MAX(post_stats.data_updated_at), MAX(post_stats.created_at)) AS last_collected_at")
-          .each { |r| collect[r.id] = r.last_collected_at }
+          .select("accounts.id, MAX(post_stats.post_date) AS last_post_date, MAX(post_stats.data_updated_at) AS last_data_update")
+          .each do |r|
+            t1 = r.last_post_date ? Time.zone.local(r.last_post_date.year, r.last_post_date.month, r.last_post_date.day) : nil
+            t2 = r.last_data_update
+            collect[r.id] = [t1, t2].compact.max
+          end
 
   # 2. 最近 N 天失败任务：失败次数 + 最近错误（按 run_at 倒序，取第一条错误）
   recent_failed_count = {}
