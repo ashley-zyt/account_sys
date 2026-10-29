@@ -1,13 +1,17 @@
-# 反推「可能出问题」的账号（机器迁移后排查）
+# 反推「采集异常」的账号（机器迁移后排查）
 #
 # 用法：
 #   bundle exec rails runner scripts/detect_stalled_accounts.rb [N]
 #   N = 停滞天数阈值（默认 2，即今日+昨日）
 #
-# 信号（两个维度，同时停滞才判定为可疑）：
-#   1. 采集停滞：max(最新发文时间 post_date, 最后更新发文时间 data_updated_at) 早于 N 天前
-#   2. 成功停滞：最后一次成功任务时间（TaskLog status=success 的 MAX(run_at)）早于 N 天前
-#   两个都停滞 → 判定「可疑」。任一方面近期还活跃（比如最后成功是今天/昨天）则视为正常。
+# 核心信号（判定依据）：采集停滞 —— post_stats.data_updated_at 超过阈值没更新。
+# 辅助信号（判断原因）：
+#   - 最新发文时间 post_date
+#   - 最后发布成功时间（TaskLog publish_channel 非空 且 status=success）
+#
+# 判定：正常账号，data_updated_at 早于阈值（或从没采集）→ 采集异常。
+#   - 采集停滞但发文/发布仍活跃 → 「采集异常(发布仍活跃)」，重点查采集端/机器
+#   - 采集停滞且发文/发布也停 → 「整体停滞」
 #
 # 只看「正常」状态账号；按「机器 → 浏览器」聚合输出。
 
@@ -17,9 +21,9 @@ def run
   days = (ARGV[0].presence || STALL_DAYS).to_i
   threshold = Time.current - days.days
 
-  puts "=" * 80
-  puts "问题账号检测：阈值 #{days} 天（采集与最后成功都早于 #{threshold.strftime('%Y-%m-%d %H:%M')}）"
-  puts "=" * 80
+  puts "=" * 90
+  puts "采集异常检测：阈值 #{days} 天（data_updated_at 早于 #{threshold.strftime('%Y-%m-%d %H:%M')}）"
+  puts "=" * 90
 
   accounts = Account.active.select(:id, :account_name, :platform, :browser_id).to_a
   account_ids = accounts.map(&:id)
@@ -29,38 +33,51 @@ def run
     return
   end
 
-  # 1. 采集时间：取「最新发文时间」与「最后更新发文时间」中较新的那个
+  # 1. 采集最后更新 + 最新发文
   collect = {}
   Account.active.joins(:post_stats).group('accounts.id')
-          .select("accounts.id, MAX(post_stats.post_date) AS last_post_date, MAX(post_stats.data_updated_at) AS last_data_update")
-          .each do |r|
-            t1 = r.last_post_date ? Time.zone.local(r.last_post_date.year, r.last_post_date.month, r.last_post_date.day) : nil
-            t2 = r.last_data_update
-            collect[r.id] = [t1, t2].compact.max
-          end
+          .select("accounts.id, MAX(post_stats.data_updated_at) AS last_collected_at, MAX(post_stats.post_date) AS last_post_date")
+          .each { |r| collect[r.id] = r }
 
-  # 2. 最后一次成功任务时间（不限最近 N 天）
-  last_success_at = TaskLog.where(account_id: account_ids, status: TaskLog.statuses[:success])
-                           .group(:account_id).maximum(:run_at)
+  # 2. 最后发布成功时间（发布日志：publish_channel 非空）
+  last_publish_success = TaskLog.where(account_id: account_ids)
+                                .where.not(publish_channel: nil)
+                                .where(status: TaskLog.statuses[:success])
+                                .group(:account_id).maximum(:run_at)
 
-  # 判定：采集停滞 且 成功停滞
+  # 判定：采集停滞
   flagged = []
   accounts.each do |a|
-    lc = collect[a.id]
-    ls = last_success_at[a.id]
+    c = collect[a.id]
+    lc = c&.last_collected_at
 
     collect_stalled = lc.nil? || lc < threshold
-    success_stalled = ls.nil? || ls < threshold
-    next unless collect_stalled && success_stalled
+    next unless collect_stalled
 
-    flagged << { account: a, last_collected: lc, last_success_at: ls }
+    lpd = c&.last_post_date
+    lps = last_publish_success[a.id]
+
+    publish_active =
+      (lpd && lpd >= (Date.today - days.days)) ||
+      (lps && lps >= threshold)
+
+    flagged << {
+      account: a,
+      reason: publish_active ? '采集异常(发布仍活跃)' : '整体停滞',
+      last_collected_at: lc,
+      last_post_date: lpd,
+      last_publish_success_at: lps,
+    }
   end
 
+  active_n = flagged.count { |f| f[:reason].include?('发布仍活跃') }
+  silent_n = flagged.size - active_n
+
   puts "\n正常账号总数：#{accounts.size}"
-  puts "可疑账号总数：#{flagged.size}"
+  puts "采集异常账号：#{flagged.size}（发布仍活跃 #{active_n}，整体停滞 #{silent_n}）"
 
   if flagged.empty?
-    puts "未发现可疑账号。"
+    puts "未发现异常账号。"
     return
   end
 
@@ -78,15 +95,19 @@ def run
   end
 
   groups.sort.each do |machine, items|
-    puts "\n----- 机器：#{machine}（可疑 #{items.size} 个）-----"
+    puts "\n----- 机器：#{machine}（异常 #{items.size} 个）-----"
     items.each do |f|
       a = f[:account]
-      lc = f[:last_collected]
-      ls = f[:last_success_at]
-      collect_txt = lc ? "#{lc.strftime('%m-%d %H:%M')}(#{(Time.current - lc) / 86400.0} 天前)" : "无记录"
-      success_txt = ls ? "#{ls.strftime('%m-%d %H:%M')}(#{(Time.current - ls) / 86400.0} 天前)" : "无成功"
-      puts sprintf("  %-24s %-9s 采集:%s 最后成功:%s",
-                   a.account_name, a.platform, collect_txt, success_txt)
+      lc = f[:last_collected_at]
+      lpd = f[:last_post_date]
+      lps = f[:last_publish_success_at]
+
+      collect_txt = lc ? "#{lc.strftime('%m-%d %H:%M')}(#{(Time.current - lc) / 86400.0} 天前)" : "无采集"
+      post_txt = lpd ? lpd.strftime('%m-%d') : "无发文"
+      publish_txt = lps ? lps.strftime('%m-%d %H:%M') : "无"
+
+      puts sprintf("  %-24s %-9s %-20s 采集:%s 发文:%s 发布成功:%s",
+                   a.account_name, a.platform, f[:reason], collect_txt, post_txt, publish_txt)
     end
   end
 end
