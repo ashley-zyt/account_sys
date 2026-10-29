@@ -2,27 +2,27 @@
 #
 # Table name: account_change_logs
 #
-#  id                                                      :bigint           not null, primary key
-#  abnormal_type(异常类型 0封禁/限制 1未登录 2网络 3其他)  :integer
-#  change_reason(变更原因)                                 :string(255)
-#  change_source(变更来源 0系统自动 1人工)                 :integer          not null
-#  changed_at(变更/发现时间)                               :datetime
-#  changes_json(字段级变更明细 [{field, from, to}])        :text(65535)
-#  error_msg(完整错误信息)                                 :text(65535)
-#  matched_keyword(命中的关键词)                           :string(255)
-#  operator(更改人/操作人)                                 :string(255)
-#  screenshot_url(截图 OSS URL)                            :string(255)
-#  source_action(发现动作)                                 :string(255)
-#  created_at                                              :datetime         not null
-#  updated_at                                              :datetime         not null
-#  account_id(账号ID)                                      :bigint           not null
+#  id                                                                   :bigint           not null, primary key
+#  abnormal_type(异常类型 0封禁/限制 1未登录 2网络 3其他（仅系统自动）) :integer
+#  change_reason(变更原因)                                              :string(255)
+#  change_source(变更来源 0系统自动 1人工)                              :integer          not null
+#  changed_at(变更/发现时间)                                            :datetime
+#  changes_json(字段级变更明细 [{field, from, to}])                     :text(65535)
+#  error_msg(完整错误信息)                                              :text(65535)
+#  matched_keyword(命中的关键词)                                        :string(255)
+#  operator(更改人/操作人（人工）)                                      :string(255)
+#  screenshot_url(截图 OSS URL)                                         :string(255)
+#  source_action(发现动作：发布/采集/私信/养号/登录检查)                :string(255)
+#  created_at                                                           :datetime         not null
+#  updated_at                                                           :datetime         not null
+#  account_id(账号ID)                                                   :bigint           not null
 #
 # Indexes
 #
-#  index_account_change_logs_on_abnormal_type   (abnormal_type)
-#  index_account_change_logs_on_account_id      (account_id)
-#  index_account_change_logs_on_change_source   (change_source)
-#  index_account_change_logs_on_changed_at      (changed_at)
+#  index_account_change_logs_on_abnormal_type  (abnormal_type)
+#  index_account_change_logs_on_account_id     (account_id)
+#  index_account_change_logs_on_change_source  (change_source)
+#  index_account_change_logs_on_changed_at     (changed_at)
 #
 class AccountChangeLog < ApplicationRecord
   belongs_to :account, optional: true
