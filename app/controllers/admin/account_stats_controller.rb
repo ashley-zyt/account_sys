@@ -2,9 +2,6 @@ class Admin::AccountStatsController < Admin::BaseController
   # 账号总量快照统计（account_stats 日快照表）
   # 核心功能：每个账号最新累计快照 + 粉丝变化趋势（日增/7日增/30日走势图）
   def index
-    # 今日未更新数据统计（发文数据 + 账号数据，供趋势图下方提示）
-    @stale_stats = Util.get_stale_accounts
-
     params[:q] ||= {}
     # 默认筛选「正常」状态的账号（账号数据统计只关心正常账号，与未更新提示口径一致）
     params[:q][:status_eq] = Account.statuses['正常'] unless params[:q].key?(:status_eq)
@@ -15,6 +12,9 @@ class Admin::AccountStatsController < Admin::BaseController
     @q = Account.ransack(params[:q])
     filtered_accounts = @q.result(distinct: true)
     account_ids = filtered_accounts.pluck(:id)
+
+    # 今日未更新数据统计（发文数据 + 账号数据，供趋势图下方提示，跟随页面筛选）
+    @stale_stats = Util.get_stale_accounts(account_ids: account_ids)
 
     # 无账号时直接返回空数据
     if account_ids.empty?
@@ -45,12 +45,12 @@ class Admin::AccountStatsController < Admin::BaseController
     # 按 account_id 分组: { account_id => [AccountStat, ...] (按日期升序) }
     stats_by_account_full = all_stats_full.group_by(&:account_id)
 
-    # 近30天数据用于原有逻辑
+    # 近30天数据用于增长/趋势计算
     all_stats = all_stats_full.select { |s| s.stat_date >= date_30 }
     stats_by_account = all_stats.group_by(&:account_id)
 
-    # 3) 获取每个账号的最新快照
-    latest_stats = stats_by_account.map { |aid, stats| stats.last }.compact
+    # 3) 获取每个账号的最新快照（用全量历史，保证「最后一次采集」即使超过30天也计入总粉丝）
+    latest_stats = stats_by_account_full.map { |aid, stats| stats.last }.compact
     # 对没有快照记录的账号，不展示
     latest_stats = latest_stats.select { |s| s.account.present? }
 

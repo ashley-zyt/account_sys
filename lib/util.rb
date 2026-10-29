@@ -231,7 +231,7 @@ class Util
   #   all_stale: [account_ids...],          # 上述两类合并去重（并集）
   #   total: N                               # 纳入统计的账号总数
   # }
-  def self.get_stale_accounts
+  def self.get_stale_accounts(account_ids: nil)
     today = Date.today
     today_start = today.beginning_of_day
     today_end = today.end_of_day
@@ -245,6 +245,8 @@ class Util
                               .distinct
                               .pluck(:account_id)
     all_account_ids = normal_account_ids & task_success_ids
+    # 跟随页面筛选：传入了 account_ids 时取交集
+    all_account_ids = all_account_ids & account_ids if account_ids
 
     # 1. post_stats 最新 data_updated_at 是今天的账号ID
     post_updated_today = PostStat.where(account_id: all_account_ids)
