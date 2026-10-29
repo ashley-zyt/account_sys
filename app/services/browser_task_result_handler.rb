@@ -13,7 +13,12 @@ class BrowserTaskResultHandler
   #
   # 注意：ref 指向的不是本系统任务（如外部系统直接调用机器端后回传）时，不会报错，
   # 而是静默忽略并返回 success —— 这类任务本就不该由 account_sys 处理。
-  def self.process(ref:, status:, message:, result: nil)
+  def self.process(ref:, status:, message:, result: nil, screenshot_url: nil)
+    # 提取机器端回传的截图 URL（兼容顶层参数 + result 内嵌两种）
+    shot = extract_screenshot_url(result, screenshot_url)
+    # 失败且带截图 → 落一条报错截图记录（所有任务类型通用）
+    record_error_screenshot(ref, message, shot) if status != 'success' && shot.present?
+
     model_name, id = ref.to_s.split(':', 2)
     id = id.to_i
 
@@ -27,6 +32,64 @@ class BrowserTaskResultHandler
     when 'PostpeerAuth'    then handle_postpeer_auth(id, status)
     else                        handle_publish(model_name, id, status, message)
     end
+  end
+
+  # 提取截图 URL：优先顶层参数，其次 result（Hash）内的 screenshot_url
+  def self.extract_screenshot_url(result, screenshot_url)
+    shot = screenshot_url.presence
+    if result.is_a?(Hash)
+      shot ||= result['screenshot_url'].presence
+      shot ||= result[:screenshot_url].presence
+    end
+    shot
+  end
+
+  # 由 ref 前缀推断 task_type（与 BrowserTaskRecord.task_type 对应）
+  def self.task_type_from_ref(ref)
+    case ref.to_s.split(':', 2).first
+    when 'WarmupTask'   then 'nurture'
+    when 'Account'      then 'fetch'
+    when 'kol_message'  then 'send_message'
+    when 'kol_contact'  then 'check_reply'
+    when 'comment_task' then 'twitter_comment'
+    else 'publish'
+    end
+  end
+
+  # 尽量从 ref 反查 account_id / browser_id
+  def self.resolve_ref_owner(ref)
+    model_name, id_str = ref.to_s.split(':', 2)
+    id = id_str.to_i
+    case model_name
+    when 'Account'
+      [id, nil]
+    when 'WarmupTask'
+      t = WarmupTask.find_by(id: id); t ? [t.account_id, nil] : [nil, nil]
+    when 'kol_message'
+      m = KolMessage.find_by(id: id); m ? [m.account_id, nil] : [nil, nil]
+    when 'comment_task'
+      c = CommentTask.find_by(id: id); c ? [c.account_id, c.browser_id] : [nil, nil]
+    else
+      model = model_name.safe_constantize
+      return [nil, nil] unless model && model < ApplicationRecord
+      t = model.find_by(id: id)
+      return [nil, nil] unless t
+      aid = t.respond_to?(:account_id) ? t.account_id : nil
+      bid = t.respond_to?(:browser_id) ? t.browser_id : nil
+      [aid, bid]
+    end
+  end
+
+  def self.record_error_screenshot(ref, message, shot)
+    account_id, browser_id = resolve_ref_owner(ref)
+    ErrorScreenshot.record!(
+      ref: ref,
+      task_type: task_type_from_ref(ref),
+      account_id: account_id,
+      browser_id: browser_id,
+      error_msg: message,
+      screenshot_url: shot
+    )
   end
 
   # 发布任务回调：按模型名 + id 定位任务，复用 TaskReportHelper 更新状态 + 写日志
