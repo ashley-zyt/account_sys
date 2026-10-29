@@ -9,11 +9,11 @@
 #   - 最新发文时间 post_date
 #   - 最后发布成功时间（TaskLog publish_channel 非空 且 status=success）
 #
-# 判定：正常账号，data_updated_at 早于阈值（或从没采集）→ 采集异常。
+# 判定：data_updated_at 早于阈值（或从没采集）→ 采集异常。
 #   - 采集停滞但发文/发布仍活跃 → 「采集异常(发布仍活跃)」，重点查采集端/机器
 #   - 采集停滞且发文/发布也停 → 「整体停滞」
 #
-# 只看「正常」状态账号；按「机器 → 浏览器」聚合输出。
+# 检测范围：除「停用」外的所有账号；按「机器 → 浏览器」聚合输出，并展示账号当前状态与浏览器名。
 
 STALL_DAYS = 2
 
@@ -25,19 +25,21 @@ def run
   puts "采集异常检测：阈值 #{days} 天（data_updated_at 早于 #{threshold.strftime('%Y-%m-%d %H:%M')}）"
   puts "=" * 90
 
-  accounts = Account.active.select(:id, :account_name, :platform, :browser_id).to_a
+  stopped_status = Account.statuses["停用"] || 4
+  accounts = Account.where.not(status: stopped_status).select(:id, :account_name, :platform, :browser_id, :status).to_a
   account_ids = accounts.map(&:id)
 
   if account_ids.empty?
-    puts "无「正常」状态账号。"
+    puts "无可检测账号。"
     return
   end
 
-  # 1. 采集最后更新 + 最新发文
+  # 1. 采集最后更新 + 最新发文（对所有非停用账号）
   collect = {}
-  Account.active.joins(:post_stats).group('accounts.id')
-          .select("accounts.id, MAX(post_stats.data_updated_at) AS last_collected_at, MAX(post_stats.post_date) AS last_post_date")
-          .each { |r| collect[r.id] = r }
+  PostStat.where(account_id: account_ids)
+          .group(:account_id)
+          .select("account_id, MAX(data_updated_at) AS last_collected_at, MAX(post_date) AS last_post_date")
+          .each { |r| collect[r.account_id] = r }
 
   # 2. 最后发布成功时间（发布日志：publish_channel 非空）
   last_publish_success = TaskLog.where(account_id: account_ids)
@@ -73,7 +75,7 @@ def run
   active_n = flagged.count { |f| f[:reason].include?('发布仍活跃') }
   silent_n = flagged.size - active_n
 
-  puts "\n正常账号总数：#{accounts.size}"
+  puts "\n检测账号总数：#{accounts.size}"
   puts "采集异常账号：#{flagged.size}（发布仍活跃 #{active_n}，整体停滞 #{silent_n}）"
 
   if flagged.empty?
@@ -106,8 +108,9 @@ def run
       post_txt = lpd ? lpd.strftime('%m-%d') : "无发文"
       publish_txt = lps ? lps.strftime('%m-%d %H:%M') : "无"
 
-      puts sprintf("  %-24s %-9s %-20s 采集:%s 发文:%s 发布成功:%s",
-                   a.account_name, a.platform, f[:reason], collect_txt, post_txt, publish_txt)
+      puts sprintf("  %-22s %-10s %-8s %-16s %-20s 采集:%s 发文:%s 发布成功:%s",
+                   a.account_name, a.status, a.platform, f[:browser]&.profile_name, f[:reason],
+                   collect_txt, post_txt, publish_txt)
     end
   end
 end
