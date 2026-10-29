@@ -2,22 +2,22 @@
 #
 # Table name: error_screenshots
 #
-#  id                                                      :bigint           not null, primary key
-#  account_id(账号ID)                                      :bigint
-#  browser_id(浏览器ID)                                    :bigint
-#  error_msg(错误信息)                                     :text(65535)
-#  ref(业务透传标识)                                       :string(255)
-#  screenshot_url(截图 OSS URL)                            :string(255)
-#  task_type(任务类型)                                     :string(255)
-#  created_at                                              :datetime         not null
-#  updated_at                                              :datetime         not null
+#  id                                                                      :bigint           not null, primary key
+#  error_msg(错误信息)                                                     :text(65535)
+#  ref(业务透传标识（MoveTask:123 / Account:789 等）)                      :string(255)
+#  screenshot_url(截图 OSS URL)                                            :string(255)
+#  task_type(任务类型（nurture/fetch/send_message/check_reply/评论/发布）) :string(255)
+#  created_at                                                              :datetime         not null
+#  updated_at                                                              :datetime         not null
+#  account_id(账号ID（可空）)                                              :bigint
+#  browser_id(浏览器ID（可空）)                                            :bigint
 #
 # Indexes
 #
-#  index_error_screenshots_on_account_id    (account_id)
-#  index_error_screenshots_on_created_at    (created_at)
-#  index_error_screenshots_on_ref           (ref)
-#  index_error_screenshots_on_task_type     (task_type)
+#  index_error_screenshots_on_account_id  (account_id)
+#  index_error_screenshots_on_created_at  (created_at)
+#  index_error_screenshots_on_ref         (ref)
+#  index_error_screenshots_on_task_type   (task_type)
 #
 class ErrorScreenshot < ApplicationRecord
   belongs_to :account, optional: true
