@@ -101,6 +101,17 @@ class TaskLog < ApplicationRecord
 		end
 	end
 
+	# 发布渠道展示文本（非发布日志如采集/养号 publish_channel 为 nil）
+	def publish_channel_label
+		case publish_channel
+		when 'ag_center' then '浏览器模拟'
+		when 'postforme' then 'postforme'
+		when 'x_api' then 'x_api'
+		when 'postpeer' then 'postpeer'
+		else '—'
+		end
+	end
+
 	# 生成「快照优先 + 各资源队列任务回退」的 COALESCE 子查询片段
 	# 注意：必须在 ransacker 之前定义，因为 ransacker 的 block 在类加载时立即求值
 	# @param column [String] 要取值的字段（platform / work_type）
