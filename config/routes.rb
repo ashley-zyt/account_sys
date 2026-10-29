@@ -21,6 +21,7 @@ Rails.application.routes.draw do
         post :start_x_auth
         post :start_manual_x_auth
         post :complete_manual_x_auth
+        post :quick_status
       end
       collection do
         get :shipinhao_login_qrcode

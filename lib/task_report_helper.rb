@@ -68,52 +68,84 @@ module TaskReportHelper
     )
 
     if error_msg.present?
-      check_account_abnormal(snapshot_account_id, error_msg)
+      check_account_abnormal(snapshot_account_id, error_msg, source_action: '发布')
       check_hhcat_login_failure
     end
   end
 
-  # 账号/浏览器网络问题关键词（账号封禁、未登录、代理失效、人机验证等）。
-  # 命中即判「账号有问题」→ 全局封禁（status=2），而非资源问题，也不累计资源失败次数。
+  # 账号/浏览器网络问题关键词 → 异常类型（封禁/未登录/网络/其他）。
+  # 命中即判「账号有问题」→ 全局封禁（status=封禁/限制），而非资源问题，也不累计资源失败次数。
   # 供发布 / 采集 / 私信 / 养号 四处共用的统一判定口径。
-  ACCOUNT_ABNORMAL_KEYWORDS = [
-    "not logged in",
-    "account verification",
-    "some of your media failed to upload",
-    "account banned or human verification required",
-    "account verification required after upload",
-    "Confirm you're human",
-    "suspended",
-    "could not authenticate you",
-    "账号未登录",
-    "账号验证",
-    "账号封禁",
-    "触发安全风控",
-    "ERR_PROXY_CONNECTION_FAILED"
-  ].freeze
+  ABNORMAL_KEYWORD_MAP = {
+    banned: [
+      "suspended",
+      "account banned or human verification required",
+      "账号封禁",
+      "触发安全风控"
+    ],
+    logged_out: [
+      "not logged in",
+      "账号未登录"
+    ],
+    network: [
+      "ERR_PROXY_CONNECTION_FAILED"
+    ],
+    other: [
+      "account verification",
+      "some of your media failed to upload",
+      "account verification required after upload",
+      "Confirm you're human",
+      "could not authenticate you",
+      "账号验证"
+    ]
+  }.freeze
 
   # 判断错误信息是否属于「账号/浏览器网络问题」（账号被封、未登录、代理失效等）
   def self.account_abnormal_error?(error_msg)
-    msg = error_msg.to_s
-    ACCOUNT_ABNORMAL_KEYWORDS.any? { |kw| msg.include?(kw) }
+    !classify_abnormal(error_msg).nil?
   end
 
-  def self.check_account_abnormal(account_id, error_msg)
-    return unless account_id.present?
-    return unless account_abnormal_error?(error_msg)
+  # 返回 [abnormal_type_symbol, matched_keyword]；未命中返回 nil
+  def self.classify_abnormal(error_msg)
+    msg = error_msg.to_s
+    ABNORMAL_KEYWORD_MAP.each do |type, keywords|
+      kw = keywords.find { |k| msg.include?(k) }
+      return [type, kw] if kw
+    end
+    nil
+  end
 
-    mark_account_banned!(account_id)
+  def self.check_account_abnormal(account_id, error_msg, source_action: nil)
+    return unless account_id.present?
+
+    type_kw = classify_abnormal(error_msg)
+    return unless type_kw
+
+    type, kw = type_kw
+    mark_account_banned!(account_id, abnormal_type: type, matched_keyword: kw, error_msg: error_msg, source_action: source_action)
   end
 
   # 封禁账号并全局同步：用 update! 触发 after_save 回调，
   # 同步浏览器「无效」状态 + 关闭该账号养号（warmup_enabled=false）。
-  # 发布/采集/私信/养号四处共用的统一封禁入口。
-  def self.mark_account_banned!(account_id)
+  # 发布/采集/私信/养号四处共用的统一封禁入口，并落一条 AccountChangeLog 记录。
+  def self.mark_account_banned!(account_id, abnormal_type: nil, matched_keyword: nil, error_msg: nil, source_action: nil)
     return false if account_id.blank?
 
     account = Account.find_by(id: account_id)
     return false unless account
     return false if account.status.in?(["封禁/限制", "停用"])
+
+    # 先记录异常事件（旁路，失败不影响封禁主流程）
+    AccountChangeLog.record!(
+      account: account,
+      change_source: :system,
+      abnormal_type: abnormal_type,
+      changes: [{ field: "status", from: account.status, to: "封禁/限制" }],
+      source_action: source_action,
+      matched_keyword: matched_keyword,
+      error_msg: error_msg,
+      changed_at: Time.current
+    )
 
     account.update!(status: "封禁/限制")
     Rails.logger.warn "[TaskReportHelper] 账号 #{account_id} 检测到异常，已全局封禁（status=封禁/限制）"

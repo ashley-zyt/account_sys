@@ -77,7 +77,7 @@ class BrowserTaskResultHandler
       warmup_task.update!(status: :failed, error_msg: message, executed_at: Time.current)
       if account
         # 养号失败命中账号/网络异常 → 全局封禁（发布/采集/私信/养号统一口径）
-        TaskReportHelper.check_account_abnormal(account.id, message)
+        TaskReportHelper.check_account_abnormal(account.id, message, source_action: '养号')
         profile = account.warmup_profile || account.create_warmup_profile
         profile.update!(warmup_status: 'failed', last_warmup_at: Time.current)
       end
@@ -96,7 +96,7 @@ class BrowserTaskResultHandler
       account_id = ref.to_s.split(':', 2).last.to_i
       if account_id > 0
         if TaskReportHelper.account_abnormal_error?(message)
-          TaskReportHelper.check_account_abnormal(account_id, message)
+          TaskReportHelper.check_account_abnormal(account_id, message, source_action: '采集')
         else
           Account.where(id: account_id).update_all(last_fetch_attempted_at: nil)
         end

@@ -63,6 +63,13 @@ class Account < ApplicationRecord
 	after_save :sync_warmup_enabled, if: :saved_change_to_status?
 	after_create :create_warmup_profile
 
+	# 人工操作审计：临时属性（controller 保存前赋值），保存后落 AccountChangeLog
+	attr_accessor :change_operator, :change_reason
+	after_save :record_manual_change, if: :should_record_manual_change?
+
+	# 需要记录字段级变更的字段白名单
+	AUDIT_FIELDS = %w[status theme work_type platform publish_channel browser_id operator remark account_name source_url].freeze
+
 	# 基础校验
 	validates :account_name, presence: true
 	# 主题校验
@@ -307,6 +314,40 @@ class Account < ApplicationRecord
 	# 同步更新浏览器的状态
 	def sync_browser_status
 		browser&.update_status_by_accounts!
+	end
+
+	# 人工操作审计：仅当 controller 设置了 change_operator 时记录（系统自动变更不触发）
+	def should_record_manual_change?
+		change_operator.present?
+	end
+
+	def record_manual_change
+		changes = saved_changes.filter_map do |field, (from, to)|
+			next unless AUDIT_FIELDS.include?(field.to_s)
+			{ field: field, from: display_audit_value(field, from), to: display_audit_value(field, to) }
+		end
+		return if changes.empty?
+
+		AccountChangeLog.record!(
+			account: self,
+			change_source: :manual,
+			operator: change_operator,
+			change_reason: change_reason,
+			changes: changes,
+			changed_at: Time.current
+		)
+	end
+
+	def display_audit_value(field, value)
+		return nil if value.nil?
+		case field.to_s
+		when 'status' then Account.statuses.key(value.to_i)
+		when 'work_type' then Account.work_types.key(value.to_i)
+		when 'platform' then Account.platforms.key(value.to_i)
+		when 'publish_channel' then Account.publish_channels.key(value.to_i)
+		when 'browser_id' then value.to_i > 0 ? (Browser.find_by(id: value)&.profile_name) : nil
+		else value
+		end
 	end
 
 	# 创建养号配置

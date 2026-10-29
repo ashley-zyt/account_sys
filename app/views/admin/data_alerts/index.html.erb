@@ -200,7 +200,7 @@
             最近被封禁账号
           </div>
           <div class="admin-card-subtitle">
-            状态为「封禁/限制」的账号，按状态更新时间倒序（最多 <%= Admin::DataAlertsController::BANNED_LIST_LIMIT %> 条）
+            状态为「封禁/限制」的账号，按封禁时间倒序（最多 <%= Admin::DataAlertsController::BANNED_LIST_LIMIT %> 条）
           </div>
         </div>
         <div class="admin-card-header-right">
@@ -228,7 +228,9 @@
             </thead>
             <tbody data-table-pagination-target="body">
               <% if @recent_banned_accounts.any? %>
-              <% @recent_banned_accounts.each do |account| %>
+              <% @recent_banned_accounts.each do |item| %>
+                <% account = item[:account] %>
+                <% banned_at = item[:banned_at] %>
                 <tr>
                   <td>
                     <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet alert-ellipsis", style: "color: var(--accent);", title: account_tooltip_title(account) %>
@@ -252,7 +254,7 @@
                     <span class="admin-label-muted"><%= account.operator || '-' %></span>
                   </td>
                   <td class="alert-nowrap">
-                    <span class="admin-label-muted" style="color: var(--danger);"><%= account.updated_at.strftime("%Y-%m-%d %H:%M") %></span>
+                    <span class="admin-label-muted" style="color: var(--danger);"><%= banned_at.strftime("%Y-%m-%d %H:%M") %></span>
                   </td>
                   <td>
                     <span class="admin-label-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= account.remark %>">

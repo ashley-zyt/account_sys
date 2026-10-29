@@ -1,5 +1,5 @@
 class Admin::AccountsController < Admin::BaseController
-	before_action :set_account, only: [:show, :edit, :update, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_manual_postforme_auth, :confirm_postforme_auth, :start_postpeer_auth, :start_manual_postpeer_auth, :confirm_postpeer_auth, :start_x_auth, :start_manual_x_auth, :complete_manual_x_auth, :destroy]
+	before_action :set_account, only: [:show, :edit, :update, :quick_status, :toggle_warmup, :refresh_stats, :start_postforme_auth, :start_manual_postforme_auth, :confirm_postforme_auth, :start_postpeer_auth, :start_manual_postpeer_auth, :confirm_postpeer_auth, :start_x_auth, :start_manual_x_auth, :complete_manual_x_auth, :destroy]
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
@@ -72,6 +72,8 @@ class Admin::AccountsController < Admin::BaseController
 
 	def create
 		@account = Account.new(account_params)
+		@account.change_operator = current_admin&.email
+		@account.change_reason = params[:change_reason].presence
 		if @account.save
 			back_to_accounts_list("账号已成功创建")
 		else
@@ -102,6 +104,8 @@ class Admin::AccountsController < Admin::BaseController
 	end
 
 	def update
+		@account.change_operator = current_admin&.email
+		@account.change_reason = params[:change_reason].presence
 		if @account.update(account_params)
 			back_to_accounts_list("账号信息已更新")
 		else
@@ -113,6 +117,23 @@ class Admin::AccountsController < Admin::BaseController
 		profile = @account.warmup_profile || @account.create_warmup_profile
 		profile.update!(warmup_enabled: !profile.warmup_enabled)
 		redirect_back fallback_location: admin_account_path(@account), notice: "养号开关已#{profile.warmup_enabled ? '启用' : '停止'}"
+	end
+
+	# 状态快捷变更：改状态 + 可选变更原因，并落审计记录
+	def quick_status
+		new_status = params[:status].to_s
+		unless Account.statuses.key?(new_status)
+			redirect_to admin_account_path(@account), alert: "状态不合法"
+			return
+		end
+
+		@account.change_operator = current_admin&.email
+		@account.change_reason = params[:change_reason].presence
+		if @account.update(status: new_status)
+			redirect_to admin_account_path(@account), notice: "账号状态已更新为「#{new_status}」"
+		else
+			redirect_to admin_account_path(@account), alert: "更新失败：#{@account.errors.full_messages.join('; ')}"
+		end
 	end
 
 	# 立即采集单个账号的粉丝/发文数据（异步推送采集指令到运营机器，落库由采集端回传完成）

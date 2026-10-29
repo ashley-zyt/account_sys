@@ -8,6 +8,32 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" data-turbo-track="reload"></script>
 <% end %>
 
+<div class="admin-card" style="margin-bottom: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">状态快捷操作</div>
+      <div class="admin-card-subtitle">快速变更账号状态，可填写变更原因（会记录审计）</div>
+    </div>
+  </div>
+  <%= form_with url: quick_status_admin_account_path(@account), method: :post, class: "admin-form" do %>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 0 0 16px;">
+      <div>
+        <div class="admin-field-label">新状态</div>
+        <select name="status" class="admin-input">
+          <% Account.statuses.keys.each do |s| %>
+            <option value="<%= s %>" <%= "selected" if @account.status == s %>><%= s %></option>
+          <% end %>
+        </select>
+      </div>
+      <div>
+        <div class="admin-field-label">变更原因（可选）</div>
+        <input type="text" name="change_reason" class="admin-input" placeholder="填写原因（可选）" style="min-width: 260px;">
+      </div>
+      <button type="submit" class="admin-button-primary">确认变更</button>
+    </div>
+  <% end %>
+</div>
+
 <div class="admin-grid">
   <div class="admin-card">
     <div class="admin-card-header">

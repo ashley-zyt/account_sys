@@ -102,6 +102,13 @@
   </div>
 
   <div style="margin-top: 16px;">
+    <div class="admin-field-label">
+      变更原因 <span style="color: #9ca3af;">（可选，用于审计记录）</span>
+    </div>
+    <input type="text" name="change_reason" value="<%= params[:change_reason] %>" class="admin-input" placeholder="填写本次修改的原因（可选）" style="max-width: 400px;">
+  </div>
+
+  <div style="margin-top: 16px;">
     <button type="submit" class="admin-button-primary">
       保存
     </button>

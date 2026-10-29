@@ -70,11 +70,19 @@ class Admin::DataAlertsController < Admin::BaseController
 	end
 
 	# ===== 预警二：最近被封禁的账号 =====
-	# accounts 表无专门封禁时间字段，以状态变更时的 updated_at 近似
+	# 封禁时间优先取 account_change_logs 里的准确时间；老数据（无记录）回退 updated_at 近似
 	def fetch_recent_banned_accounts
-		Account.where(status: "封禁/限制")
-			.order(updated_at: :desc)
-			.limit(BANNED_LIST_LIMIT)
+		accounts = Account.where(status: "封禁/限制").to_a
+		return [] if accounts.empty?
+
+		latest_ban = AccountChangeLog
+			.where(account_id: accounts.map(&:id))
+			.group(:account_id)
+			.maximum(:changed_at)
+
+		accounts.map { |a| { account: a, banned_at: latest_ban[a.id] || a.updated_at } }
+			.sort_by { |item| -item[:banned_at].to_i }
+			.first(BANNED_LIST_LIMIT)
 	end
 
 	# ===== 预警三：发文浏览量骤降的账号 =====
