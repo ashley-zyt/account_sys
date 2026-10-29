@@ -123,16 +123,16 @@ class Admin::AccountsController < Admin::BaseController
 	def quick_status
 		new_status = params[:status].to_s
 		unless Account.statuses.key?(new_status)
-			redirect_to admin_account_path(@account), alert: "状态不合法"
+			redirect_back fallback_location: admin_account_path(@account), alert: "状态不合法"
 			return
 		end
 
 		@account.change_operator = current_admin&.email
 		@account.change_reason = params[:change_reason].presence
 		if @account.update(status: new_status)
-			redirect_to admin_account_path(@account), notice: "账号状态已更新为「#{new_status}」"
+			redirect_back fallback_location: admin_account_path(@account), notice: "账号状态已更新为「#{new_status}」"
 		else
-			redirect_to admin_account_path(@account), alert: "更新失败：#{@account.errors.full_messages.join('; ')}"
+			redirect_back fallback_location: admin_account_path(@account), alert: "更新失败：#{@account.errors.full_messages.join('; ')}"
 		end
 	end
 
