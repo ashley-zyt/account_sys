@@ -68,7 +68,7 @@ class BrowserTaskResultHandler
     when 'kol_message'
       m = KolMessage.find_by(id: id); m ? [m.account_id, nil] : [nil, nil]
     when 'comment_task'
-      c = CommentTask.find_by(id: id); c ? [c.account_id, c.browser_id] : [nil, nil]
+      c = CommentTask.find_by(id: id); c ? [c.account_id, nil] : [nil, nil]
     else
       model = model_name.safe_constantize
       return [nil, nil] unless model && model < ApplicationRecord
