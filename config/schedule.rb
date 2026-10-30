@@ -280,3 +280,16 @@ every :sunday, at: '14:00' do
   runner 'StorageCleaner.clean_source_videos(dry_run: false)'
 end
 
+# ==================== 外部采集系统 ====================
+# 每天凌晨 2:00 部署「外部采集」账号（Account 开关开 + 托管账号有 user_id）到外部采集系统触发采集
+set :output, "log/external_stats_fetcher.log"
+every :day, at: '2:00 am' do
+  runner 'ExternalStatsFetcher.deploy'
+end
+
+# 每天下午 15:00 拉取外部采集系统的采集结果并落库（部署后约 13 小时，给采集系统留足时间）
+set :output, "log/external_stats_fetcher_pull.log"
+every :day, at: '15:00' do
+  runner 'ExternalStatsFetcher.pull'
+end
+

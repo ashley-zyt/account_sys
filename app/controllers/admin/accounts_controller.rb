@@ -332,7 +332,9 @@ class Admin::AccountsController < Admin::BaseController
 			:publish_channel,
 			:browser_id,
 			:operator,
-			:remark
+			:remark,
+			:external_fetch_enabled,
+			:external_user_id
 		)
 	end
 

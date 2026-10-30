@@ -250,7 +250,7 @@ class Admin::HostingAccountsController < Admin::BaseController
 
   def hosting_account_params
     params.require(:hosting_account).permit(
-      :client_id, :platform, :theme, :resource_queue, :status, :username, :homepage_url, :remark
+      :client_id, :platform, :theme, :resource_queue, :status, :username, :homepage_url, :remark, :external_user_id
     )
   end
 end

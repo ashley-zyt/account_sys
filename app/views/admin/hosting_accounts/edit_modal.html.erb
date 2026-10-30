@@ -65,6 +65,10 @@
         <input type="text" name="hosting_account[homepage_url]" class="form-input" value="<%= @hosting_account.homepage_url %>" placeholder="https://..." />
       </div>
       <div class="form-group">
+        <label class="form-label">采集账号标识（user_id/username）</label>
+        <input type="text" name="hosting_account[external_user_id]" class="form-input" value="<%= @hosting_account.external_user_id %>" placeholder="外部采集系统的账号标识" />
+      </div>
+      <div class="form-group">
         <label class="form-label">状态</label>
         <select name="hosting_account[status]" class="form-input">
           <option value="active" <%= "selected" if @hosting_account.status == "active" %>>托管中</option>

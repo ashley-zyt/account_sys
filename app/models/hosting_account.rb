@@ -28,6 +28,7 @@
 class HostingAccount < ApplicationRecord
   belongs_to :client
   has_many :hosting_publish_tasks, dependent: :destroy
+  has_many :hosting_account_stats, dependent: :destroy
   has_one :postpeer_account, dependent: :destroy
   has_one :postforme_account, dependent: :destroy
   has_one :x_credential, dependent: :destroy

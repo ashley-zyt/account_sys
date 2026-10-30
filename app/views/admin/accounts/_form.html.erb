@@ -99,6 +99,18 @@
       </div>
       <%= f.text_field :remark, class: "admin-input" %>
     </div>
+    <div>
+      <div class="admin-field-label">
+        外部采集
+      </div>
+      <%= f.searchable_select :external_fetch_enabled, [["否", false], ["是", true]], {}, class: "admin-input" %>
+    </div>
+    <div>
+      <div class="admin-field-label">
+        采集账号标识（user_id/username）
+      </div>
+      <%= f.text_field :external_user_id, class: "admin-input", placeholder: "外部采集系统的账号标识（可选）" %>
+    </div>
   </div>
 
   <div style="margin-top: 16px;">
