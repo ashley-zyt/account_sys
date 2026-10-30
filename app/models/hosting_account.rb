@@ -2,18 +2,19 @@
 #
 # Table name: hosting_accounts
 #
-#  id                                                          :bigint           not null, primary key
-#  platform(平台（twitter/youtube/tiktok/instagram/facebook）) :string(255)      not null
-#  publish_channel(发布渠道（postpeer/postforme/x）)           :string(255)
-#  remark(备注)                                                :text(65535)
-#  resource_queue(资源队列（WorkMode key，如 move/jianying）)  :string(255)
-#  status(状态 0托管中 1暂停 2终止)                            :integer          default("active"), not null
-#  theme(主题（用于资源分配匹配）)                             :string(255)
-#  created_at                                                  :datetime         not null
-#  updated_at                                                  :datetime         not null
-#  client_id(归属客户)                                         :bigint           not null
-#  homepage_url(账号主页链接)                                  :string(255)
-#  username(账号用户名)                                        :string(255)
+#  id                                                                     :bigint           not null, primary key
+#  homepage_url(账号主页链接)                                             :string(255)
+#  platform(平台（twitter/youtube/tiktok/instagram/facebook）)            :string(255)      not null
+#  publish_channel(发布渠道（postpeer/postforme/x）)                      :string(255)
+#  remark(备注)                                                           :text(65535)
+#  resource_queue(资源队列（WorkMode key，如 move/jianying）)             :string(255)
+#  status(状态 0托管中 1暂停 2终止)                                       :integer          default("active"), not null
+#  theme(主题（用于资源分配匹配）)                                        :string(255)
+#  username(账号用户名)                                                   :string(255)
+#  created_at                                                             :datetime         not null
+#  updated_at                                                             :datetime         not null
+#  client_id(归属客户)                                                    :bigint           not null
+#  external_user_id(外部采集系统的账号标识（各平台 user_id 或 username）) :string(255)
 #
 # Indexes
 #

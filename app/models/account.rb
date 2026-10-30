@@ -2,23 +2,25 @@
 #
 # Table name: accounts
 #
-#  id                                                             :bigint           not null, primary key
-#  account_name(账号名)                                           :string(255)
-#  deleted_at(软删除时间（非空表示已删除，进回收站）)             :datetime
-#  kol_sleep_until(KOL触达休眠截止时间（内部账号风控后暂停调度）) :datetime
-#  last_fetch_attempted_at(最后采集尝试时间（分批采集退避用）)    :datetime
-#  last_used_at(最后一次使用时间)                                 :datetime
-#  operator                                                       :string(255)
-#  platform(平台：facebook/twitter/tiktok/youtube/instagram)      :integer          default("facebook")
-#  publish_channel(发布渠道 0=ag_center 1=postforme)              :integer          default("ag_center"), not null
-#  remark(备注信息)                                               :string(255)
-#  source_url(账号主页链接)                                       :string(255)
-#  status(账号状态)                                               :integer          default("正常")
-#  theme(账号主题)                                                :string(255)
-#  work_type(工作运行方式：搬运/coze/其他)                        :integer
-#  created_at                                                     :datetime         not null
-#  updated_at                                                     :datetime         not null
-#  browser_id(绑定的指纹浏览器ID)                                 :bigint
+#  id                                                                     :bigint           not null, primary key
+#  account_name(账号名)                                                   :string(255)
+#  deleted_at(软删除时间（非空表示已删除，进回收站）)                     :datetime
+#  external_fetch_enabled(是否走外部采集系统)                             :boolean          default(FALSE), not null
+#  kol_sleep_until(KOL触达休眠截止时间（内部账号风控后暂停调度）)         :datetime
+#  last_fetch_attempted_at(最后采集尝试时间（分批采集退避用）)            :datetime
+#  last_used_at(最后一次使用时间)                                         :datetime
+#  operator                                                               :string(255)
+#  platform(平台：facebook/twitter/tiktok/youtube/instagram)              :integer          default("facebook")
+#  publish_channel(发布渠道 0=ag_center 1=postforme)                      :integer
+#  remark(备注信息)                                                       :string(255)
+#  source_url(账号主页链接)                                               :string(255)
+#  status(账号状态)                                                       :integer          default("正常")
+#  theme(账号主题)                                                        :string(255)
+#  work_type(工作运行方式：搬运/coze/其他)                                :integer
+#  created_at                                                             :datetime         not null
+#  updated_at                                                             :datetime         not null
+#  browser_id(绑定的指纹浏览器ID)                                         :bigint
+#  external_user_id(外部采集系统的账号标识（各平台 user_id 或 username）) :string(255)
 #
 # Indexes
 #

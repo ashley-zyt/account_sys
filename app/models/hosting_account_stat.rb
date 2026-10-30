@@ -2,18 +2,18 @@
 #
 # Table name: hosting_account_stats
 #
-#  id                                                                    :bigint           not null, primary key
-#  hosting_account_id(托管账号ID)                                       :bigint           not null
-#  stat_date(统计日期)                                                   :date             not null
-#  followers_count(粉丝数)                                              :bigint
-#  total_posts(发帖数)                                                  :bigint
-#  total_views(总浏览量)                                                :bigint
-#  total_likes(总点赞数)                                                :bigint
-#  total_comments(总评论数)                                             :bigint
-#  total_shares(总分享数)                                               :bigint
-#  snapshot_at(快照时间)                                                :datetime
-#  created_at                                                           :datetime         not null
-#  updated_at                                                           :datetime         not null
+#  id                             :bigint           not null, primary key
+#  followers_count(粉丝数)        :bigint
+#  snapshot_at(快照时间)          :datetime
+#  stat_date(统计日期)            :date             not null
+#  total_comments(总评论数)       :bigint
+#  total_likes(总点赞数)          :bigint
+#  total_posts(发帖数)            :bigint
+#  total_shares(总分享数)         :bigint
+#  total_views(总浏览量)          :bigint
+#  created_at                     :datetime         not null
+#  updated_at                     :datetime         not null
+#  hosting_account_id(托管账号ID) :bigint           not null
 #
 # Indexes
 #
