@@ -70,31 +70,34 @@ class Admin::DataAlertsController < Admin::BaseController
 	end
 
 	# ===== 预警二：最近被封禁 / 退出登录的账号 =====
-	# 覆盖系统自动检测 + 人工修改两种来源：账号当前状态为「封禁/限制」或「未登录」，
-	# 时间取该账号最近一次「变成这两种状态」的变更记录时间（系统异常或人工改状态），回退 updated_at。
+	# 只从 account_change_logs 反查（系统自动 + 人工改状态两种来源），
+	# 不直接查账号状态，避免混入 migration 前封禁/退出登录、没有变更记录的老数据。
 	def fetch_recent_banned_accounts
-		accounts = Account.where(status: ["封禁/限制", "未登录"]).to_a
-		return [] if accounts.empty?
-		ids = accounts.map(&:id)
-
 		# 系统自动异常：abnormal_type 为 封禁/未登录
-		system_latest = AccountChangeLog
-			.where(account_id: ids)
+		system_changes = AccountChangeLog
 			.where(abnormal_type: [AccountChangeLog.abnormal_types[:banned], AccountChangeLog.abnormal_types[:logged_out]])
 			.group(:account_id)
 			.maximum(:changed_at)
 
 		# 人工改状态到 封禁/未登录：changes_json 里 to 值为这两种
-		manual_latest = AccountChangeLog
-			.where(account_id: ids)
+		manual_changes = AccountChangeLog
 			.where(change_source: AccountChangeLog.change_sources[:manual])
 			.where('changes_json LIKE ? OR changes_json LIKE ?', '%"to":"封禁/限制"%', '%"to":"未登录"%')
 			.group(:account_id)
 			.maximum(:changed_at)
 
-		accounts.map do |a|
-			ban_time = [system_latest[a.id], manual_latest[a.id], a.updated_at].compact.max
-			{ account: a, banned_at: ban_time }
+		# 合并：取每个账号最近一次「变成封禁/未登录」的时间
+		latest = system_changes.merge(manual_changes) { |_aid, sys_t, man_t| [sys_t, man_t].compact.max }
+
+		return [] if latest.empty?
+
+		accounts = Account.where(id: latest.keys).index_by(&:id)
+
+		latest.filter_map do |account_id, changed_at|
+			account = accounts[account_id]
+			next nil unless account
+			next nil unless account.status.in?(["封禁/限制", "未登录"])
+			{ account: account, banned_at: changed_at }
 		end.sort_by { |item| -item[:banned_at].to_i }
 			.first(BANNED_LIST_LIMIT)
 	end
