@@ -69,19 +69,33 @@ class Admin::DataAlertsController < Admin::BaseController
 		end.sort_by { |item| -item[:streak] }
 	end
 
-	# ===== 预警二：最近被封禁的账号 =====
-	# 封禁时间优先取 account_change_logs 里的准确时间；老数据（无记录）回退 updated_at 近似
+	# ===== 预警二：最近被封禁 / 退出登录的账号 =====
+	# 覆盖系统自动检测 + 人工修改两种来源：账号当前状态为「封禁/限制」或「未登录」，
+	# 时间取该账号最近一次「变成这两种状态」的变更记录时间（系统异常或人工改状态），回退 updated_at。
 	def fetch_recent_banned_accounts
-		accounts = Account.where(status: "封禁/限制").to_a
+		accounts = Account.where(status: ["封禁/限制", "未登录"]).to_a
 		return [] if accounts.empty?
+		ids = accounts.map(&:id)
 
-		latest_ban = AccountChangeLog
-			.where(account_id: accounts.map(&:id))
+		# 系统自动异常：abnormal_type 为 封禁/未登录
+		system_latest = AccountChangeLog
+			.where(account_id: ids)
+			.where(abnormal_type: [AccountChangeLog.abnormal_types[:banned], AccountChangeLog.abnormal_types[:logged_out]])
 			.group(:account_id)
 			.maximum(:changed_at)
 
-		accounts.map { |a| { account: a, banned_at: latest_ban[a.id] || a.updated_at } }
-			.sort_by { |item| -item[:banned_at].to_i }
+		# 人工改状态到 封禁/未登录：changes_json 里 to 值为这两种
+		manual_latest = AccountChangeLog
+			.where(account_id: ids)
+			.where(change_source: AccountChangeLog.change_sources[:manual])
+			.where('changes_json LIKE ? OR changes_json LIKE ?', '%"to":"封禁/限制"%', '%"to":"未登录"%')
+			.group(:account_id)
+			.maximum(:changed_at)
+
+		accounts.map do |a|
+			ban_time = [system_latest[a.id], manual_latest[a.id], a.updated_at].compact.max
+			{ account: a, banned_at: ban_time }
+		end.sort_by { |item| -item[:banned_at].to_i }
 			.first(BANNED_LIST_LIMIT)
 	end
 

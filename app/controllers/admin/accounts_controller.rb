@@ -98,6 +98,8 @@ class Admin::AccountsController < Admin::BaseController
 		@follower_history = @account.account_stats
 		                            .where("stat_date >= ?", 30.days.ago.to_date)
 		                            .order(stat_date: :asc)
+		# 账号变更记录（最近20条）
+		@account_change_logs = @account.account_change_logs.order(changed_at: :desc).limit(20)
 	end
 
 	def edit

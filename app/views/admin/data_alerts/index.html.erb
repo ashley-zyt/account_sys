@@ -2,7 +2,7 @@
   数据预警
 <% end %>
 <% content_for :page_subtitle do %>
-  账号数据异常集中监控：零浏览、封禁、浏览量骤降、连续发布失败
+  账号数据异常集中监控：零浏览、封禁/退出登录、浏览量骤降、连续发布失败
 <% end %>
 
 <div class="data-alerts-page" data-controller="alert-tabs">
@@ -46,7 +46,7 @@
                 data-action="alert-tabs#select"
                 data-alert-tabs-name-param="banned">
           <div class="admin-metric-label">
-            最近封禁
+            封禁/退出登录
           </div>
           <div class="admin-metric-value" style="color: <%= @recent_banned_accounts.any? ? 'var(--danger)' : 'var(--success)' %>;">
             <%= @recent_banned_accounts.size %>
@@ -197,10 +197,10 @@
       <div class="admin-card-header">
         <div>
           <div class="admin-card-title">
-            最近被封禁账号
+            封禁/退出登录账号
           </div>
           <div class="admin-card-subtitle">
-            状态为「封禁/限制」的账号，按封禁时间倒序（最多 <%= Admin::DataAlertsController::BANNED_LIST_LIMIT %> 条）
+            状态为「封禁/限制」或「未登录」的账号，按变更时间倒序（最多 <%= Admin::DataAlertsController::BANNED_LIST_LIMIT %> 条）
           </div>
         </div>
         <div class="admin-card-header-right">
@@ -221,7 +221,7 @@
                 <th>工作模式</th>
                 <th>状态</th>
                 <th>运营人员</th>
-                <th>封禁时间</th>
+                <th>变更时间</th>
                 <th>备注</th>
                 <th>操作</th>
               </tr>
@@ -270,7 +270,7 @@
               <tr>
                 <td colspan="9" style="padding: 24px; text-align: center;" class="admin-label-muted">
                   <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
-                  暂无被封禁的账号
+                  暂无封禁/退出登录的账号
                 </td>
               </tr>
             <% end %>

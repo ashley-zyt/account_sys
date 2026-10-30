@@ -70,6 +70,38 @@ class AccountChangeLog < ApplicationRecord
     %w[id account_id change_source abnormal_type operator change_reason source_action matched_keyword error_msg changed_at created_at updated_at]
   end
 
+  # 解析 changes_json 为数组
+  def changes_array
+    JSON.parse(changes_json.to_s)
+  rescue JSON::ParserError
+    []
+  end
+
+  # 变更明细可读文本，如「状态: 正常 → 未登录」
+  def changes_text
+    changes_array.map do |c|
+      field = c['field'].to_s
+      from = c['from'].to_s
+      to = c['to'].to_s
+      from.blank? ? "#{field}: #{to}" : "#{field}: #{from} → #{to}"
+    end.join('；')
+  end
+
+  def change_source_label
+    system? ? '系统自动' : '人工'
+  end
+
+  def abnormal_type_label
+    return '-' if abnormal_type.nil?
+    case abnormal_type
+    when 'banned' then '封禁/限制'
+    when 'logged_out' then '未登录'
+    when 'network' then '网络'
+    when 'other' then '其他'
+    else abnormal_type
+    end
+  end
+
   def self.ransackable_associations(auth_object = nil)
     %w[account]
   end
