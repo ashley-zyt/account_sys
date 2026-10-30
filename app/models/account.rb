@@ -325,6 +325,7 @@ class Account < ApplicationRecord
 	def record_manual_change
 		changes = saved_changes.filter_map do |field, (from, to)|
 			next unless AUDIT_FIELDS.include?(field.to_s)
+			next if from == to
 			{ field: field, from: display_audit_value(field, from), to: display_audit_value(field, to) }
 		end
 		return if changes.empty?
@@ -342,10 +343,14 @@ class Account < ApplicationRecord
 	def display_audit_value(field, value)
 		return nil if value.nil?
 		case field.to_s
-		when 'status' then Account.statuses.key(value.to_i)
-		when 'work_type' then Account.work_types.key(value.to_i)
-		when 'platform' then Account.platforms.key(value.to_i)
-		when 'publish_channel' then Account.publish_channels.key(value.to_i)
+		when 'status'
+			Account.statuses.key?(value) ? value : Account.statuses.key(value.to_i)
+		when 'work_type'
+			Account.work_types.key?(value) ? value : Account.work_types.key(value.to_i)
+		when 'platform'
+			Account.platforms.key?(value) ? value : Account.platforms.key(value.to_i)
+		when 'publish_channel'
+			Account.publish_channels.key?(value) ? value : Account.publish_channels.key(value.to_i)
 		when 'browser_id' then value.to_i > 0 ? (Browser.find_by(id: value)&.profile_name) : nil
 		else value
 		end
