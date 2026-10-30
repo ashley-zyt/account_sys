@@ -74,37 +74,38 @@ class Admin::DataAlertsController < Admin::BaseController
 	# 不直接查账号状态，避免混入 migration 前封禁/退出登录、没有变更记录的老数据。
 	def fetch_recent_banned_accounts
 		# 系统自动异常：abnormal_type 为 封禁/未登录
-		system_changes = AccountChangeLog
+		system_logs = AccountChangeLog
 			.where(abnormal_type: [AccountChangeLog.abnormal_types[:banned], AccountChangeLog.abnormal_types[:logged_out]])
-			.group(:account_id)
-			.maximum(:changed_at)
+			.select(:account_id, :changed_at, :change_reason, :source_action, :change_source)
 
 		# 人工改状态到 封禁/未登录：changes_json 里 to 值为这两种
-		manual_changes = AccountChangeLog
+		manual_logs = AccountChangeLog
 			.where(change_source: AccountChangeLog.change_sources[:manual])
 			.where('changes_json LIKE ? OR changes_json LIKE ?', '%"to":"封禁/限制"%', '%"to":"未登录"%')
-			.group(:account_id)
-			.maximum(:changed_at)
+			.select(:account_id, :changed_at, :change_reason, :source_action, :change_source)
 
-		# 合并：取每个账号最近一次「变成封禁/未登录」的时间 + 来源（系统/人工）
+		# 合并：取每个账号最近一次「变成封禁/未登录」的记录
 		latest = {}
-		system_changes.each { |aid, t| latest[aid] = { changed_at: t, source: :system } }
-		manual_changes.each do |aid, t|
-			next if t.nil?
-			if latest[aid].nil? || latest[aid][:changed_at].to_i <= t.to_i
-				latest[aid] = { changed_at: t, source: :manual }
-			end
+		(system_logs.to_a + manual_logs.to_a).each do |log|
+			cur = latest[log.account_id]
+			latest[log.account_id] = log if cur.nil? || (log.changed_at && (cur.changed_at.nil? || log.changed_at > cur.changed_at))
 		end
 
 		return [] if latest.empty?
 
 		accounts = Account.where(id: latest.keys).index_by(&:id)
 
-		latest.filter_map do |account_id, info|
+		latest.filter_map do |account_id, log|
 			account = accounts[account_id]
 			next nil unless account
 			next nil unless account.status.in?(["封禁/限制", "未登录"])
-			{ account: account, banned_at: info[:changed_at], source: info[:source] }
+			{
+				account: account,
+				banned_at: log.changed_at,
+				source: log.system? ? :system : :manual,
+				change_reason: log.change_reason,
+				source_action: log.source_action
+			}
 		end.sort_by { |item| -item[:banned_at].to_i }
 			.first(BANNED_LIST_LIMIT)
 	end

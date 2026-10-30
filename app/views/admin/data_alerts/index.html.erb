@@ -223,7 +223,8 @@
                 <th>来源</th>
                 <th>运营人员</th>
                 <th>变更时间</th>
-                <th>备注</th>
+                <th>变更原因</th>
+                <th>发现动作</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -265,9 +266,10 @@
                     <span class="admin-label-muted" style="color: var(--danger);"><%= banned_at.strftime("%Y-%m-%d %H:%M") %></span>
                   </td>
                   <td>
-                    <span class="admin-label-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= account.remark %>">
-                      <%= account.remark || '-' %>
-                    </span>
+                    <span class="admin-label-muted" title="<%= item[:change_reason] %>"><%= item[:change_reason].presence || '-' %></span>
+                  </td>
+                  <td>
+                    <span class="admin-label-muted"><%= item[:source_action].presence || '-' %></span>
                   </td>
                   <td class="alert-nowrap">
                     <span class="admin-link-quiet" style="color: var(--accent); cursor: pointer;" data-drawer-trigger data-drawer-id-param="<%= account.id %>" data-drawer-tab-param="overview">详情</span>
@@ -276,7 +278,7 @@
               <% end %>
             <% else %>
               <tr>
-                <td colspan="10" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <td colspan="11" style="padding: 24px; text-align: center;" class="admin-label-muted">
                   <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
                   暂无封禁/退出登录的账号
                 </td>
