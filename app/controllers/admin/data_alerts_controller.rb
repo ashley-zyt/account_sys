@@ -86,18 +86,25 @@ class Admin::DataAlertsController < Admin::BaseController
 			.group(:account_id)
 			.maximum(:changed_at)
 
-		# 合并：取每个账号最近一次「变成封禁/未登录」的时间
-		latest = system_changes.merge(manual_changes) { |_aid, sys_t, man_t| [sys_t, man_t].compact.max }
+		# 合并：取每个账号最近一次「变成封禁/未登录」的时间 + 来源（系统/人工）
+		latest = {}
+		system_changes.each { |aid, t| latest[aid] = { changed_at: t, source: :system } }
+		manual_changes.each do |aid, t|
+			next if t.nil?
+			if latest[aid].nil? || latest[aid][:changed_at].to_i <= t.to_i
+				latest[aid] = { changed_at: t, source: :manual }
+			end
+		end
 
 		return [] if latest.empty?
 
 		accounts = Account.where(id: latest.keys).index_by(&:id)
 
-		latest.filter_map do |account_id, changed_at|
+		latest.filter_map do |account_id, info|
 			account = accounts[account_id]
 			next nil unless account
 			next nil unless account.status.in?(["封禁/限制", "未登录"])
-			{ account: account, banned_at: changed_at }
+			{ account: account, banned_at: info[:changed_at], source: info[:source] }
 		end.sort_by { |item| -item[:banned_at].to_i }
 			.first(BANNED_LIST_LIMIT)
 	end

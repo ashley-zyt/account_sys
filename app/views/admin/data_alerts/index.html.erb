@@ -220,6 +220,7 @@
                 <th>主题</th>
                 <th>工作模式</th>
                 <th>状态</th>
+                <th>来源</th>
                 <th>运营人员</th>
                 <th>变更时间</th>
                 <th>备注</th>
@@ -251,6 +252,13 @@
                     </span>
                   </td>
                   <td>
+                    <% if item[:source] == :system %>
+                      <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">系统</span>
+                    <% else %>
+                      <span class="admin-pill-status" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">人工</span>
+                    <% end %>
+                  </td>
+                  <td>
                     <span class="admin-label-muted"><%= account.operator || '-' %></span>
                   </td>
                   <td class="alert-nowrap">
@@ -268,7 +276,7 @@
               <% end %>
             <% else %>
               <tr>
-                <td colspan="9" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                <td colspan="10" style="padding: 24px; text-align: center;" class="admin-label-muted">
                   <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
                   暂无封禁/退出登录的账号
                 </td>
