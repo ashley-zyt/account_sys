@@ -57,6 +57,7 @@ class Account < ApplicationRecord
 	has_many :account_stats, dependent: :destroy
 	# KOL 触达消息（账号删除时保留消息记录）
 	has_many :kol_messages, dependent: :nullify
+	has_many :account_change_logs, dependent: :nullify
 
 	# 回调：当账号状态变更时，同步更新浏览器的“无效”状态
 	after_save :sync_browser_status, if: :saved_change_to_status?
