@@ -24,7 +24,7 @@ class BrowserTaskResultHandler
 
     case model_name
     when 'WarmupTask'      then handle_warmup(id, status, message)
-    when 'Account'         then handle_fetch(ref, status, message)
+    when 'Account'         then handle_fetch(ref, status, message, result)
     when 'kol_message'     then handle_kol_send(id, status, message)
     when 'kol_contact'     then handle_kol_reply(id, status, message, result)
     when 'comment_task'    then handle_comment(id, status, message)
@@ -154,7 +154,8 @@ class BrowserTaskResultHandler
   # 但采集失败若命中账号/网络异常（未登录、代理失效、人机验证等），需全局封禁账号；
   # 非账号异常（机器卡/浏览器临时打不开/任务中断）则重置 last_fetch_attempted_at，
   # 让下一轮采集不再被 cooldown 退避跳过，能尽快重采。
-  def self.handle_fetch(ref, status, message)
+  def self.handle_fetch(ref, status, message, result = nil)
+    # 顶层失败：机器端直接返回任务失败（老逻辑）
     if status != 'success'
       account_id = ref.to_s.split(':', 2).last.to_i
       if account_id > 0
@@ -165,6 +166,25 @@ class BrowserTaskResultHandler
         end
       end
     end
+
+    # 机器端顶层 status 可能是 success，但 result 里会对某个账号标记 abnormal（如退出登录）。
+    # 逐项解析账号级结果，命中账号异常则触发封禁。
+    items = result.is_a?(Array) ? result : (result.is_a?(Hash) ? [result] : [])
+    items.each do |item|
+      next unless item.is_a?(Hash)
+      aid = item['account_id'].to_i
+      err = item['error_info'].to_s
+      abnormal = item['status'].to_s == 'abnormal'
+      next if aid <= 0 || !abnormal || err.blank?
+
+      if TaskReportHelper.account_abnormal_error?(err)
+        TaskReportHelper.check_account_abnormal(aid, err, source_action: '采集')
+      else
+        # 账号级异常但非账号/网络问题（无发文、无内容等）→ 重置采集退避，尽快重采
+        Account.where(id: aid).update_all(last_fetch_attempted_at: nil)
+      end
+    end
+
     Rails.logger.info "[BrowserTaskResult] 采集回调 ref=#{ref} status=#{status} message=#{message}"
     { type: 'success', message: '已记录采集完成' }
   end

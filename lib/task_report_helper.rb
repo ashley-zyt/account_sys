@@ -85,7 +85,9 @@ module TaskReportHelper
     ],
     logged_out: [
       "not logged in",
-      "账号未登录"
+      "logged out",
+      "账号未登录",
+      "退出登录"
     ],
     network: [
       "ERR_PROXY_CONNECTION_FAILED"
@@ -133,22 +135,28 @@ module TaskReportHelper
 
     account = Account.find_by(id: account_id)
     return false unless account
-    return false if account.status.in?(["封禁/限制", "停用"])
+    return false if account.status == "停用"
+    # 已封禁/限制：保持现状，不再降级或重复处理
+    return false if account.status == "封禁/限制"
+
+    # 按异常类型决定目标状态：退出登录 → 未登录；封禁/网络/其他 → 封禁/限制
+    target_status = abnormal_type == :logged_out ? "未登录" : "封禁/限制"
+    return false if account.status == target_status
 
     # 先记录异常事件（旁路，失败不影响封禁主流程）
     AccountChangeLog.record!(
       account: account,
       change_source: :system,
       abnormal_type: abnormal_type,
-      changes: [{ field: "status", from: account.status, to: "封禁/限制" }],
+      changes: [{ field: "status", from: account.status, to: target_status }],
       source_action: source_action,
       matched_keyword: matched_keyword,
       error_msg: error_msg,
       changed_at: Time.current
     )
 
-    account.update!(status: "封禁/限制")
-    Rails.logger.warn "[TaskReportHelper] 账号 #{account_id} 检测到异常，已全局封禁（status=封禁/限制）"
+    account.update!(status: target_status)
+    Rails.logger.warn "[TaskReportHelper] 账号 #{account_id} 检测到异常（#{abnormal_type}），已标记为 #{target_status}"
     true
   end
 
