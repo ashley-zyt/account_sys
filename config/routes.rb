@@ -58,6 +58,7 @@ Rails.application.routes.draw do
       member do
         post :execute
         post :claim
+        post :republish
       end
     end
     resources :notebooklm_tasks, only: [:index, :show, :destroy] do

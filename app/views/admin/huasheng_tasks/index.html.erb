@@ -140,6 +140,10 @@
               <td>
                 <div style="display: flex; gap: 8px;">
                   <%= link_to "详情", admin_huasheng_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if task.platform == "抖音-视频号" && task.failed? %>
+                    <%= link_to "补发视频号", republish_admin_huasheng_task_path(task, platform: "shipinhao"), data: { turbo_method: :post, turbo_confirm: "确定补发视频号吗？" }, class: "admin-link-quiet", style: "color: #22c55e;" %>
+                    <%= link_to "补发抖音", republish_admin_huasheng_task_path(task, platform: "douyin"), data: { turbo_method: :post, turbo_confirm: "确定补发抖音吗？" }, class: "admin-link-quiet", style: "color: #22c55e;" %>
+                  <% end %>
                   <% if task.waiting_publish? %>
                     <%= link_to "立即执行", execute_admin_huasheng_task_path(task), data: { turbo_method: :post, turbo_confirm: "确定立即执行该任务吗？" }, class: "admin-link-quiet", style: "color: var(--success);" %>
                   <% end %>

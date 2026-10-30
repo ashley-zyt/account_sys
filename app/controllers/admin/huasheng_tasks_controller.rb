@@ -49,6 +49,31 @@ class Admin::HuashengTasksController < Admin::BaseController
     redirect_to admin_huasheng_tasks_path, notice: notice
   end
 
+  # 补发「抖音-视频号」合并任务的单个平台（抖音或视频号）
+  def republish
+    task = HuashengTask.find(params[:id])
+    platform_key = params[:platform].to_s
+    platform_name = platform_key == "douyin" ? "抖音" : "视频号"
+
+    result = DomesticHuashengPublishWorker.publish(task, platform_key, platform_name)
+
+    if result[:success]
+      task.update_columns(
+        status: HuashengTask.statuses[:success],
+        actual_publish_time: Time.current,
+        error_msg: nil,
+        updated_at: Time.current
+      )
+      redirect_to admin_huasheng_tasks_path, notice: "#{platform_name}补发成功"
+    else
+      task.update_columns(
+        error_msg: "补发#{platform_name}失败(#{result[:message]})",
+        updated_at: Time.current
+      )
+      redirect_to admin_huasheng_tasks_path, alert: "#{platform_name}补发失败: #{result[:message]}"
+    end
+  end
+
   private
 
   def task_model_class
