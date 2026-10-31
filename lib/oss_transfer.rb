@@ -80,10 +80,11 @@ class OssTransfer
 
   # 批量转存：扫描三个源 bucket 的任务，按 object key 去重转存、批量换链，并删除源对象。
   # 同一个视频被多平台任务共用时只转存一次；更新完所有引用该 key 的任务后删除源对象。
+  # 源对象已不存在（历史清理）的 key 标记后跳过，计入 skipped，不阻塞后续任务。
   # @param per_model [Integer] 每个模型一次处理多少个唯一 key
-  # @return [Hash] { total:, success:, failed: }（success=换链任务数，failed=转存失败的 key 数）
+  # @return [Hash] { total:, success:, failed:, skipped: }
   def self.batch_transfer(per_model: 50)
-    total = success = failed = 0
+    total = success = failed = skipped = 0
 
     {
       'huasheng-ld'   => 'HuashengTask',
@@ -92,9 +93,10 @@ class OssTransfer
     }.each do |src, model_name|
       model = model_name.constantize
 
-      # 取一批待转存的唯一 key（去重）
+      # 取一批待转存的唯一 key（去重），排除已标记「源对象不存在」的
       keys = model.where("oss_url LIKE ?", "%#{src}.oss-%")
                   .where.not(full_oss_url: [nil, ''])
+                  .where.not("error_msg LIKE ?", "%源对象不存在%")
                   .order(id: :asc)
                   .limit(per_model)
                   .pluck(:full_oss_url)
@@ -102,6 +104,15 @@ class OssTransfer
                   .uniq
 
       keys.each do |key|
+        # 源对象已不存在：标记这些任务并跳过，避免反复扫描、阻塞后面的任务
+        unless source_exists?(src, key)
+          model.where(full_oss_url: [key, "/#{key}"])
+               .where("oss_url LIKE ?", "%#{src}.oss-%")
+               .update_all(error_msg: "源对象不存在（跳过转存）", updated_at: Time.current)
+          skipped += 1
+          next
+        end
+
         transferred = transfer(src, key)
         if transferred
           new_key, new_url = transferred
@@ -123,7 +134,15 @@ class OssTransfer
       end
     end
 
-    { total: total, success: success, failed: failed }
+    { total: total, success: success, failed: failed, skipped: skipped }
+  end
+
+  # 源对象是否存在
+  def self.source_exists?(source_bucket, key)
+    oss_client(*source_credentials).get_bucket(source_bucket).object_exists?(key)
+  rescue => e
+    Rails.logger.warn "[OssTransfer] 检查源对象失败 #{source_bucket}/#{key}: #{e.class} #{e.message}"
+    false
   end
 
   # 删除源对象（尽力而为，失败只记日志，不影响整体结果）
