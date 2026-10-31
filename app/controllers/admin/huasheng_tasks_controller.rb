@@ -11,7 +11,7 @@ class Admin::HuashengTasksController < Admin::BaseController
   end
 
   def show
-    @video_url = HuashengTask.oss_v1_sign_url(@huasheng_task.full_oss_url)
+    @video_url = @huasheng_task.oss_url
   end
 
   def destroy

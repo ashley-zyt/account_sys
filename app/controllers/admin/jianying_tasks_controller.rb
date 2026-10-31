@@ -19,7 +19,7 @@ class Admin::JianyingTasksController < Admin::BaseController
 	def show
 		@image_names = parse_image_names(@jianying_task)
 		@image_urls  = build_oss_image_urls(@jianying_task, @image_names)
-		@video_url   = oss_v4_sign_url(@jianying_task.full_oss_url)
+		@video_url   = @jianying_task.oss_url
 	end
 
 	def destroy

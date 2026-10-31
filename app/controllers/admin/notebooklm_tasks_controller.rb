@@ -11,7 +11,7 @@ class Admin::NotebooklmTasksController < Admin::BaseController
   end
 
   def show
-    @video_url = NotebooklmTask.oss_v1_sign_url(@notebooklm_task.full_oss_url)
+    @video_url = @notebooklm_task.oss_url
   end
 
   def destroy
