@@ -19,6 +19,7 @@ total = updated = skipped = 0
 
 model.where("oss_url LIKE ?", "%#{src}.oss-%")
      .where.not(full_oss_url: [nil, ''])
+     .where("created_at >= ?", 1.hour.ago)
      .find_each do |task|
   total += 1
   key = task.full_oss_url.to_s.strip.sub(%r{^/}, '')
