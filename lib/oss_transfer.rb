@@ -69,6 +69,39 @@ class OssTransfer
       "&Signature=#{percent_encode(signature)}"
   end
 
+  # 判断 url 是否指向源 bucket，是则转存到目标 bucket 并返回 [new_key, new_url]；否则返回 nil。
+  # 用于「下发/发布」前的兜底：库里旧数据的 oss_url 仍是源 bucket 时，现场转存换链。
+  # @param url [String] 任务里存的对象 URL（含 host，可解析 bucket）
+  # @param key [String] 纯 object key（full_oss_url）；为空时从 url 解析
+  def self.transfer_if_source(url, key = nil)
+    return nil if url.blank?
+
+    bucket = bucket_from_url(url)
+    return nil unless BUCKET_MAP.key?(bucket)
+
+    key = key.presence || key_from_url(url)
+    return nil if key.blank?
+
+    transfer(bucket, key)
+  end
+
+  # 从对象 URL 解析 bucket 名（host 第一段）
+  def self.bucket_from_url(url)
+    require 'uri'
+    URI.parse(url.to_s).host.to_s.split('.').first
+  rescue StandardError
+    nil
+  end
+
+  # 从对象 URL 解析 object key（path 去掉前导 / 并 URL 解码）
+  def self.key_from_url(url)
+    require 'uri'
+    key = URI.parse(url.to_s).path.to_s.sub(%r{\A/}, '')
+    URI.decode_www_form_component(key)
+  rescue StandardError
+    nil
+  end
+
   # 源凭证：TWO 账号（硬编码）
   def self.source_credentials
     [SOURCE_ACCESS_KEY_ID, SOURCE_ACCESS_KEY_SECRET]
