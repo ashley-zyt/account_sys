@@ -110,6 +110,7 @@ class OssTransfer
                .where("oss_url LIKE ?", "%#{src}.oss-%")
                .update_all(error_msg: "源对象不存在（跳过转存）", updated_at: Time.current)
           skipped += 1
+          puts "[跳过] #{src}/#{key} 源对象不存在"
           next
         end
 
@@ -127,9 +128,11 @@ class OssTransfer
 
           # 所有引用已换链，删除源对象
           delete_source(src, key)
+          puts "[成功] #{src}/#{key} 更新 #{count} 条，已删源"
         else
           total += 1
           failed += 1
+          puts "[失败] #{src}/#{key} 转存失败"
         end
       end
     end
