@@ -38,20 +38,17 @@ class OssTransfer
     dst = oss_client(*dest_credentials).get_bucket(dest_bucket)
 
     unless dst.object_exists?(key)
-      obj = src.get_object(key)
-      content = obj.respond_to?(:body) ? obj.body : (obj.respond_to?(:read) ? obj.read : obj)
-
-      # aliyun-sdk 的 put_object 用 file: 参数传本地文件路径（不支持 content:），
-      # 故先把内容落临时文件再上传。
+      # aliyun-sdk 的 get_object / put_object 都用 file: 参数传本地文件路径，
+      # 直接从源下载到临时文件、再上传到目标，流式不占内存。
       require 'tempfile'
       tmp = Tempfile.new(['oss_transfer', '.bin'])
+      tmp_path = tmp.path
+      tmp.close
       begin
-        tmp.binmode
-        tmp.write(content)
-        tmp.flush
-        dst.put_object(key, file: tmp.path)
+        src.get_object(key, file: tmp_path)
+        dst.put_object(key, file: tmp_path)
       ensure
-        tmp.close!
+        File.delete(tmp_path) if File.exist?(tmp_path)
       end
     end
 
