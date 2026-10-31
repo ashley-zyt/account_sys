@@ -73,7 +73,7 @@ class NotebooklmTask < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
 
   # OSS 凭证与 notebooklm_keywords 共用同一个 bucket（notebooklm-ld）。
-  OSS_BUCKET = "notebooklm-ld".freeze
+  OSS_BUCKET = "notebooklm-ld-videos".freeze
   OSS_REGION = "cn-hangzhou".freeze
   OSS_ACCESS_KEY_ID = "gZL8z938T19mSUHf".freeze
   OSS_ACCESS_KEY_SECRET = "A9fSDa9cH5YAExpEUR4QSizkFQEcrS".freeze
@@ -112,12 +112,12 @@ class NotebooklmTask < ApplicationRecord
     expires = (Time.now.utc.to_i + expires_seconds).to_s
     string_to_sign = "GET\n\n\n#{expires}\n/#{OSS_BUCKET}/#{key}"
     signature = Base64.strict_encode64(
-      OpenSSL::HMAC.digest("sha1", OSS_ACCESS_KEY_SECRET, string_to_sign)
+      OpenSSL::HMAC.digest("sha1", ENV['ALIYUN_ACCESS_KEY_SECRET'].to_s, string_to_sign)
     ).strip
 
     encoded_key = key.split("/").map { |seg| percent_encode(seg) }.join("/")
     "https://#{OSS_BUCKET}.oss-#{OSS_REGION}.aliyuncs.com/#{encoded_key}?" \
-      "OSSAccessKeyId=#{OSS_ACCESS_KEY_ID}" \
+      "OSSAccessKeyId=#{ENV['ALIYUN_ACCESS_KEY_ID']}" \
       "&Expires=#{expires}" \
       "&Signature=#{percent_encode(signature)}"
   end
