@@ -98,8 +98,6 @@ class PublishScheduler
   # 尝试执行单个待发布任务（非阻塞）。
   # @return [Symbol] :done 已执行/跳过（无需重试）；:busy 浏览器忙或机器满（需放回重试）
   def self.attempt_task(task)
-    ensure_transferred(task)
-
     account = task.account
     channel = account ? PublishChannelChain.channel_at(account, task.failure_count.to_i) : 'ag_center'
 
@@ -378,7 +376,6 @@ class PublishScheduler
     Rails.logger.info "[PublishScheduler] 开始执行任务 #{task_type}:#{task.id} - #{task.title} (浏览器: #{task.browser.profile_name}, 机器: #{machine_ip}) → #{endpoint}"
 
     begin
-      ensure_transferred(task)
       request_data = build_request_data(task)
       response = send_publish_request(endpoint, request_data)
       handle_response(task, response)
@@ -497,33 +494,6 @@ class PublishScheduler
       # 发活那一刻固化归属（释放时只标记、不删除，供迟到的回调归档日志）
       TaskAssignment.record!(task)
     end
-  end
-
-  # 下发前兜底转存：任务视频链接仍是源 bucket（huasheng-ld/jianying-rd/notebooklm-ld）时，
-  # 转存到主账号同名 -videos bucket 并换链接，让库里旧数据在下发时被纠正。
-  # 幂等：目标已存在则跳过上传；转存失败保留旧链接，不影响发布。
-  def self.ensure_transferred(task)
-    mode  = WorkMode.for_model(task.class)
-    field = mode&.video_field
-    return if field.blank?
-
-    url = task.public_send(field).to_s
-    return if url.blank?
-
-    key = task.respond_to?(:full_oss_url) ? task.full_oss_url.to_s : nil
-    transferred = OssTransfer.transfer_if_source(url, key)
-    return unless transferred
-
-    new_key, new_url = transferred
-    attrs = { field => new_url }
-    attrs[:full_oss_url] = new_key if task.respond_to?(:full_oss_url)
-    task.update_columns(attrs.merge(updated_at: Time.current))
-    task.public_send("#{field}=", new_url)
-    Rails.logger.info "[PublishScheduler] 任务 #{task.class.name}##{task.id} 下发前已转存到新 bucket：#{new_url[0, 120]}"
-    true
-  rescue => e
-    Rails.logger.error "[PublishScheduler] 任务 #{task.class.name}##{task.id} 下发前转存异常: #{e.class} #{e.message}"
-    nil
   end
 
   def self.build_request_data(task)

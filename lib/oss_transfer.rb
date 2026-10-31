@@ -78,20 +78,62 @@ class OssTransfer
       "&Signature=#{percent_encode(signature)}"
   end
 
-  # 判断 url 是否指向源 bucket，是则转存到目标 bucket 并返回 [new_key, new_url]；否则返回 nil。
-  # 用于「下发/发布」前的兜底：库里旧数据的 oss_url 仍是源 bucket 时，现场转存换链。
-  # @param url [String] 任务里存的对象 URL（含 host，可解析 bucket）
-  # @param key [String] 纯 object key（full_oss_url）；为空时从 url 解析
-  def self.transfer_if_source(url, key = nil)
-    return nil if url.blank?
+  # 批量转存：扫描三个源 bucket 的任务，按 object key 去重转存、批量换链，并删除源对象。
+  # 同一个视频被多平台任务共用时只转存一次；更新完所有引用该 key 的任务后删除源对象。
+  # @param per_model [Integer] 每个模型一次处理多少个唯一 key
+  # @return [Hash] { total:, success:, failed: }（success=换链任务数，failed=转存失败的 key 数）
+  def self.batch_transfer(per_model: 50)
+    total = success = failed = 0
 
-    bucket = bucket_from_url(url)
-    return nil unless BUCKET_MAP.key?(bucket)
+    {
+      'huasheng-ld'   => 'HuashengTask',
+      'jianying-rd'   => 'JianyingTask',
+      'notebooklm-ld' => 'NotebooklmTask'
+    }.each do |src, model_name|
+      model = model_name.constantize
 
-    key = key.presence || key_from_url(url)
-    return nil if key.blank?
+      # 取一批待转存的唯一 key（去重）
+      keys = model.where("oss_url LIKE ?", "%#{src}.oss-%")
+                  .where.not(full_oss_url: [nil, ''])
+                  .order(id: :asc)
+                  .limit(per_model)
+                  .pluck(:full_oss_url)
+                  .map { |k| k.to_s.strip.sub(%r{^/}, '') }
+                  .uniq
 
-    transfer(bucket, key)
+      keys.each do |key|
+        transferred = transfer(src, key)
+        if transferred
+          new_key, new_url = transferred
+
+          # 更新所有引用该 key 的任务（不限当前批次），确保删源前无遗留引用
+          scope = model.where("oss_url LIKE ?", "%#{src}.oss-%")
+                       .where(full_oss_url: [key, "/#{key}"])
+          count = scope.update_all(oss_url: new_url, full_oss_url: new_key, updated_at: Time.current)
+
+          success += count
+          total += count
+
+          # 所有引用已换链，删除源对象
+          delete_source(src, key)
+        else
+          total += 1
+          failed += 1
+        end
+      end
+    end
+
+    { total: total, success: success, failed: failed }
+  end
+
+  # 删除源对象（尽力而为，失败只记日志，不影响整体结果）
+  def self.delete_source(source_bucket, key)
+    oss_client(*source_credentials).get_bucket(source_bucket).delete_object(key)
+    Rails.logger.info "[OssTransfer] 已删除源对象 #{source_bucket}/#{key}"
+    true
+  rescue => e
+    Rails.logger.warn "[OssTransfer] 删除源对象失败 #{source_bucket}/#{key}: #{e.class} #{e.message}"
+    false
   end
 
   # 从对象 URL 解析 bucket 名（host 第一段）

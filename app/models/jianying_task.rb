@@ -130,13 +130,7 @@ class JianyingTask < ApplicationRecord
 		created = 0
 		items.each do |item|
 			group_id = SecureRandom.uuid
-			oss_key  = item[:oss_key]
-			full_url = oss_v1_sign_url(oss_key)
-
-			# 转存到主账号 bucket，避免机器端下载 jianying-rd 超时（失败则回退原 jianying-rd）
-			if (transferred = OssTransfer.transfer('jianying-rd', oss_key))
-				oss_key, full_url = transferred
-			end
+			full_url = oss_v1_sign_url(item[:oss_key])
 
 			# 只在该主题「剪映」模式下还有正常账号的平台建任务，无账号跳过
 			allowed = Account.active_platforms_for(theme: "剪映-#{item[:theme]}", work_type: WorkMode.for_model(JianyingTask).name)
@@ -154,7 +148,7 @@ class JianyingTask < ApplicationRecord
 					keyword_code: item[:keyword_code],
 					theme: "剪映-#{item[:theme]}",
 					associated_images: item[:associated_images].is_a?(Array) ? item[:associated_images].to_json : item[:associated_images],
-					full_oss_url: oss_key,
+					full_oss_url: item[:oss_key],
 					oss_url: full_url,
 					platform: platform,
 					status: :pending,

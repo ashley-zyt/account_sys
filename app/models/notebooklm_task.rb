@@ -156,12 +156,6 @@ class NotebooklmTask < ApplicationRecord
     keyword  = notebooklm_keyword.keyword.to_s
 
     signed_url = oss_v1_sign_url(object_key)
-
-    # 转存到主账号 bucket，避免机器端下载 notebooklm-ld 超时（失败则回退原 notebooklm-ld）
-    if (transferred = OssTransfer.transfer('notebooklm-ld', object_key))
-      object_key, signed_url = transferred
-    end
-
     group_id   = SecureRandom.uuid
 
     created = 0

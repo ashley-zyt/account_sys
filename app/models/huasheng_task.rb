@@ -173,12 +173,6 @@ class HuashengTask < ApplicationRecord
     caption = FinancialDisclaimer.append(caption) if FinancialDisclaimer.applies_to?(theme)
 
     signed_url = oss_v1_sign_url(object_key)
-
-    # 转存到主账号 bucket，避免机器端下载 huasheng-ld 超时（失败则回退原 huasheng-ld）
-    if (transferred = OssTransfer.transfer('huasheng-ld', object_key))
-      object_key, signed_url = transferred
-    end
-
     group_id   = SecureRandom.uuid
 
     created = 0
