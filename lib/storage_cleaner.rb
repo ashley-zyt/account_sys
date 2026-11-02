@@ -9,7 +9,7 @@
 #     failed（终态·资源失效）           → 删记录
 #     success                          → 保留记录（历史），文件可释放
 #   文件删除用「URL 去重 + 排除仍被引用」：某 URL 只要不再被任何仍需文件的记录引用即可删。
-#   特殊：HuashengTask「抖音-视频号」success 只删文件保留记录，failed 删记录，其余保留。
+#   特殊：HuashengTask「抖音-视频号」只保留 pending，success/failed 一并删记录 + 删文件。
 #
 # 链路二 clean_source_videos —— 源视频 raw OSS 清理：
 #   MoveVideo.raw_oss_url 是剪映 + 混剪两条线的共同输入。某条线「不再需要源视频」当且仅当：
@@ -55,18 +55,14 @@ class StorageCleaner
       model.find_each do |t|
         url = t.public_send(video_field).to_s.strip
 
-        # 国内「抖音-视频号」分支：success 保留记录只删文件，failed 删记录，其余保留
+        # 国内「抖音-视频号」特殊分支：只保留 pending，其余直接删
         if t.is_a?(HuashengTask) && t.platform == DOUYIN_SHIPINHAO_PLATFORM
-          case t.status
-          when 'success'
-            releasable_urls << url if url.present?
-            summary[:kept] += 1
-          when 'failed'
-            delete_ids << t.id
-            releasable_urls << url if url.present?
-          else
+          if t.status == 'pending'
             needed_urls << url if url.present?
             summary[:kept] += 1
+          else
+            delete_ids << t.id
+            releasable_urls << url if url.present?
           end
           next
         end

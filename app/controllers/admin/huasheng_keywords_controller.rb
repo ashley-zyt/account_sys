@@ -60,7 +60,7 @@ class Admin::HuashengKeywordsController < Admin::BaseController
 
   # huasheng-ld bucket 与 voice_video_pipeline 上传时使用的 OSS 凭证一致。
   # 参考 scripts/update_jianying_tasks.rb#oss_v1_sign_url，生成 V1 GET 签名 URL。
-  HUASHENG_OSS_BUCKET = "huasheng-ld".freeze
+  HUASHENG_OSS_BUCKET = "huasheng-ld-videos".freeze
   HUASHENG_OSS_REGION = "cn-hangzhou".freeze
   HUASHENG_OSS_ACCESS_KEY_ID = "gZL8z938T19mSUHf".freeze
   HUASHENG_OSS_ACCESS_KEY_SECRET = "A9fSDa9cH5YAExpEUR4QSizkFQEcrS".freeze
@@ -126,12 +126,12 @@ class Admin::HuashengKeywordsController < Admin::BaseController
     expires = (Time.now.to_i + HUASHENG_OSS_SIGNED_URL_TTL).to_s
     string_to_sign = "GET\n\n\n#{expires}\n/#{HUASHENG_OSS_BUCKET}/#{key}"
     signature = Base64.strict_encode64(
-      OpenSSL::HMAC.digest("sha1", HUASHENG_OSS_ACCESS_KEY_SECRET, string_to_sign)
+      OpenSSL::HMAC.digest("sha1", ENV['ALIYUN_ACCESS_KEY_SECRET'].to_s, string_to_sign)
     ).strip
 
     encoded_key = key.split("/").map { |seg| percent_encode_oss(seg) }.join("/")
     "https://#{HUASHENG_OSS_BUCKET}.oss-#{HUASHENG_OSS_REGION}.aliyuncs.com/#{encoded_key}?" \
-      "OSSAccessKeyId=#{HUASHENG_OSS_ACCESS_KEY_ID}" \
+      "OSSAccessKeyId=#{ENV['ALIYUN_ACCESS_KEY_ID']}" \
       "&Expires=#{expires}" \
       "&Signature=#{percent_encode_oss(signature)}"
   end
