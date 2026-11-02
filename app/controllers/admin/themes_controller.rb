@@ -47,7 +47,9 @@ class Admin::ThemesController < Admin::BaseController
 
   # 对标账号储备：独立页面，集中展示/维护各主题的搬运对标账号
   def source_accounts
-    @themes = Theme.order(:name)
+    # 有对标账号的排前面，其余按名称排序
+    @themes = Theme.order(Arel.sql("(source_accounts IS NULL OR source_accounts = '') ASC, name ASC"))
+    @pending_counts = MoveVideo.pending_download.group(:theme).count
   end
 
   def edit_source_accounts

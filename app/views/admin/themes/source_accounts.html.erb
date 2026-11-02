@@ -23,6 +23,7 @@
           <tr>
             <th>主题</th>
             <th>账号数</th>
+            <th>待下载</th>
             <th>对标账号</th>
             <th>操作</th>
           </tr>
@@ -32,6 +33,7 @@
             <tr>
               <td><%= theme.name %></td>
               <td><%= theme.source_accounts_array.size %></td>
+              <td><%= @pending_counts[theme.name] || 0 %></td>
               <td>
                 <span class="admin-label-muted" title="<%= theme.source_accounts.to_s %>"><%= theme.source_accounts.present? ? theme.source_accounts.truncate(60) : '未配置' %></span>
               </td>
