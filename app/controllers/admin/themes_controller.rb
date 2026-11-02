@@ -64,7 +64,7 @@ class Admin::ThemesController < Admin::BaseController
   end
 
   def theme_params
-    params.require(:theme).permit(:name, :oss_directory, :titles, :prompts, :remark)
+    params.require(:theme).permit(:name, :oss_directory, :titles, :prompts, :remark, :source_accounts)
   end
 
   # 领域：combobox 提交名称，同名去重、不存在则创建

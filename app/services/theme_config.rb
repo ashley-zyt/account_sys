@@ -1,41 +1,28 @@
 # app/services/theme_config.rb
-require 'yaml'
-require 'active_support/concern'
+# 对标账号匹配 + 标题池，统一读 Theme 表（后台可自助维护，不再依赖 theme_config.yml）。
 
 class ThemeConfig
-	CONFIG_PATH = Rails.root.join('config/theme_config.yml')
-
 	class << self
-		def config
-			@config ||= load_config
-		end
-
-		def reload!
-			@config = load_config
-		end
-
-		# 根据来源账号主页链接匹配主题
+		# 根据来源账号主页链接匹配主题。
+		# 读 Theme 表（后台可自助维护对标账号）。
 		def match_theme(source_url)
-			config['themes']&.each do |name, data|
-				data['source_accounts']&.each do |url|
-					return name if source_url.include?(url) # 简单包含匹配，可调整为正则
+			return nil if source_url.blank?
+
+			Theme.where.not(source_accounts: [nil, '']).find_each do |theme|
+				theme.source_accounts_array.each do |url|
+					return theme.name if source_url.include?(url)
 				end
 			end
 			nil
 		end
 
-		# 从主题标题池中随机选择一个标题（可扩展变量替换）
+		# 从主题标题池中随机选择一个标题。
+		# 读 Theme 表的 titles。
 		def random_title(theme_name)
-			theme_data = config['themes']&.[](theme_name)
-			return nil unless theme_data && theme_data['titles'].present?
+			theme = Theme.find_by(name: theme_name)
+			return nil unless theme
 
-			theme_data['titles'].sample
+			theme.titles_array.sample
 		end
-	end
-
-	private_class_method 
-	def self.load_config
-		return {} unless File.exist?(CONFIG_PATH)
-		YAML.load_file(CONFIG_PATH).deep_stringify_keys
 	end
 end

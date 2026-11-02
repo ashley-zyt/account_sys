@@ -54,6 +54,12 @@ class Theme < ApplicationRecord
     titles.split("\n").map(&:strip).reject(&:empty?)
   end
 
+  # 搬运对标账号主页链接（每行一个）
+  def source_accounts_array
+    return [] unless source_accounts.present?
+    source_accounts.split("\n").map(&:strip).reject(&:empty?)
+  end
+
   def self.all_names
     pluck(:name)
   end
