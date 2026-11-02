@@ -103,9 +103,12 @@ Rails.application.routes.draw do
     resources :themes, only: [:index, :create, :edit, :update, :destroy] do
       collection do
         get :new_modal
+        get :source_accounts
       end
       member do
         get :edit_modal
+        get :edit_source_accounts
+        patch :update_source_accounts
       end
     end
     resources :post_stats, only: [:index] do

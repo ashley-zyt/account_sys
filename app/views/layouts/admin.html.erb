@@ -593,7 +593,7 @@
             <span class="section-arrow">▾</span>
           </div>
           <ul class="admin-nav">
-            <% themes_active = controller_path == "admin/themes" %>
+            <% themes_active = controller_path == "admin/themes" && action_name != "source_accounts" %>
             <li class="admin-nav-item <%= "active" if themes_active %>">
               <%= link_to admin_themes_path, class: "admin-nav-link", data: { tooltip: "主题管理" } do %>
                 <div class="admin-nav-link-main">
@@ -606,6 +606,22 @@
                 </div>
                 <div class="admin-nav-meta">
                   Themes
+                </div>
+              <% end %>
+            </li>
+            <% source_accounts_active = controller_path == "admin/themes" && action_name == "source_accounts" %>
+            <li class="admin-nav-item <%= "active" if source_accounts_active %>">
+              <%= link_to source_accounts_admin_themes_path, class: "admin-nav-link", data: { tooltip: "对标账号储备" } do %>
+                <div class="admin-nav-link-main">
+                  <div class="admin-nav-icon">
+                    🔗
+                  </div>
+                  <div class="admin-nav-label">
+                    对标账号储备
+                  </div>
+                </div>
+                <div class="admin-nav-meta">
+                  Source Accounts
                 </div>
               <% end %>
             </li>

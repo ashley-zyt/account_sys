@@ -45,6 +45,31 @@ class Admin::ThemesController < Admin::BaseController
     redirect_to admin_themes_path, notice: '主题删除成功'
   end
 
+  # 对标账号储备：独立页面，集中展示/维护各主题的搬运对标账号
+  def source_accounts
+    @themes = Theme.order(:name)
+  end
+
+  def edit_source_accounts
+    @theme = Theme.find(params[:id])
+    render layout: false
+  end
+
+  def update_source_accounts
+    @theme = Theme.find(params[:id])
+    if @theme.update(source_accounts_param)
+      respond_to do |format|
+        format.html { redirect_to source_accounts_admin_themes_path, notice: '对标账号已更新' }
+        format.json { render json: { success: true, message: '对标账号已更新' } }
+      end
+    else
+      respond_to do |format|
+        format.html { redirect_to source_accounts_admin_themes_path, alert: @theme.errors.full_messages.join(', ') }
+        format.json { render json: { success: false, message: @theme.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+      end
+    end
+  end
+
   def new_modal
     @theme = Theme.new
     @domains = Domain.order(:name)
@@ -64,7 +89,11 @@ class Admin::ThemesController < Admin::BaseController
   end
 
   def theme_params
-    params.require(:theme).permit(:name, :oss_directory, :titles, :prompts, :remark, :source_accounts)
+    params.require(:theme).permit(:name, :oss_directory, :titles, :prompts, :remark)
+  end
+
+  def source_accounts_param
+    params.require(:theme).permit(:source_accounts)
   end
 
   # 领域：combobox 提交名称，同名去重、不存在则创建

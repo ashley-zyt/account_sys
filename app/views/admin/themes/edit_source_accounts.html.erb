@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #f1f5f9;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+    .form-hint {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #e2e8f0;
+      outline: none;
+    }
+    textarea.form-input { resize: vertical; min-height: 200px; }
+    .form-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .btn { padding: 10px 20px; font-size: 14px; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .error-message { color: #f87171; font-size: 13px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="modal-title">编辑对标账号 - <%= @theme.name %></div>
+  <div id="source-accounts-error" class="error-message" style="display: none;"></div>
+
+  <form id="source-accounts-form">
+    <div class="form-group">
+      <label class="form-label">对标账号（每行一个链接）</label>
+      <div class="form-hint">搬运对标账号主页链接，每行一个</div>
+      <textarea name="theme[source_accounts]" class="form-input" placeholder="https://www.douyin.com/user/xxx&#10;https://www.kuaishou.com/profile/xxx"><%= @theme.source_accounts %></textarea>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button type="submit" class="btn btn-primary">保存</button>
+    </div>
+  </form>
+
+  <script>
+    document.getElementById('source-accounts-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const form = this;
+      const formData = new FormData(form);
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+      const actionUrl = '<%= update_source_accounts_admin_theme_path(@theme) %>';
+      const errorDiv = document.getElementById('source-accounts-error');
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
+
+      fetch(actionUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'Accept': 'application/json'
+        },
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          if (window.parent && window.parent.closeSourceAccountsModal) {
+            window.parent.closeSourceAccountsModal(true);
+          }
+        } else {
+          errorDiv.textContent = data.message || '保存失败';
+          errorDiv.style.display = 'block';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        errorDiv.textContent = '保存失败，请重试';
+        errorDiv.style.display = 'block';
+      });
+    });
+
+    function closeModal() {
+      if (window.parent && window.parent.closeSourceAccountsModal) {
+        window.parent.closeSourceAccountsModal(false);
+      }
+    }
+  </script>
+</body>
+</html>
