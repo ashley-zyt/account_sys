@@ -482,7 +482,7 @@ class TaskScheduler
 		kept_refs = []
 
 		overdue.each do |record|
-			remote = fetch_remote_task(record.machine_host, record.machine_task_id)
+			remote = fetch_remote_task(record.machine_ip, record.machine_task_id)
 			status = remote ? remote['status'].to_s : nil
 
 			if status && MACHINE_TERMINAL_STATUSES.include?(status)
