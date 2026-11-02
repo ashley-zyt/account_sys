@@ -25,6 +25,8 @@ class Admin::PostStatsController < Admin::BaseController
     @themes = Account.distinct.pluck(:theme).compact.reject(&:blank?).sort.map { |t| [t, t] }
     # 指纹浏览器选项：[[浏览器名称, id], ...]
     @browsers = Browser.order(:profile_name).map { |b| [b.profile_name.presence || "浏览器##{b.id}", b.id] }
+    # 运营人员选项
+    @operators = Account::OPERATORS.map { |o| [o, o] }
     
     @current_sort = sort_column
     @current_direction = sort_direction
