@@ -86,6 +86,9 @@ Rails.application.routes.draw do
       collection do
         get :publish_status
       end
+      member do
+        post :republish
+      end
     end
     # 任务中心：统一管理/查看（机器端实时 + 本地登记 + 同步/重跑/清除操作 + JSON 监控）
     resources :task_center, only: [:index] do

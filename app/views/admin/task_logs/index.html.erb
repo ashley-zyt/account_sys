@@ -196,6 +196,23 @@
                   <% if mode %>
                     <%= link_to "查看#{mode.log_label}", send("admin_#{mode.key}_task_path", t), class: "admin-link-quiet", style: "color: #{mode.pill_text_color};" %>
                   <% end %>
+                  <% if log.status == "failed" %>
+                    <% acc = log.display_account %>
+                    <% acc_done = acc.present? && t.class.exists?(account_id: acc.id, status: :success, actual_publish_time: Date.today.all_day) %>
+                    <% if acc_done %>
+                      <span class="admin-label-muted" title="该账号当天已发布成功，不允许重试">已发布成功</span>
+                    <% elsif t.status.to_s == "failed" %>
+                      <%= button_to "重试", republish_admin_task_log_path(log), method: :post,
+                            class: "admin-button-secondary",
+                            form: { style: "display: inline; margin-left: 6px;" },
+                            data: { turbo_confirm: "确认重试任务 #{mode&.log_label}##{t.id}？\n将把该任务重置回待分配并重新下发发布（内容相同）。" } %>
+                    <% else %>
+                      <%= button_to "换资源重试", republish_admin_task_log_path(log, mode: "fresh"), method: :post,
+                            class: "admin-button-secondary",
+                            form: { style: "display: inline; margin-left: 6px;" },
+                            data: { turbo_confirm: "当时失败的资源已被使用（当前状态：#{t.status}），无法原样重发。\n\n确认给该账号换一条新资源重新发布？\n点击取消则不做任何操作。" } %>
+                    <% end %>
+                  <% end %>
                 <% else %>
                   <span class="admin-label-muted">任务不存在</span>
                 <% end %>
