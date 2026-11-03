@@ -78,7 +78,7 @@
           <col style="width: 9%">
           <col>
           <col style="width: 6%">
-          <col style="width: 13%">
+          <col style="width: 9%">
         </colgroup>
         <thead>
           <tr>
@@ -207,25 +207,32 @@
                 <% t = log.task %>
                 <% if t %>
                   <% mode = WorkMode.find_by_model(t.class) %>
-                  <% if mode %>
-                    <%= link_to "查看任务", send("admin_#{mode.key}_task_path", t), class: "admin-link-quiet", style: "color: #{mode.pill_text_color};", title: "查看#{mode.log_label}" %>
-                  <% end %>
+                  <% view_url = mode ? send("admin_#{mode.key}_task_path", t) : nil %>
                   <% if log.status == "failed" %>
                     <% acc = log.display_account %>
                     <% acc_done = acc.present? && t.class.exists?(account_id: acc.id, status: :success, actual_publish_time: Date.today.all_day) %>
                     <% if acc_done %>
+                      <% if view_url %>
+                        <%= link_to "查看任务", view_url, class: "admin-link-quiet", style: "color: #{mode.pill_text_color};" %>
+                      <% end %>
                       <span class="admin-label-muted" title="该账号当天已发布成功，不允许重试">已发布成功</span>
-                    <% elsif t.status.to_s == "failed" %>
-                      <%= button_to "重试", republish_admin_task_log_path(log), method: :post,
-                            class: "admin-btn-inline",
-                            form: { style: "display: inline;" },
-                            data: { turbo_confirm: "确认重试任务 #{mode&.log_label}##{t.id}？\n将把该任务重置回待分配并重新下发发布（内容相同）。" } %>
                     <% else %>
-                      <%= button_to "换资源重试", republish_admin_task_log_path(log, mode: "fresh"), method: :post,
-                            class: "admin-btn-inline",
-                            form: { style: "display: inline;" },
-                            data: { turbo_confirm: "当时失败的资源已被使用（当前状态：#{t.status}），无法原样重发。\n\n确认给该账号换一条新资源重新发布？\n点击取消则不做任何操作。" } %>
+                      <select class="admin-input" style="width: 100%; padding: 2px 6px; font-size: 12px; cursor: pointer;"
+                              onchange="handleLogAction(this, <%= log.id %>)"
+                              data-view-url="<%= view_url %>">
+                        <option value="">操作</option>
+                        <% if view_url %>
+                          <option value="view">查看任务</option>
+                        <% end %>
+                        <% if t.status.to_s == "failed" %>
+                          <option value="retry">重试</option>
+                        <% else %>
+                          <option value="retry_fresh">换资源重试</option>
+                        <% end %>
+                      </select>
                     <% end %>
+                  <% elsif view_url %>
+                    <%= link_to "查看任务", view_url, class: "admin-link-quiet", style: "color: #{mode.pill_text_color};" %>
                   <% end %>
                 <% else %>
                   <span class="admin-label-muted">任务不存在</span>
@@ -271,5 +278,40 @@
       closePublishStatusModal();
     }
   });
+
+  // 操作列下拉：查看任务跳转；重试/换资源重试需确认后 POST republish
+  function handleLogAction(sel, logId) {
+    var action = sel.value;
+    if (!action) return;
+
+    if (action === 'view') {
+      var url = sel.dataset.viewUrl;
+      sel.selectedIndex = 0;
+      if (url) window.location = url;
+      return;
+    }
+
+    var msg = action === 'retry'
+      ? '确认重试该任务？\n将把任务重置回待分配并重新下发发布（内容相同）。'
+      : '当时失败的资源已被使用，无法原样重发。\n\n确认给该账号换一条新资源重新发布？\n点击取消则不做任何操作。';
+    if (!window.confirm(msg)) {
+      sel.selectedIndex = 0;
+      return;
+    }
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/task_logs/' + logId + '/republish' + (action === 'retry_fresh' ? '?mode=fresh' : '');
+    var token = document.querySelector('meta[name="csrf-token"]');
+    if (token) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'authenticity_token';
+      input.value = token.content;
+      form.appendChild(input);
+    }
+    document.body.appendChild(form);
+    form.submit();
+  }
 </script>
 
