@@ -65,7 +65,21 @@
 
   <% if @task_logs.any? %>
     <div class="admin-table-wrapper admin-table-scroll">
-      <table class="admin-table">
+      <table class="admin-table admin-table-fixed">
+        <colgroup>
+          <col style="width: 110px">
+          <col style="width: 64px">
+          <col style="width: 140px">
+          <col style="width: 76px">
+          <col style="width: 130px">
+          <col style="width: 90px">
+          <col style="width: 72px">
+          <col style="width: 90px">
+          <col style="width: 120px">
+          <col>
+          <col style="width: 88px">
+          <col style="width: 180px">
+        </colgroup>
         <thead>
           <tr>
             <th>
@@ -179,9 +193,9 @@
                   <%= log.run_at&.strftime("%Y-%m-%d %H:%M") %>
                 </span>
               </td>
-              <td style="max-width: 200px;">
-                <span class="admin-label-muted" style="display: inline-block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;" title="<%= log.error_msg.to_s %>">
-                  <%= truncate(log.error_msg.to_s, length: 20) %>
+              <td>
+                <span class="admin-label-muted" title="<%= log.error_msg.to_s %>">
+                  <%= log.error_msg.to_s %>
                 </span>
               </td>
               <td>

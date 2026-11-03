@@ -686,6 +686,19 @@ body.admin {
   font-size: 12px;
 }
 
+/* 固定布局表格：列宽由 colgroup 决定，单元格长文本省略号截断，
+   避免个别列文本过多把表格撑宽、后面的列被挤出可视区 */
+.admin-table-fixed {
+  table-layout: fixed;
+}
+
+.admin-table-fixed th,
+.admin-table-fixed td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .admin-table thead {
   background: rgba(15, 23, 42, 0.98);
 }
