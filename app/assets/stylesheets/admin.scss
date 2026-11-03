@@ -866,6 +866,26 @@ body.admin {
   border-color: rgba(148, 163, 184, 0.9);
 }
 
+/* 表格行内小按钮（重试等操作）：紧凑尺寸，不撑高行，视觉与行内链接一致 */
+.admin-btn-inline {
+  display: inline-block;
+  padding: 1px 10px;
+  margin-left: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.admin-btn-inline:hover {
+  color: #e5e7eb;
+  border-color: rgba(148, 163, 184, 0.9);
+}
+
 /* 登录页面样式 */
 .admin-login-container {
   min-height: 100vh;
