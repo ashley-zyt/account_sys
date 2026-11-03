@@ -208,7 +208,7 @@
                 <% if t %>
                   <% mode = WorkMode.find_by_model(t.class) %>
                   <% if mode %>
-                    <%= link_to "查看#{mode.log_label}", send("admin_#{mode.key}_task_path", t), class: "admin-link-quiet", style: "color: #{mode.pill_text_color};" %>
+                    <%= link_to "查看任务", send("admin_#{mode.key}_task_path", t), class: "admin-link-quiet", style: "color: #{mode.pill_text_color};", title: "查看#{mode.log_label}" %>
                   <% end %>
                   <% if log.status == "failed" %>
                     <% acc = log.display_account %>
