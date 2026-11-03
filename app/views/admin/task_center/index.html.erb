@@ -52,6 +52,7 @@
     </div>
     <div class="admin-card-header-right">
       <%= link_to "刷新", admin_task_center_index_path, class: "admin-button-secondary" %>
+      <%= link_to "卡住任务", stuck_admin_task_center_index_path, class: "admin-button-primary" %>
       <%= link_to(@auto ? "关闭自动刷新" : "开启自动刷新",
                   admin_task_center_index_path(auto: @auto ? nil : 1),
                   class: "admin-button-secondary") %>

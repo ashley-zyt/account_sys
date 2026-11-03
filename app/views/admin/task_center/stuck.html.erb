@@ -1,0 +1,77 @@
+<% content_for :page_title do %>
+  执行中卡住任务
+<% end %>
+<% content_for :page_subtitle do %>
+  排查卡在「执行中」超过 <%= @minutes %> 分钟仍未回调的任务（这类任务会阻塞账号继续分配新资源）
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">执行中卡住任务</div>
+      <div class="admin-card-subtitle">
+        共 <%= @stuck.size %> 条 · 按超时时长降序 ·
+        判定阈值：超过 <%= @minutes %> 分钟未回调即视为卡住
+      </div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "刷新", stuck_admin_task_center_index_path(minutes: @minutes), class: "admin-button-secondary" %>
+      <%= link_to "返回任务中心", admin_task_center_index_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <% if @stuck.any? %>
+    <div class="admin-table-wrapper admin-table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>类型</th>
+            <th>任务</th>
+            <th>账号</th>
+            <th>浏览器</th>
+            <th>主题</th>
+            <th>平台</th>
+            <th>开始时间</th>
+            <th>超时时长</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @stuck.each do |r| %>
+            <tr>
+              <td><span class="admin-label-muted"><%= r[:mode_name] %></span></td>
+              <td><span class="admin-label-muted"><%= r[:model] %>#<%= r[:id] %></span></td>
+              <td><span class="admin-label-muted"><%= r[:account] || '-' %></span></td>
+              <td><span class="admin-label-muted"><%= r[:browser] || '-' %></span></td>
+              <td><span class="admin-label-muted"><%= r[:theme] %></span></td>
+              <td><span class="admin-label-muted"><%= r[:platform] %></span></td>
+              <td><span class="admin-label-muted"><%= r[:start_at]&.strftime("%m-%d %H:%M") %></span></td>
+              <td>
+                <% if r[:minutes] >= 180 %>
+                  <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;"><%= r[:minutes] %> 分钟</span>
+                <% else %>
+                  <span class="admin-pill-status" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;"><%= r[:minutes] %> 分钟</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">
+      没有卡住的任务。
+    </div>
+  <% end %>
+</div>
+
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">处理说明</div>
+      <div class="admin-card-subtitle">
+        卡住的任务会通过「执行中超时兜底」自动释放：超过 45 分钟未回调会重置回待分配，超过 3 小时会强制释放。
+        若发现任务长时间卡住未被释放，可到任务中心点「同步状态」手动触发兜底。
+      </div>
+    </div>
+  </div>
+</div>

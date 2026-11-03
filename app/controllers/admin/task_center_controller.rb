@@ -26,6 +26,12 @@ class Admin::TaskCenterController < Admin::BaseController
     @statuses   = MachineTaskMonitor::STATUSES
   end
 
+  # 执行中卡住任务排查：列出各资源队列里 executing 超过指定分钟仍未回调的任务
+  def stuck
+    @minutes = params[:minutes].to_i.positive? ? params[:minutes].to_i : 45
+    @stuck   = TaskScheduler.stuck_executing_tasks(minutes: @minutes)
+  end
+
   # JSON 版本（保留自原「机器任务监控」页，供外部监控 / 钉钉告警调用）
   def summary
     results = MachineTaskMonitor.fetch_all(own_only: false)

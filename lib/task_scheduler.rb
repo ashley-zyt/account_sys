@@ -602,4 +602,34 @@ class TaskScheduler
 		Rails.logger.warn "[TaskScheduler] 硬上限强制释放 #{total} 条卡死任务" if total > 0
 		total
 	end
+
+	# 查询卡在 executing 超过指定分钟的任务（用于任务中心「执行中卡住」排查入口）。
+	# 返回 [{model, mode_name, id, account, browser, theme, platform, start_at, minutes}]，按超时时长降序。
+	def self.stuck_executing_tasks(minutes: 45)
+		cutoff = Time.current - minutes.minutes
+		rows = []
+
+		WorkMode.resource_modes.each do |mode|
+			klass = mode.task_model_class
+			next if klass.nil?
+
+			klass.where(status: :executing)
+			     .where("start_at IS NOT NULL AND start_at <= ?", cutoff)
+			     .find_each do |task|
+				rows << {
+					model:     klass.name,
+					mode_name: mode.name,
+					id:        task.id,
+					account:   task.account&.account_name,
+					browser:   task.browser&.profile_name,
+					theme:     task.theme,
+					platform:  task.platform,
+					start_at:  task.start_at,
+					minutes:   ((Time.current - task.start_at) / 60).round
+				}
+			end
+		end
+
+		rows.sort_by { |r| -r[:minutes] }
+	end
 end

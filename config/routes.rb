@@ -93,6 +93,7 @@ Rails.application.routes.draw do
         get  :summary          # JSON 版本（供外部监控 / 钉钉告警）
         get  :machines         # 机器端任务明细列表（机器端 GET /tasks）
         get  :machine_task     # 机器端单个任务详情（机器端 GET /tasks/{id}）
+        get  :stuck            # 执行中卡住任务排查（executing 超时未回调）
         post :sync
         post :retry_interrupted
         post :clear
