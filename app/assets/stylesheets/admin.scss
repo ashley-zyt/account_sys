@@ -686,17 +686,24 @@ body.admin {
   font-size: 12px;
 }
 
-/* 固定布局表格：列宽由 colgroup 决定，单元格长文本省略号截断，
-   避免个别列文本过多把表格撑宽、后面的列被挤出可视区 */
+/* 固定布局表格：列宽由 colgroup 百分比决定，始终占满容器不被压缩。
+   长文本截断按需使用：.td-clip 单行省略（名称类），.td-clamp2 两行截断（错误描述类） */
 .admin-table-fixed {
   table-layout: fixed;
 }
 
-.admin-table-fixed th,
-.admin-table-fixed td {
+.admin-table-fixed .td-clip {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.admin-table-fixed .td-clamp2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
 }
 
 .admin-table thead {

@@ -67,18 +67,18 @@
     <div class="admin-table-wrapper">
       <table class="admin-table admin-table-fixed">
         <colgroup>
-          <col style="width: 76px">
-          <col style="width: 52px">
-          <col style="width: 120px">
-          <col style="width: 68px">
-          <col style="width: 110px">
-          <col style="width: 72px">
-          <col style="width: 64px">
-          <col style="width: 84px">
-          <col style="width: 108px">
+          <col style="width: 6%">
+          <col style="width: 4%">
+          <col style="width: 11%">
+          <col style="width: 6%">
+          <col style="width: 9%">
+          <col style="width: 6%">
+          <col style="width: 5%">
+          <col style="width: 6%">
+          <col style="width: 9%">
           <col>
-          <col style="width: 80px">
-          <col style="width: 156px">
+          <col style="width: 6%">
+          <col style="width: 13%">
         </colgroup>
         <thead>
           <tr>
@@ -139,7 +139,7 @@
               <td>
                 <%= link_to log.id, admin_task_log_path(log), class: "admin-link-quiet", title: log.task_uuid %>
               </td>
-              <td>
+              <td class="td-clip">
                 <% acc = log.display_account %>
                 <% if acc %>
                   <%= link_to acc.account_name, admin_account_path(acc), class: "admin-link-quiet", style: "color: var(--accent);", title: account_tooltip_title(acc) %>
@@ -152,7 +152,7 @@
                   <%= log.display_platform %>
                 </span>
               </td>
-              <td>
+              <td class="td-clip">
                 <% br = log.display_browser %>
                 <% if br %>
                   <%= link_to br.profile_name, admin_browser_path(br), class: "admin-link-quiet", style: "color: var(--accent);" %>
@@ -190,11 +190,11 @@
               </td>
               <td>
                 <span class="admin-label-muted">
-                  <%= log.run_at&.strftime("%Y-%m-%d %H:%M") %>
+                  <%= log.run_at&.strftime("%m-%d %H:%M") %>
                 </span>
               </td>
               <td>
-                <span class="admin-label-muted" title="<%= log.error_msg.to_s %>">
+                <span class="admin-label-muted td-clamp2" title="<%= log.error_msg.to_s %>">
                   <%= log.error_msg.to_s %>
                 </span>
               </td>
