@@ -217,7 +217,7 @@
                       <% end %>
                       <span class="admin-label-muted" title="该账号当天已发布成功，不允许重试">已发布成功</span>
                     <% else %>
-                      <select class="admin-input" style="width: 100%; padding: 2px 6px; font-size: 12px; cursor: pointer;"
+                      <select class="admin-select-quiet"
                               onchange="handleLogAction(this, <%= log.id %>)"
                               data-view-url="<%= view_url %>">
                         <option value="">操作</option>
