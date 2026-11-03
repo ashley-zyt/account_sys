@@ -1147,6 +1147,11 @@ body.admin {
   /* 表格不再限制高度，由分页控制数量 */
 }
 
+/* 宽表格横向滚动：配合 table min-width，窄屏时出滚动条而不是挤压列宽 */
+.admin-table-wrapper-wide {
+  overflow-x: auto;
+}
+
 /* @media (max-width: 960px) {
   .admin-layout {
     flex-direction: column;

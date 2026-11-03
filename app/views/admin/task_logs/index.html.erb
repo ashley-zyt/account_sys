@@ -64,10 +64,10 @@
   </div>
 
   <% if @task_logs.any? %>
-    <div class="admin-table-wrapper admin-table-scroll">
-      <table class="admin-table admin-table-fixed">
+    <div class="admin-table-wrapper admin-table-wrapper-wide">
+      <table class="admin-table admin-table-fixed" style="min-width: 1500px;">
         <colgroup>
-          <col style="width: 110px">
+          <col style="width: 80px">
           <col style="width: 64px">
           <col style="width: 140px">
           <col style="width: 76px">
@@ -128,11 +128,11 @@
                 <% matched_mode = WorkMode.resource_modes.find { |m| m.log_label == task_type } %>
                 <% if matched_mode && matched_mode.pill_bg_color %>
                   <span class="admin-pill-status" style="background: <%= matched_mode.pill_bg_color %>; color: <%= matched_mode.pill_text_color %>;">
-                    <%= task_type %>
+                    <%= task_type.to_s.sub(/任务\z/, '') %>
                   </span>
                 <% else %>
                   <span class="admin-label-muted">
-                    <%= task_type %>
+                    <%= task_type.to_s.sub(/任务\z/, '') %>
                   </span>
                 <% end %>
               </td>
