@@ -310,6 +310,10 @@ Rails.application.routes.draw do
       post "jianying_tasks/batch", to: "jianying_tasks#batch"
       # 本地视频直传 OSS（返回 PostObject 上传凭证 + 下载签名 URL，客户端直传）
       post "oss/upload_signature", to: "oss#upload_signature"
+      # 机器端下载超时后，把视频按需迁移到香港 bucket 并返回香港签名 URL
+      post "oss/migrate_to_hk", to: "oss#migrate_to_hk"
+      # 删除香港 bucket 里按需迁移的视频对象
+      post "oss/remove_from_hk", to: "oss#remove_from_hk"
       # 机器端异步浏览器任务完成回调（养号/发文/采集）
       post "browser_tasks/result", to: "browser_tasks#result"
       # 机器端评论任务状态回传

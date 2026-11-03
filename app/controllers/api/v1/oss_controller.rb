@@ -69,6 +69,61 @@ module Api
 				}
 			end
 
+			# POST /api/v1/oss/migrate_to_hk
+			# 入参（二选一）：
+			#   url    完整 OSS 签名 URL（如 http://grok-videos.oss-cn-hangzhou.aliyuncs.com/xxx.mp4?...）
+			#   bucket + key  直接指定源 bucket 和 object key
+			# 处理：下载源（杭州）+ 上传香港 account-agic/timeout/，同步返回香港签名 URL。
+			# 幂等：香港已有该对象则直接返回签名，不重复迁移。
+			def migrate_to_hk
+				url    = params[:url].to_s.strip
+				bucket = params[:bucket].to_s.strip
+				key    = params[:key].to_s.strip
+
+				bucket = OssTransfer.bucket_from_url(url) if bucket.blank?
+				key    = OssTransfer.key_from_url(url) if key.blank?
+
+				return render_error('缺少 url 或 bucket+key') if bucket.blank? || key.blank?
+
+				hk_url = OssTransfer.move_to_hk(bucket, key, 1.day.to_i)
+
+				if hk_url.present?
+					render json: {
+						type: 'success',
+						message: '迁移成功',
+						data: {
+							url: hk_url,
+							bucket: OssTransfer::HK_BUCKET,
+							key: "#{OssTransfer::HK_PREFIX}/#{key}"
+						}
+					}
+				else
+					render_error('迁移失败，请查看服务端日志')
+				end
+			end
+
+			# POST /api/v1/oss/remove_from_hk
+			# 入参：url（香港或源链接）或 bucket + key
+			# 处理：删除香港 bucket account-agic/timeout/ 里的对应对象（幂等，不存在也算成功）
+			def remove_from_hk
+				url    = params[:url].to_s.strip
+				bucket = params[:bucket].to_s.strip
+				key    = params[:key].to_s.strip
+
+				bucket = OssTransfer.bucket_from_url(url) if bucket.blank?
+				key    = OssTransfer.key_from_url(url) if key.blank?
+
+				return render_error('缺少 url 或 bucket+key') if key.blank?
+
+				ok = OssTransfer.remove_from_hk(key)
+
+				if ok
+					render json: { type: 'success', message: '删除成功' }
+				else
+					render_error('删除失败，请查看服务端日志')
+				end
+			end
+
 			private
 
 			def render_error(message)

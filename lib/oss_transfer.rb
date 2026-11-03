@@ -15,6 +15,15 @@ class OssTransfer
   REGION = 'cn-hangzhou'.freeze
   SIGNED_URL_TTL = 31_536_000 # 1 年
 
+  # 香港 bucket（account-agic）：机器端下载杭州 OSS 超时后，按需迁移到这里
+  HK_BUCKET   = 'account-agic'.freeze
+  HK_REGION   = 'cn-hongkong'.freeze
+  HK_ENDPOINT = 'https://oss-cn-hongkong.aliyuncs.com'.freeze
+  HK_PREFIX   = 'timeout'.freeze
+
+  # TWO 账号 bucket（凭证路由用：这些 bucket 用 TWO 凭证，其余用主账号）
+  TWO_BUCKETS = %w[jianying-rd huasheng-ld notebooklm-ld].freeze
+
   # 源 bucket（TWO 账号）→ 目标 bucket（主账号）
   BUCKET_MAP = {
     'huasheng-ld'   => 'huasheng-ld-videos',
@@ -76,6 +85,97 @@ class OssTransfer
       "OSSAccessKeyId=#{dest_key_id}" \
       "&Expires=#{expires}" \
       "&Signature=#{percent_encode(signature)}"
+  end
+
+  # 香港 bucket 主账号 V1 GET 签名 URL
+  def self.hk_sign_url(key, expires_seconds = SIGNED_URL_TTL)
+    return nil if key.blank?
+    require 'openssl'
+    require 'base64'
+
+    key = key.sub(%r{^/}, '')
+    expires = (Time.now.utc.to_i + expires_seconds).to_s
+    string_to_sign = "GET\n\n\n#{expires}\n/#{HK_BUCKET}/#{key}"
+    signature = Base64.strict_encode64(
+      OpenSSL::HMAC.digest('sha1', ENV['ALIYUN_ACCESS_KEY_SECRET'].to_s, string_to_sign)
+    ).strip
+    encoded_key = key.split('/').map { |seg| percent_encode(seg) }.join('/')
+
+    "https://#{HK_BUCKET}.oss-#{HK_REGION}.aliyuncs.com/#{encoded_key}?" \
+      "OSSAccessKeyId=#{ENV['ALIYUN_ACCESS_KEY_ID']}" \
+      "&Expires=#{expires}" \
+      "&Signature=#{percent_encode(signature)}"
+  end
+
+  # 按源 bucket 路由凭证：TWO bucket 用 TWO 凭证，其余用主账号
+  def self.credentials_for(bucket)
+    TWO_BUCKETS.include?(bucket.to_s) ? source_credentials : dest_credentials
+  end
+
+  # 香港 bucket 客户端（主账号 + 香港 endpoint）
+  def self.hk_client
+    @hk_client ||= begin
+      require 'aliyun/oss'
+      Aliyun::OSS::Client.new(
+        endpoint: HK_ENDPOINT,
+        access_key_id: ENV['ALIYUN_ACCESS_KEY_ID'],
+        access_key_secret: ENV['ALIYUN_ACCESS_KEY_SECRET']
+      )
+    end
+  end
+
+  # 按需迁移到香港 bucket（下载源 + 上传香港，同步），返回香港签名 URL，失败返回 nil。
+  # 幂等：目标已存在则直接返回签名 URL。
+  def self.move_to_hk(source_bucket, source_key, expires_seconds = SIGNED_URL_TTL)
+    return nil if source_bucket.blank? || source_key.blank?
+
+    key = source_key.to_s.sub(%r{^/}, '')
+    dest_key = "#{HK_PREFIX}/#{key}"
+
+    dst_bucket = hk_client.get_bucket(HK_BUCKET)
+
+    # 幂等：香港已有该对象则直接返回签名
+    return hk_sign_url(dest_key, expires_seconds) if dst_bucket.object_exists?(dest_key)
+
+    # 源客户端（按 bucket 路由凭证）
+    src_id, src_secret = credentials_for(source_bucket)
+    src_client = oss_client(src_id, src_secret)
+    src_bucket_obj = src_client.get_bucket(source_bucket)
+
+    require 'tempfile'
+    tmp = Tempfile.new(['hk_transfer', '.bin'])
+    tmp_path = tmp.path
+    tmp.close
+    begin
+      src_bucket_obj.get_object(key, file: tmp_path)
+      dst_bucket.put_object(dest_key, file: tmp_path)
+    ensure
+      File.delete(tmp_path) if File.exist?(tmp_path)
+    end
+
+    hk_sign_url(dest_key, expires_seconds)
+  rescue => e
+    Rails.logger.error "[OssTransfer] 迁移香港失败 #{source_bucket}/#{source_key}: #{e.class} #{e.message}"
+    nil
+  end
+
+  # 删除香港 bucket 里的对象（幂等，404 视为已删除）。
+  # object_key 可以是带 timeout/ 前缀的香港 key，也可以是源 key（自动补 timeout/ 前缀）。
+  def self.remove_from_hk(object_key)
+    return false if object_key.blank?
+    key = object_key.to_s.sub(%r{^/}, '')
+    key = "#{HK_PREFIX}/#{key}" unless key.start_with?("#{HK_PREFIX}/")
+
+    hk_client.get_bucket(HK_BUCKET).delete_object(key)
+    true
+  rescue => e
+    msg = e.message.to_s
+    if msg.include?('404') || msg.include?('NoSuchKey') || msg.include?('NoSuchFile')
+      true
+    else
+      Rails.logger.error "[OssTransfer] 删除香港对象失败 #{object_key}: #{e.class} #{e.message}"
+      false
+    end
   end
 
   # 批量转存：扫描三个源 bucket 的任务，按 object key 去重转存、批量换链，并删除源对象。
