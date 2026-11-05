@@ -82,7 +82,8 @@ module TaskReportHelper
       "account banned or human verification required",
       "账号封禁",
       "触发安全风控",
-      "ERR_TOO_MANY_REDIRECTS"
+      "ERR_TOO_MANY_REDIRECTS",
+      "performing security verification"
     ],
     logged_out: [
       "not logged in",
