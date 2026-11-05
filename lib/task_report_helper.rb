@@ -81,7 +81,8 @@ module TaskReportHelper
       "suspended",
       "account banned or human verification required",
       "账号封禁",
-      "触发安全风控"
+      "触发安全风控",
+      "ERR_TOO_MANY_REDIRECTS"
     ],
     logged_out: [
       "not logged in",
@@ -100,6 +101,11 @@ module TaskReportHelper
       "could not authenticate you",
       "账号验证"
     ]
+  }.freeze
+
+  # 特定关键词对应的变更记录备注（change_reason）
+  KEYWORD_REMARK_MAP = {
+    'ERR_TOO_MANY_REDIRECTS' => '页面打不开'
   }.freeze
 
   # 判断错误信息是否属于「账号/浏览器网络问题」（账号被封、未登录、代理失效等）
@@ -150,6 +156,7 @@ module TaskReportHelper
       abnormal_type: abnormal_type,
       changes: [{ field: "status", from: account.status, to: target_status }],
       source_action: source_action,
+      change_reason: KEYWORD_REMARK_MAP[matched_keyword],
       matched_keyword: matched_keyword,
       error_msg: error_msg,
       changed_at: Time.current
