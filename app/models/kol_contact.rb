@@ -69,6 +69,14 @@ class KolContact < ApplicationRecord
     x_api: 1     # X 认证（X API 发私信/拉消息）
   }
 
+  # 当前启用的触达平台（系统目前仅开放 X / Instagram 私信，其余平台联系方式不参与自动触达）
+  ENABLED_PLATFORMS = %w[twitter instagram].freeze
+
+  # 是否可参与自动触达（状态可用 + 开启私信 + 平台已启用 + 账号池支持）
+  def outreach_usable?
+    active? && messaging_enabled? && ENABLED_PLATFORMS.include?(platform.to_s) && KolAccountAllocator.supported_platform?(platform)
+  end
+
   # 对方不可私信原因（人工在 X 页面验证后标记，用于后台区分「无法联系」的具体原因）
   enum dm_blocked_reason: {
     followers_only: 0,         # 仅关注者可私信

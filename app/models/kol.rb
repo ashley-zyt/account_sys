@@ -154,9 +154,7 @@ class Kol < ApplicationRecord
 
   # 是否存在可被自动化触达的联系方式（有效 + 可发私信 + 已接通平台）
   def has_outreachable_contacts?
-    kol_contacts.any? do |c|
-      c.active? && c.messaging_enabled? && KolAccountAllocator.supported_platform?(c.platform)
-    end
+    kol_contacts.any?(&:outreach_usable?)
   end
 
   # 是否具备进入自动化触达队列的条件（有可私信联系方式 + 变量完整）

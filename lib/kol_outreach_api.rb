@@ -144,6 +144,10 @@ class KolOutreachApi
           TaskReportHelper.check_account_abnormal(account.id, error)
         end
         # 发送失败后回 pending：账号问题换账号、对方问题换联系方式，都由下一轮重新触达完成
+        # 联系方式若在受理时被转「联系中」，失败后退回「未联系」，与其他联系方式一起参与下一轮轮换
+        if contact&.contacting?
+          contact.update!(status: :active, monitor_until: nil, next_poll_at: nil)
+        end
         return_to_pending_on_failure(kol, contact)
         :failed
       end
@@ -151,11 +155,12 @@ class KolOutreachApi
 
     # 发送失败后，把 KOL 回 pending，让下一轮重新触达（账号问题换账号、对方问题换联系方式）。
     # 仅当失败的联系方式就是当前渠道、且 KOL 仍处于 pending/contacting 时才回退，避免误伤多渠道 KOL。
+    # next_action_at 顺延 retry_hours 小时：「等后期再联系」，期间账号冷却、其他联系方式可被轮换。
     def return_to_pending_on_failure(kol, contact)
       return if kol.nil? || contact.nil?
       return unless %w[pending contacting].include?(kol.status.to_s)
       return unless kol.current_contact_id == contact.id
-      kol.update!(status: :pending, next_action_at: nil)
+      kol.update!(status: :pending, next_action_at: KolScheduler.retry_hours.hours.from_now)
     end
 
     # 处理「查回复」最终结果：创建 incoming 消息 + 更新 contact/kol 状态。

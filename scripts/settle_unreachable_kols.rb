@@ -18,7 +18,12 @@ PHASE_SETTLE = ENV['SETTLE'] == '1'
 IDS_FILE     = Rails.root.join('tmp', 'kol_unreachable_checked_ids.txt')
 
 # 可选：指定 KOL id 分批处理，逗号或空格分隔，如 IDS=1,2,3 或 IDS="1 2 3"
-BATCH_IDS = ENV['IDS'].to_s.split(/[,\s]+/).map(&:to_i).reject(&:zero?).uniq
+# 也可以用 IDS_FILE 指定清单文件（每行一个 KOL id，如 rework_unreachable_kols.rb 输出的清单）
+raw_ids = ENV['IDS'].to_s
+if raw_ids.empty? && ENV['IDS_FILE'].present? && File.exist?(ENV['IDS_FILE'])
+  raw_ids = File.read(ENV['IDS_FILE'])
+end
+BATCH_IDS = raw_ids.split(/[,\s]+/).map(&:to_i).reject(&:zero?).uniq
 
 # 账号「正常」才允许查回复（其余状态视为不可用，保持无法联系）
 def account_usable?(account)

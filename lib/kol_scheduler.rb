@@ -107,10 +107,12 @@ class KolScheduler
     end
 
     # 向「尚未联系」的有效渠道发送（按优先级），返回是否有发送成功
+    # 仅启用平台（X / Instagram）的联系方式参与自动触达
     def run_outreach(kol, scenario:)
       contacts = kol.kol_contacts
         .where(status: KolContact.statuses[:active])
         .where(messaging_enabled: true)
+        .where(platform: KolContact::ENABLED_PLATFORMS)
         .order(priority: :asc, id: :asc)
         .to_a
         .select { |c| KolAccountAllocator.supported_platform?(c.platform) }
