@@ -33,25 +33,34 @@ def account_usable?(account)
   account.present? && account.status == '正常'
 end
 
+# A 类候选：X/IG 渠道且开启私信，「未联系」可直接用；
+# 「联系中」但未回复的属于历史发送失败卡死（当时失败后没有退回），一并纳入复活
+def revivable_contacts(kol)
+  kol.kol_contacts
+     .where(platform: KolContact::ENABLED_PLATFORMS, messaging_enabled: true)
+     .where(status: KolContact.statuses.slice(:active, :contacting).values)
+     .reject(&:replied?)
+     .select { |c| KolAccountAllocator.supported_platform?(c.platform) }
+end
+
 scope = Kol.where(status: :unreachable)
 scope = scope.where(id: BATCH_IDS) if BATCH_IDS.any?
 
 puts "无法联系 KOL 总数：#{scope.count}（#{PHASE_EXEC ? '执行模式' : '预览模式'}）"
 puts '-' * 60
 
-stats = { revived: 0, to_check: 0, account_bad: 0, no_history: 0 }
+stats = { revived: 0, to_check: 0, account_bad: 0, no_history_disabled: 0, no_history_no_channel: 0 }
 check_ids = []
 revived_samples = []
 
 scope.order(:id).find_each do |kol|
-  # ---- A 类：有可自动触达的联系方式 → 直接复活 ----
-  if kol.has_outreachable_contacts?
+  # ---- A 类：有可复活渠道（未联系 / 卡死未回复的 X/IG 联系方式）→ 复活 ----
+  revivable = revivable_contacts(kol)
+  if revivable.any?
     if PHASE_EXEC
-      # 卡在「联系中」且未回复的 X/IG 联系方式退回「未联系」，参与下一轮轮换
-      kol.kol_contacts.where(status: :contacting)
-         .where(platform: KolContact::ENABLED_PLATFORMS)
-         .reject(&:replied?)
-         .each { |c| c.update!(status: :active, monitor_until: nil, next_poll_at: nil) }
+      # 卡在「联系中」的退回「未联系」，与其他联系方式一起参与下一轮轮换
+      revivable.select(&:contacting?)
+               .each { |c| c.update!(status: :active, monitor_until: nil, next_poll_at: nil) }
       kol.update!(status: :pending, next_action_at: nil)
     end
     stats[:revived] += 1
@@ -65,7 +74,12 @@ scope.order(:id).find_each do |kol|
 
   if contact_ids.empty?
     # ---- D 类：从未发出过私信 ----
-    stats[:no_history] += 1
+    # 细分：渠道全被停用（历史明确失败，如 DM 关闭）vs 完全没有 X/IG 渠道
+    if kol.kol_contacts.where(platform: KolContact::ENABLED_PLATFORMS, messaging_enabled: true).exists?
+      stats[:no_history_disabled] += 1
+    else
+      stats[:no_history_no_channel] += 1
+    end
     next
   end
 
@@ -86,7 +100,9 @@ end
 puts "A 类·可复活（回待联系自动重发）：#{stats[:revived]}"
 puts "B 类·可补查回复（写入清单）：    #{stats[:to_check]}"
 puts "C 类·发起账号失效（保持原状）：  #{stats[:account_bad]}"
-puts "D 类·从未发出私信（保持原状）：  #{stats[:no_history]}"
+puts "D 类·从未发出私信（保持原状）：  #{stats[:no_history_disabled] + stats[:no_history_no_channel]}"
+puts "  其中渠道全停用（历史失败）：    #{stats[:no_history_disabled]}"
+puts "  其中没有 X/IG 渠道：           #{stats[:no_history_no_channel]}"
 
 puts 'A 类示例：' + revived_samples.join(',') unless revived_samples.empty?
 
