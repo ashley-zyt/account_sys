@@ -81,7 +81,7 @@
       errorDiv.textContent = '';
 
       fetch(actionUrl, {
-        method: 'POST',
+        method: 'PATCH',
         headers: {
           'X-CSRF-Token': csrfToken,
           'Accept': 'application/json'
