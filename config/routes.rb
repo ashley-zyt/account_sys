@@ -8,6 +8,8 @@ Rails.application.routes.draw do
         get :account
       end
     end
+    # 运维排查：未采集发文账号 / 浏览器发布失败 Top（原 scripts 临时检查脚本页面化）
+    resources :ops_checks, only: [:index]
     resources :accounts, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member do
         post :toggle_warmup

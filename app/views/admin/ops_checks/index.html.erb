@@ -1,0 +1,268 @@
+<% content_for :page_title do %>
+  运维排查
+<% end %>
+<% content_for :page_subtitle do %>
+  高频临时检查沉淀：未采集发文账号（发布成功但没采集到数据）、浏览器发布失败 Top
+<% end %>
+
+<div class="data-alerts-page" data-controller="alert-tabs">
+  <%# ===== 筛选条件 ===== %>
+  <div class="admin-grid-full">
+    <div class="admin-card">
+      <%= form_tag admin_ops_checks_path, method: :get, class: "admin-filter-form" do %>
+        <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+          <div>
+            <div class="admin-label-muted" style="font-size: 11px; margin-bottom: 4px;">检查日期（Tab1）</div>
+            <%= date_field_tag :date, @check_date, class: "admin-input" %>
+          </div>
+          <div>
+            <div class="admin-label-muted" style="font-size: 11px; margin-bottom: 4px;">回溯天数（Tab2）</div>
+            <%= number_field_tag :days, @days, min: 1, max: 90, class: "admin-input", style: "width: 90px;" %>
+          </div>
+          <div>
+            <div class="admin-label-muted" style="font-size: 11px; margin-bottom: 4px;">失败阈值（Tab2）</div>
+            <%= number_field_tag :threshold, @threshold, min: 1, class: "admin-input", style: "width: 90px;" %>
+          </div>
+          <div>
+            <div class="admin-label-muted" style="font-size: 11px; margin-bottom: 4px;">平台</div>
+            <%= select_tag :platform,
+                options_for_select([["全部", ""]] + Account.platforms.keys.map { |p| [p.titleize, p] }, @platform),
+                class: "admin-input" %>
+          </div>
+          <div>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted);">
+              <%= check_box_tag :all_status, "1", params[:all_status] == "1" %> 含非正常状态账号
+            </label>
+          </div>
+          <div>
+            <%= submit_tag "查询", class: "admin-button-primary" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# ===== Tab 指标卡 ===== %>
+  <div class="admin-grid-full">
+    <div class="admin-card">
+      <div class="admin-metric-row">
+        <button type="button"
+                class="admin-metric alert-tab"
+                data-alert-tabs-target="tab"
+                data-alert-tabs-name="missing-stats"
+                data-alert-tabs-has-alert="<%= @missing_items.any? { |i| i[:important] } %>"
+                data-action="alert-tabs#select"
+                data-alert-tabs-name-param="missing-stats">
+          <div class="admin-metric-label">
+            未采集发文账号
+          </div>
+          <div class="admin-metric-value" style="color: <%= @missing_items.any? { |i| i[:important] } ? 'var(--danger)' : 'var(--text-muted)' %>;">
+            <%= @missing_items.size %>
+          </div>
+          <div class="admin-metric-trend <%= @missing_items.any? { |i| i[:important] } ? 'admin-metric-trend-down' : '' %>">
+            其中 <%= @missing_items.count { |i| i[:important] } %> 个当天有成功任务
+          </div>
+        </button>
+        <button type="button"
+                class="admin-metric alert-tab"
+                data-alert-tabs-target="tab"
+                data-alert-tabs-name="browser-failures"
+                data-alert-tabs-has-alert="<%= @failure_items.any? %>"
+                data-action="alert-tabs#select"
+                data-alert-tabs-name-param="browser-failures">
+          <div class="admin-metric-label">
+            浏览器发布失败
+          </div>
+          <div class="admin-metric-value" style="color: <%= @failure_items.any? ? 'var(--danger)' : 'var(--success)' %>;">
+            <%= @failure_items.size %>
+          </div>
+          <div class="admin-metric-trend <%= @failure_items.any? ? 'admin-metric-trend-down' : 'admin-metric-trend-up' %>">
+            近 <%= @days %> 天失败 > <%= @threshold %> 次
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <%# ===== Tab1: 未采集发文账号 ===== %>
+  <div class="admin-grid-full" data-alert-tabs-target="panel" data-alert-tabs-name="missing-stats">
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <div>
+          <div class="admin-card-title">
+            <%= @check_date.strftime("%Y-%m-%d") %> 未采集到发文数据的账号
+          </div>
+          <div class="admin-card-subtitle">
+            「重点」= 当天有发文成功任务但没有采集到数据（疑似采集链路问题）；无成功任务 = 可能本来就没发，属正常
+          </div>
+        </div>
+        <div class="admin-card-header-right">
+          <span class="admin-tag admin-tag-accent">
+            <%= @missing_items.size %> 个账号
+          </span>
+        </div>
+      </div>
+
+      <div data-controller="table-pagination" data-table-pagination-size-value="15">
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>类型</th>
+                <th>账号名</th>
+                <th>平台</th>
+                <th>状态</th>
+                <th>机器</th>
+                <th>浏览器 Profile</th>
+                <th>当天成功任务</th>
+                <th>最近成功时间</th>
+                <th>渠道</th>
+                <th>最近采集日期</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody data-table-pagination-target="body">
+              <% if @missing_items.any? %>
+              <% @missing_items.each do |item| %>
+                <% account = item[:account] %>
+                <tr>
+                  <td>
+                    <% if item[:important] %>
+                      <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;">重点</span>
+                    <% else %>
+                      <span class="admin-label-muted">无成功任务</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);", title: account_tooltip_title(account) %>
+                  </td>
+                  <td><span class="admin-label-muted"><%= account.platform.to_s.titleize %></span></td>
+                  <td><span class="admin-label-muted"><%= account.status %></span></td>
+                  <td><span class="admin-label-muted"><%= item[:machine].presence || '-' %></span></td>
+                  <td><span class="admin-label-muted"><%= item[:profile].presence || '-' %></span></td>
+                  <td>
+                    <% if item[:important] %>
+                      <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;"><%= item[:success_count] %> 条</span>
+                    <% else %>
+                      <span class="admin-label-muted">0</span>
+                    <% end %>
+                  </td>
+                  <td class="alert-nowrap"><span class="admin-label-muted"><%= item[:last_success]&.strftime("%m-%d %H:%M:%S") || '-' %></span></td>
+                  <td><span class="admin-label-muted"><%= item[:last_channel] ? (TaskLog.publish_channels.key(item[:last_channel]) || '-') : '-' %></span></td>
+                  <td class="alert-nowrap">
+                    <span class="admin-label-muted" style="color: <%= item[:last_stat_date].nil? ? 'var(--danger)' : 'inherit' %>;">
+                      <%= item[:last_stat_date]&.to_s || '从未采集到' %>
+                    </span>
+                  </td>
+                  <td class="alert-nowrap">
+                    <%= link_to "查看账号", admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="11" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                  <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+                  该日期所有账号都有发文数据
+                </td>
+              </tr>
+            <% end %>
+            </tbody>
+          </table>
+        </div>
+        <div class="pg-bar">
+          <div class="pg-info" data-table-pagination-target="info"></div>
+          <div class="pg-actions">
+            <button type="button" class="pg-btn" data-table-pagination-target="prevBtn" data-action="table-pagination#prev">上一页</button>
+            <button type="button" class="pg-btn" data-table-pagination-target="nextBtn" data-action="table-pagination#next">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ===== Tab2: 浏览器发布失败 Top ===== %>
+  <div class="admin-grid-full" data-alert-tabs-target="panel" data-alert-tabs-name="browser-failures">
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <div>
+          <div class="admin-card-title">
+            近 <%= @days %> 天浏览器发布失败超过 <%= @threshold %> 次的账号
+          </div>
+          <div class="admin-card-subtitle">
+            仅统计浏览器模拟（ag_center）渠道的失败日志，按失败次数降序；高频错误展示 TOP3
+          </div>
+        </div>
+        <div class="admin-card-header-right">
+          <span class="admin-tag admin-tag-accent">
+            <%= @failure_items.size %> 个账号
+          </span>
+        </div>
+      </div>
+
+      <div data-controller="table-pagination" data-table-pagination-size-value="15">
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>账号名</th>
+                <th>平台</th>
+                <th>状态</th>
+                <th>机器</th>
+                <th>失败次数</th>
+                <th>成功次数</th>
+                <th>高频错误 TOP3</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody data-table-pagination-target="body">
+              <% if @failure_items.any? %>
+              <% @failure_items.each do |item| %>
+                <% account = item[:account] %>
+                <tr>
+                  <td>
+                    <%= link_to account.account_name, admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);", title: account_tooltip_title(account) %>
+                  </td>
+                  <td><span class="admin-label-muted"><%= account.platform.to_s.titleize %></span></td>
+                  <td><span class="admin-label-muted"><%= account.status %></span></td>
+                  <td><span class="admin-label-muted"><%= item[:machine].presence || '-' %></span></td>
+                  <td>
+                    <span class="admin-pill-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-weight: 600;">
+                      <%= item[:fail_count] %> 次
+                    </span>
+                  </td>
+                  <td><span class="admin-label-muted"><%= item[:success_count] %> 次</span></td>
+                  <td>
+                    <% item[:top_errors].each do |err| %>
+                      <div class="admin-label-muted td-clip" title="<%= err[:text] %>">
+                        <%= err[:text] %> <span style="color: var(--danger);">(<%= err[:count] %>)</span>
+                      </div>
+                    <% end %>
+                  </td>
+                  <td class="alert-nowrap">
+                    <%= link_to "查看账号", admin_account_path(account), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="8" style="padding: 24px; text-align: center;" class="admin-label-muted">
+                  <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+                  近 <%= @days %> 天没有失败超过 <%= @threshold %> 次的账号
+                </td>
+              </tr>
+            <% end %>
+            </tbody>
+          </table>
+        </div>
+        <div class="pg-bar">
+          <div class="pg-info" data-table-pagination-target="info"></div>
+          <div class="pg-actions">
+            <button type="button" class="pg-btn" data-table-pagination-target="prevBtn" data-action="table-pagination#prev">上一页</button>
+            <button type="button" class="pg-btn" data-table-pagination-target="nextBtn" data-action="table-pagination#next">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
