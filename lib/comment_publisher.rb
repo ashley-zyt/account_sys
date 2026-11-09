@@ -15,6 +15,7 @@ class CommentPublisher
       post    = task.influencer_post
 
       return { success: false, error: '账号未绑定浏览器' } if account.nil? || account.browser&.machine_host.blank?
+      return { success: false, error: '云手机账号不下发浏览器评论' } if account.browser&.cloud_phone?
       return { success: false, error: '账号浏览器缺 profile_name' } if account.browser&.profile_name.blank?
       return { success: false, error: '发文缺失' } if post.nil?
       return { success: false, error: '发文链接缺失' } if post.source_url.blank?

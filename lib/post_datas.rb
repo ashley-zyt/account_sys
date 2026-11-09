@@ -37,7 +37,7 @@ class PostDatas
   #         避免出错账号（浏览器打不开/页面打不开，数据不回传）每轮都被选中占满配额、饿死正常账号。
   #         传 nil 不退避。仅 when only_uncollected 时生效。
   # @param machine_ips [Array<String>, nil] 只采集指定机器（machine_ip）的账号；nil 采集全部机器。
-  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil, machine_ips: nil, log_file: 'postdatas_fetch.log', prioritize_yesterday_published: false, clear_pending: false)
+  def self.fetch(only_uncollected: false, per_machine: nil, cooldown_hours: nil, machine_ips: nil, log_file: 'postdatas_fetch.log', prioritize_yesterday_published: false, stale_active_priority: false, clear_pending: false)
     logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', log_file))
     logger.formatter = Rails.logger.formatter
     Rails.logger = logger
@@ -59,9 +59,9 @@ class PostDatas
                                 .to_a
     accounts = (accounts + special_accounts).uniq { |a| a.id }
 
-    # 2. 过滤掉未设置machine_ip的浏览器；指定 machine_ips 时只保留这些机器
+    # 2. 过滤掉未设置machine_ip的浏览器；云手机浏览器不采集（数据走外部 API 回传）；指定 machine_ips 时只保留这些机器
     accounts = accounts.select do |a|
-      a.browser.present? && a.browser.machine_host.present? &&
+      a.browser.present? && a.browser.machine_host.present? && !a.browser.cloud_phone? &&
         (machine_ips.nil? || machine_ips.include?(a.browser.machine_host))
     end
 
@@ -100,13 +100,32 @@ class PostDatas
     # 避免 id 靠后的账号因每轮配额不够、前面的账号反复占位而一直饿死。
     # 凌晨主采集（prioritize_yesterday_published=true）额外把「昨天发布成功」的账号排最前，
     # 保证早上推送前一日发布状况时，昨天有发文的活跃账号优先被采集齐全。
+    # 穿插采集（stale_active_priority=true）三层优先：
+    #   0 = 昨日发布成功 && 最新发文数据不是昨日 && 今天还没尝试过（最优先补采）
+    #   1 = 同上但今天已尝试过仍未采到（沉一层：仍排在普通账号前，配合退避当天可自动重试多次；
+    #       按上次尝试时间从远到近，多次失败的越排越后，不会循环占位）
+    #   2 = 其余账号，按账号更新时间从远到近轮转
     if per_machine && per_machine.to_i > 0
-      published_ids = prioritize_yesterday_published ? task_log_published_yesterday_ids : []
+      published_ids = (prioritize_yesterday_published || stale_active_priority) ? task_log_published_yesterday_ids : []
+      stale_latest = stale_active_priority ? PostStat.where(account_id: accounts.map(&:id)).group(:account_id).maximum(:post_date) : {}
+      today_start = Date.today.beginning_of_day
       accounts = accounts.group_by { |a| a.browser.machine_host }
                          .flat_map do |_ip, list|
         list.sort_by do |a|
-          pri = (prioritize_yesterday_published && published_ids.include?(a.id)) ? 0 : 1
-          [pri, a.last_fetch_attempted_at || Time.at(0)]
+          if stale_active_priority
+            if published_ids.include?(a.id) && stale_latest[a.id] != Date.yesterday
+              attempted_today = a.last_fetch_attempted_at.present? && a.last_fetch_attempted_at >= today_start
+              pri = attempted_today ? 1 : 0
+              key = attempted_today ? (a.last_fetch_attempted_at || Time.at(0)) : (a.updated_at || Time.at(0))
+            else
+              pri = 2
+              key = a.updated_at || Time.at(0)
+            end
+            [pri, key]
+          else
+            pri = (prioritize_yesterday_published && published_ids.include?(a.id)) ? 0 : 1
+            [pri, a.last_fetch_attempted_at || Time.at(0)]
+          end
         end.first(per_machine.to_i)
       end
       Rails.logger.info "[PostDatas] 每台机器限额 #{per_machine.to_i} 个，本轮实际采集 #{accounts.size} 个账号"
@@ -270,8 +289,9 @@ class PostDatas
 
     Rails.logger.info "[PostDatas] 发现 #{idle_ips.size} 台空闲机器：#{idle_ips.join(', ')}，开始穿插采集（每台 #{per_machine} 个）"
 
-    # 主采集队列已空（上面判定含 fetch 全空闲），无需再清队列，直接补采漏掉的账号
-    result = fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours, machine_ips: idle_ips, log_file: 'postdatas_idle_fetch.log')
+    # 主采集队列已空（上面判定含 fetch 全空闲），无需再清队列，直接补采漏掉的账号。
+    # stale_active_priority: 优先补采「昨日发布成功但最新数据不是昨日」的账号（详见 fetch 注释）
+    result = fetch(only_uncollected: true, per_machine: per_machine, cooldown_hours: cooldown_hours, machine_ips: idle_ips, log_file: 'postdatas_idle_fetch.log', stale_active_priority: true)
     result.merge(idle_ips: idle_ips)
   rescue => e
     Rails.logger.error "[PostDatas] 穿插采集异常: #{e.message}\n#{e.backtrace.first(5).join("\n")}"

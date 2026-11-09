@@ -114,7 +114,11 @@ class WarmupScheduler
   #   （刚下发的账号已有 executing 记录，下一轮被跳过，取到下一批）。
   # 排序：1) 从未养号优先 2) 上次报错优先 3) 上次养号时间更久优先
   def self.fetch_target_accounts_for_machine(machine_ip)
-    browser_ids = Browser.joins(:machine).where(machines: { host: machine_ip }).pluck(:id)
+    # 云手机浏览器不下发养号（云手机账号走外部 API，无浏览器模拟）
+    browser_ids = Browser.joins(:machine)
+                         .where(machines: { host: machine_ip })
+                         .where.not("browsers.profile_name LIKE ?", "%云手机%")
+                         .pluck(:id)
     executing_account_ids = WarmupTask.where(status: :executing).select(:account_id)
     Account.joins(:warmup_profile)
            .where(browser_id: browser_ids)
@@ -129,6 +133,7 @@ class WarmupScheduler
   # @return [Symbol] :executed（已执行）/ :skipped（无浏览器）
   def self.execute_warmup_for_account(account, machine_ip)
     return :skipped if account.browser.nil?
+    return :skipped if account.browser.cloud_phone?
 
     endpoint = "https://#{machine_ip}/accounts/nurture"
 

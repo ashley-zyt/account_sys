@@ -34,7 +34,8 @@ module PublishChannelChain
   def self.available?(account, channel)
     case channel
     when 'ag_center'
-      account.browser.present? && account.browser.machine_host.present?
+      # 云手机浏览器不下发浏览器模拟发布，自动跳过走 API 渠道
+      account.browser.present? && account.browser.machine_host.present? && !account.browser.cloud_phone?
     when 'x_api'
       account.x_credential&.authorized?
     when 'postforme'

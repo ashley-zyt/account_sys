@@ -22,6 +22,9 @@ class KolOutreachApi
     # @return [Hash] 异步受理：{ async: true, task_id: }；同步：{ success:, reason:, message_id:, error:, raw: }
     #   reason: account_risk（内部账号异常，换账号） / network（网络异常，稍后重试）
     def send_single_message(platform:, account:, contact:, content:, message_id: nil)
+      # 云手机账号全走外部 API，不下发浏览器私信
+      return { success: false, reason: "account_risk", error: "云手机账号不下发浏览器私信", raw: nil } if account&.browser&.cloud_phone?
+
       url = "#{base_url(account)}/accounts/send_single_message"
       body = {
         profile_name: account&.browser&.profile_name,
@@ -58,6 +61,9 @@ class KolOutreachApi
     # 检查对方是否回复
     # @return [Hash] 异步受理：{ async: true, task_id: }；同步：{ has_reply:, replies:, error:, raw: }
     def check_reply(platform:, account:, contact:)
+      # 云手机账号不下发浏览器查回复
+      return { has_reply: false, replies: [], error: "云手机账号不下发浏览器查回复", raw: nil } if account&.browser&.cloud_phone?
+
       url = "#{base_url(account)}/accounts/check_reply"
       body = {
         profile_name: account&.browser&.profile_name,

@@ -4,6 +4,11 @@ class ExecuteWorker
   # @param warmup_task [WarmupTask] 养号任务对象
   def self.execute_warmup_task(warmup_task)
     return unless warmup_task&.account&.browser
+    # 云手机账号不下发浏览器养号
+    if warmup_task.account.browser.cloud_phone?
+      Rails.logger.warn "[ExecuteWorker] 云手机账号 #{warmup_task.account.account_name} 不执行浏览器养号，跳过"
+      return
+    end
 
     account = warmup_task.account
     browser = account.browser

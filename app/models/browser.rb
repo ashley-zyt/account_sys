@@ -92,6 +92,13 @@ class Browser < ApplicationRecord
 		machine&.host
 	end
 
+	# 云手机浏览器：名称含「云手机」。
+	# 云手机账号全部走外部 API（postforme/postpeer 等），不下发任何浏览器模拟任务
+	# （发布/采集/养号/KOL触达/评论），授权页打开除外（保留人工授权）。
+	def cloud_phone?
+		profile_name.to_s.include?('云手机')
+	end
+
 	# 该浏览器所属运营机器的养号接口端点
 	def nurture_endpoint
 		return nil if machine_host.blank?
