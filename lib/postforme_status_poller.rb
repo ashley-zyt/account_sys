@@ -6,10 +6,18 @@
 #
 # 都是拉模式（不依赖 postforme webhook），有未确认记录才实际调 postforme，否则空转。
 module PostformeStatusPoller
+  # 进程锁：单轮轮询受 30 秒/请求节流影响，处理多条记录时耗时容易超过 1 分钟，
+  # cron 每分钟拉起会产生多个并发轮询进程 → 同一条记录被重复处理、同一任务写多条日志。
+  # 用文件锁保证同一时刻只有一个轮询进程在跑，抢不到锁的直接退出。
+  LOCK_FILE = File.join(Rails.root, 'tmp', 'pids', 'postforme_status_poller.lock')
+
   # 统一入口：轮询授权 + 轮询发布
   def self.run
-    poll_authorizations
-    poll_posts
+    File.open(LOCK_FILE, File::CREAT | File::RDWR) do |f|
+      return unless f.flock(File::LOCK_EX | File::LOCK_NB)
+      poll_authorizations
+      poll_posts
+    end
   end
 
   # 轮询「授权中」的账号，确认授权是否完成
@@ -52,11 +60,18 @@ module PostformeStatusPoller
 
   # 发布成功：回写任务 success + 写日志 + 记录平台链接
   def self.mark_success(task, pp, result)
+    # 幂等保护：并发轮询可能同时处理同一条记录。用「processing → success」原子更新
+    # 抢占终态回写权，抢不到（已被其他进程处理）直接跳过，避免同一任务写多条成功日志。
+    updated = PostformePost.where(id: pp.id, status: :processing).update_all(
+      status: PostformePost.statuses[:success],
+      platform_url: result.dig('platform_data', 'url').to_s,
+      updated_at: Time.current
+    )
+    return if updated.zero?
+
     snapshot_account_id = task.account_id
     snapshot_browser_id = task.browser_id
-    platform_url = result.dig('platform_data', 'url').to_s
 
-    pp.update!(status: :success, platform_url: platform_url)
     TaskReportHelper.update_task_status(task, 'success')
     TaskReportHelper.create_task_log(task, 'success', snapshot_account_id, snapshot_browser_id, nil, nil, 'postforme')
     Rails.logger.info "[PostformePoller] 任务 #{task.class.name}##{task.id} 发布成功（post_id=#{pp.post_id}）"
@@ -65,10 +80,18 @@ module PostformeStatusPoller
   # 发布失败：回写任务失败（资源队列任务会重置回 pending）+ 写日志
   def self.mark_failed(task, pp, result)
     error_msg = extract_error_message(result)
+    # 幂等保护：同 mark_success，只允许一个并发进程完成 processing → failed 的回写，
+    # 防止重复降级任务（failure_count 被多加、重复触发换渠道重发导致同一视频发多次）。
+    updated = PostformePost.where(id: pp.id, status: :processing).update_all(
+      status: PostformePost.statuses[:failed],
+      error_msg: error_msg,
+      updated_at: Time.current
+    )
+    return if updated.zero?
+
     snapshot_account_id = task.account_id
     snapshot_browser_id = task.browser_id
 
-    pp.update!(status: :failed, error_msg: error_msg)
     TaskReportHelper.update_task_status(task, 'error', error_msg)
 
     # 写失败日志：之前 create_task_log 抛异常会被外层 poll_posts 的 rescue 吞掉，
