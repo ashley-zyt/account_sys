@@ -23,6 +23,11 @@
       <div class="admin-field-label">评论 Prompt（每行一条）</div>
       <%= f.text_area :prompt, class: "admin-input", rows: 6, placeholder: "针对大V发文生成互动性评论的要求/背景，每行一条", id: "comment-prompt-input" %>
     </div>
+    <div>
+      <div class="admin-field-label">额外参与账号（跨主题，选填）</div>
+      <%= f.text_field :extra_account_ids, class: "admin-input", placeholder: "逗号分隔的账号 ID，如 934" %>
+      <div class="admin-field-hint" style="margin-top: 4px;">这些账号 theme 与本主题不一致，但也会参与本主题大V的评论互动</div>
+    </div>
   </div>
 
   <div style="margin-top: 16px;">

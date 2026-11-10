@@ -48,6 +48,6 @@ class Admin::CommentThemeConfigsController < Admin::BaseController
   end
 
   def config_params
-    params.require(:comment_theme_config).permit(:theme, :prompt)
+    params.require(:comment_theme_config).permit(:theme, :prompt, :extra_account_ids)
   end
 end
