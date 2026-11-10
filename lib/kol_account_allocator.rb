@@ -6,6 +6,8 @@
 #   3. 按平均浏览量从高到低选择
 #   4. 单个账号每日最多尝试发私信 5 次（成功+失败都算），发满当天不再分配、次日继续
 #   5. 风控/发送失败的账号休眠一段时间，期间不参与分配
+#   6. Twitter 平台例外：固定用 TWITTER_PINNED_ACCOUNT_ID 一个账号发，其余 twitter 账号不参与；
+#      该账号状态异常/休眠时直接停发（不回退其它账号）
 class KolAccountAllocator
   MAX_CONTACTS_PER_DAY = 5  # 默认值，可被 config/kol_scheduler.yml 的 max_contacts_per_day 覆盖
   # 同一账号两次发送私信的最小间隔，避免同一账号短时间高频发送
@@ -15,6 +17,9 @@ class KolAccountAllocator
   SUPPORTED_PLATFORMS = %w[twitter tiktok instagram facebook].freeze
   # 无发文数据、无需按浏览量评分的平台（直接返回全部正常账号）
   SKIP_POST_SCORING_PLATFORMS = %w[facebook].freeze
+  # Twitter 平台专属发信账号：所有 twitter 联系方式固定用该账号发；
+  # 该账号状态非「正常」（封禁/未登录/停用等）时直接停发，不回退其它账号。
+  TWITTER_PINNED_ACCOUNT_ID = 934
 
   class << self
     # 读取调度配置（config/kol_scheduler.yml），文件不存在或字段缺失回退默认值
@@ -45,6 +50,22 @@ class KolAccountAllocator
     # @param domain_id [Integer, nil] 目标领域 ID。传入时**只选领域相同的账号**（不同领域的直接跳过）。
     def allocate(platform, exclude_ids: [], channel: :x_api, domain_id: nil)
       return nil unless supported_platform?(platform)
+
+      # Twitter 固定用专属账号（TWITTER_PINNED_ACCOUNT_ID）发：
+      # 账号不存在/状态非「正常」/风控休眠中 → 直接返回 nil 停发，绝不回退其它账号。
+      if platform.to_s == 'twitter'
+        pinned = Account.find_by(id: TWITTER_PINNED_ACCOUNT_ID)
+        return nil if pinned.nil?
+        return nil if pinned.status != '正常' || pinned.kol_sleeping?
+        return nil if exclude_ids.include?(pinned.id)
+        # 渠道可用性校验（与通用逻辑一致）
+        return nil if channel.to_s == 'x_api' && !pinned.x_credential&.authorized?
+        return nil if channel.to_s != 'x_api' && (pinned.browser&.machine_host.blank? || pinned.browser&.cloud_phone?)
+        # 频控照常生效（每日上限 + 5 分钟间隔）
+        return nil if today_contact_count(pinned) >= max_contacts_per_day
+        return nil if account_recently_sent?(pinned)
+        return pinned
+      end
 
       candidates = ordered_candidates(platform)
 
@@ -78,7 +99,13 @@ class KolAccountAllocator
     # 配额耗尽时应等第二天自然日重置，而不是短时间重试空转。
     def quota_exhausted?
       SUPPORTED_PLATFORMS.all? do |platform|
-        account_ids = Account.active.where(platform: platform).pluck(:id)
+        # Twitter 固定用专属账号，配额只看它一个
+        if platform.to_s == 'twitter'
+          pinned = Account.find_by(id: TWITTER_PINNED_ACCOUNT_ID)
+          account_ids = pinned.present? ? [pinned.id] : []
+        else
+          account_ids = Account.active.where(platform: platform).pluck(:id)
+        end
         next true if account_ids.empty?
 
         sent = KolMessage.where(

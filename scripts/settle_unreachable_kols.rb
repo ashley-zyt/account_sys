@@ -1,17 +1,15 @@
-# 临时脚本：处理「无法联系」状态的 KOL —— 补查一次回复
+# 临时脚本：检查「无法联系」状态的 KOL 是否有回复 —— 只采集、不流转状态
 #
-# 背景：321 个 KOL 处于 unreachable（无法联系），需要按「当时发起私信的内部账号」分流：
-#   - 账号仍「正常」→ 把联系方式/KOL 恢复为联系中，并触发一次机器端查回复（浏览器模拟）：
-#       有回复 → 机器回调自动入库、KOL 转「待回复」（走现有 apply_reply_result 链路）
-#       没回复 → 第二步结算时置为「未回复」
-#   - 账号已封禁/停用/未登录等 → 保持「无法联系」不动
+# 背景：unreachable（无法联系）的 KOL，按「当时发起私信的内部账号」可查的触发一次机器端查回复：
+#   - 有回复 → 机器回调自动把回复入库（KolMessage incoming），KOL 转「待回复」（走现有 apply_reply_result 链路）
+#   - 没回复 → 什么都不动（保持「无法联系」），等看完回复量再决定后续处理
 #
-# 分两步执行（机器端查回复是异步任务，回调需要时间）：
+# 用法（机器端查回复是异步任务，回调需要时间）：
 #   第一步（预览）：  bundle exec rails runner scripts/settle_unreachable_kols.rb
 #   第一步（执行）：  EXEC=1  bundle exec rails runner scripts/settle_unreachable_kols.rb
 #                     触发查回复任务，并把本次检查的联系方式 id 写入 tmp/kol_unreachable_checked_ids.txt
-#   第二步（结算）：  SETTLE=1 bundle exec rails runner scripts/settle_unreachable_kols.rb
-#                     等机器端任务跑完后执行：有回复的保持「待回复」，没回复的置「未回复」
+#   第二步（只统计）：SETTLE=1 bundle exec rails runner scripts/settle_unreachable_kols.rb
+#                     只统计清单里有多少已回复/未回复（附回复预览），不改任何状态
 
 PHASE_EXEC   = ENV['EXEC'] == '1'
 PHASE_SETTLE = ENV['SETTLE'] == '1'
@@ -25,13 +23,13 @@ if raw_ids.empty? && ENV['IDS_FILE'].present? && File.exist?(ENV['IDS_FILE'])
 end
 BATCH_IDS = raw_ids.split(/[,\s]+/).map(&:to_i).reject(&:zero?).uniq
 
-# 账号「正常」才允许查回复（其余状态视为不可用，保持无法联系）
+# 账号「正常」才允许查回复（其余状态视为不可用）
 def account_usable?(account)
   account.present? && account.status == '正常'
 end
 
 if PHASE_SETTLE
-  # ================= 第二步：结算 =================
+  # ================= 第二步：只统计回复量（不改状态） =================
   unless File.exist?(IDS_FILE)
     puts "未找到检查清单 #{IDS_FILE}，请先执行第一步（EXEC=1）"
     exit 1
@@ -39,42 +37,34 @@ if PHASE_SETTLE
 
   contact_ids = File.read(IDS_FILE).split.map(&:to_i).uniq
   if BATCH_IDS.any?
-    # 只结算指定 KOL 的联系方式，其余 id 留在清单里给后续批次
+    # 只统计指定 KOL 的联系方式
     scoped = KolContact.where(id: contact_ids, kol_id: BATCH_IDS).pluck(:id)
-    remaining = contact_ids - scoped
-    File.write(IDS_FILE, remaining.join("\n"))
-    puts "指定 KOL #{BATCH_IDS.join(',')}：结算 #{scoped.size} 个联系方式（清单中其余 #{remaining.size} 个留给后续批次）"
+    puts "指定 KOL #{BATCH_IDS.join(',')}：统计 #{scoped.size} 个联系方式（清单共 #{contact_ids.size} 个，保留不动）"
     contact_ids = scoped
-  else
-    # 不带 IDS = 一次性结算全部，结算完删清单
-    File.delete(IDS_FILE)
   end
-  puts "结算联系方式 #{contact_ids.size} 个"
+  puts "统计联系方式 #{contact_ids.size} 个"
+  puts '-' * 60
 
   replied = no_reply = errors = 0
-  KolContact.where(id: contact_ids).find_each do |contact|
+  KolContact.where(id: contact_ids).includes(:kol).find_each do |contact|
     kol = contact.kol
-    if kol.kol_messages.exists?(kol_contact_id: contact.id, direction: :incoming)
+    incoming = KolMessage.where(kol_id: kol.id, kol_contact_id: contact.id, direction: :incoming).order(occurred_at: :desc)
+    if incoming.exists?
       replied += 1
-      puts "[已回复] KOL##{kol.id} #{kol.name} → 保持「待回复」"
+      latest = incoming.first
+      preview = latest.content.to_s.gsub(/\s+/, ' ').truncate(40)
+      puts "[已回复] KOL##{kol.id} #{kol.name}（#{contact.platform}）共 #{incoming.size} 条，最新 #{latest.occurred_at&.strftime('%m-%d %H:%M')}：#{preview}"
     else
-      contact.update!(status: :unresponsive, monitor_until: nil, next_poll_at: nil)
-      # KOL 仍处于联系中才置未回复，避免覆盖回调已流转的状态
-      if kol.reload.contacting?
-        kol.update!(status: :unresponsive, next_action_at: nil)
-        no_reply += 1
-        puts "[未回复] KOL##{kol.id} #{kol.name}"
-      else
-        puts "[跳过] KOL##{kol.id} #{kol.name} 当前状态=#{kol.status}（回调已处理）"
-      end
+      no_reply += 1
+      puts "[未回复] KOL##{kol.id} #{kol.name}（#{contact.platform}）状态保持 #{kol.status}"
     end
   rescue => e
     errors += 1
-    Rails.logger.error "[SettleUnreachable] contact##{contact&.id} 异常: #{e.message}"
+    Rails.logger.error "[SettleUnreachable] contact##{contact&.id} 统计异常: #{e.message}"
   end
 
   puts '=' * 60
-  puts "结算完成：已回复(保持待回复) #{replied}，置未回复 #{no_reply}，异常 #{errors}"
+  puts "统计完成：已回复 #{replied}，未回复 #{no_reply}，异常 #{errors}（所有状态均未改动；已回复的 KOL 已由回调自动转为待回复并入库）"
   exit
 end
 
@@ -124,10 +114,7 @@ triggered = failed = 0
 
 checkable.each do |contact, account|
   kol = contact.kol
-  # 恢复联系中，让回调链路能正常流转（有回复 → replied / 待回复）
-  contact.update!(status: :contacting, monitor_until: 14.days.from_now, next_poll_at: nil)
-  kol.update!(status: :contacting, next_action_at: nil) unless kol.replied_unprocessed? || kol.in_conversation?
-
+  # 只触发查回复，不改 KOL/联系方式状态（有回复由回调自动入库并转待回复，没回复保持无法联系）
   result = KolOutreachApi.check_reply(platform: contact.platform, account: account, contact: contact)
   if result[:async]
     File.open(IDS_FILE, 'a') { |f| f.puts contact.id }
@@ -135,10 +122,7 @@ checkable.each do |contact, account|
     puts "[已触发] KOL##{kol.id} #{kol.name} contact##{contact.id}（#{contact.platform}）账号##{account.id}"
   else
     failed += 1
-    # 触发失败（机器不通等）：回退状态，等待人工处理
-    contact.update!(status: :unresponsive, monitor_until: nil, next_poll_at: nil)
-    kol.update!(status: :unreachable, next_action_at: nil) unless kol.replied_unprocessed? || kol.in_conversation?
-    puts "[失败] KOL##{kol.id} contact##{contact.id}：#{result[:error].presence || '机器端未受理'}"
+    puts "[失败] KOL##{kol.id} contact##{contact.id}：#{result[:error].presence || '机器端未受理'}（状态未改动）"
   end
 rescue => e
   failed += 1
@@ -147,4 +131,4 @@ end
 
 puts '=' * 60
 puts "第一步完成：触发查回复 #{triggered}，触发失败 #{failed}"
-puts "等机器端任务完成后，执行第二步：SETTLE=1 bundle exec rails runner scripts/settle_unreachable_kols.rb"
+puts "等机器端任务完成后，执行第二步统计：SETTLE=1 bundle exec rails runner scripts/settle_unreachable_kols.rb"
