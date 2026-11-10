@@ -2,11 +2,12 @@
 #
 # Table name: comment_theme_configs
 #
-#  id                                                     :bigint           not null, primary key
-#  prompt(评论互动 prompt（每行一条）)                    :text(65535)
-#  theme(主题名（对应 Account.theme / Influencer.theme）) :string(255)      not null
-#  created_at                                             :datetime         not null
-#  updated_at                                             :datetime         not null
+#  id                                                                       :bigint           not null, primary key
+#  extra_account_ids(额外参与该主题评论互动的账号 id（逗号分隔，可跨主题）) :string(255)
+#  prompt(评论互动 prompt（每行一条）)                                      :text(65535)
+#  theme(主题名（对应 Account.theme / Influencer.theme）)                   :string(255)      not null
+#  created_at                                                               :datetime         not null
+#  updated_at                                                               :datetime         not null
 #
 # Indexes
 #
