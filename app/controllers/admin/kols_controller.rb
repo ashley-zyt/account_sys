@@ -272,7 +272,12 @@ class Admin::KolsController < Admin::BaseController
     return render json: { success: false, message: "回复内容不能为空" } if content.blank?
     return render json: { success: false, message: "缺少联系渠道" } if contact.nil?
 
-    account = contact.last_outgoing_account || @kol.current_account
+    # twitter 平台固定用专属账号（934），忽略 last_outgoing_account/current_account，不允许切换
+    if contact.platform.to_s == 'twitter'
+      account = KolAccountAllocator.allocate('twitter', channel: :x_api, domain_id: @kol.domain_id)
+    else
+      account = contact.last_outgoing_account || @kol.current_account
+    end
     return render json: { success: false, message: "该 KOL 缺少可回复的内部账号" } if account.nil?
 
     result = KolScheduler.manual_send(@kol, contact: contact, account: account, content: content)

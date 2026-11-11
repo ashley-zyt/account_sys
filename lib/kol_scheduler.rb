@@ -212,7 +212,12 @@ class KolScheduler
       contact ||= kol.active_contacts.first
       return { ok: false, error: "该 KOL 没有可用联系渠道" } if contact.nil?
 
-      account ||= KolAccountAllocator.allocate(contact.platform, channel: contact.x_api_channel? ? :x_api : :browser, domain_id: contact.kol&.domain_id)
+      # twitter 平台固定用专属账号（934），忽略外部传入的 account，不允许切换
+      if contact.platform.to_s == 'twitter'
+        account = KolAccountAllocator.allocate('twitter', channel: :x_api, domain_id: contact.kol&.domain_id)
+      else
+        account ||= KolAccountAllocator.allocate(contact.platform, channel: contact.x_api_channel? ? :x_api : :browser, domain_id: contact.kol&.domain_id)
+      end
       return { ok: false, error: "该平台暂无可用的内部账号（可能已达每日上限或处于风控休眠）" } if account.nil?
 
       # 未提供自定义内容时，走模板 + 变量校验
@@ -251,7 +256,12 @@ class KolScheduler
       contact ||= kol.current_contact || kol.active_contacts.first
       return { ok: false, error: "缺少联系渠道" } if contact.nil?
 
-      account ||= kol.current_account || KolAccountAllocator.allocate(contact.platform, channel: contact.x_api_channel? ? :x_api : :browser, domain_id: contact.kol&.domain_id)
+      # twitter 平台固定用专属账号（934），忽略 current_account 及外部传入，不允许切换
+      if contact.platform.to_s == 'twitter'
+        account = KolAccountAllocator.allocate('twitter', channel: :x_api, domain_id: contact.kol&.domain_id)
+      else
+        account ||= kol.current_account || KolAccountAllocator.allocate(contact.platform, channel: contact.x_api_channel? ? :x_api : :browser, domain_id: contact.kol&.domain_id)
+      end
       return { ok: false, error: "缺少内部账号（可能已达上限或处于风控休眠）" } if account.nil?
 
       result = deliver_message(kol, contact, account, content: content, source: :manual, scenario: nil)
