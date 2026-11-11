@@ -97,16 +97,21 @@ class CommentScheduler
       end
     end
 
-    # 指定主题 + X 平台 + 正常状态的账号（Account.theme 直接匹配主题），
-    # 再并入该主题在 CommentThemeConfig 里配置的「额外账号」（跨主题参与）。
+    # 评论候选账号池，分两部分：
+    #   1. 正常账号：状态「正常」+ X 平台 + theme 直接匹配主题
+    #   2. 额外账号：该主题在 CommentThemeConfig.extra_account_ids 里配置的账号（跨主题参与），
+    #      只要求「未软删除 + X 平台」，**不要求状态正常、不要求 theme 匹配**，
+    #      用于让「浏览养护/无主题养号」等特殊账号单纯参与评论互动。
     def themed_accounts(theme)
-      base = Account.active.where(platform: Account.platforms[:twitter])
-
       config = CommentThemeConfig.find_by(theme: theme)
       extra_ids = config ? config.extra_account_ids_list : []
 
-      ids = base.where(theme: theme).pluck(:id) + extra_ids
-      base.where(id: ids.uniq)
+      normal_ids = Account.active.where(platform: Account.platforms[:twitter], theme: theme).pluck(:id)
+      extra_ids = Account.unscoped.where(deleted_at: nil, platform: Account.platforms[:twitter])
+                          .where(id: extra_ids).pluck(:id)
+
+      Account.unscoped.where(deleted_at: nil, platform: Account.platforms[:twitter])
+              .where(id: (normal_ids + extra_ids).uniq)
     end
 
     def setup_logger(file)
