@@ -172,10 +172,10 @@ end
 # end
 
 # KOL 私信发送超时兜底：每小时把「下发超过6小时仍未反馈」的待发送私信标记为「发送超时」
-# set :output, "log/kol_send_timeout.log"
-# every 1.hour do
-#   runner 'KolScheduler.process_send_timeouts'
-# end
+set :output, "log/kol_send_timeout.log"
+every 1.hour do
+  runner 'KolScheduler.process_send_timeouts'
+end
 
 
 # ==================== 大V评论互动 ====================

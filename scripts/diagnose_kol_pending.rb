@@ -36,8 +36,15 @@ puts "=" * 60
 puts "twitter 联系方式状态分布（全系统）："
 KolContact.where(platform: KolContact.platforms[:twitter])
           .group(:status, :messaging_enabled).count
-          .sort.each do |(status, enabled), n|
+          .each do |(status, enabled), n|
   puts "  status=#{status} messaging_enabled=#{enabled}: #{n}"
+end
+
+# pending KOL 的 next_action_at 分布（定位为什么都「未到期」）
+puts "=" * 60
+puts "pending KOL 的 next_action_at 分布："
+pending.distinct.group(:next_action_at).count.sort_by { |t, _n| t.to_s }.each do |t, n|
+  puts "  #{t.nil? ? 'nil' : t.strftime('%Y-%m-%d %H:%M')}: #{n}"
 end
 
 # 934 账号状态
