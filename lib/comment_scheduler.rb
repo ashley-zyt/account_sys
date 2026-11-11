@@ -8,7 +8,7 @@
 # 主题粒度：账号按发文大V的 theme（Account.theme）匹配，评论 prompt 用主题对应的 CommentThemeConfig。
 class CommentScheduler
   # 单个账号每天最多评论互动的发文数
-  MAX_COMMENTS_PER_DAY = 2
+  MAX_COMMENTS_PER_DAY = 3
 
   class << self
     def run
