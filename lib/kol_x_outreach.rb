@@ -115,12 +115,18 @@ class KolXOutreach
     # 失败分类：
     #   401 = token 失效 → account_risk（休眠账号重新授权）
     #   403 且 detail 含 "not permitted" = 账号被限流 或 对方关闭私信 → 结合账号近期成功率判断
+    #   dm-recipient-not-accepting / "do not have permission to DM" = 明确对方不接受私信 → dm_refused
     #   其它（含「不能给对方发消息」等）= 正常状况，不触发限制（x_api_error）
     def classify_failure(resp, account: nil)
       code = resp[:code].to_i
       return 'account_risk' if code == 401
 
       detail = extract_error(resp).to_s.downcase
+      type = extract_error_type(resp).to_s.downcase
+
+      # 对方不接受私信：明确是对方问题，直接 dm_refused，无需账号健康度判断
+      return 'dm_refused' if type.include?('dm-recipient-not-accepting') || detail.include?('do not have permission to dm')
+
       if code == 403 && detail.include?('not permitted')
         # "This operation is not permitted." 歧义：结合账号近期成功率判断
         return 'dm_refused' if account && account_likely_healthy?(account)
@@ -153,12 +159,25 @@ class KolXOutreach
       body['code']
     end
 
-    # 把 X 错误码映射为「对方不可私信原因」（仅对方问题类 code 才有值）
+    # 把 X 错误映射为「对方不可私信原因」（仅对方问题类 code/type 才有值）
     def blocked_reason_for(resp)
+      type = extract_error_type(resp).to_s.downcase
+      return 'dm_disabled' if type.include?('dm-recipient-not-accepting')
+
       case extract_error_code(resp).to_i
       when 63 then 'account_suspended'
       when 150 then 'followers_only'
       end
+    end
+
+    # 提取 X API 错误类型 type（body['errors'][0]['type'] 或顶层 body['type']），
+    # 用于识别 dm-recipient-not-accepting 等结构化错误类型。
+    def extract_error_type(resp)
+      body = resp[:body]
+      return nil unless body.is_a?(Hash)
+      err = body['errors'].to_a.first
+      return err['type'] if err.is_a?(Hash) && err['type'].present?
+      body['type']
     end
 
     # 提取 X API 错误信息：优先取 detail（具体原因），其次 message/title，最后 raw 兜底

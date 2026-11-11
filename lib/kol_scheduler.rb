@@ -397,6 +397,8 @@ class KolScheduler
         updates = { status: :disabled }
         updates[:dm_blocked_reason] = result[:blocked_reason] if result[:blocked_reason].present?
         contact.update!(updates)
+        # 对方不接受私信：若该 KOL 已没有其它可私信渠道，直接判定「无法联系」，不再重试
+        kol.update!(status: :unreachable, next_action_at: nil) unless kol.has_outreachable_contacts?
         :target_invalid
       elsif result[:reason] == "target_invalid"
         # 对方 @username 无效/用户不存在：停用该联系方式，后续不再尝试
