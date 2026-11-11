@@ -52,11 +52,12 @@ class KolAccountAllocator
       return nil unless supported_platform?(platform)
 
       # Twitter 固定用专属账号（TWITTER_PINNED_ACCOUNT_ID）发：
-      # 账号不存在/状态非「正常」/风控休眠中 → 直接返回 nil 停发，绝不回退其它账号。
+      # 账号不存在/风控休眠中 → 直接返回 nil 停发，绝不回退其它账号。
+      # 不校验 status（934 保持「浏览养护」等原状态仍可发私信），只认这个 ID。
       if platform.to_s == 'twitter'
         pinned = Account.find_by(id: TWITTER_PINNED_ACCOUNT_ID)
         return nil if pinned.nil?
-        return nil if pinned.status != '正常' || pinned.kol_sleeping?
+        return nil if pinned.kol_sleeping?
         return nil if exclude_ids.include?(pinned.id)
         # 渠道可用性校验（与通用逻辑一致）
         return nil if channel.to_s == 'x_api' && !pinned.x_credential&.authorized?
