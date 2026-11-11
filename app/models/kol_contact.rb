@@ -134,10 +134,10 @@ class KolContact < ApplicationRecord
     %w[facebook twitter tiktok youtube instagram].include?(platform)
   end
 
-  # 是否真正走 X API 通道：只有 twitter 平台 + 显式「X认证」才走 X API。
+  # 是否走 X API 通道：twitter 平台固定走 X API 私信（不再看 outreach_channel）；
   # 其它平台（instagram/tiktok/facebook 等）无 X DM 接口，一律走指纹浏览器（机器端）。
   def x_api_channel?
-    platform.to_s == 'twitter' && outreach_channel == 'x_api'
+    platform.to_s == 'twitter'
   end
 
   # 触达/查回复接口的 target_url 参数：
