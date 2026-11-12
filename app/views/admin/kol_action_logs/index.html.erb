@@ -94,13 +94,11 @@
                 </span>
               </td>
               <td>
-                <span class="admin-label-muted">
-                  <% if log.account %>
-                    #<%= log.account.id %> <%= log.account.account_name %>
-                  <% else %>
-                    -
-                  <% end %>
-                </span>
+                <% if log.account %>
+                  <%= link_to "##{log.account.id} #{log.account.account_name}", admin_account_path(log.account), class: "admin-link-quiet", style: "color: var(--accent);", title: account_tooltip_title(log.account) %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
               </td>
               <td>
                 <span class="admin-label-muted" title="<%= log.machine_task_id %>">
