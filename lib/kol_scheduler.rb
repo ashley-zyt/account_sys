@@ -156,13 +156,14 @@ class KolScheduler
       false
     end
 
-    # 2 个工作日无回复后切换：尝试下一个「未联系」渠道；当前渠道保持 monitoring，交给 30 天过期处理
+    # 2 个工作日无回复后切换：尝试下一个「未联系」渠道；当前渠道保持 monitoring，交给监测到期处理
     def advance(kol)
       if kol.has_outreachable_contacts?
         run_outreach(kol, scenario: :follow_up)
       else
-        # 没有任何可私信的联系方式：判定无法联系，终止不再重试
-        kol.update!(status: :unreachable, next_action_at: nil)
+        # 没有可私信渠道时，交给完整状态重算：有 contacting 则保持等回复，有 replied 转待回复，
+        # 都没有才归位为未回复/无法联系。避免把「仍在等回复」的 KOL 误判为无法联系。
+        reevaluate_kol_status(kol)
       end
     end
 
