@@ -10,6 +10,9 @@
 #      该账号状态异常/休眠时直接停发（不回退其它账号）
 class KolAccountAllocator
   MAX_CONTACTS_PER_DAY = 5  # 默认值，可被 config/kol_scheduler.yml 的 max_contacts_per_day 覆盖
+  # 「对方拒绝私信」失败消息的 error_msg 前缀。这类失败是对方问题、非我方账号问题，
+  # 不计入每日发信额度（额度应只统计「真正有效的发送尝试」）。
+  DM_REFUSED_ERROR_PREFIX = '对方拒绝私信：'.freeze
   # 同一账号两次发送私信的最小间隔，避免同一账号短时间高频发送
   PER_ACCOUNT_INTERVAL = 5.minutes
   CONFIG_PATH = Rails.root.join('config/kol_scheduler.yml')
@@ -118,6 +121,10 @@ class KolAccountAllocator
             KolMessage.statuses[:sent_failed]
           ],
           created_at: Time.current.beginning_of_day..Time.current.end_of_day
+        ).where.not(
+          "status = ? AND error_msg LIKE ?",
+          KolMessage.statuses[:sent_failed],
+          "#{DM_REFUSED_ERROR_PREFIX}%"
         ).group(:account_id).count
 
         account_ids.all? { |id| sent[id].to_i >= max_contacts_per_day }
@@ -165,6 +172,8 @@ class KolAccountAllocator
     # 单个账号今日「尝试发私信」的次数：排队中 + 成功 + 失败都算一次。
     # queued（已下发异步、等机器端回调）也必须算，否则 async 通道回调前配额失效，
     # 高浏览量账号会被连续选中无限下发（曾出现连续 9 条同一账号）。
+    # 「对方拒绝私信」（dm_refused）不计入：那是对方不接受私信，非我方账号的发送尝试，
+    # 不应消耗每日额度。
     def today_contact_count(account)
       KolMessage.where(
         account_id: account.id,
@@ -174,6 +183,10 @@ class KolAccountAllocator
           KolMessage.statuses[:sent_success],
           KolMessage.statuses[:sent_failed]
         ]
+      ).where.not(
+        "status = ? AND error_msg LIKE ?",
+        KolMessage.statuses[:sent_failed],
+        "#{DM_REFUSED_ERROR_PREFIX}%"
       ).where(created_at: Time.current.beginning_of_day..Time.current.end_of_day).count
     end
 
