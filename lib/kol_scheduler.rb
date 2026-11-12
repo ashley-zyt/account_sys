@@ -146,12 +146,18 @@ class KolScheduler
       end
 
       # 所有平台都未发送成功
-      if KolAccountAllocator.quota_exhausted?
-        # 账号今日配额已用完：直接停下，等第二天自然日配额重置再继续
-        kol.update!(next_action_at: Time.current.tomorrow.beginning_of_day)
+      if kol.has_outreachable_contacts?
+        # 仍有可触达渠道（账号异常/限流等），稍后重试
+        if KolAccountAllocator.quota_exhausted?
+          # 账号今日配额已用完：直接停下，等第二天自然日配额重置再继续
+          kol.update!(next_action_at: Time.current.tomorrow.beginning_of_day)
+        else
+          # 发送失败（账号异常/网络等）：短时间后重试
+          kol.update!(next_action_at: retry_hours.hours.from_now)
+        end
       else
-        # 发送失败（账号异常/网络等）：短时间后重试
-        kol.update!(next_action_at: retry_hours.hours.from_now)
+        # 已无可触达渠道（如对方拒绝私信后渠道被停用）：置无法联系，不再重试
+        kol.update!(status: :unreachable, next_action_at: nil)
       end
       false
     end
