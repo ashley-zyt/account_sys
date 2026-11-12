@@ -22,11 +22,12 @@
 
 PHASE_EXEC = ENV['EXEC'] == '1'
 
-# 判断 twitter url 是否合法（能提取出 @username）
+# 判断 twitter url 是否合法（能提取出 @username）。
+# 兼容：@name / name / https://x.com/name / https://twitter.com/name / www.twitter.com/name（大小写不敏感、协议可省略）
 def twitter_username(url)
   u = url.to_s.strip
   return u.sub(/\A@/, '') if u.match?(/\A@?[A-Za-z0-9_]{1,15}\z/)
-  if u =~ %r{https?://(?:www\.)?(?:x|twitter)\.com/([A-Za-z0-9_]{1,15})}
+  if u =~ %r{(?:https?://)?(?:www\.)?(?:x|twitter)\.com/([A-Za-z0-9_]{1,15})}i
     return Regexp.last_match(1)
   end
   nil
@@ -98,11 +99,13 @@ exit unless PHASE_EXEC
 # ============ 执行 ============
 contact_done = 0
 tw_contacts.find_each do |c|
-  if twitter_username(c.url).present?
+  username = twitter_username(c.url)
+  if username.present?
+    # 统一规范化为 @username（X API 需要纯用户名，不能是完整链接）
     if c.contacting?
-      c.update!(status: :active, monitor_until: nil, next_poll_at: nil)
+      c.update!(status: :active, monitor_until: nil, next_poll_at: nil, url: "@#{username}")
     elsif !c.disabled?
-      c.update!(messaging_enabled: true)
+      c.update!(messaging_enabled: true, url: "@#{username}")
     end
   else
     c.update!(status: :disabled, messaging_enabled: false)
