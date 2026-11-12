@@ -63,11 +63,8 @@ class KolContact < ApplicationRecord
     unresponsive: 4  # 未回复（30 天窗口到期仍无回复）
   }
 
-  # 触达方式：指纹浏览器（机器端模拟）或 X 认证（X API 私信）
-  enum outreach_channel: {
-    browser: 0,  # 指纹浏览器（默认，兼容现有机器端链路）
-    x_api: 1     # X 认证（X API 发私信/拉消息）
-  }
+  # 触达通道由平台本身决定（见 x_api_channel?）：twitter → X API，其它 → 浏览器。
+  # outreach_channel 字段已删除（历史遗留，曾用于标记单条联系方式走哪条通道）。
 
   # 当前启用的触达平台（系统目前仅开放 X / Instagram 私信，其余平台联系方式不参与自动触达）
   ENABLED_PLATFORMS = %w[twitter instagram].freeze
@@ -170,7 +167,7 @@ class KolContact < ApplicationRecord
   def self.ransackable_attributes(auth_object = nil)
     %w[
       id kol_id platform nickname url priority messaging_enabled
-      status outreach_channel x_user_id last_used_at last_sent_at next_poll_at
+      status x_user_id last_used_at last_sent_at next_poll_at
       dm_blocked_reason created_at updated_at
     ]
   end

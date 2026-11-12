@@ -4,7 +4,7 @@
 #   1. 只把 twitter 和 instagram 设为「可私信」（messaging_enabled=true），其余平台设为 false
 #   2. twitter 第一优先级（priority=0），instagram 第二优先级（priority=1）
 #   3. 没有 twitter 也没有 instagram 的 KOL → 保持不变（跳过）
-#   4. twitter 走 X API：outreach_channel=x_api，url 规范化为 @username（自动从完整链接提取）；
+#   4. twitter 走 X API（通道由平台决定），url 规范化为 @username（自动从完整链接提取）；
 #      提取不出的标记出来，不处理该 KOL
 #   5. 满足条件（有可用的 twitter 或 instagram）→ KOL 改「待联系」（pending）
 #
@@ -108,10 +108,10 @@ kols.find_each do |kol|
     c.update!(messaging_enabled: enable)
   end
 
-  # 2) 优先级：twitter=0 第一，instagram=1 第二
+  # 2) 优先级：twitter=0 第一，instagram=1 第二；通道由平台决定（twitter→X API），无需写 outreach_channel
   tw.each do |c|
     new_url, = normalize_twitter_url(c.url)
-    c.update!(priority: 0, outreach_channel: :x_api, url: new_url, status: :active)
+    c.update!(priority: 0, url: new_url, status: :active)
   end
   ig.each { |c| c.update!(priority: 1, status: :active) }
 

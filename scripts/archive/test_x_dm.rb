@@ -20,7 +20,7 @@ abort "联系方式 #{contact_id} 不存在" unless contact
 puts "账号: #{account.id} #{account.account_name} platform=#{account.platform}"
 xc = account.x_credential
 puts "X认证: #{xc ? "auth_status=#{xc.auth_status} x_user_id=#{xc.x_user_id}" : '无凭证'}"
-puts "联系方式: #{contact.id} platform=#{contact.platform} url=#{contact.url} channel=#{contact.outreach_channel} x_user_id=#{contact.x_user_id}"
+puts "联系方式: #{contact.id} platform=#{contact.platform} url=#{contact.url} x_api_channel=#{contact.x_api_channel?} x_user_id=#{contact.x_user_id}"
 puts
 
 token = XAuthService.access_token_for(account)

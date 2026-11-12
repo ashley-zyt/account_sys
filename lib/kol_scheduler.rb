@@ -66,6 +66,7 @@ class KolScheduler
 
     # 私信发送超时兜底：把「下发后超过 SEND_TIMEOUT_HOURS 小时仍未收到结果反馈」的待发送私信
     # 标记为 sent_timeout（区别于明确失败的 sent_failed），并同步登记记录为「已丢失/结果未知」。
+    # 同时把仍卡在「联系中」的 KOL/联系方式回退待联系，避免回调丢失后永久卡死。
     def process_send_timeouts
       cutoff = SEND_TIMEOUT_HOURS.hours.ago
 
@@ -78,6 +79,15 @@ class KolScheduler
         BrowserTaskRecord.where(ref: "kol_message:#{message.id}", status: BrowserTaskRecord::STATUS_PENDING)
                          .update_all(status: BrowserTaskRecord::STATUS_UNKNOWN,
                                      message: "发送超时（超过 #{SEND_TIMEOUT_HOURS} 小时未反馈）")
+
+        # 回调丢失导致的状态卡死：仅当联系方式仍是「联系中」（未被后续消息处理）才回退，
+        # 避免误伤已成功/已回复的联系方式。
+        contact = message.kol_contact
+        kol = message.kol
+        if contact&.contacting?
+          contact.update!(status: :active, monitor_until: nil, next_poll_at: nil)
+          kol.update!(status: :pending, next_action_at: nil) if kol && %w[contacting].include?(kol.status.to_s)
+        end
         count += 1
       end
 
@@ -212,11 +222,11 @@ class KolScheduler
       contact ||= kol.active_contacts.first
       return { ok: false, error: "该 KOL 没有可用联系渠道" } if contact.nil?
 
-      # twitter 平台固定用专属账号（934），忽略外部传入的 account，不允许切换
-      if contact.platform.to_s == 'twitter'
-        account = KolAccountAllocator.allocate('twitter', channel: :x_api, domain_id: contact.kol&.domain_id)
+      # 通道统一走 x_api_channel?：twitter → X API（固定 934，忽略外部传入 account）；其它 → 浏览器
+      if contact.x_api_channel?
+        account = KolAccountAllocator.allocate(contact.platform, channel: :x_api, domain_id: contact.kol&.domain_id)
       else
-        account ||= KolAccountAllocator.allocate(contact.platform, channel: contact.x_api_channel? ? :x_api : :browser, domain_id: contact.kol&.domain_id)
+        account ||= KolAccountAllocator.allocate(contact.platform, channel: :browser, domain_id: contact.kol&.domain_id)
       end
       return { ok: false, error: "该平台暂无可用的内部账号（可能已达每日上限或处于风控休眠）" } if account.nil?
 
@@ -256,11 +266,11 @@ class KolScheduler
       contact ||= kol.current_contact || kol.active_contacts.first
       return { ok: false, error: "缺少联系渠道" } if contact.nil?
 
-      # twitter 平台固定用专属账号（934），忽略 current_account 及外部传入，不允许切换
-      if contact.platform.to_s == 'twitter'
-        account = KolAccountAllocator.allocate('twitter', channel: :x_api, domain_id: contact.kol&.domain_id)
+      # 通道统一走 x_api_channel?：twitter → X API（固定 934，忽略 current_account 及外部传入）；其它 → 浏览器
+      if contact.x_api_channel?
+        account = KolAccountAllocator.allocate(contact.platform, channel: :x_api, domain_id: contact.kol&.domain_id)
       else
-        account ||= kol.current_account || KolAccountAllocator.allocate(contact.platform, channel: contact.x_api_channel? ? :x_api : :browser, domain_id: contact.kol&.domain_id)
+        account ||= kol.current_account || KolAccountAllocator.allocate(contact.platform, channel: :browser, domain_id: contact.kol&.domain_id)
       end
       return { ok: false, error: "缺少内部账号（可能已达上限或处于风控休眠）" } if account.nil?
 

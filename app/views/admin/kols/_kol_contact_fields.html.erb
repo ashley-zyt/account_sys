@@ -22,12 +22,6 @@
     <%= f.number_field :priority, class: "admin-input", min: 0 %>
   </div>
   <div>
-    <div class="admin-field-label">触达方式</div>
-    <%= f.select :outreach_channel,
-          [["指纹浏览器", "browser"]],
-          {}, class: "admin-input" %>
-  </div>
-  <div>
     <div class="admin-field-label">不可私信原因</div>
     <%= f.select :dm_blocked_reason,
           KolContact::DM_BLOCKED_REASON_LABELS.map { |k, v| [v, k] },

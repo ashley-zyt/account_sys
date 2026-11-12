@@ -272,9 +272,9 @@ class Admin::KolsController < Admin::BaseController
     return render json: { success: false, message: "回复内容不能为空" } if content.blank?
     return render json: { success: false, message: "缺少联系渠道" } if contact.nil?
 
-    # twitter 平台固定用专属账号（934），忽略 last_outgoing_account/current_account，不允许切换
-    if contact.platform.to_s == 'twitter'
-      account = KolAccountAllocator.allocate('twitter', channel: :x_api, domain_id: @kol.domain_id)
+    # 通道统一走 x_api_channel?：twitter → X API（固定 934）；其它 → 浏览器（用历史账号）
+    if contact.x_api_channel?
+      account = KolAccountAllocator.allocate(contact.platform, channel: :x_api, domain_id: @kol.domain_id)
     else
       account = contact.last_outgoing_account || @kol.current_account
     end
@@ -296,6 +296,8 @@ class Admin::KolsController < Admin::BaseController
     updates = {}
     if status.present?
       return render json: { success: false, message: "无效的状态" } unless Kol.statuses.key?(status)
+      # 仅允许人工切换到 MANUAL_STATUS_KEYS 中的状态，其余为系统自动流转，防止人工破坏状态机
+      return render json: { success: false, message: "该状态由系统自动流转，不可手动切换" } unless Kol::MANUAL_STATUS_KEYS.include?(status)
       updates[:status] = status
       updates[:next_action_at] = nil
     end
@@ -330,6 +332,14 @@ class Admin::KolsController < Admin::BaseController
   end
 
   def mark_auto_reply
+    # 仅限「联系中/待回复」状态可标记自动回复，防止误操作破坏人工终态（洽谈中/已合作/已拒绝等）
+    unless %w[contacting replied_unprocessed].include?(@kol.status.to_s)
+      return respond_to do |format|
+        format.html { redirect_to admin_kol_path(@kol), alert: "当前状态不可标记自动回复" }
+        format.json { render json: { success: false, message: "当前状态不可标记自动回复" } }
+      end
+    end
+
     incoming = @kol.latest_incoming_reply
     ok = false
     if incoming
@@ -384,7 +394,7 @@ class Admin::KolsController < Admin::BaseController
     params.require(:kol).permit(
       :name, :country, :owner, :notes, :status, :follower_tier,
       kol_contacts_attributes: [
-        :id, :platform, :nickname, :url, :priority, :messaging_enabled, :outreach_channel, :dm_blocked_reason, :_destroy
+        :id, :platform, :nickname, :url, :priority, :messaging_enabled, :dm_blocked_reason, :_destroy
       ]
     )
   end
