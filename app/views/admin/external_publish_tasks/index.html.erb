@@ -1,0 +1,141 @@
+<% content_for :page_title do %>
+  外部资源队列
+<% end %>
+<% content_for :page_subtitle do %>
+  grok_bot 等外部来源推入的图文/文字/视频发布任务
+<% end %>
+
+<%= render "admin/shared/select_widgets" %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">任务列表</div>
+      <div class="admin-card-subtitle">监控和筛选外部资源发布任务</div>
+    </div>
+    <div class="admin-card-header-right">
+      <span class="admin-tag">共 <%= @external_publish_tasks.total_count %> 条</span>
+    </div>
+  </div>
+
+  <div class="admin-filter-form">
+    <%= search_form_for [:admin, @q], class: "admin-filter-form" do |f| %>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">主题</label>
+        <%= f.search_field :theme_cont, class: "admin-input admin-filter-input", placeholder: "搜索主题..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">平台</label>
+        <%= f.searchable_select :platform_eq, ExternalPublishTask.platforms.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有平台" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">媒体形态</label>
+        <%= f.searchable_select :media_type_eq, ExternalPublishTask.media_types.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有形态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">标题/UUID</label>
+        <%= f.search_field :title_or_task_uuid_cont, class: "admin-input admin-filter-input", placeholder: "搜索标题或UUID..." %>
+      </div>
+      <div class="admin-filter-group">
+        <label class="admin-filter-label">状态</label>
+        <%= f.searchable_select :status_eq, ExternalPublishTask.statuses.map { |k, v| [k.to_s.titleize, v] }, { include_blank: "所有状态" }, class: "admin-input admin-filter-input" %>
+      </div>
+      <div style="margin-left: auto;">
+        <%= f.submit "筛选", class: "admin-button-primary" %>
+        <%= link_to "重置", admin_external_publish_tasks_path, class: "admin-button-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @external_publish_tasks.any? %>
+    <div class="admin-table-wrapper" style="overflow-x: auto;">
+      <table class="admin-table" style="table-layout: fixed; min-width: 900px;">
+        <colgroup>
+          <col style="width: 120px;">
+          <col style="width: 80px;">
+          <col style="width: 80px;">
+          <col style="width: 90px;">
+          <col style="width: auto;">
+          <col style="width: 90px;">
+          <col style="width: 70px;">
+          <col style="width: 110px;">
+          <col style="width: 160px;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>主题</th>
+            <th>平台</th>
+            <th>媒体形态</th>
+            <th>账号</th>
+            <th>内容</th>
+            <th>状态</th>
+            <th>失败次数</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @external_publish_tasks.each do |task| %>
+            <tr>
+              <td>
+                <span class="admin-label-muted" style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= task.theme %>"><%= task.theme %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.platform %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.media_type %></span>
+              </td>
+              <td>
+                <% if task.account %>
+                  <%= link_to task.account.account_name.presence || task.account_id, admin_account_path(task.account), class: "admin-link-quiet" %>
+                <% else %>
+                  <span class="admin-label-muted">-</span>
+                <% end %>
+              </td>
+              <td style="white-space: normal; word-break: break-all;">
+                <%= link_to task.title.presence || truncate(task.text.to_s, length: 40), admin_external_publish_task_path(task), class: "admin-link-quiet", style: "word-break: break-all;" %>
+              </td>
+              <td>
+                <% case task.status %>
+                <% when "pending" %>
+                  <span class="admin-pill-status admin-pill-status-pending"><span class="admin-pill-status-dot"></span>待分配</span>
+                <% when "waiting_publish", "executing" %>
+                  <span class="admin-pill-status admin-pill-status-pending"><span class="admin-pill-status-dot"></span>队列中</span>
+                <% when "success" %>
+                  <span class="admin-pill-status admin-pill-status-success"><span class="admin-pill-status-dot"></span>成功</span>
+                <% when "failed" %>
+                  <span class="admin-pill-status admin-pill-status-failed"><span class="admin-pill-status-dot"></span>失败</span>
+                <% when "claimed" %>
+                  <span class="admin-pill-status admin-pill-status-claimed"><span class="admin-pill-status-dot"></span>人工认领</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.failure_count.to_i %></span>
+              </td>
+              <td>
+                <span class="admin-label-muted"><%= task.created_at&.strftime("%m-%d %H:%M") %></span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 8px;">
+                  <%= link_to "详情", admin_external_publish_task_path(task), class: "admin-link-quiet", style: "color: var(--accent);" %>
+                  <% if task.waiting_publish? %>
+                    <%= link_to "立即执行", execute_admin_external_publish_task_path(task), data: { turbo_method: :post, turbo_confirm: "确定立即执行该任务吗？" }, class: "admin-link-quiet", style: "color: var(--success);" %>
+                  <% end %>
+                  <% if task.pending? || task.waiting_publish? %>
+                    <%= link_to "人工认领", claim_admin_external_publish_task_path(task), data: { turbo_method: :post, turbo_confirm: "确定人工认领该任务吗？认领后系统不再发布" }, class: "admin-link-quiet", style: "color: #f59e0b;" %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-pagination">
+      <%= paginate @external_publish_tasks %>
+    </div>
+  <% else %>
+    <div class="admin-empty-state">暂无任务数据。</div>
+  <% end %>
+</div>

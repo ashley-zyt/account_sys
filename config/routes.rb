@@ -161,6 +161,12 @@ Rails.application.routes.draw do
         post :execute
       end
     end
+    resources :external_publish_tasks, only: [:index, :show] do
+      member do
+        post :execute
+        post :claim
+      end
+    end
     resources :warmup_tasks, only: [:index, :show, :new, :create, :destroy] do
       collection do
         get :stats

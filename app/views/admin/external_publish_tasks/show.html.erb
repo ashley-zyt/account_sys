@@ -1,0 +1,117 @@
+<% content_for :page_title do %>
+  外部资源任务详情
+<% end %>
+<% content_for :page_subtitle do %>
+  任务 <%= @external_publish_task.id %> · <%= @external_publish_task.platform %>
+<% end %>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">基本信息</div>
+      <div class="admin-card-subtitle">任务配置与状态</div>
+    </div>
+    <div class="admin-card-header-right">
+      <%= link_to "返回列表", admin_external_publish_tasks_path, class: "admin-button-secondary" %>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px 40px; padding-bottom: 16px;">
+    <div class="info-item">
+      <span class="info-label">主题</span>
+      <span class="info-value"><%= @external_publish_task.theme.presence || "-" %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">平台</span>
+      <span class="info-value"><%= @external_publish_task.platform %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">媒体形态</span>
+      <span class="info-value"><%= @external_publish_task.media_type %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">状态</span>
+      <span class="info-value">
+        <% case @external_publish_task.status %>
+        <% when "pending" %>
+          <span class="admin-pill-status admin-pill-status-pending"><span class="admin-pill-status-dot"></span>待分配</span>
+        <% when "waiting_publish", "executing" %>
+          <span class="admin-pill-status admin-pill-status-pending"><span class="admin-pill-status-dot"></span>队列中</span>
+        <% when "success" %>
+          <span class="admin-pill-status admin-pill-status-success"><span class="admin-pill-status-dot"></span>成功</span>
+        <% when "failed" %>
+          <span class="admin-pill-status admin-pill-status-failed"><span class="admin-pill-status-dot"></span>失败</span>
+        <% when "claimed" %>
+          <span class="admin-pill-status admin-pill-status-claimed"><span class="admin-pill-status-dot"></span>人工认领</span>
+        <% end %>
+      </span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">账号</span>
+      <span class="info-value">
+        <% if @external_publish_task.account %>
+          <%= link_to @external_publish_task.account.account_name.presence || @external_publish_task.account_id, admin_account_path(@external_publish_task.account), class: "admin-link-quiet" %>
+        <% else %>
+          -
+        <% end %>
+      </span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">浏览器</span>
+      <span class="info-value"><%= @external_publish_task.browser&.name.presence || "-" %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">任务UUID</span>
+      <span class="info-value" style="font-family: monospace; font-size: 12px;"><%= @external_publish_task.task_uuid %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">外部资源ID</span>
+      <span class="info-value"><%= @external_publish_task.external_resource_id || "-" %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">失败次数</span>
+      <span class="info-value"><%= @external_publish_task.failure_count.to_i %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">创建时间</span>
+      <span class="info-value"><%= @external_publish_task.created_at&.strftime("%Y-%m-%d %H:%M") %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">发布时间</span>
+      <span class="info-value"><%= @external_publish_task.actual_publish_time&.strftime("%Y-%m-%d %H:%M") || "-" %></span>
+    </div>
+  </div>
+
+  <div class="info-item" style="padding-bottom: 16px;">
+    <span class="info-label">标题</span>
+    <span class="info-value" style="font-size: 13px; color: #cbd5e1;"><%= @external_publish_task.title.presence || "-" %></span>
+  </div>
+
+  <div class="info-item" style="padding-bottom: 16px;">
+    <span class="info-label">文字内容</span>
+    <span class="info-value" style="font-size: 13px; color: #cbd5e1; white-space: pre-wrap; word-break: break-all;"><%= @external_publish_task.text.presence || "-" %></span>
+  </div>
+
+  <div class="info-item" style="padding-bottom: 16px;">
+    <span class="info-label">媒体地址</span>
+    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+      <% (@external_publish_task.media_urls || []).each do |url| %>
+        <code style="font-size: 11px; color: #94a3b8; background: rgba(15,23,42,0.8); padding: 6px 10px; border-radius: 4px; word-break: break-all;"><%= url %></code>
+      <% end %>
+      <% if (@external_publish_task.media_urls || []).empty? %>
+        <span class="info-value">-</span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="info-item" style="padding-bottom: 16px;">
+    <span class="info-label">错误信息</span>
+    <span class="info-value" style="font-size: 13px; color: #f87171; white-space: pre-wrap; word-break: break-all;"><%= @external_publish_task.error_msg.presence || "-" %></span>
+  </div>
+</div>
+
+<style>
+  .info-item { display: flex; flex-direction: column; gap: 2px; }
+  .info-label { color: #64748b; font-size: 12px; }
+  .info-value { color: #e2e8f0; font-size: 14px; }
+</style>
