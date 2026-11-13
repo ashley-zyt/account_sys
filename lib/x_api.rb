@@ -175,6 +175,19 @@ module XApi
       perform(uri, req)
     end
 
+    # 图片简单上传（POST /2/media/upload，media_category=tweet_image，单次请求不分块）。
+    # 图片/GIF（<5MB）用简单上传；视频才走分块上传（INIT/APPEND/FINALIZE）。
+    # @return [Hash] body['data']['id'] 即 media_id
+    def media_upload_image(access_token:, data:, content_type: 'image/png', filename: 'image.png')
+      uri = URI("#{API_BASE}/2/media/upload")
+      req = Net::HTTP::Post.new(uri)
+      req['Authorization'] = "Bearer #{access_token}"
+      boundary = "----XImage#{SecureRandom.hex(8)}"
+      req['Content-Type'] = "multipart/form-data; boundary=#{boundary}"
+      req.body = image_multipart_body(boundary, data, content_type, filename)
+      perform(uri, req)
+    end
+
     # 发推（POST /2/tweets，支持 media_ids）。
     # @return [Hash] body['data']['id'] 即 tweet id
     def create_tweet(access_token:, text:, media_ids: [])
@@ -229,6 +242,22 @@ module XApi
         b << data
         b << "\r\n"
       end
+      b << "--#{boundary}--\r\n"
+      b
+    end
+
+    # 构造图片简单上传的 multipart 请求体（media_category=tweet_image + media 二进制）。
+    # X 图片上传需要 media_category 字段区分 tweet_image/tweet_video，且带真实 filename/content_type。
+    def image_multipart_body(boundary, data, content_type, filename)
+      b = String.new(encoding: Encoding::BINARY)
+      b << "--#{boundary}\r\n"
+      b << "Content-Disposition: form-data; name=\"media_category\"\r\n\r\n"
+      b << "tweet_image\r\n"
+      b << "--#{boundary}\r\n"
+      b << "Content-Disposition: form-data; name=\"media\"; filename=\"#{filename}\"\r\n"
+      b << "Content-Type: #{content_type}\r\n\r\n"
+      b << data
+      b << "\r\n"
       b << "--#{boundary}--\r\n"
       b
     end

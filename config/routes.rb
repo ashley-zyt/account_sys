@@ -341,6 +341,10 @@ Rails.application.routes.draw do
       post "postpeer_agent/publish",  to: "postpeer_agent#publish"
       # X（Twitter）API 认证回调：机器端截到授权码 code 后主动上报
       post "x_auth/auth_callback", to: "x_auth#auth_callback"
+      # X（Twitter）图文/纯文字 发布接口：供外部直接调用，与系统任务独立
+      post "x_posts", to: "x_posts#create"
+      # 外部资源接入接口：grok_bot 等外部来源推送图文/纯文字/视频资源（按主题存储 + 生成发布任务）
+      post "external_resources", to: "external_resources#create"
       # 搬运视频按ID范围查询
       get "move_video_queries", to: "move_video_queries#index"
     end

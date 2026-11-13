@@ -153,3 +153,17 @@ work_modes:
     publish: false
     manual_assign: false
     dashboard_track: true
+
+  # 外部资源模式：grok_bot 等外部来源推入的图文/纯文字/视频内容，
+  # 按主题存储、按主题分配账号后发布（支持多种媒体形态，由 media_type 决定渠道）。
+  - key: external_post
+    name: 外部资源
+    icon: "🌐"
+    sort: 85
+    enum_value: 10
+    task_model: ExternalPublishTask
+    type_name: external_post
+    trend_color: "#22d3ee"
+    sidebar_section: tasks
+    video_field: null
+    low_stock_track: true

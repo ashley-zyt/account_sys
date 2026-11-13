@@ -99,7 +99,9 @@ class PublishScheduler
   # @return [Symbol] :done 已执行/跳过（无需重试）；:busy 浏览器忙或机器满（需放回重试）
   def self.attempt_task(task)
     account = task.account
-    channel = account ? PublishChannelChain.channel_at(account, task.failure_count.to_i) : 'ag_center'
+    # 媒体形态：仅新任务模型（外部资源发布任务）有 media_type 字段，旧视频任务无此字段则回退 nil（不限制）
+    media_type = task.respond_to?(:media_type) ? task.media_type : nil
+    channel = account ? PublishChannelChain.channel_at(account, task.failure_count.to_i, media_type: media_type) : 'ag_center'
 
     # 所有可用渠道都已尝试过（failure_count 已超出可用链长度）→ 终态失败
     if channel.nil?

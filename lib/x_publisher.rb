@@ -10,13 +10,22 @@ module XPublisher
   # X 建议单分块 ≤5MB，留余量取 ~4.5MB
   CHUNK_SIZE = 4_500_000
 
-  # 提交发布（下载 + 上传 + FINALIZE），返回 { success:, message:, media_id: }
+  # 提交发布。
+  # - 视频：下载 + 分块上传 + FINALIZE，记录 XPost(processing)，后续由 XPostPoller 轮询发推并回写。
+  # - 图文/纯文字（任务有 media_type 且为 image/text）：同步完成「图片简单上传 + 发推」，
+  #   成功即更新任务 success 并写日志，不走 XPostPoller 异步轮询。
+  # 返回 { success:, message:, media_id:/tweet_id: }
   def self.publish(task)
     account = task.account
     return { success: false, message: '账号未认证 X API，无法发布' } unless account&.x_credential&.authorized?
 
     token = XAuthService.access_token_for(account)
     return { success: false, message: '无法获取 X access_token（请重新认证）' } if token.blank?
+
+    # 图文/纯文字：同步完成
+    if task.respond_to?(:media_type) && %w[image text].include?(task.media_type.to_s)
+      return publish_media_post(task, token)
+    end
 
     video_url = video_url_for(task)
     return { success: false, message: '任务无视频地址' } if video_url.blank?
@@ -26,6 +35,62 @@ module XPublisher
 
     XPost.create!(task: task, media_id: result[:media_id], status: :processing)
     { success: true, message: "已提交 X 上传（media_id=#{result[:media_id]}）", media_id: result[:media_id] }
+  end
+
+  # 图文/纯文字同步发布：逐张图片简单上传拿 media_id → create_tweet → 更新任务 success。
+  # 纯文字（media_urls 为空）直接发推。
+  def self.publish_media_post(task, token)
+    media_ids = []
+    (task.media_urls || []).each do |url|
+      uploaded = upload_image_from_url(token, url)
+      return { success: false, message: uploaded[:message], raw: uploaded[:raw] } unless uploaded[:success]
+      media_ids << uploaded[:media_id]
+    end
+
+    tweet_resp = XApi.create_tweet(access_token: token, text: task.text.to_s, media_ids: media_ids)
+    unless XApi.success?(tweet_resp)
+      return { success: false, message: "发推失败：#{XApi.extract_error(tweet_resp)}", raw: tweet_resp[:raw].to_s }
+    end
+
+    tweet_id = tweet_resp[:body].is_a?(Hash) ? tweet_resp[:body].dig('data', 'id').to_s : ''
+    TaskReportHelper.update_task_status(task, 'success')
+    TaskReportHelper.create_task_log(task, 'success', task.account_id, task.browser_id, nil, nil, 'x_api')
+    { success: true, message: "已发布推文（tweet_id=#{tweet_id}）", tweet_id: tweet_id }
+  end
+
+  # 下载单张图片并简单上传，返回 { success:, media_id: } 或 { success: false, message:, raw: }
+  def self.upload_image_from_url(token, url)
+    content_type, filename = image_content_type_from_url(url)
+    tmp = Tempfile.new(['x_image', File.extname(filename)])
+    begin
+      download(url, tmp.path)
+      data = File.binread(tmp.path)
+      resp = XApi.media_upload_image(access_token: token, data: data, content_type: content_type, filename: filename)
+      unless XApi.success?(resp)
+        return { success: false, message: "图片上传失败：#{XApi.extract_error(resp)}", raw: resp[:raw].to_s }
+      end
+      media_id = resp[:body].is_a?(Hash) ? resp[:body].dig('data', 'id').to_s : ''
+      if media_id.blank?
+        return { success: false, message: '图片上传未返回 media_id', raw: resp[:raw].to_s }
+      end
+      { success: true, media_id: media_id }
+    ensure
+      tmp.close!
+    end
+  end
+
+  # 从图片 URL 后缀推断 content_type 与 filename（无法识别时按 png 兜底）
+  def self.image_content_type_from_url(url)
+    path = URI.parse(url.to_s).path.to_s
+    ext = File.extname(path).downcase
+    map = {
+      '.png'  => ['image/png', 'image.png'],
+      '.jpg'  => ['image/jpeg', 'image.jpg'],
+      '.jpeg' => ['image/jpeg', 'image.jpeg'],
+      '.gif'  => ['image/gif', 'image.gif'],
+      '.webp' => ['image/webp', 'image.webp']
+    }
+    map[ext] || ['image/png', "image#{ext.presence || '.png'}"]
   end
 
   # 下载视频到临时文件 + INIT/APPEND/FINALIZE，返回 { success:, media_id: } 或 { success: false, message:, code: }。
