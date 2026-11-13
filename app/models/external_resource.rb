@@ -3,15 +3,21 @@
 # Table name: external_resources
 #
 #  id         :bigint           not null, primary key
-#  theme      :string(255)      not null
-#  source     :integer          default("grok_bot"), not null
 #  media_type :integer          default("image"), not null
-#  text       :text(65535)
-#  media_urls :text(65535)      # JSON 数组
-#  platforms  :text(65535)      # JSON 数组
+#  media_urls :text(65535)
+#  platforms  :text(65535)
+#  source     :integer          default("grok_bot"), not null
 #  status     :integer          default("pending"), not null
+#  text       :text(65535)
+#  theme      :string(255)      not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
+#
+# Indexes
+#
+#  index_external_resources_on_source  (source)
+#  index_external_resources_on_status  (status)
+#  index_external_resources_on_theme   (theme)
 #
 class ExternalResource < ApplicationRecord
   serialize :media_urls, JSON
