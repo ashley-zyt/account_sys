@@ -17,6 +17,37 @@ class Admin::OpsChecksController < Admin::BaseController
     @failure_items = fetch_browser_failure_accounts(@days, @threshold, @platform)
   end
 
+  # 一键采集：把当前筛选出的「未采集到发文数据」账号全部推给机器端补采（后台异步执行）
+  def collect_missing
+    check_date = parse_date(params[:date]) || DEFAULT_DATE
+    platform = params[:platform].presence
+    all_status = params[:all_status] == "1"
+
+    items = fetch_missing_stats_accounts(check_date, platform, all_status)
+    account_ids = items.map { |i| i[:account].id }
+
+    if account_ids.empty?
+      redirect_to admin_ops_checks_path(date: check_date, platform: platform, all_status: (all_status ? "1" : nil)),
+                  alert: "没有需要采集的账号"
+      return
+    end
+
+    Thread.new do
+      ActiveRecord::Base.connection_pool.with_connection do
+        account_ids.each do |account_id|
+          begin
+            Util.fetch_account_post_data(account_id: account_id)
+          rescue => e
+            Rails.logger.error "[OpsChecks] 采集账号 ##{account_id} 异常: #{e.message}"
+          end
+        end
+      end
+    end
+
+    redirect_to admin_ops_checks_path(date: check_date, platform: platform, all_status: (all_status ? "1" : nil)),
+                notice: "已开始采集 #{account_ids.size} 个账号，稍后刷新查看结果"
+  end
+
   private
 
   def parse_date(value)

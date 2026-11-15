@@ -100,6 +100,12 @@
           <span class="admin-tag admin-tag-accent">
             <%= @missing_items.size %> 个账号
           </span>
+          <% if @missing_items.any? %>
+            <%= link_to "一键采集",
+                collect_missing_admin_ops_checks_path(date: @check_date, platform: @platform, all_status: (params[:all_status] == "1" ? "1" : nil)),
+                class: "admin-button-primary",
+                data: { turbo_method: :post, turbo_confirm: "确定采集这 #{@missing_items.size} 个未采集账号吗？" } %>
+          <% end %>
         </div>
       </div>
 
