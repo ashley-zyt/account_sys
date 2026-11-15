@@ -17,13 +17,16 @@ class Admin::OpsChecksController < Admin::BaseController
     @failure_items = fetch_browser_failure_accounts(@days, @threshold, @platform)
   end
 
-  # 一键采集：把当前筛选出的「未采集到发文数据」账号全部推给机器端补采（后台异步执行）
+  # 一键采集：把当前筛选出的「未采集到发文数据」账号推给机器端补采（后台异步执行）。
+  # important_only=true 时只采集「重点」账号（当天有成功任务但没数据）。
   def collect_missing
     check_date = parse_date(params[:date]) || DEFAULT_DATE
     platform = params[:platform].presence
     all_status = params[:all_status] == "1"
+    important_only = params[:important_only] == "1"
 
     items = fetch_missing_stats_accounts(check_date, platform, all_status)
+    items = items.select { |i| i[:important] } if important_only
     account_ids = items.map { |i| i[:account].id }
 
     if account_ids.empty?
@@ -44,8 +47,9 @@ class Admin::OpsChecksController < Admin::BaseController
       end
     end
 
+    label = important_only ? "重点" : "全部"
     redirect_to admin_ops_checks_path(date: check_date, platform: platform, all_status: (all_status ? "1" : nil)),
-                notice: "已开始采集 #{account_ids.size} 个账号，稍后刷新查看结果"
+                notice: "已开始采集 #{account_ids.size} 个#{label}账号，稍后刷新查看结果"
   end
 
   private

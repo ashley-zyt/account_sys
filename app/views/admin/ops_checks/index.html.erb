@@ -101,10 +101,17 @@
             <%= @missing_items.size %> 个账号
           </span>
           <% if @missing_items.any? %>
-            <%= link_to "一键采集",
+            <%= link_to "一键采集全部",
                 collect_missing_admin_ops_checks_path(date: @check_date, platform: @platform, all_status: (params[:all_status] == "1" ? "1" : nil)),
                 class: "admin-button-primary",
                 data: { turbo_method: :post, turbo_confirm: "确定采集这 #{@missing_items.size} 个未采集账号吗？" } %>
+            <% important_count = @missing_items.count { |i| i[:important] } %>
+            <% if important_count > 0 %>
+              <%= link_to "只采重点",
+                  collect_missing_admin_ops_checks_path(date: @check_date, platform: @platform, all_status: (params[:all_status] == "1" ? "1" : nil), important_only: "1"),
+                  class: "admin-button-secondary",
+                  data: { turbo_method: :post, turbo_confirm: "确定只采集 #{important_count} 个「重点」账号吗？" } %>
+            <% end %>
           <% end %>
         </div>
       </div>
