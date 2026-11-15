@@ -266,7 +266,7 @@ class PostDatas
   # @param per_machine [Integer] 每台空闲机器每轮采集的账号数（默认 6，穿插轻量，避免影响后续整点任务）
   # @param cooldown_hours [Integer] 退避窗口（小时），同 fetch
   # @return [Hash] fetch 结果 + idle_ips（本轮判定为空闲的机器）
-  def self.fetch_idle_machines(per_machine: 30, cooldown_hours: 5)
+  def self.fetch_idle_machines(per_machine: 10, cooldown_hours: 5)
     # 独立日志归档到 postdatas_idle_fetch.log（与凌晨主采集 postdatas_fetch.log 分开）
     idle_logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'postdatas_idle_fetch.log'))
     idle_logger.formatter = Rails.logger.formatter
