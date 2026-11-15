@@ -115,6 +115,7 @@ class PublishScheduler
         updated_at: Time.current
       )
       TaskAssignment.release!(task.task_uuid, '所有可用发布渠道均已尝试失败')
+      task.external_resource&.sync_status_from_tasks! if task.respond_to?(:external_resource)
       return :done
     end
 

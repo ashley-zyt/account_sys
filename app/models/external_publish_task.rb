@@ -68,6 +68,7 @@ class ExternalPublishTask < ApplicationRecord
   validates :task_uuid, uniqueness: true
 
   before_validation :generate_task_uuid, on: :create
+  after_save :sync_external_resource_status, if: :saved_change_to_status?
 
   def media_urls
     super || []
@@ -85,5 +86,9 @@ class ExternalPublishTask < ApplicationRecord
 
   def generate_task_uuid
     self.task_uuid ||= SecureRandom.uuid
+  end
+
+  def sync_external_resource_status
+    external_resource&.sync_status_from_tasks!
   end
 end

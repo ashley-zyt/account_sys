@@ -269,6 +269,7 @@ module TaskReportHelper
       updated_at: Time.current
     )
     TaskAssignment.release!(task.task_uuid, error_msg.presence || release_reason)
+    task.external_resource&.sync_status_from_tasks! if task.respond_to?(:external_resource)
   end
 
   # 任务回 pending：清空账号/浏览器/开始时间，等待重新分配（换账号重试）

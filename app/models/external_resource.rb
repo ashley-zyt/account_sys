@@ -53,4 +53,15 @@ class ExternalResource < ApplicationRecord
   def platforms
     super || []
   end
+
+  # 根据关联发布任务回写资源状态：
+  #   - 仍有未终态任务（pending / waiting_publish / executing）→ 不处理
+  #   - 全部终态后：任一成功 → published；否则 → failed
+  def sync_status_from_tasks!
+    tasks = external_publish_tasks.reload
+    return if tasks.empty?
+    return if tasks.any? { |t| t.pending? || t.waiting_publish? || t.executing? }
+
+    tasks.any?(&:success?) ? published! : failed!
+  end
 end
