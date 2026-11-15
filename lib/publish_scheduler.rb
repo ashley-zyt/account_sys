@@ -499,9 +499,8 @@ class PublishScheduler
   end
 
   def self.build_request_data(task)
-    # 视频地址字段由注册表决定（oss_url / video_url）
-    mode = WorkMode.for_model(task.class)
-    video_url = (mode && mode.video_field.present?) ? task.public_send(mode.video_field) : nil
+    # 视频地址：video_field 优先（oss_url / video_url），回退 media_urls.first（外部资源等）
+    video_url = WorkMode.video_url_for(task)
     # 部分任务（如 MoveTask）没有 description 字段，发布不需要描述
     description = task.respond_to?(:description) ? task.description.to_s : ""
     title = task.title.to_s

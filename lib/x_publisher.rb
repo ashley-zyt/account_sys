@@ -160,10 +160,8 @@ module XPublisher
     end
   end
 
-  # 取任务视频地址（由 WorkMode 注册表决定 oss_url / video_url）
+  # 取任务视频地址（统一走 WorkMode：video_field 优先，回退 media_urls.first）
   def self.video_url_for(task)
-    mode = WorkMode.for_model(task.class)
-    return nil unless mode && mode.video_field.present?
-    task.public_send(mode.video_field).to_s.presence
+    WorkMode.video_url_for(task)
   end
 end

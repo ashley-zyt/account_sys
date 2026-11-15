@@ -133,6 +133,19 @@ class WorkMode
     end
     alias for_model find_by_model
 
+    # 取任务视频地址（统一入口）：
+    # 优先注册表 video_field（旧任务模型的标量字段，如 oss_url / video_url）；
+    # video_field 为空时回退到任务 media_urls.first（外部资源等媒体地址存数组的任务模型）。
+    def video_url_for(task)
+      return nil unless task
+      mode = for_model(task.class)
+      if mode && mode.video_field.present?
+        task.public_send(mode.video_field).to_s.presence
+      elsif task.respond_to?(:media_urls)
+        Array(task.media_urls).first.to_s.presence
+      end
+    end
+
     # 有资源队列的工作模式（不含 coze 等预留项）
     def resource_modes
       all.select(&:resource?)

@@ -20,6 +20,12 @@ module Api
     #     platforms   目标平台数组（可空，默认 ["twitter"]；传 account_id 时忽略，改用账号平台）
     #     account_id  账号 ID（可选；传入则存储后立即发布）
     class ExternalResourcesController < BaseController
+      include OssSignedUrl
+
+      # 本地文件上传到 OSS 的 bucket（按媒体形态区分：图片 → grok-images，视频 → grok-videos）
+      IMAGE_BUCKET = 'grok-images'.freeze
+      VIDEO_BUCKET = 'grok-videos'.freeze
+
       def create
         theme = params[:theme].to_s.strip
         media_type = params[:media_type].to_s.strip
@@ -44,6 +50,11 @@ module Api
         unless Theme.find_by(name: theme)
           return render_error(msg: "主题不存在：#{theme}")
         end
+
+        # 本地文件（multipart）上传 OSS 并合并进 media_urls（与 media_urls 入参并存）
+        uploaded = upload_media_files(params[:media_files], media_type)
+        return render_error(msg: "媒体文件上传失败，请稍后重试", code: 502, status: :bad_gateway) if uploaded == :failed
+        media_urls.concat(uploaded)
 
         # 媒体形态 × 资源数量校验
         case media_type
@@ -105,7 +116,85 @@ module Api
         render_error(msg: "服务器错误：#{e.message}", code: 500, status: :internal_server_error)
       end
 
+      # 查询资源及其发布任务的状态与结果（按 resource_id）
+      def show
+        resource = ExternalResource.find_by(id: params[:id])
+        return render_error(msg: "资源不存在：#{params[:id]}", code: 404, status: :not_found) unless resource
+
+        tasks = resource.external_publish_tasks.order(:id).map do |task|
+          {
+            id: task.id,
+            task_uuid: task.task_uuid,
+            platform: task.platform,
+            media_type: task.media_type,
+            status: task.status,
+            failure_count: task.failure_count,
+            error_msg: task.error_msg,
+            account_id: task.account_id,
+            browser_id: task.browser_id,
+            start_at: task.start_at,
+            actual_publish_time: task.actual_publish_time,
+            created_at: task.created_at,
+            logs: task.task_logs.order(:id).map do |log|
+              {
+                publish_channel: log.publish_channel,
+                status: log.status,
+                error_msg: log.error_msg,
+                run_at: log.run_at
+              }
+            end
+          }
+        end
+
+        render_success(data: {
+          id: resource.id,
+          theme: resource.theme,
+          source: resource.source,
+          media_type: resource.media_type,
+          text: resource.text,
+          media_urls: resource.media_urls,
+          platforms: resource.platforms,
+          status: resource.status,
+          created_at: resource.created_at,
+          tasks: tasks
+        })
+      end
+
       private
+
+      # 本地文件（multipart）逐个上传 OSS，返回签名 URL 数组；任一失败返回 :failed
+      def upload_media_files(files, media_type)
+        return [] if files.blank?
+        list = files.is_a?(Array) ? files : [files]
+        bucket = oss_bucket_for(media_type)
+        urls = list.map { |f| upload_one_file(f, bucket) }
+        return :failed if urls.any?(&:nil?)
+        urls
+      end
+
+      # 单个 UploadedFile 上传到 OSS，返回签名 URL（失败返回 nil）
+      def upload_one_file(file, bucket)
+        return nil unless file.respond_to?(:tempfile) && file.tempfile
+
+        require 'fileutils'
+        ext = File.extname(file.original_filename.to_s)
+        tmp_path = File.join(Dir.tmpdir, "external_resource_#{SecureRandom.uuid}#{ext}")
+
+        begin
+          FileUtils.cp(file.tempfile.path, tmp_path)
+          result = upload_local_file_to_oss(tmp_path, bucket)
+          result[:ok] ? result[:signed_url] : nil
+        ensure
+          File.delete(tmp_path) if File.exist?(tmp_path)
+        end
+      rescue => e
+        Rails.logger.error "[ExternalResources] 上传媒体文件失败: #{e.class} #{e.message}"
+        nil
+      end
+
+      def oss_bucket_for(media_type)
+        media_type.to_s == 'video' ? VIDEO_BUCKET : IMAGE_BUCKET
+      end
 
       def resolve_account
         return nil if params[:account_id].blank?

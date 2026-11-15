@@ -149,6 +149,76 @@ class StorageCleaner
     summary
   end
 
+  # ---------- 链路三：外部资源（图文/视频）清理 ----------
+  # ExternalResource（资源池）+ ExternalPublishTask（发布任务）共享 media_urls（数组），
+  # 清理时跨表「URL 去重 + 引用判断」：某 URL 只要不再被任何仍需文件的记录引用即可删。
+  # 状态规则对齐链路一：进行中/待发布保留，success 保留记录但文件可释放，failed/孤儿删记录。
+  def self.clean_external_resources(dry_run: true)
+    summary = { tasks_deleted: 0, files_deleted: 0, files_failed: 0, kept: 0 }
+    work_type = WorkMode.for_model(ExternalPublishTask).name
+
+    needed_urls     = []
+    releasable_urls = []
+    delete_task_ids = []
+    allowed_cache   = {}
+
+    # 1) 发布任务：判定保留/删除 + 收集媒体 URL
+    ExternalPublishTask.find_each do |t|
+      urls = Array(t.media_urls).map(&:to_s).reject(&:blank?)
+      case t.status
+      when 'waiting_publish', 'executing'
+        needed_urls.concat(urls)
+        summary[:kept] += 1
+      when 'success'
+        releasable_urls.concat(urls)
+        summary[:kept] += 1
+      when 'claimed'
+        needed_urls.concat(urls)
+        summary[:kept] += 1
+      when 'failed'
+        delete_task_ids << t.id
+        releasable_urls.concat(urls)
+      when 'pending'
+        allowed = (allowed_cache[[t.theme]] ||= Account.active_platforms_for(theme: t.theme, work_type: work_type))
+        if allowed.include?(t.platform)
+          needed_urls.concat(urls)
+          summary[:kept] += 1
+        else
+          delete_task_ids << t.id
+          releasable_urls.concat(urls)
+        end
+      end
+    end
+
+    # 2) 资源池补充：避免「资源已创建但任务被删」导致的 URL 漏判
+    ExternalResource.find_each do |r|
+      urls = Array(r.media_urls).map(&:to_s).reject(&:blank?)
+      next if urls.empty?
+      has_active_task = r.external_publish_tasks.where(status: %i[pending waiting_publish executing]).exists?
+      if has_active_task
+        needed_urls.concat(urls)
+      else
+        releasable_urls.concat(urls)
+      end
+    end
+
+    # 可删文件 = 可释放 && 不再被任何仍需文件的记录引用
+    files_to_delete = releasable_urls.uniq - needed_urls.uniq
+
+    if dry_run
+      summary[:tasks_deleted] += delete_task_ids.size
+      summary[:files_deleted] += files_to_delete.size
+    else
+      ExternalPublishTask.where(id: delete_task_ids).delete_all if delete_task_ids.any?
+      ok, fail = delete_oss_files(files_to_delete)
+      summary[:files_deleted] += ok
+      summary[:files_failed]  += fail
+    end
+
+    puts "[StorageCleaner] clean_external_resources 完成（#{dry_run ? '预览' : '执行'}）：#{summary.inspect}"
+    summary
+  end
+
   # ---------- OSS bucket 对象计数（清理前后对比用） ----------
   # 统计某个 bucket 下的对象总数（分页遍历，不遗漏）。
   # 用法： bundle exec rails runner "p StorageCleaner.count_bucket_objects('jianying-videos')"

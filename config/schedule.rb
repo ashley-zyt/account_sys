@@ -278,6 +278,7 @@ set :output, "log/storage_cleaner.log"
 every :sunday, at: '14:00' do
   runner 'StorageCleaner.clean_published_queues(dry_run: false)'
   runner 'StorageCleaner.clean_source_videos(dry_run: false)'
+  runner 'StorageCleaner.clean_external_resources(dry_run: false)'
 end
 
 # ==================== 外部采集系统 ====================
