@@ -177,19 +177,8 @@ module XPublisher
     oss_signed_url(url, media_type)
   end
 
-  # 按 OSS key 生成 GET 签名 URL（固定 account-agic bucket，V1 签名）
+  # 按 OSS key 生成 GET 签名 URL（复用 OssTransfer 的香港 account-agic 签名，1 小时有效）
   def self.oss_signed_url(key, media_type)
-    bucket = 'account-agic'
-    access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
-    access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
-    return key if access_key_id.blank? || access_key_secret.blank?
-
-    ts = Time.now.to_i + 3600
-    sign_string = "GET\n\n\n#{ts}\n/#{bucket}/#{key}"
-    signature = Base64.strict_encode64(OpenSSL::HMAC.digest('sha1', access_key_secret, sign_string)).strip
-    signature = URI.encode_www_form_component(signature)
-    encoded_key = URI.encode_www_form_component(key)
-
-    "https://#{bucket}.oss-cn-hangzhou.aliyuncs.com/#{encoded_key}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
+    OssTransfer.hk_sign_url(key, 3600)
   end
 end
