@@ -187,12 +187,17 @@ module Api
         begin
           FileUtils.cp(file.tempfile.path, tmp_path)
           result = upload_local_file_to_oss(tmp_path, bucket, prefix: EXTERNAL_PREFIX)
-          result[:ok] ? result[:key] : nil
+          if result[:ok]
+            result[:key]
+          else
+            Rails.logger.error "[ExternalResources] 上传 OSS 失败（bucket=#{bucket}, reason=#{result[:reason]}）: #{result[:error]}"
+            nil
+          end
         ensure
           File.delete(tmp_path) if File.exist?(tmp_path)
         end
       rescue => e
-        Rails.logger.error "[ExternalResources] 上传媒体文件失败: #{e.class} #{e.message}"
+        Rails.logger.error "[ExternalResources] 上传媒体文件异常: #{e.class} #{e.message}"
         nil
       end
 
