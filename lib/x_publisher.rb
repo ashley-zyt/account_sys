@@ -6,6 +6,8 @@
 module XPublisher
   require 'open-uri'
   require 'tempfile'
+  require 'openssl'
+  require 'base64'
 
   # X 建议单分块 ≤5MB，留余量取 ~4.5MB
   CHUNK_SIZE = 4_500_000
@@ -29,6 +31,7 @@ module XPublisher
 
     video_url = video_url_for(task)
     return { success: false, message: '任务无视频地址' } if video_url.blank?
+    video_url = resolve_media_url(video_url, task.media_type)
 
     result = upload_video(token, video_url)
     return result unless result[:success]
@@ -42,7 +45,7 @@ module XPublisher
   def self.publish_media_post(task, token)
     media_ids = []
     (task.media_urls || []).each do |url|
-      uploaded = upload_image_from_url(token, url)
+      uploaded = upload_image_from_url(token, resolve_media_url(url, task.media_type))
       return { success: false, message: uploaded[:message], raw: uploaded[:raw] } unless uploaded[:success]
       media_ids << uploaded[:media_id]
     end
@@ -163,5 +166,30 @@ module XPublisher
   # 取任务视频地址（统一走 WorkMode：video_field 优先，回退 media_urls.first）
   def self.video_url_for(task)
     WorkMode.video_url_for(task)
+  end
+
+  # 把 media_urls 里的媒体地址解析成可直接下载的 URL：
+  #   - 含 "://" 的公网 URL 原样返回；
+  #   - OSS key（上传后存储的 key，不含域名）动态生成带签名的可访问链接（1 小时有效，够本次下载）。
+  def self.resolve_media_url(url, media_type)
+    url = url.to_s
+    return url if url.include?('://')
+    oss_signed_url(url, media_type)
+  end
+
+  # 按 OSS key 生成 GET 签名 URL（固定 account-agic bucket，V1 签名）
+  def self.oss_signed_url(key, media_type)
+    bucket = 'account-agic'
+    access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
+    access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
+    return key if access_key_id.blank? || access_key_secret.blank?
+
+    ts = Time.now.to_i + 3600
+    sign_string = "GET\n\n\n#{ts}\n/#{bucket}/#{key}"
+    signature = Base64.strict_encode64(OpenSSL::HMAC.digest('sha1', access_key_secret, sign_string)).strip
+    signature = URI.encode_www_form_component(signature)
+    encoded_key = URI.encode_www_form_component(key)
+
+    "https://#{bucket}.oss-cn-hangzhou.aliyuncs.com/#{encoded_key}?OSSAccessKeyId=#{access_key_id}&Expires=#{ts}&Signature=#{signature}"
   end
 end

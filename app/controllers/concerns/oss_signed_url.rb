@@ -127,7 +127,7 @@ module OssSignedUrl
 	# @param expires_in [Integer] 签名 URL 有效期（秒），默认半年 15552000（180 天）
 	# @return [Hash] 成功 { ok: true, key:, signed_url:, bucket:, filename:, expires_at: }
 	#                失败 { ok: false, reason: :no_credentials|:invalid_path|:file_not_found|:upload_failed, error: '...' }
-	def upload_local_file_to_oss(path, bucket_name, expires_in: 15552000)
+	def upload_local_file_to_oss(path, bucket_name, expires_in: 15552000, prefix: nil)
 		return { ok: false, reason: :no_credentials, error: 'OSS 凭证未配置' } unless oss_credentials_configured?
 
 		path = path.to_s.strip
@@ -137,8 +137,8 @@ module OssSignedUrl
 		access_key_id = ENV['ALIYUN_ACCESS_KEY_ID']
 		access_key_secret = ENV['ALIYUN_ACCESS_KEY_SECRET']
 
-		# 用 UUID 作为 key（保留原扩展名），放在 bucket 根目录
-		key = "#{SecureRandom.uuid}#{File.extname(path)}"
+		# 用 UUID 作为 key（保留原扩展名），可选 prefix 放在 bucket 指定目录下
+		key = "#{prefix}#{SecureRandom.uuid}#{File.extname(path)}"
 
 		require 'aliyun/oss'
 		client = Aliyun::OSS::Client.new(

@@ -22,9 +22,10 @@ module Api
     class ExternalResourcesController < BaseController
       include OssSignedUrl
 
-      # 本地文件上传到 OSS 的 bucket（按媒体形态区分：图片 → grok-images，视频 → grok-videos）
-      IMAGE_BUCKET = 'grok-images'.freeze
-      VIDEO_BUCKET = 'grok-videos'.freeze
+      # 本地文件上传到 OSS 的 bucket + key 前缀（外部资源独立目录，不与其它资源混用）
+      EXTERNAL_BUCKET = 'account-agic'.freeze
+      EXTERNAL_PREFIX = 'external/'.freeze
+      MAX_IMAGES = 4   # X 单条推最多 4 张图
 
       def create
         theme = params[:theme].to_s.strip
@@ -60,6 +61,7 @@ module Api
         case media_type
         when 'image'
           return render_error(msg: 'image 形态需要至少 1 张图片（media_urls）') if media_urls.empty?
+          return render_error(msg: "image 形态最多 #{MAX_IMAGES} 张图片") if media_urls.size > MAX_IMAGES
         when 'video'
           return render_error(msg: 'video 形态需要且仅需 1 个视频（media_urls）') if media_urls.size != 1
         when 'text'
@@ -127,6 +129,7 @@ module Api
             task_uuid: task.task_uuid,
             platform: task.platform,
             media_type: task.media_type,
+            media_urls: (task.media_urls || []).map { |u| XPublisher.resolve_media_url(u, task.media_type) },
             status: task.status,
             failure_count: task.failure_count,
             error_msg: task.error_msg,
@@ -152,7 +155,7 @@ module Api
           source: resource.source,
           media_type: resource.media_type,
           text: resource.text,
-          media_urls: resource.media_urls,
+          media_urls: (resource.media_urls || []).map { |u| XPublisher.resolve_media_url(u, resource.media_type) },
           platforms: resource.platforms,
           status: resource.status,
           created_at: resource.created_at,
@@ -182,8 +185,8 @@ module Api
 
         begin
           FileUtils.cp(file.tempfile.path, tmp_path)
-          result = upload_local_file_to_oss(tmp_path, bucket)
-          result[:ok] ? result[:signed_url] : nil
+          result = upload_local_file_to_oss(tmp_path, bucket, prefix: EXTERNAL_PREFIX)
+          result[:ok] ? result[:key] : nil
         ensure
           File.delete(tmp_path) if File.exist?(tmp_path)
         end
@@ -192,8 +195,9 @@ module Api
         nil
       end
 
+      # 外部资源统一存到独立 bucket（media_type 预留，未来可在此按形态分子目录）
       def oss_bucket_for(media_type)
-        media_type.to_s == 'video' ? VIDEO_BUCKET : IMAGE_BUCKET
+        EXTERNAL_BUCKET
       end
 
       def resolve_account
