@@ -6,7 +6,7 @@
 #  media_type :integer          default("image"), not null
 #  media_urls :text(65535)
 #  platforms  :text(65535)
-#  source     :string           default("grok_bot"), not null
+#  source     :string(255)      default("grok_bot"), not null
 #  status     :integer          default("pending"), not null
 #  text       :text(65535)
 #  theme      :string(255)      not null
