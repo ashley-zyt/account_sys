@@ -32,6 +32,7 @@ module Api
         media_type = params[:media_type].to_s.strip
         text = params[:text].to_s
         media_urls = Array(params[:media_urls]).map(&:to_s).reject(&:blank?)
+        source = params[:source].to_s.strip.presence || 'grok_bot'
 
         account = resolve_account
         return if performed?
@@ -78,7 +79,7 @@ module Api
         ActiveRecord::Base.transaction do
           resource = ExternalResource.create!(
             theme: theme,
-            source: :grok_bot,
+            source: source,
             media_type: media_type,
             text: text,
             media_urls: media_urls,

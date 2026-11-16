@@ -6,7 +6,7 @@
 #  media_type :integer          default("image"), not null
 #  media_urls :text(65535)
 #  platforms  :text(65535)
-#  source     :integer          default("grok_bot"), not null
+#  source     :string           default("grok_bot"), not null
 #  status     :integer          default("pending"), not null
 #  text       :text(65535)
 #  theme      :string(255)      not null
@@ -25,10 +25,7 @@ class ExternalResource < ApplicationRecord
 
   has_many :external_publish_tasks, dependent: :destroy
 
-  # 来源：先只有 grok_bot，未来扩展 manual/其他渠道只需加枚举值
-  enum source: {
-    grok_bot: 0
-  }
+  # 来源：自由字符串（如 "grok_bot" / "manual" 等），由接口 source 入参传入，默认 "grok_bot"
 
   # 媒体形态：主媒体类型（text 字段独立，可与任意媒体形态组合）
   enum media_type: {
