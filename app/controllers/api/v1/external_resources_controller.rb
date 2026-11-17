@@ -74,6 +74,18 @@ module Api
           return render_error(msg: "平台非法：#{p}") unless valid_platforms.include?(p)
         end
 
+        # 立即发布前置校验：账号必须存在可用发布渠道，避免入库后才异步失败
+        if account
+          channel = PublishChannelChain.channel_at(account, 0, media_type: media_type)
+          if channel.nil?
+            if %w[image text].include?(media_type) && account.platform.to_s == 'twitter'
+              return render_error(msg: "账号 #{account.account_name} 未授权 X API，无法发布图文/纯文字")
+            else
+              return render_error(msg: "账号 #{account.account_name} 当前无可用发布渠道，无法立即发布")
+            end
+          end
+        end
+
         resource = nil
         tasks = []
         ActiveRecord::Base.transaction do
