@@ -69,6 +69,10 @@
       <span class="info-value"><%= @external_publish_task.external_resource_id || "-" %></span>
     </div>
     <div class="info-item">
+      <span class="info-label">来源</span>
+      <span class="info-value"><%= @external_publish_task.external_resource&.source.presence || "-" %></span>
+    </div>
+    <div class="info-item">
       <span class="info-label">失败次数</span>
       <span class="info-value"><%= @external_publish_task.failure_count.to_i %></span>
     </div>
