@@ -113,6 +113,17 @@ every :day, at: '19:45' do
   runner "PublishScheduler.run(platform: 'facebook')"
 end
 
+# 每日补充发布
+set :output, "log/taskscheduler_assignresources.log"
+every :day, at: '20:00' do
+  runner "TaskScheduler.assign_resources"
+end
+
+set :output, "log/publishscheduler_run.log"
+every :day, at: '20:05' do
+  runner "PublishScheduler.run"
+end
+
 # RedNote 关键词任务状态同步（每30分钟）
 set :output, "log/red_note_sync.log"
 every 30.minutes do
