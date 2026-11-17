@@ -17,8 +17,8 @@ class Admin::ExternalPublishTasksController < Admin::BaseController
 
   def destroy
     task = ExternalPublishTask.find(params[:id])
-    unless task.pending? || task.waiting_publish?
-      redirect_to admin_external_publish_tasks_path, alert: "仅「待分配/待发布」状态的任务可删除"
+    unless task.pending? || task.waiting_publish? || task.failed?
+      redirect_to admin_external_publish_tasks_path, alert: "仅「待分配/待发布/失败」状态的任务可删除"
       return
     end
 
