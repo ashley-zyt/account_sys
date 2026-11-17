@@ -49,14 +49,14 @@ module PostpeerApi
     # @param platform [String] 平台名
     # @param account_id [String] postpeer 集成 ID（accountId）
     # @param media_urls [Array<String>] 媒体 URL（视频/图片）
-    def create_post(content:, platform:, account_id:, media_urls: [])
+    def create_post(content:, platform:, account_id:, media_urls: [], media_type: 'video')
       body = {
         content: content,
         platforms: [{ platform: platform, accountId: account_id }],
         publishNow: true
       }
       if media_urls.present?
-        body[:mediaItems] = Array(media_urls).map { |url| { type: 'video', url: url } }
+        body[:mediaItems] = Array(media_urls).map { |url| { type: media_type, url: url } }
       end
       post('/v1/posts', body)
     end

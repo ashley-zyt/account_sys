@@ -177,6 +177,18 @@ module XPublisher
     oss_signed_url(url, media_type)
   end
 
+  # 取任务媒体 URL 数组（图片多张 / 视频 1 个），OSS key 已 resolve 成可访问 URL；
+  # 旧视频任务（无 media_type/media_urls）返回 [video_url]。
+  def self.media_urls_for(task)
+    if task.respond_to?(:media_type) && task.respond_to?(:media_urls)
+      Array(task.media_urls).map { |u| resolve_media_url(u, task.media_type) }.reject(&:blank?)
+    else
+      mode = WorkMode.for_model(task.class)
+      video_url = (mode && mode.video_field.present?) ? task.public_send(mode.video_field) : nil
+      video_url.present? ? [video_url.to_s] : []
+    end
+  end
+
   # 按 OSS key 生成 GET 签名 URL（复用 OssTransfer 的香港 account-agic 签名，1 小时有效）
   def self.oss_signed_url(key, media_type)
     OssTransfer.hk_sign_url(key, 3600)

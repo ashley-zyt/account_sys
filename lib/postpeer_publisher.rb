@@ -11,20 +11,19 @@ module PostpeerPublisher
     pa = task.account&.postpeer_account
     return { success: false, message: '账号未授权 postpeer，无法发布' } unless pa&.authorized?
 
-    # 视频地址字段由注册表决定（oss_url / video_url）
-    mode = WorkMode.for_model(task.class)
-    video_url = (mode && mode.video_field.present?) ? task.public_send(mode.video_field) : nil
-    media_urls = video_url.present? ? [video_url.to_s] : []
+    media_urls = XPublisher.media_urls_for(task)
+    media_type = task.respond_to?(:media_type) && task.media_type.to_s == 'image' ? 'image' : 'video'
 
-    caption = task.title.to_s
-    # 数字货币主题：postpeer 用 content（=title），统一追加免责声明
+    caption = task.respond_to?(:text) && task.text.present? ? task.text : task.title.to_s
+    # 数字货币主题：postpeer 用 content，统一追加免责声明
     caption = FinancialDisclaimer.append(caption) if FinancialDisclaimer.applies_to?(task.theme)
 
     resp = PostpeerApi.create_post(
       content: caption,
       platform: task.platform,
       account_id: pa.peer_account_id,
-      media_urls: media_urls
+      media_urls: media_urls,
+      media_type: media_type
     )
 
     unless PostpeerApi.success?(resp)

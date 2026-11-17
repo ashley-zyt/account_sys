@@ -11,13 +11,10 @@ module PostformePublisher
     pa = task.account&.postforme_account
     return { success: false, message: '账号未授权 postforme，无法发布' } unless pa&.authorized?
 
-    # 视频地址字段由注册表决定（oss_url / video_url）
-    mode = WorkMode.for_model(task.class)
-    video_url = (mode && mode.video_field.present?) ? task.public_send(mode.video_field) : nil
-    media_urls = video_url.present? ? [video_url.to_s] : []
+    media_urls = XPublisher.media_urls_for(task)
 
-    caption = task.title.to_s
-    # 数字货币主题：postforme 用 caption（=title，无 description），统一追加免责声明
+    caption = caption_for(task)
+    # 数字货币主题：postforme 用 caption，统一追加免责声明
     caption = FinancialDisclaimer.append(caption) if FinancialDisclaimer.applies_to?(task.theme)
 
     resp = PostformeApi.create_post(
@@ -42,5 +39,14 @@ module PostformePublisher
     )
 
     { success: true, message: "已提交 postforme（post_id=#{post_id}）", post_id: post_id }
+  end
+
+  # 正文：外部资源任务优先用完整 text（图文/纯文字），旧视频任务用 title
+  def self.caption_for(task)
+    if task.respond_to?(:text) && task.text.present?
+      task.text
+    else
+      task.title.to_s
+    end
   end
 end

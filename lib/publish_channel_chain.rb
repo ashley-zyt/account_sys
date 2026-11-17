@@ -23,6 +23,23 @@ module PublishChannelChain
       'video' => %w[ag_center x_api],
       'image' => %w[x_api],   # 浏览器暂不支持图文，先只走 X API
       'text'  => %w[x_api]    # 纯文字同理
+    },
+    # 非 twitter 平台：浏览器暂不支持图文/纯文字，走 postforme/postpeer 第三方 API
+    'facebook' => {
+      'image' => %w[postforme postpeer],
+      'text'  => %w[postforme postpeer]
+    },
+    'tiktok' => {
+      'image' => %w[postforme postpeer],
+      'text'  => %w[postforme postpeer]
+    },
+    'youtube' => {
+      'image' => %w[postforme postpeer],
+      'text'  => %w[postforme postpeer]
+    },
+    'instagram' => {
+      'image' => %w[postforme postpeer],
+      'text'  => %w[postforme postpeer]
     }
   }.freeze
 
