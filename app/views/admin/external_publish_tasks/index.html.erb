@@ -124,6 +124,7 @@
                   <% end %>
                   <% if task.pending? || task.waiting_publish? %>
                     <%= link_to "人工认领", claim_admin_external_publish_task_path(task), data: { turbo_method: :post, turbo_confirm: "确定人工认领该任务吗？认领后系统不再发布" }, class: "admin-link-quiet", style: "color: #f59e0b;" %>
+                    <%= link_to "删除", admin_external_publish_task_path(task), data: { turbo_method: :delete, turbo_confirm: "确定删除该任务吗？将同时删除其 OSS 媒体文件" }, class: "admin-link-quiet", style: "color: #ef4444;" %>
                   <% end %>
                 </div>
               </td>

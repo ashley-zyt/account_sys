@@ -165,7 +165,7 @@ Rails.application.routes.draw do
         post :execute
       end
     end
-    resources :external_publish_tasks, only: [:index, :show] do
+    resources :external_publish_tasks, only: [:index, :show, :destroy] do
       member do
         post :execute
         post :claim

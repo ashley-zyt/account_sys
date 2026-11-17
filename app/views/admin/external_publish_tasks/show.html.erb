@@ -110,6 +110,37 @@
   </div>
 </div>
 
+<div class="admin-card" style="margin-top: 16px;">
+  <div class="admin-card-header">
+    <div>
+      <div class="admin-card-title">资源预览</div>
+      <div class="admin-card-subtitle">媒体内容预览</div>
+    </div>
+  </div>
+  <div style="padding: 16px;">
+    <% case @external_publish_task.media_type %>
+    <% when "image" %>
+      <% if @media_preview_urls.any? %>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+          <% @media_preview_urls.each do |url| %>
+            <img src="<%= url %>" style="max-width: 220px; max-height: 220px; border-radius: 8px; object-fit: contain; background: #0f172a;" />
+          <% end %>
+        </div>
+      <% else %>
+        <div class="admin-empty-state">无图片</div>
+      <% end %>
+    <% when "video" %>
+      <% if @media_preview_urls.first.present? %>
+        <video src="<%= @media_preview_urls.first %>" controls preload="metadata" style="width: 100%; max-width: 480px; max-height: 360px; border-radius: 8px; background: #000;"></video>
+      <% else %>
+        <div class="admin-empty-state">无视频</div>
+      <% end %>
+    <% else %>
+      <div style="white-space: pre-wrap; color: #cbd5e1; font-size: 13px;"><%= @external_publish_task.text.presence || "（纯文字）" %></div>
+    <% end %>
+  </div>
+</div>
+
 <style>
   .info-item { display: flex; flex-direction: column; gap: 2px; }
   .info-label { color: #64748b; font-size: 12px; }
