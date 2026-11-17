@@ -31,7 +31,7 @@ module XPublisher
 
     video_url = video_url_for(task)
     return { success: false, message: '任务无视频地址' } if video_url.blank?
-    video_url = resolve_media_url(video_url, task.media_type)
+    video_url = resolve_media_url(video_url, task.respond_to?(:media_type) ? task.media_type : nil)
 
     result = upload_video(token, video_url)
     return result unless result[:success]
