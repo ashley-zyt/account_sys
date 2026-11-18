@@ -6,6 +6,7 @@
 #  actual_publish_time  :datetime
 #  error_msg            :text(65535)
 #  failure_count        :integer          default(0), not null
+#  immediate            :boolean          default(FALSE), not null
 #  media_type           :integer          default("image"), not null
 #  media_urls           :text(65535)
 #  platform             :integer
