@@ -49,10 +49,13 @@ module PostpeerApi
     # @param platform [String] 平台名
     # @param account_id [String] postpeer 集成 ID（accountId）
     # @param media_urls [Array<String>] 媒体 URL（视频/图片）
-    def create_post(content:, platform:, account_id:, media_urls: [], media_type: 'video')
+    def create_post(content:, platform:, account_id:, media_urls: [], media_type: 'video', platform_specific_data: nil)
+      platform_entry = { platform: platform, accountId: account_id }
+      platform_entry[:platformSpecificData] = platform_specific_data if platform_specific_data.present?
+
       body = {
         content: content,
-        platforms: [{ platform: platform, accountId: account_id }],
+        platforms: [platform_entry],
         publishNow: true
       }
       if media_urls.present?

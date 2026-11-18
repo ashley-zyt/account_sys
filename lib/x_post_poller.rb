@@ -57,8 +57,8 @@ module XPostPoller
 
   # 发布成功：回写任务 success + 写日志 + 记录 tweet_id
   def self.mark_success(xp, task, tweet_id)
-    snapshot_account_id = task.account_id
-    snapshot_browser_id = task.browser_id
+    snapshot_account_id = task.respond_to?(:account_id) ? task.account_id : nil
+    snapshot_browser_id = task.respond_to?(:browser_id) ? task.browser_id : nil
 
     xp.update!(status: :success, tweet_id: tweet_id)
     TaskReportHelper.update_task_status(task, 'success')
@@ -68,8 +68,8 @@ module XPostPoller
 
   # 发布失败：回写任务失败（资源队列任务会按失败分类处理）+ 写日志
   def self.mark_failed(xp, task, error_msg, raw_response = nil)
-    snapshot_account_id = task.account_id
-    snapshot_browser_id = task.browser_id
+    snapshot_account_id = task.respond_to?(:account_id) ? task.account_id : nil
+    snapshot_browser_id = task.respond_to?(:browser_id) ? task.browser_id : nil
 
     xp.update!(status: :failed, error_msg: error_msg)
     TaskReportHelper.update_task_status(task, 'error', error_msg)
@@ -86,7 +86,7 @@ module XPostPoller
   # 推文文案：title + 金融免责声明（与浏览器/第三方发布口径一致）
   def self.tweet_text(task)
     text = task.title.to_s
-    text = FinancialDisclaimer.append(text) if FinancialDisclaimer.applies_to?(task.theme)
+    text = FinancialDisclaimer.append(text) if task.respond_to?(:theme) && FinancialDisclaimer.applies_to?(task.theme)
     text
   end
 end

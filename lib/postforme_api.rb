@@ -55,12 +55,13 @@ module PostformeApi
     # @param media_urls [Array<String>] 媒体 URL 数组（图片/视频公开链接）
     # @param external_id [String, nil] 本系统任务标识（用于关联）
     # @param scheduled_at [String, nil] 定时发布时间（ISO8601）
-    def create_post(caption:, social_account_ids:, media_urls: [], external_id: nil, scheduled_at: nil)
+    def create_post(caption:, social_account_ids:, media_urls: [], external_id: nil, scheduled_at: nil, platform_configurations: nil)
       body = {
         caption: caption,
         social_accounts: Array(social_account_ids)
       }
       body[:media] = Array(media_urls).map { |url| { url: url } } if media_urls.present?
+      body[:platform_configurations] = platform_configurations if platform_configurations.present?
       body[:external_id] = external_id if external_id.present?
       body[:scheduled_at] = scheduled_at if scheduled_at.present?
       post('/v1/social-posts', body)

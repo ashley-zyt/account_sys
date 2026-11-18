@@ -14,16 +14,17 @@ module PostpeerPublisher
     media_urls = XPublisher.media_urls_for(task)
     media_type = task.respond_to?(:media_type) && task.media_type.to_s == 'image' ? 'image' : 'video'
 
-    caption = task.respond_to?(:text) && task.text.present? ? task.text : task.title.to_s
+    content = content_for(task)
     # 数字货币主题：postpeer 用 content，统一追加免责声明
-    caption = FinancialDisclaimer.append(caption) if FinancialDisclaimer.applies_to?(task.theme)
+    content = FinancialDisclaimer.append(content) if FinancialDisclaimer.applies_to?(task.theme)
 
     resp = PostpeerApi.create_post(
-      content: caption,
+      content: content,
       platform: task.platform,
       account_id: pa.peer_account_id,
       media_urls: media_urls,
-      media_type: media_type
+      media_type: media_type,
+      platform_specific_data: platform_specific_data_for(task)
     )
 
     unless PostpeerApi.success?(resp)
@@ -41,5 +42,24 @@ module PostpeerPublisher
     )
 
     { success: true, message: "已提交 postpeer（post_id=#{post_id}）", post_id: post_id }
+  end
+
+  # postpeer 的 content 是正文/描述：YouTube 描述走 content，标题走 platformSpecificData.title
+  def self.content_for(task)
+    if task.respond_to?(:description) && task.description.present?
+      task.description
+    elsif task.respond_to?(:text) && task.text.present?
+      task.text
+    else
+      task.title.to_s
+    end
+  end
+
+  # YouTube 平台特定配置：title（postpeer 无独立 description 字段）
+  def self.platform_specific_data_for(task)
+    return nil unless task.platform.to_s == 'youtube'
+    title = task.respond_to?(:title) ? task.title.to_s.presence : nil
+    return nil if title.blank?
+    { 'title' => title }
   end
 end

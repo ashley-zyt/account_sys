@@ -21,7 +21,8 @@ module PostformePublisher
       caption: caption,
       social_account_ids: [pa.social_account_id],
       media_urls: media_urls,
-      external_id: "#{task.class.name}:#{task.id}"
+      external_id: "#{task.class.name}:#{task.id}",
+      platform_configurations: platform_configurations_for(task)
     )
 
     unless PostformeApi.success?(resp)
@@ -48,5 +49,14 @@ module PostformePublisher
     else
       task.title.to_s
     end
+  end
+
+  # YouTube 平台特定配置：title + description（postforme 支持独立 description）
+  def self.platform_configurations_for(task)
+    return nil unless task.platform.to_s == 'youtube'
+    title = task.respond_to?(:title) ? task.title.to_s.presence : nil
+    description = task.respond_to?(:description) ? task.description.to_s.presence : nil
+    return nil if title.blank? && description.blank?
+    { 'youtube' => { 'title' => title, 'description' => description }.compact }
   end
 end

@@ -356,6 +356,8 @@ Rails.application.routes.draw do
       # 外部资源接入接口：grok_bot 等外部来源推送图文/纯文字/视频资源（按主题存储 + 生成发布任务）
       post "external_resources", to: "external_resources#create"
       get  "external_resources/:id", to: "external_resources#show"
+      # 外部直发接口：按本系统 account_id 直接发布（x_api/postforme/postpeer，不限文字/图文/视频）
+      post "publish", to: "direct_publish#create"
       # 搬运视频按ID范围查询
       get "move_video_queries", to: "move_video_queries#index"
     end
