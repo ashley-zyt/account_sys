@@ -105,6 +105,13 @@ class BrowserTaskResultHandler
     task = task_model.find_by(id: id)
     return { type: 'success', message: '任务不存在，忽略' } unless task
 
+    # 状态守卫：任务已被释放/重置（非 executing）时，迟到的回调不再回写，
+    # 避免把已释放（account_id 清空）的任务改回 success 触发 account_id 必填校验。
+    unless task.executing?
+      Rails.logger.info "[BrowserTaskResult] 任务 #{model_name}##{id} 当前状态=#{task.status}（非执行中），忽略迟到回调"
+      return { type: 'success', message: '任务非执行中，忽略迟到回调' }
+    end
+
     snapshot_account_id = task.account_id
     snapshot_browser_id = task.browser_id
 
