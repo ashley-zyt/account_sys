@@ -110,7 +110,8 @@ module Api
               status: account ? :waiting_publish : :pending,
               account_id: account&.id,
               browser_id: account&.browser_id,
-              external_resource_id: resource.id
+              external_resource_id: resource.id,
+              immediate: account.present?
             )
           end
 

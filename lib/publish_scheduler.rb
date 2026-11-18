@@ -95,6 +95,11 @@ class PublishScheduler
     workers.each(&:join)
   end
 
+  # 是否跳过「同账号每日只发一条」限制：外部资源「立即发布」（人工触发）不受限制
+  def self.skip_daily_check?(task)
+    task.respond_to?(:immediate) && task.immediate
+  end
+
   # 尝试执行单个待发布任务（非阻塞）。
   # @return [Symbol] :done 已执行/跳过（无需重试）；:busy 浏览器忙或机器满（需放回重试）
   def self.attempt_task(task)
@@ -132,7 +137,8 @@ class PublishScheduler
 
     # 防同账号多次发布：该账号今天已有成功发布记录，这条多余的 waiting_publish 任务
     # 重置回 pending（释放资源），不再发布
-    if task.account_id.present? &&
+    if !skip_daily_check?(task) &&
+       task.account_id.present? &&
        task.class.exists?(account_id: task.account_id, status: :success, actual_publish_time: today_range)
       Rails.logger.info "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 对应账号 ##{task.account_id} 今天已发布成功，重置为 pending 跳过"
       # 归属即将从任务上清空，先标进 TaskAssignment 留档（只标记、不删）
@@ -184,7 +190,8 @@ class PublishScheduler
     today_range = Date.today.beginning_of_day..Date.today.end_of_day
 
     # 防同账号多次发布：该账号今天已有成功发布记录，释放这条多余的 waiting_publish 任务
-    if task.account_id.present? &&
+    if !skip_daily_check?(task) &&
+       task.account_id.present? &&
        task.class.exists?(account_id: task.account_id, status: :success, actual_publish_time: today_range)
       Rails.logger.info "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 对应账号 ##{task.account_id} 今天已发布成功，重置为 pending 跳过"
       TaskAssignment.release!(task.task_uuid, '账号今日已发布成功，释放待重新分配')
@@ -220,7 +227,8 @@ class PublishScheduler
     today_range = Date.today.beginning_of_day..Date.today.end_of_day
 
     # 防同账号多次发布：该账号今天已有成功发布记录，释放这条多余的 waiting_publish 任务
-    if task.account_id.present? &&
+    if !skip_daily_check?(task) &&
+       task.account_id.present? &&
        task.class.exists?(account_id: task.account_id, status: :success, actual_publish_time: today_range)
       Rails.logger.info "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 对应账号 ##{task.account_id} 今天已发布成功，重置为 pending 跳过"
       TaskAssignment.release!(task.task_uuid, '账号今日已发布成功，释放待重新分配')
@@ -256,7 +264,8 @@ class PublishScheduler
     today_range = Date.today.beginning_of_day..Date.today.end_of_day
 
     # 防同账号多次发布：该账号今天已有成功发布记录，释放这条多余的 waiting_publish 任务
-    if task.account_id.present? &&
+    if !skip_daily_check?(task) &&
+       task.account_id.present? &&
        task.class.exists?(account_id: task.account_id, status: :success, actual_publish_time: today_range)
       Rails.logger.info "[PublishScheduler] 任务 #{task_type_name(task)}##{task.id} 对应账号 ##{task.account_id} 今天已发布成功，重置为 pending 跳过"
       TaskAssignment.release!(task.task_uuid, '账号今日已发布成功，释放待重新分配')

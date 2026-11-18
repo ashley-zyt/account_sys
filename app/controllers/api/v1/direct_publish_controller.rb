@@ -41,7 +41,14 @@ module Api
         end
 
         channel = resolve_channel(account)
-        return render_error(msg: "账号 #{account.account_name} 无可用发布渠道（x_api/postforme/postpeer 均未授权）") unless channel
+        unless channel
+          msg = if account.platform.to_s == 'twitter'
+                  "账号 #{account.account_name} 未授权 X API，无法发布"
+                else
+                  "账号 #{account.account_name} 未授权 postforme/postpeer，无法发布"
+                end
+          return render_error(msg: msg)
+        end
 
         resolved_urls = media_urls.map { |u| XPublisher.resolve_media_url(u, media_type) }
         result = publish(account, channel, media_type, text, title, description, resolved_urls)
