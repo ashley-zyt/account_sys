@@ -26,10 +26,6 @@ module Api
           return render_error(msg: "media_type 非法：#{media_type}（仅支持 video/image/text）")
         end
 
-        uploaded = upload_media_files(params[:media_files])
-        return render_error(msg: "媒体文件上传失败，请稍后重试", code: 502, status: :bad_gateway) if uploaded == :failed
-        media_urls.concat(uploaded)
-
         case media_type
         when 'image'
           return render_error(msg: 'image 形态需要至少 1 张图片') if media_urls.empty?
@@ -52,6 +48,9 @@ module Api
 
         resolved_urls = media_urls.map { |u| XPublisher.resolve_media_url(u, media_type) }
         result = publish(account, channel, media_type, text, title, description, resolved_urls)
+
+        # 发布后清理 OSS 文件（x_api 同步下载完立即删；postforme/postpeer 第三方异步下载，延迟删）
+        cleanup_oss_files(media_urls, channel)
 
         log_status = result[:log_status] || (result[:success] ? :success : :failed)
 
@@ -84,7 +83,57 @@ module Api
         render_error(msg: "服务器错误：#{e.message}", code: 500, status: :internal_server_error)
       end
 
+      # 香港 OSS 直传签名：调用方先直传 account-agic/external/，再拿 key 调 create
+      def upload_signature
+        return render_error(msg: 'OSS 凭证未配置') unless oss_credentials_configured?
+
+        filename = params[:filename].to_s.strip
+        ext = filename.present? ? File.extname(filename) : ''
+        key = "#{EXTERNAL_PREFIX}#{SecureRandom.uuid}#{ext}"
+
+        sig = generate_post_object_signature(
+          EXTERNAL_BUCKET, key, ENV['ALIYUN_ACCESS_KEY_ID'], ENV['ALIYUN_ACCESS_KEY_SECRET'],
+          policy_expires_in: 3600, max_size: 500 * 1024 * 1024
+        )
+
+        render_success(data: {
+          bucket: EXTERNAL_BUCKET,
+          key: key,
+          endpoint: "https://#{EXTERNAL_BUCKET}.oss-cn-hongkong.aliyuncs.com",
+          accessKeyId: ENV['ALIYUN_ACCESS_KEY_ID'],
+          policy: sig[:policy],
+          signature: sig[:signature],
+          expire: sig[:expire]
+        })
+      end
+
       private
+
+      # 发布后清理 OSS 文件：media_urls 里的 OSS key（不含 :// 的）在发布后删除。
+      # x_api 是同步下载（upload_video / upload_image_from_url 已把对象读进内存上传 X），可立即删；
+      # postforme/postpeer 是传 URL 给第三方异步下载，延迟 1 小时再删，避免第三方还没下载完。
+      def cleanup_oss_files(media_urls, channel)
+        keys = media_urls.reject { |u| u.include?('://') }.map { |u| u.sub(%r{^/}, '') }
+        return if keys.empty?
+
+        if channel == 'x_api'
+          delete_oss_keys(keys)
+        else
+          Thread.new do
+            sleep 3600
+            ActiveRecord::Base.connection_pool.with_connection { delete_oss_keys(keys) }
+          end
+        end
+      end
+
+      def delete_oss_keys(keys)
+        bucket = OssTransfer.hk_client.get_bucket(EXTERNAL_BUCKET)
+        keys.each do |key|
+          bucket.delete_object(key)
+        rescue => e
+          Rails.logger.error "[DirectPublish] 删除 OSS 文件失败 #{key}: #{e.message}"
+        end
+      end
 
       def resolve_account
         account_id = params[:account_id].to_i
@@ -192,25 +241,6 @@ module Api
 
         post_id = resp[:body].is_a?(Hash) ? resp[:body]['postId'].to_s : ''
         { success: true, message: '发布成功', external_id: post_id }
-      end
-
-      def upload_media_files(files)
-        return [] if files.blank?
-        list = files.is_a?(Array) ? files : [files]
-        urls = list.map { |f| upload_one_file(f) }
-        return :failed if urls.any?(&:nil?)
-        urls
-      end
-
-      def upload_one_file(file)
-        return nil unless file.respond_to?(:tempfile) && file.tempfile
-        ext = File.extname(file.original_filename.to_s)
-        key = "#{EXTERNAL_PREFIX}#{SecureRandom.uuid}#{ext}"
-        OssTransfer.hk_client.get_bucket(EXTERNAL_BUCKET).put_object(key, file: file.tempfile.path)
-        key
-      rescue => e
-        Rails.logger.error "[DirectPublish] 上传 OSS 失败: #{e.class} #{e.message}"
-        nil
       end
     end
   end

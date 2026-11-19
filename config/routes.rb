@@ -358,6 +358,7 @@ Rails.application.routes.draw do
       get  "external_resources/:id", to: "external_resources#show"
       # 外部直发接口：按本系统 account_id 直接发布（x_api/postforme/postpeer，不限文字/图文/视频）
       post "publish", to: "direct_publish#create"
+      post "publish/upload_signature", to: "direct_publish#upload_signature"
       # 搬运视频按ID范围查询
       get "move_video_queries", to: "move_video_queries#index"
     end
