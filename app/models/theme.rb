@@ -29,8 +29,10 @@ class Theme < ApplicationRecord
   # 所有以 theme 名称字符串引用主题的表（主题改名时级联同步，避免历史数据断链）
   THEME_REFERENCE_MODELS = %w[
     Account MoveTask JianyingTask OperationTask GrokTask HeygenTask
-    HuashengTask NotebooklmTask MoveVideo GrokImageResource
+    HuashengTask NotebooklmTask HunjianTask MoveVideo GrokImageResource
     HuashengKeyword NotebooklmKeyword RedNoteKeyword
+    ExternalResource ExternalPublishTask CommentThemeConfig Influencer
+    HostingAccount HostingPublishTask
   ].freeze
 
   validates :name, presence: { message: '主题名称不能为空' }, uniqueness: { message: '该主题名称已存在' }
