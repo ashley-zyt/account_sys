@@ -3,7 +3,7 @@ class Admin::AccountsController < Admin::BaseController
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
-		q_params = params[:q].to_h
+		q_params = params[:q].present? ? params[:q].to_unsafe_h : {}
 		last_used_on = q_params.delete(:last_used_on)
 		@q = Account.ransack(q_params)
 		@accounts = apply_last_used_on(@q.result(distinct: true), last_used_on)
@@ -17,7 +17,7 @@ class Admin::AccountsController < Admin::BaseController
 	# 一键导出：按当前搜索条件导出全部账号（所有字段 + 页面上的最后使用时间/最后运行错误）
 	def export
 		require 'csv'
-		q_params = params[:q].to_h
+		q_params = params[:q].present? ? params[:q].to_unsafe_h : {}
 		last_used_on = q_params.delete(:last_used_on)
 		@q = Account.ransack(q_params)
 		accounts = apply_last_used_on(@q.result(distinct: true), last_used_on)
