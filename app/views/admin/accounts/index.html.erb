@@ -62,6 +62,10 @@
         <%= f.searchable_select :last_publish_status_eq, [['成功', 0], ['失败', 1]], { include_blank: "全部" }, class: "admin-input admin-filter-input" %>
       </div>
       <div class="admin-filter-group">
+        <label class="admin-filter-label">最后使用时间</label>
+        <%= date_field_tag 'q[last_used_on]', params.dig(:q, :last_used_on), class: "admin-input admin-filter-input", placeholder: "选择日期（年月日）" %>
+      </div>
+      <div class="admin-filter-group">
         <label class="admin-filter-label">工作模式</label>
         <%= f.searchable_select :work_type_eq, Account.work_types.map { |k, v| [k, v] }, { include_blank: "所有模式" }, class: "admin-input admin-filter-input" %>
       </div>

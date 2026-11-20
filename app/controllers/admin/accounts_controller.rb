@@ -3,8 +3,10 @@ class Admin::AccountsController < Admin::BaseController
 	before_action :load_themes, only: [:index, :new, :create, :edit, :update]
 
 	def index
-		@q = Account.ransack(params[:q])
-		@accounts = @q.result(distinct: true)
+		q_params = params[:q].to_h
+		last_used_on = q_params.delete(:last_used_on)
+		@q = Account.ransack(q_params)
+		@accounts = apply_last_used_on(@q.result(distinct: true), last_used_on)
 		             .left_joins(:browser)
 		             .includes(:browser)
 		             .order(created_at: :desc)
@@ -15,8 +17,10 @@ class Admin::AccountsController < Admin::BaseController
 	# 一键导出：按当前搜索条件导出全部账号（所有字段 + 页面上的最后使用时间/最后运行错误）
 	def export
 		require 'csv'
-		@q = Account.ransack(params[:q])
-		accounts = @q.result(distinct: true)
+		q_params = params[:q].to_h
+		last_used_on = q_params.delete(:last_used_on)
+		@q = Account.ransack(q_params)
+		accounts = apply_last_used_on(@q.result(distinct: true), last_used_on)
 		             .left_joins(:browser)
 		             .includes(:browser)
 		             .order(created_at: :desc)
@@ -300,6 +304,19 @@ class Admin::AccountsController < Admin::BaseController
 	end
 
 	private
+
+	# 最后使用时间筛选：按「最后一条任务日志 run_at 所在日期」过滤账号（与页面「最后使用时间」列同语义）
+	def apply_last_used_on(scope, date_str)
+		return scope if date_str.blank?
+		date = Date.parse(date_str) rescue nil
+		return scope unless date
+
+		account_ids = TaskLog.where.not(account_id: nil)
+		                     .group(:account_id)
+		                     .having("MAX(run_at) BETWEEN ? AND ?", date.beginning_of_day, date.end_of_day)
+		                     .pluck(:account_id)
+		scope.where(id: account_ids)
+	end
 
 	def valid_profile_name(value)
 		name = value.presence || "domestic01"
