@@ -108,6 +108,19 @@ filtered.group_by { |l| accounts[l.account_id]&.browser&.machine_host || '(未�
         .sort_by { |_, v| -v.size }
         .each { |k, v| puts "  #{k}: #{v.size}" }
 
+# 10b. 代理 IP 分布
+banner('10b. 代理 IP 分布（proxy_host）')
+filtered.group_by { |l| accounts[l.account_id]&.browser&.proxy_host.presence || '(无代理)' }
+        .sort_by { |_, v| -v.size }
+        .each { |k, v| puts "  #{k}: #{v.size}" }
+
+banner('10c. 代理 IP+端口分布（proxy_host:proxy_port）')
+filtered.group_by do |l|
+  b = accounts[l.account_id]&.browser
+  b && b.proxy_host.present? ? "#{b.proxy_host}:#{b.proxy_port}" : '(无代理)'
+end.sort_by { |_, v| -v.size }
+   .each { |k, v| puts "  #{k}: #{v.size}" }
+
 # 11. 运营人员
 banner('11. 运营人员分布')
 filtered.group_by { |l| accounts[l.account_id]&.operator.presence || '(空)' }
