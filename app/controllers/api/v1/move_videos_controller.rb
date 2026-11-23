@@ -31,6 +31,13 @@ module Api
 			def import
 				# 调用方可能误带 Markdown 反引号包裹链接，去掉反引号避免主题匹配/去重失效
 				source_url = params[:source_url].to_s.delete('`').strip
+				html = params[:html].to_s.strip
+
+				# 批量模式：传入 html（source.txt 的视频列表源代码），解析视频链接+标题批量入库
+				if html.present?
+					return import_batch(source_url, html, params[:platforms].to_s.strip)
+				end
+
 				video_url  = params[:video_url].to_s.delete('`').strip
 				platforms  = params[:platforms].to_s.strip
 				source_title = params[:source_title].to_s.strip
@@ -224,6 +231,46 @@ module Api
 		end
 
 		private
+
+		# 批量入库：解析 source.txt（视频列表 HTML），提取 /video/ID + alt 标题，批量入库
+		def import_batch(source_url, html, platforms)
+			return render_error('source_url 不能为空') if source_url.blank?
+
+			theme = ThemeConfig.match_theme(source_url)
+			return render_error('来源账号未配置主题，拒绝入库') if theme.blank?
+
+			# <a href="/video/ID" ...> ... <img ... alt="标题">，非贪婪跨行匹配
+			items = html.scan(/<a href="\/video\/(\d+)"[^>]*>.*?alt="([^"]*)"/m)
+			return render_error('未在 html 中解析到视频链接') if items.empty?
+
+			platforms_str = platforms.present? ? platforms : DEFAULT_PLATFORMS_STR
+			created = 0
+			skipped = 0
+
+			items.each do |video_id, title|
+				video_url = "https://www.douyin.com/video/#{video_id}"
+				begin
+					MoveVideo.create_from_import!(
+						source_video_url: video_url,
+						source_account_url: source_url,
+						theme: theme,
+						platforms: platforms_str,
+						source_title: CGI.unescapeHTML(title).presence
+					)
+					created += 1
+				rescue ActiveRecord::RecordNotUnique
+					skipped += 1
+				end
+			end
+
+			render_success(data: {
+				source_url: source_url,
+				theme: theme,
+				total: items.size,
+				created: created,
+				skipped: skipped
+			})
+		end
 
 		# 混剪成功：源视频置「混剪完成」，按平台建 hunjian_task；幂等（全部已完成则忽略重复回传）
 		def handle_merge_success(videos)
