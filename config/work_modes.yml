@@ -50,6 +50,20 @@ work_modes:
     video_field: oss_url
     low_stock_track: true
 
+  # 纯搬运：搬运资源储备的视频下载完成后，跳过剪映/混剪，直接用原视频发布
+  - key: pure_move
+    name: 纯搬运
+    icon: "📤"
+    short_name: "纯搬"
+    sort: 12
+    enum_value: 11
+    task_model: PureMoveTask
+    type_name: move
+    trend_color: "#a855f7"
+    sidebar_section: tasks
+    video_field: oss_url
+    low_stock_track: true
+
   - key: coze
     name: coze
     icon: "🤖"

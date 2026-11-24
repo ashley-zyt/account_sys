@@ -47,6 +47,12 @@ Rails.application.routes.draw do
         post :claim
       end
     end
+    resources :pure_move_tasks, only: [:index, :show] do
+      member do
+        post :execute
+        post :claim
+      end
+    end
     resources :move_videos, only: [:index, :show]
     resources :jianying_tasks, only: [:index, :show, :destroy] do
       collection do

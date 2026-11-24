@@ -32,8 +32,12 @@
 #
 class MoveVideo < ApplicationRecord
   has_many :move_tasks, dependent: :nullify
+  has_many :pure_move_tasks, dependent: :nullify
 
   DEFAULT_PLATFORMS = %w[youtube facebook instagram twitter tiktok].freeze
+
+  # 纯搬运主题前缀：theme 以该前缀开头的源视频，下载完成后跳过剪映/混剪，直接用原视频建 PureMoveTask
+  PURE_MOVE_PREFIX = "纯搬运-".freeze
 
   # 下载优先级文件：每晚 23:00 重建，存「搬运混剪」各主题库存可用天数排序，供下载顺序读取
   DOWNLOAD_ORDER_FILE = Rails.root.join('storage', 'download_theme_order.json')
@@ -247,14 +251,20 @@ class MoveVideo < ApplicationRecord
     nil
   end
 
-  # 每晚 23:00 重建下载优先级：统计「搬运混剪」各主题库存可用天数，
+  # 每晚 23:00 重建下载优先级：统计各「下载驱动模式」（搬运混剪 + 纯搬运）各主题库存可用天数，
   # 按无库存→低天数→高天数排序写文件（多平台取最缺的那个平台为准）。
   # @return [Array<String>] 排序后的主题名数组
   def self.rebuild_download_order!(date: Date.today)
-    work_type = WorkMode.for_model(HunjianTask).name  # '搬运混剪'
+    # 参与下载优先级统计的资源队列：都直接消费 move_videos 源视频
+    task_models = [HunjianTask, PureMoveTask]
 
-    account_counts = Account.active.where(work_type: work_type).group(:theme, :platform).count
-    pending_counts = HunjianTask.where(status: :pending).group(:theme, :platform).count
+    account_counts = {}
+    pending_counts = {}
+    task_models.each do |task_model|
+      work_type = WorkMode.for_model(task_model).name
+      account_counts.merge!(Account.active.where(work_type: work_type).group(:theme, :platform).count)
+      pending_counts.merge!(task_model.where(status: :pending).group(:theme, :platform).count)
+    end
 
     min_days = {}
     account_counts.each do |(theme, platform), active_accounts|
@@ -313,17 +323,32 @@ class MoveVideo < ApplicationRecord
     updated == 1 ? reload : false
   end
 
-  # 下载完成回调：downloading → downloaded，写 raw_oss_url，两个流程均进入「待」状态
+  # 下载完成回调：downloading → downloaded，写 raw_oss_url。
+  # - 普通主题：剪映/混剪两条流程均进入「待」状态；
+  # - 纯搬运主题（theme 以「纯搬运-」开头）：跳过剪映/混剪，直接用原视频建 PureMoveTask。
   def mark_downloaded!(raw_oss_url)
     raise StateError, "当前状态 #{status} 不允许标记下载完成" unless downloading?
-    update!(
-      status: :downloaded,
-      jianying_status: :pending,
-      hunjian_status: :pending,
-      raw_oss_url: raw_oss_url,
-      downloaded_at: Time.current,
-      error_msg: nil
-    )
+
+    if pure_move_theme?
+      update!(
+        status: :downloaded,
+        jianying_status: :completed,
+        hunjian_status: :completed,
+        raw_oss_url: raw_oss_url,
+        downloaded_at: Time.current,
+        error_msg: nil
+      )
+      create_pure_move_tasks!
+    else
+      update!(
+        status: :downloaded,
+        jianying_status: :pending,
+        hunjian_status: :pending,
+        raw_oss_url: raw_oss_url,
+        downloaded_at: Time.current,
+        error_msg: nil
+      )
+    end
   end
 
   # ---------- 剪映阶段领取（原子） ----------
@@ -429,6 +454,30 @@ class MoveVideo < ApplicationRecord
         t.group_id = group_id
         t.status = :pending
         t.oss_url = processed_oss_url
+      end
+    end
+  end
+
+  # 纯搬运主题判断：theme 以「纯搬运-」开头
+  def pure_move_theme?
+    theme.to_s.start_with?(PURE_MOVE_PREFIX)
+  end
+
+  # 纯搬运下载完成后，按该主题「纯搬运」模式下有正常账号的平台，各建一条 PureMoveTask（pending）
+  # (move_video_id, platform) 唯一索引兜底幂等；oss_url 直接用原始视频 raw_oss_url
+  def create_pure_move_tasks!
+    allowed = Account.active_platforms_for(theme: theme, work_type: WorkMode.for_model(PureMoveTask).name)
+
+    allowed.each do |platform_name|
+      platform_value = PureMoveTask.platforms[platform_name.to_s.strip.to_sym]
+      next unless platform_value
+
+      PureMoveTask.find_or_create_by!(move_video_id: id, platform: platform_value) do |t|
+        t.theme = theme
+        t.title = ThemeConfig.random_title(theme)
+        t.group_id = group_id
+        t.status = :pending
+        t.oss_url = raw_oss_url
       end
     end
   end
