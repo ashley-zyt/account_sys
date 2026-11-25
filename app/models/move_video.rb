@@ -36,9 +36,6 @@ class MoveVideo < ApplicationRecord
 
   DEFAULT_PLATFORMS = %w[youtube facebook instagram twitter tiktok].freeze
 
-  # 纯搬运主题前缀：theme 以该前缀开头的源视频，下载完成后跳过剪映/混剪，直接用原视频建 PureMoveTask
-  PURE_MOVE_PREFIX = "纯搬运-".freeze
-
   # 下载优先级文件：每晚 23:00 重建，存「搬运混剪」各主题库存可用天数排序，供下载顺序读取
   DOWNLOAD_ORDER_FILE = Rails.root.join('storage', 'download_theme_order.json')
   # 每次只保留「最缺资源」的前 N 个主题参与下载（之间平均轮询）
@@ -366,7 +363,7 @@ class MoveVideo < ApplicationRecord
 
   # 下载完成回调：downloading → downloaded，写 raw_oss_url。
   # - 普通主题：剪映/混剪两条流程均进入「待」状态；
-  # - 纯搬运主题（theme 以「纯搬运-」开头）：跳过剪映/混剪，直接用原视频建 PureMoveTask。
+  # - 纯搬运主题（该主题下有「工作模式=纯搬运」的正常账号）：跳过剪映/混剪，直接用原视频建 PureMoveTask。
   def mark_downloaded!(raw_oss_url)
     raise StateError, "当前状态 #{status} 不允许标记下载完成" unless downloading?
 
@@ -499,9 +496,19 @@ class MoveVideo < ApplicationRecord
     end
   end
 
-  # 纯搬运主题判断：theme 以「纯搬运-」开头
+  # 纯搬运主题集合：所有「工作模式=纯搬运」的正常账号对应的主题名。
+  # 纯搬运的判定以账号工作模式为准，而非主题名前缀。
+  def self.pure_move_themes
+    Account.active
+      .where(work_type: WorkMode.for_model(PureMoveTask).name)
+      .distinct.pluck(:theme)
+      .compact
+  end
+
+  # 是否属于纯搬运：该主题下存在「工作模式=纯搬运」的正常账号
   def pure_move_theme?
-    theme.to_s.start_with?(PURE_MOVE_PREFIX)
+    return false if theme.blank?
+    self.class.pure_move_themes.include?(theme)
   end
 
   # 纯搬运下载完成后，按该主题「纯搬运」模式下有正常账号的平台，各建一条 PureMoveTask（pending）
@@ -521,6 +528,33 @@ class MoveVideo < ApplicationRecord
         t.oss_url = raw_oss_url
       end
     end
+  end
+
+  # 补建纯搬运资源队列：扫描所有「已下载」的纯搬运主题视频，确保它们都有对应的 PureMoveTask。
+  # 覆盖两类遗漏：① 纯搬运功能上线前就已下载完成的历史视频；② 下载完成时该主题还没有纯搬运账号、
+  # 后来补了账号的视频。幂等，可重复执行。
+  # @return [Hash] { scanned:, created: }
+  def self.backfill_pure_move_tasks!
+    scope = where(status: :downloaded).where(theme: pure_move_themes)
+    total = scope.count
+    created = 0
+
+    scope.find_each do |video|
+      # 纯搬运不走剪映/混剪；历史数据若还停留在 pending，纠正为 completed，避免被剪映/混剪误领取
+      if video.jianying_status != 'completed' || video.hunjian_status != 'completed'
+        video.update_columns(
+          jianying_status: MoveVideo.jianying_statuses[:completed],
+          hunjian_status: MoveVideo.hunjian_statuses[:completed],
+          updated_at: Time.current
+        )
+      end
+
+      before = PureMoveTask.where(move_video_id: video.id).count
+      video.create_pure_move_tasks!
+      created += PureMoveTask.where(move_video_id: video.id).count - before
+    end
+
+    { scanned: total, created: created }
   end
 
   # 平台列表（逗号分隔 → 数组），缺省回退到默认 4 平台
