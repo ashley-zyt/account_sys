@@ -1,19 +1,16 @@
 # encoding: UTF-8
 # ============================================================
-# 对标账号储备入库（批量）：读取 source.txt 的内容，一次性 POST 到
-# move_videos/import 接口，由接口解析视频链接+标题批量入库。
+# 对标账号储备入库（批量）：读取 source.txt 的内容，直接在项目内解析
+# 视频链接+标题批量入库（不再走 HTTP 接口，避免大 HTML 传参问题）。
 #
-# 用法：
-#   1. 把对标账号主页链接填到下面的 SOURCE_URL
-#   2. 复制对标账号的视频列表源代码到 /mnt/account_sys/source.txt
-#   3. 运行：ruby import_videos.rb
+# 用法（在项目根目录运行）：
+#   RAILS_ENV=production ruby import_videos.rb
 # ============================================================
-require "uri"
-require "net/http"
+require_relative "config/environment"
+require "cgi"
 
-SOURCE_URL    = "https://www.douyin.com/user/改成实际的对标账号ID"  # ← 改成实际对标账号主页链接
-HTML_FILE_PATH = "/mnt/account_sys/source.txt"
-API_BASE      = "http://47.89.235.227:3366/api/v1/move_videos/import"
+SOURCE_URL    = "https://www.douyin.com/user/MS4wLjABAAAAPZNmFroK5J0Q9O-H_yooQl_n6sx7jqghMtvncZIDxsX9KdTQp6DsFKZQDgpTbYvS?from_tab_name=main&vid=7644151715096218233"  # ← 改成实际对标账号主页链接
+HTML_FILE_PATH = Rails.root.join("source.txt")
 
 unless File.exist?(HTML_FILE_PATH)
   puts "❌ 找不到文件 #{HTML_FILE_PATH}"
@@ -23,14 +20,9 @@ end
 html = File.read(HTML_FILE_PATH, encoding: "UTF-8", invalid: :replace, undef: :replace)
 puts "正在批量导入，source.txt 大小 #{html.bytesize} 字节..."
 
-uri = URI(API_BASE)
-http = Net::HTTP.new(uri.host, uri.port)
-http.open_timeout = 30
-http.read_timeout = 120
+result = MoveVideo.import_from_html!(source_url: SOURCE_URL, html: html)
 
-request = Net::HTTP::Post.new(uri)
-request.set_form_data(source_url: SOURCE_URL, html: html)
-
-response = http.request(request)
-puts "HTTP #{response.code}"
-puts response.body.to_s.force_encoding('UTF-8')
+puts "匹配主题：#{result[:themes].join(', ')}"
+puts "预期入库：#{result[:total]} 条（视频数 × 主题数）"
+puts "新建：#{result[:created]} 条"
+puts "已存在跳过：#{result[:skipped]} 条"
