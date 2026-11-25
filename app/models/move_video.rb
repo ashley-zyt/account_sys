@@ -172,6 +172,43 @@ class MoveVideo < ApplicationRecord
     end
   end
 
+  # 从抖音视频列表 HTML（source.txt 内容）批量入库：解析 /video/ID + alt 标题，
+  # 按 source_url 匹配到的所有主题，每个主题各建一条 move_video（pending_download）。
+  # 供脚本/接口直接调用，避免大 HTML 走 HTTP 传参。
+  # @return [Hash] { themes:, total:, created:, skipped: }
+  def self.import_from_html!(source_url:, html:, platforms: nil)
+    themes = ThemeConfig.match_themes(source_url)
+    raise "来源账号未配置主题，拒绝入库" if themes.empty?
+
+    items = html.to_s.scan(/<a href="\/video\/(\d+)"[^>]*>.*?alt="([^"]*)"/m)
+    raise "未在 html 中解析到视频链接" if items.empty?
+
+    platforms_str = platforms.presence || DEFAULT_PLATFORMS.join(',')
+
+    created = 0
+    skipped = 0
+
+    items.each do |video_id, title|
+      video_url = "https://www.douyin.com/video/#{video_id}"
+      themes.each do |theme|
+        begin
+          create_from_import!(
+            source_video_url: video_url,
+            source_account_url: source_url,
+            theme: theme,
+            platforms: platforms_str,
+            source_title: CGI.unescapeHTML(title).presence
+          )
+          created += 1
+        rescue ActiveRecord::RecordNotUnique
+          skipped += 1
+        end
+      end
+    end
+
+    { themes: themes, total: items.size * themes.size, created: created, skipped: skipped }
+  end
+
   # 从 backup_unpublished_video_urls 产生的 JSON 批量导入历史未发布视频
   # 去重策略（双重保障）：
   #   1. 内存去重：按 [source_video_url, theme] 去重，JSON 内重复的只保留首条
