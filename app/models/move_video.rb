@@ -82,7 +82,7 @@ class MoveVideo < ApplicationRecord
     failed: 3       # 失败
   }, _prefix: :hunjian
 
-  validates :source_video_url, presence: true, uniqueness: true
+  validates :source_video_url, presence: true, uniqueness: { scope: :theme }
   validates :group_id, presence: true
 
   scope :pending_download, -> { where(status: :pending_download) }
