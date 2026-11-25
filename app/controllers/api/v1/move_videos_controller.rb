@@ -46,36 +46,40 @@ module Api
 					return render_error('source_url 和 video_url 不能为空')
 				end
 
-				theme = ThemeConfig.match_theme(source_url)
-				return render_error('来源账号未配置主题，拒绝入库') if theme.blank?
+				themes = ThemeConfig.match_themes(source_url)
+				return render_error('来源账号未配置主题，拒绝入库') if themes.empty?
 
 				platforms_str = platforms.present? ? platforms : DEFAULT_PLATFORMS_STR
 
-				existed = MoveVideo.exists?(source_video_url: video_url)
-				begin
-					move_video = MoveVideo.create_from_import!(
-						source_video_url: video_url,
-						source_account_url: source_url,
-						theme: theme,
-						platforms: platforms_str,
-						source_title: source_title.presence
-					)
-				rescue ActiveRecord::RecordNotUnique
-					# 并发下同 video_url 重复创建，直接取已存在记录
-					move_video = MoveVideo.find_by!(source_video_url: video_url)
-					existed = true
+				items = themes.map do |theme|
+					existed = MoveVideo.exists?(source_video_url: video_url, theme: theme)
+					begin
+						move_video = MoveVideo.create_from_import!(
+							source_video_url: video_url,
+							source_account_url: source_url,
+							theme: theme,
+							platforms: platforms_str,
+							source_title: source_title.presence
+						)
+						{ id: move_video.id, theme: move_video.theme, status: move_video.status,
+							group_id: move_video.group_id, platforms: move_video.platforms,
+							source_title: move_video.source_title, exists: existed }
+					rescue ActiveRecord::RecordNotUnique
+						# 并发下同 (video_url, theme) 重复创建，直接取已存在记录
+						existing = MoveVideo.find_by!(source_video_url: video_url, theme: theme)
+						{ id: existing.id, theme: existing.theme, status: existing.status,
+							group_id: existing.group_id, platforms: existing.platforms,
+							source_title: existing.source_title, exists: true }
+					end
 				end
 
 				render_success(data: {
-					id: move_video.id,
-					video_url: move_video.source_video_url,
-					source_title: move_video.source_title,
-					source_account_url: move_video.source_account_url,
-					theme: move_video.theme,
-					group_id: move_video.group_id,
-					platforms: move_video.platforms,
-					status: move_video.status,
-					exists: existed
+					source_url: source_url,
+					video_url: video_url,
+					themes: themes,
+					created: items.count { |it| !it[:exists] },
+					skipped: items.count { |it| it[:exists] },
+					items: items
 				})
 			end
 
@@ -236,8 +240,8 @@ module Api
 		def import_batch(source_url, html, platforms)
 			return render_error('source_url 不能为空') if source_url.blank?
 
-			theme = ThemeConfig.match_theme(source_url)
-			return render_error('来源账号未配置主题，拒绝入库') if theme.blank?
+			themes = ThemeConfig.match_themes(source_url)
+			return render_error('来源账号未配置主题，拒绝入库') if themes.empty?
 
 			# <a href="/video/ID" ...> ... <img ... alt="标题">，非贪婪跨行匹配
 			items = html.scan(/<a href="\/video\/(\d+)"[^>]*>.*?alt="([^"]*)"/m)
@@ -249,24 +253,26 @@ module Api
 
 			items.each do |video_id, title|
 				video_url = "https://www.douyin.com/video/#{video_id}"
-				begin
-					MoveVideo.create_from_import!(
-						source_video_url: video_url,
-						source_account_url: source_url,
-						theme: theme,
-						platforms: platforms_str,
-						source_title: CGI.unescapeHTML(title).presence
-					)
-					created += 1
-				rescue ActiveRecord::RecordNotUnique
-					skipped += 1
+				themes.each do |theme|
+					begin
+						MoveVideo.create_from_import!(
+							source_video_url: video_url,
+							source_account_url: source_url,
+							theme: theme,
+							platforms: platforms_str,
+							source_title: CGI.unescapeHTML(title).presence
+						)
+						created += 1
+					rescue ActiveRecord::RecordNotUnique
+						skipped += 1
+					end
 				end
 			end
 
 			render_success(data: {
 				source_url: source_url,
-				theme: theme,
-				total: items.size,
+				themes: themes,
+				total: items.size * themes.size,
 				created: created,
 				skipped: skipped
 			})

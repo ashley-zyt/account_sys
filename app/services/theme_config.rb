@@ -3,17 +3,24 @@
 
 class ThemeConfig
 	class << self
-		# 根据来源账号主页链接匹配主题。
-		# 读 Theme 表（后台可自助维护对标账号）。
+		# 根据来源账号主页链接匹配主题（返回第一个命中主题，保持旧接口兼容）。
 		def match_theme(source_url)
-			return nil if source_url.blank?
+			match_themes(source_url).first
+		end
 
-			Theme.where.not(source_accounts: [nil, '']).find_each do |theme|
+		# 根据来源账号主页链接匹配所有主题（一个对标账号可归属多个主题）。
+		# 读 Theme 表（后台可自助维护对标账号），返回命中的主题名数组（去重）。
+		def match_themes(source_url)
+			return [] if source_url.blank?
+
+			Theme.where.not(source_accounts: [nil, '']).each_with_object([]) do |theme, acc|
 				theme.source_accounts_array.each do |url|
-					return theme.name if source_url.include?(url)
+					if source_url.include?(url)
+						acc << theme.name
+						break
+					end
 				end
-			end
-			nil
+			end.uniq
 		end
 
 		# 从主题标题池中随机选择一个标题。

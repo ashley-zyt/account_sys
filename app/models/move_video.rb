@@ -159,9 +159,10 @@ class MoveVideo < ApplicationRecord
     end
   end
 
-  # 录入：find_or_create 幂等，重复录入同一 source_video_url 返回已存在记录，不重置状态
+  # 录入：find_or_create 幂等，重复录入同一 (source_video_url, theme) 返回已存在记录，不重置状态。
+  # 同一源视频可归属多个主题（对标账号配置在多个主题下），故去重键包含 theme。
   def self.create_from_import!(source_video_url:, source_account_url:, theme:, platforms:, source_title: nil)
-    find_or_create_by!(source_video_url: source_video_url) do |v|
+    find_or_create_by!(source_video_url: source_video_url, theme: theme) do |v|
       v.source_title = source_title
       v.source_account_url = source_account_url
       v.theme = theme
@@ -173,8 +174,8 @@ class MoveVideo < ApplicationRecord
 
   # 从 backup_unpublished_video_urls 产生的 JSON 批量导入历史未发布视频
   # 去重策略（双重保障）：
-  #   1. 内存去重：按 source_video_url 去重，JSON 内重复的只保留首条
-  #   2. DB 去重：find_or_create_by + source_video_url UNIQUE 索引，已存在的跳过（不覆盖进度）
+  #   1. 内存去重：按 [source_video_url, theme] 去重，JSON 内重复的只保留首条
+  #   2. DB 去重：find_or_create_by + (source_video_url, theme) UNIQUE 索引，已存在的跳过（不覆盖进度）
   # 已存在的 move_video 不更新（避免覆盖已下载/已剪映的进度），仅新建缺失的为 pending_download
   # @param path [String, Pathname] 备份 JSON 文件路径
   # @return [Hash] { path:, total_records:, unique_records:, created:, skipped:, failed: }
@@ -184,12 +185,14 @@ class MoveVideo < ApplicationRecord
 
     records = Array(JSON.parse(File.read(path))["records"])
 
-    # 内存去重：按 source_video_url 去重，保留首条
+    # 内存去重：按 [source_video_url, theme] 去重，保留首条
     seen = {}
     unique_records = records.each_with_object([]) do |record, acc|
       video_url = record["video_url"].to_s.strip
-      next if video_url.blank? || seen.key?(video_url)
-      seen[video_url] = true
+      theme = record["theme"]
+      key = [video_url, theme]
+      next if video_url.blank? || seen.key?(key)
+      seen[key] = true
       acc << record
     end
 
@@ -199,14 +202,15 @@ class MoveVideo < ApplicationRecord
 
     unique_records.each do |record|
       video_url = record["video_url"].to_s.strip
+      theme = record["theme"]
       platforms = Array(record["platforms"]).map(&:to_s).reject(&:blank?).join(",")
       platforms = DEFAULT_PLATFORMS.join(",") if platforms.blank?
 
-      existed = exists?(source_video_url: video_url)
-      find_or_create_by!(source_video_url: video_url) do |v|
+      existed = exists?(source_video_url: video_url, theme: theme)
+      find_or_create_by!(source_video_url: video_url, theme: theme) do |v|
         v.source_title = record["source_title"].presence || record["title"]
         v.source_account_url = record["source_account_url"]
-        v.theme = record["theme"]
+        v.theme = theme
         v.group_id = record["group_id"].presence || SecureRandom.uuid
         v.platforms = platforms
         v.status = :pending_download
